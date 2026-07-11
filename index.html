@@ -1,0 +1,2393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Seat at the Table</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14161f; --bg-panel:#1b1e29; --bg-card:#20232f;
+    --line:#2a2d3d; --line-soft:#24273350;
+    --text:#e8e6de; --text-dim:#9a9db0; --text-faint:#5f6275;
+    --gold:#d4a017; --gold-soft:rgba(212,160,23,0.14);
+    --teal:#3e7c8c; --teal-soft:rgba(62,124,140,0.16);
+    --maroon:#a8394a; --maroon-soft:rgba(168,57,74,0.16);
+    --violet:#7a6fb0; --violet-soft:rgba(122,111,176,0.16);
+    --font-display:'Oswald',sans-serif; --font-body:'IBM Plex Sans',sans-serif; --font-mono:'IBM Plex Mono',monospace;
+  }
+  body.light{
+    --bg:#f2ede2; --bg-panel:#ffffff; --bg-card:#faf7f0;
+    --line:#ddd5c2; --line-soft:#ddd5c250;
+    --text:#2a2620; --text-dim:#5c5748; --text-faint:#8b846d;
+    --gold:#a9740a; --gold-soft:rgba(169,116,10,0.12);
+    --teal:#2c6470; --teal-soft:rgba(44,100,112,0.10);
+    --maroon:#8c2f39; --maroon-soft:rgba(140,47,57,0.10);
+    --violet:#5c4f8c; --violet-soft:rgba(92,79,140,0.10);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:radial-gradient(ellipse 900px 500px at 20% -10%, rgba(62,124,140,0.08), transparent),radial-gradient(ellipse 700px 500px at 90% 10%, rgba(212,160,23,0.05), transparent),var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;transition:background-color .2s, color .2s;}
+  body.quiet .card-flavor, body.quiet .pillar-desc, body.quiet .modal-body p.flavor{display:none;}
+
+  /* ---------- HUD ---------- */
+  .hud{position:sticky;top:0;z-index:40;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 22px;background:rgba(20,22,31,0.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);flex-wrap:wrap;}
+  .hud-title{font-family:var(--font-display);font-weight:600;letter-spacing:0.06em;font-size:14px;color:var(--text-dim);text-transform:uppercase;white-space:nowrap;}
+  .hud-title span{color:var(--gold);}
+  .hud-stats{display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+  .stat{display:flex;flex-direction:column;gap:2px;min-width:78px;}
+  .stat-label{font-size:9.5px;letter-spacing:0.11em;text-transform:uppercase;color:var(--text-faint);font-family:var(--font-display);}
+  .stat-value{font-family:var(--font-mono);font-size:17px;font-weight:600;color:var(--gold);}
+  .stat-value.teal{color:var(--teal);}
+  .stat-value.violet{color:var(--violet);}
+  .stat-sub{font-size:10.5px;color:var(--text-dim);}
+  .heat-bar{width:90px;height:6px;border-radius:3px;background:#2a2d3d;overflow:hidden;margin-top:2px;}
+  .heat-fill{height:100%;background:linear-gradient(90deg,var(--maroon),#e0546b);width:0%;transition:width .4s;}
+  .prestige-btn{font-family:var(--font-display);text-transform:uppercase;letter-spacing:0.05em;font-size:11.5px;font-weight:600;background:var(--gold-soft);border:1px solid var(--gold);color:var(--gold);padding:8px 14px;border-radius:4px;cursor:pointer;white-space:nowrap;}
+  .prestige-btn:disabled{opacity:0.35;cursor:not-allowed;}
+
+  /* ---------- TABS ---------- */
+  .tab-bar{position:sticky;top:63px;z-index:39;display:flex;gap:2px;padding:0 22px;background:rgba(20,22,31,0.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);overflow-x:auto;}
+  .tab-btn{font-family:var(--font-display);font-size:12px;letter-spacing:0.06em;text-transform:uppercase;font-weight:600;color:var(--text-faint);background:transparent;border:none;border-bottom:2px solid transparent;padding:12px 14px;cursor:pointer;white-space:nowrap;}
+  .tab-btn:hover{color:var(--text-dim);}
+  .tab-btn.active{color:var(--gold);border-bottom-color:var(--gold);}
+  .tab-btn .soon{font-size:8.5px;color:var(--text-faint);margin-left:4px;font-family:var(--font-mono);text-transform:none;}
+
+  /* ---------- MAIN ---------- */
+  main{max-width:1220px;margin:0 auto;padding:22px 22px 60px;}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+  .section-eyebrow{font-family:var(--font-display);font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-faint);display:flex;align-items:center;gap:10px;margin:30px 0 4px;}
+  .section-eyebrow::after{content:'';flex:1;height:1px;background:var(--line);}
+  .section-eyebrow:first-child{margin-top:0;}
+  .pillar-desc{font-size:12.5px;color:var(--text-faint);margin:0 0 14px;max-width:640px;}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:13px;}
+  .card{background:var(--bg-card);border:1px solid var(--line);border-radius:6px;padding:15px 17px;display:flex;flex-direction:column;gap:9px;position:relative;}
+  .card.legit{border-left:3px solid var(--teal);}
+  .card.street{border-left:3px solid var(--maroon);}
+  .card.locked{opacity:0.5;}
+  .card-top{display:flex;align-items:flex-start;gap:11px;}
+  .card-icon{width:36px;height:36px;border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;background:var(--teal-soft);}
+  .card.street .card-icon{background:var(--maroon-soft);}
+  .card-name{font-family:var(--font-display);font-size:15.5px;font-weight:600;}
+  .card-flavor{font-size:11.5px;color:var(--text-dim);line-height:1.4;margin-top:2px;}
+  .card-stats{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:10.5px;color:var(--text-faint);font-family:var(--font-mono);border-top:1px solid var(--line-soft);padding-top:8px;}
+  .card-stats b{color:var(--text-dim);font-weight:600;}
+  .eff-low{color:var(--maroon)!important;}
+  .btn-row{display:flex;gap:7px;flex-wrap:wrap;}
+  .mini-btn{flex:1;min-width:90px;font-family:var(--font-body);font-weight:600;font-size:12px;background:transparent;border:1px solid var(--line);color:var(--text);padding:8px 9px;border-radius:4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px;}
+  .card.legit .mini-btn:hover:not(:disabled){border-color:var(--teal);background:var(--teal-soft);}
+  .card.street .mini-btn:hover:not(:disabled){border-color:var(--maroon);background:var(--maroon-soft);}
+  .mini-btn:disabled{opacity:0.4;cursor:not-allowed;}
+  .mini-btn .cost{font-family:var(--font-mono);color:var(--gold);font-size:11px;}
+  .mini-btn.fire .cost{color:var(--text-faint);}
+  .mini-btn.manager{border-color:var(--violet);color:var(--violet);}
+  .lock-note{font-size:11px;color:var(--text-faint);font-style:italic;}
+  .managed-badge{font-size:11px;color:var(--violet);font-family:var(--font-mono);border-top:1px solid var(--line-soft);padding-top:8px;}
+
+  .street-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:13px;}
+  .street-card{background:var(--bg-card);border:1px solid var(--line);border-left:3px solid var(--maroon);border-radius:6px;padding:15px 17px;display:flex;flex-direction:column;gap:8px;}
+  .street-card.respect-spend{border-left-color:var(--gold);}
+  .street-card h4{margin:0;font-family:var(--font-display);font-size:14.5px;}
+  .street-card p{margin:0;font-size:11.5px;color:var(--text-dim);line-height:1.4;}
+  .street-card .row{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;color:var(--text-faint);}
+  .toggle-btn{font-family:var(--font-display);font-weight:600;font-size:12px;padding:8px;border-radius:4px;border:1px solid var(--maroon);background:transparent;color:var(--maroon);cursor:pointer;}
+  .toggle-btn.active{background:var(--maroon);color:#fff;}
+  .bank-form{border-top:1px solid var(--line-soft);padding-top:10px;margin-top:2px;display:flex;flex-direction:column;gap:7px;}
+  .bank-form-label{font-family:var(--font-display);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-faint);}
+  .bank-input-row{display:flex;gap:7px;}
+  .bank-input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);font-family:var(--font-mono);font-size:13px;padding:8px 10px;}
+  .bank-input:focus{outline:none;border-color:var(--gold);}
+  .bank-input::-webkit-outer-spin-button, .bank-input::-webkit-inner-spin-button{opacity:0.6;}
+  .mini-btn.quick{flex:1;min-width:0;font-size:11px;padding:6px 4px;color:var(--text-faint);}
+
+  /* ---------- MAP ---------- */
+  .map-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;}
+  .district-bar-wrap{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+  .district-bar-label{font-family:var(--font-display);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-faint);}
+  .district-bar{display:flex;gap:8px;flex-wrap:wrap;}
+  .district-btn{font-family:var(--font-display);font-size:12.5px;letter-spacing:0.03em;font-weight:600;padding:9px 16px;border-radius:20px;border:1px solid var(--line);background:var(--bg-card);color:var(--text-dim);cursor:pointer;display:flex;align-items:center;gap:6px;}
+  .district-btn:hover:not(.active){border-color:var(--text-dim);color:var(--text);}
+  .district-btn.active{border-color:var(--gold);color:var(--gold);background:var(--gold-soft);cursor:default;}
+  .district-btn .pin-dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:0;}
+  .district-btn.active .pin-dot{opacity:1;}
+  .control-track{width:100%;height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin:4px 0;}
+  .control-fill{height:100%;background:linear-gradient(90deg,var(--maroon),var(--gold));transition:width .4s;}
+  #map-canvas{background:#1a1c26;border:1px solid var(--line);border-radius:8px;max-width:100%;touch-action:none;}
+  .map-hint{font-family:var(--font-mono);font-size:12px;color:var(--text-dim);min-height:18px;}
+  .map-legend{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;padding:10px 14px;background:var(--bg-panel);border:1px solid var(--line);border-radius:6px;margin-top:4px;}
+  .legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim);font-family:var(--font-body);}
+  .legend-swatch{width:12px;height:12px;border-radius:3px;flex-shrink:0;display:inline-block;}
+  .legend-swatch.pin{border-radius:50% 50% 50% 0;transform:rotate(45deg);}
+  .map-controls{display:flex;gap:8px;margin-top:4px;}
+  .dpad-btn{width:46px;height:46px;border-radius:8px;border:1px solid var(--line);background:var(--bg-card);color:var(--text-dim);font-size:16px;cursor:pointer;}
+  .dpad-btn:active{background:var(--teal-soft);border-color:var(--teal);}
+
+  /* ---------- PLACEHOLDER PANELS ---------- */
+  .placeholder{background:var(--bg-card);border:1px dashed var(--line);border-radius:8px;padding:40px 28px;text-align:center;color:var(--text-faint);}
+  .placeholder h3{font-family:var(--font-display);color:var(--text-dim);margin:0 0 8px;font-size:18px;text-transform:uppercase;letter-spacing:0.04em;}
+  .placeholder p{font-size:12.5px;max-width:420px;margin:0 auto;line-height:1.5;}
+
+  /* ---------- SETTINGS ---------- */
+  .settings-block{background:var(--bg-card);border:1px solid var(--line);border-radius:8px;padding:20px 22px;max-width:480px;display:flex;flex-direction:column;gap:16px;}
+  .settings-row{display:flex;justify-content:space-between;align-items:center;gap:14px;}
+  .settings-row .label{font-size:13px;color:var(--text);}
+  .settings-row .sub{font-size:11px;color:var(--text-faint);margin-top:2px;}
+  .switch{position:relative;width:42px;height:23px;flex-shrink:0;}
+  .switch input{opacity:0;width:0;height:0;}
+  .slider-track{position:absolute;inset:0;background:var(--line);border-radius:12px;cursor:pointer;transition:.2s;}
+  .slider-track::before{content:'';position:absolute;width:17px;height:17px;left:3px;top:3px;background:var(--text-dim);border-radius:50%;transition:.2s;}
+  .switch input:checked + .slider-track{background:var(--gold-soft);border:1px solid var(--gold);}
+  .switch input:checked + .slider-track::before{transform:translateX(19px);background:var(--gold);}
+  .settings-btn{font-family:var(--font-display);text-transform:uppercase;letter-spacing:0.04em;font-size:12px;font-weight:600;padding:9px 14px;border-radius:4px;border:1px solid var(--line);background:transparent;color:var(--text-dim);cursor:pointer;}
+  .settings-btn:hover{border-color:var(--teal);color:var(--text);}
+  .settings-btn.danger:hover{border-color:var(--maroon);color:var(--maroon);}
+  .save-status{font-family:var(--font-mono);font-size:11px;color:var(--text-faint);}
+
+  /* ---------- TICKER ---------- */
+  .ticker-wrap{margin-top:14px;background:var(--bg-panel);border:1px solid var(--line);border-radius:6px;max-height:150px;overflow-y:auto;}
+  .ticker-item{padding:8px 15px;border-bottom:1px solid var(--line-soft);font-size:12px;color:var(--text-dim);font-family:var(--font-mono);display:flex;gap:10px;}
+  .ticker-item:last-child{border-bottom:none;}
+  .ticker-item .t-time{color:var(--text-faint);white-space:nowrap;}
+
+  /* ---------- MODAL ---------- */
+  .modal-overlay{position:fixed;inset:0;background:rgba(10,11,16,0.82);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;}
+  .modal-overlay.hidden{display:none;}
+  .modal{background:var(--bg-panel);border:1px solid var(--line);border-radius:8px;max-width:540px;width:100%;padding:0;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,0.6);animation:riseIn .3s ease;}
+  @keyframes riseIn{from{opacity:0;transform:translateY(12px) scale(0.98);}to{opacity:1;transform:none;}}
+  .modal-header{background:linear-gradient(135deg, rgba(212,160,23,0.10), rgba(62,124,140,0.06));border-bottom:1px solid var(--line);padding:20px 24px 16px;position:relative;}
+  .modal-eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:0.13em;color:var(--text-faint);text-transform:uppercase;}
+  .modal-title{font-family:var(--font-display);font-size:22px;font-weight:700;margin-top:4px;}
+  .stamp{position:absolute;top:16px;right:20px;border:2px solid var(--maroon);color:var(--maroon);font-family:var(--font-display);font-weight:700;font-size:10px;letter-spacing:0.1em;padding:5px 9px;border-radius:3px;transform:rotate(-9deg);text-transform:uppercase;opacity:0.85;}
+  .modal-body{padding:18px 24px;}
+  .modal-body p{font-size:13.5px;line-height:1.6;color:var(--text-dim);margin:0 0 11px;}
+  .modal-body p:last-child{margin-bottom:0;}
+  .modal-body strong{color:var(--text);}
+  .modal-footer{padding:14px 24px 20px;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;}
+  .modal-btn{font-family:var(--font-display);text-transform:uppercase;letter-spacing:0.05em;font-weight:600;font-size:12.5px;background:var(--gold);color:#1a1305;border:none;padding:10px 20px;border-radius:4px;cursor:pointer;}
+  .modal-btn.secondary{background:transparent;border:1px solid var(--line);color:var(--text-dim);}
+  .clip-rule{width:34px;height:2px;background:var(--gold);margin:10px 0 0 24px;}
+
+  @media (max-width:640px){ .hud{padding:11px 14px;} .tab-bar{padding:0 10px;} main{padding:16px 12px 50px;} }
+</style>
+</head>
+<body>
+
+<div class="hud">
+  <div class="hud-title">Seat at the <span>Table</span></div>
+  <div class="hud-stats">
+    <div class="stat"><div class="stat-label">Cash</div><div class="stat-value" id="hud-cash">$47</div><div class="stat-sub" id="hud-income">+$0/s</div></div>
+    <div class="stat"><div class="stat-label">Standing</div><div class="stat-value teal" id="hud-rank">Nobody</div><div class="stat-sub" id="hud-respect">0 respect</div></div>
+    <div class="stat"><div class="stat-label">Heat</div><div class="heat-bar"><div class="heat-fill" id="heat-fill"></div></div></div>
+    <div class="stat"><div class="stat-label">Crew</div><div class="stat-value violet" id="hud-crew" style="font-size:15px;">0 / 6</div></div>
+    <button class="prestige-btn" id="prestige-btn" style="display:none;"></button>
+  </div>
+</div>
+
+<div class="tab-bar" id="tab-bar">
+  <button class="tab-btn active" data-tab="empire">Empire</button>
+  <button class="tab-btn" data-tab="map">Map</button>
+  <button class="tab-btn" data-tab="bank">Bank</button>
+  <button class="tab-btn" data-tab="politics">Politics</button>
+  <button class="tab-btn" data-tab="gang">Gang</button>
+  <button class="tab-btn" data-tab="assets">Assets</button>
+  <button class="tab-btn" data-tab="settings">Settings</button>
+</div>
+
+<main>
+
+  <div class="tab-panel active" data-tab="empire">
+    <div class="section-eyebrow">Ventures — Production</div>
+    <p class="pillar-desc">Cash builds your businesses. Research a venture once, then expand it level by level — but a venture only earns what its crew can actually move.</p>
+    <div class="grid" id="grid-legit"></div>
+
+    <div class="section-eyebrow" style="margin-top:26px;">The Other Ledger — Production</div>
+    <p class="pillar-desc">Same rules, riskier trade. Street ventures earn well but generate heat.</p>
+    <div class="grid" id="grid-street"></div>
+
+    <div class="section-eyebrow">The Street — Muscle &amp; Respect</div>
+    <p class="pillar-desc">Muscle earns respect but draws heat. Bribes and informants manage the risk. Respect buys territory (more crew capacity) and leverage (lower prices everywhere).</p>
+    <div class="street-grid" id="street-panel"></div>
+  </div>
+
+  <div class="tab-panel" data-tab="map">
+    <div class="section-eyebrow">The City</div>
+    <p class="pillar-desc"><strong>WASD or arrow keys</strong> to walk. Walk up to any marker and press <strong>E</strong> to interact — or tap Interact below on mobile. Use the buttons under "Travel" to drive to a different part of the city.</p>
+    <div class="district-bar-wrap">
+      <div class="district-bar-label">Travel</div>
+      <div class="district-bar" id="district-bar"></div>
+    </div>
+    <div class="map-wrap">
+      <canvas id="map-canvas" width="760" height="440"></canvas>
+      <div class="map-hint" id="map-hint">&nbsp;</div>
+      <div class="map-controls">
+        <button class="dpad-btn" id="btn-interact" style="width:auto;padding:0 16px;">Interact (E)</button>
+      </div>
+      <div class="map-legend" id="map-legend"></div>
+    </div>
+
+    <div class="section-eyebrow" style="margin-top:26px;">Territory Control</div>
+    <p class="pillar-desc">Control drifts toward whoever actually maintains a presence — muscle, staffed corners, running ventures. Push it directly with respect.</p>
+    <div class="street-grid" id="territory-panel"></div>
+  </div>
+
+  <div class="tab-panel" data-tab="bank">
+    <div class="section-eyebrow">First Chicago Trust &amp; Yours</div>
+    <p class="pillar-desc">Bank what you don't need on hand. It's slow money, but it's safe money — heat can't touch it.</p>
+    <div id="bank-panel"></div>
+  </div>
+  <div class="tab-panel" data-tab="politics">
+    <div class="section-eyebrow">City Hall</div>
+    <p class="pillar-desc">Influence opens doors. Favor with specific people opens specific doors. Enough of both, and you can ask for a seat instead of a favor.</p>
+    <div id="politics-panel"></div>
+  </div>
+  <div class="tab-panel" data-tab="gang">
+    <div class="section-eyebrow">Your People</div>
+    <p class="pillar-desc">A crew isn't a headcount, it's specific people who owe you something. Initiate them from here, meet them on the map.</p>
+    <div id="gang-panel"></div>
+  </div>
+  <div class="tab-panel" data-tab="assets">
+    <div class="section-eyebrow">Garage</div>
+    <p class="pillar-desc">A better ride moves you faster around the city and makes every job a little easier to walk away from.</p>
+    <div class="street-grid" id="assets-cars"></div>
+
+    <div class="section-eyebrow" style="margin-top:26px;">Property</div>
+    <p class="pillar-desc">Buildings you just own. No crew, no research, no expansion — just a check every second.</p>
+    <div class="street-grid" id="assets-buildings"></div>
+  </div>
+
+  <div class="tab-panel" data-tab="settings">
+    <div class="section-eyebrow">Settings</div>
+    <div class="settings-block">
+      <div class="settings-row">
+        <div><div class="label">Light mode</div><div class="sub">Switch from the dark noir theme to a lighter palette</div></div>
+        <label class="switch"><input type="checkbox" id="theme-toggle"><span class="slider-track"></span></label>
+      </div>
+      <div class="settings-row">
+        <div><div class="label">Quiet mode</div><div class="sub">Hide flavor text, keep just the numbers</div></div>
+        <label class="switch"><input type="checkbox" id="quiet-toggle"><span class="slider-track"></span></label>
+      </div>
+      <div class="settings-row">
+        <div><div class="label">Autosave</div><div class="sub">Saves automatically every few seconds</div></div>
+        <span class="save-status" id="save-status">Not saved yet</span>
+      </div>
+      <div class="settings-row">
+        <button class="settings-btn" id="save-now-btn">Save Now</button>
+        <button class="settings-btn danger" id="reset-btn">Reset Progress</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-eyebrow">Word on the Street</div>
+  <div class="ticker-wrap" id="ticker"></div>
+</main>
+
+<div class="modal-overlay hidden" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-eyebrow" id="modal-eyebrow">Case File</div>
+      <div class="modal-title" id="modal-title">Title</div>
+      <div class="stamp" id="modal-stamp" style="display:none;">Arrived</div>
+    </div>
+    <div class="clip-rule"></div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+
+  // ================= VENTURE DATA =================
+  const businesses = [
+    { id:'cart', name:"Kailash's Cart", flavor:"A hot-dog stand with a chaat masala twist. Devon Street regulars line up before the sun's fully out.", category:'legit', icon:'🌭', baseCost:10, researchCost:0, baseIncome:0.4, unlock:{type:'start'}, crewBaseCost:8, managerLevelReq:12, managerName:'Nikhil, the Cart Foreman' },
+    { id:'store', name:"Corner Store", flavor:"Milk, cigarettes, lottery tickets, and a till that never quite balances honestly.", category:'legit', icon:'🏪', baseCost:150, researchCost:90, baseIncome:2.6, unlock:{type:'cash', value:120}, crewBaseCost:60, managerLevelReq:12, managerName:'Priya, Store Manager' },
+    { id:'laundromat', name:"Sudsy Laundromat", flavor:"Quarters in, cash out. Nobody asks questions about the back room.", category:'legit', icon:'🧺', baseCost:600, researchCost:350, baseIncome:9, unlock:{type:'cash', value:500}, crewBaseCost:220, managerLevelReq:14, managerName:'Big Tomasz' },
+    { id:'garage', name:"Ashok's Auto Garage", flavor:"Honest repairs by day. A very generous re-painting service by night.", category:'legit', icon:'🔧', baseCost:2500, researchCost:1500, baseIncome:26, unlock:{type:'cash', value:2000}, crewBaseCost:900, managerLevelReq:15, managerName:'Ashok Himself' },
+    { id:'cab', name:"Windy City Cab Co.", flavor:"A fleet of gypsy cabs that know every alley shortcut in the city.", category:'legit', icon:'🚕', baseCost:6000, researchCost:3600, baseIncome:55, unlock:{type:'cash', value:5000}, crewBaseCost:2200, managerLevelReq:15, managerName:'Dispatcher Rosa' },
+    { id:'fixer', name:"The Fixer Network", flavor:"You stop being someone who has problems solved and become the one who solves them, for a price.", category:'street', icon:'🕶️', baseCost:9000, researchCost:5400, baseIncome:70, heatPerLevel:0.6, unlock:{type:'respect', value:60}, crewBaseCost:3400, managerLevelReq:16, managerName:'The Quiet Man' },
+    { id:'restaurant', name:"Chicago Chaat House", flavor:"Your flagship. A line out the door and a write-up in the Tribune's food section.", category:'legit', icon:'🍛', baseCost:18000, researchCost:11000, baseIncome:140, unlock:{type:'cash', value:15000}, crewBaseCost:6800, managerLevelReq:16, managerName:'Head Chef Meera' },
+    { id:'lounge', name:"Marigold Lounge", flavor:"A nightclub named for the flowers your mother used to string on the door in Delhi.", category:'legit', icon:'🥂', baseCost:70000, researchCost:42000, baseIncome:470, unlock:{type:'cash', value:60000}, crewBaseCost:27000, managerLevelReq:17, managerName:'Lena, House Manager' },
+    { id:'outfit', name:"A Seat at the Table", flavor:"The men who actually run this half of the city finally asked you to sit down.", category:'street', icon:'♟️', baseCost:220000, researchCost:130000, baseIncome:1400, heatPerLevel:1.1, unlock:{type:'respect', value:400}, crewBaseCost:85000, managerLevelReq:18, managerName:'Uncle Sandeep' },
+    { id:'realestate', name:"West Side Holdings", flavor:"Buildings with your name on the paperwork and nobody else's.", category:'legit', icon:'🏢', baseCost:260000, researchCost:150000, baseIncome:1550, unlock:{type:'cash', value:220000}, crewBaseCost:95000, managerLevelReq:18, managerName:'Counsel Whitfield' },
+  ];
+  businesses.forEach(b=>{ b.level=0; b.crew=0; b.manager=false; b.researched = b.unlock.type==='start'; b.tempMult=1; b.tempMultExpire=0; });
+
+  const ranks = [
+    {respect:0, title:'Nobody'},{respect:5, title:'Street Runner'},{respect:25, title:'Corner Boy'},
+    {respect:60, title:'Known Quantity'},{respect:150, title:'Fixer'},{respect:400, title:'Made Man'},
+    {respect:900, title:'Lieutenant'},{respect:2000, title:'Underboss'},{respect:5000, title:"The West Side's Own"},
+  ];
+
+  const milestones = [
+    { at:200, title:"CHAAT CART TURNS A REAL PROFIT", body:"<p class='flavor'><strong>Two hundred dollars.</strong> Not much to most people. To a man who arrived with a duffel bag and a phone number for a cousin he'd never met, it's the first number that's ever been entirely his own.</p>" },
+    { at:2000, title:"DEVON STREET TAKES NOTICE", body:"<p class='flavor'>People who wouldn't look at him six months ago nod when he walks past. In Delhi, men wanted something from him. Here, for the first time, people want to be near him.</p>" },
+    { at:20000, title:"A NAME ON THE LEASE", body:"<p class='flavor'>He signs a commercial lease under his own name for the first time, no cousin co-signing, no favor owed. He sits in his car for ten minutes afterward before he can drive.</p>" },
+    { at:150000, title:"THE TRIBUNE WRITES HIM UP", body:"<p class='flavor'>A critic calls the Chaat House the best thing to happen to Devon Street in a decade. His mother has the clipping read to her three times over the phone.</p>" },
+    { at:750000, title:"THEY ASK HIM TO SIT DOWN", body:"<p class='flavor'>The kind of men who used to make people disappear for a living now save him a chair. He used to run from rooms like this. Now the room waits for him.</p>" },
+    { at:3000000, title:"WEST SIDE, EAST DELHI", body:"<p class='flavor'>His name is on buildings, a restaurant with a two-hour wait, and a ledger only four people have ever seen in full. He isn't sure the men he ran from would even recognize the difference between running and rising.</p>" },
+  ];
+
+  const familyTiers = [
+    { name:'Brother Ravi', desc:'Permanent +50% income, every venture.' },
+    { name:'Mother Kavita', desc:'Permanent -35% heat generation, everywhere.' },
+    { name:"Sister's family", desc:'+6 permanent crew capacity, crew costs -20% forever.' },
+    { name:'Deepak, childhood friend', desc:'Managed ventures now auto-reinvest 10% of their income into leveling themselves.' },
+    { name:'Grandmother', desc:'Unlocks a capstone venture, and +25% respect gain forever.' },
+  ];
+
+  const eventPool = [
+    { id:'rival', title:'A RIVAL CREW EYES YOUR CORNER', neg:true, body:"<p class='flavor'>Word is a West Side outfit thinks your runners are working streets that belong to them.</p>", choices:[
+      {label:'Pay them off', sub:'-8% cash', run:function(){ state.cash *= 0.92; log('💸 You paid the rival crew to walk away quietly.'); } },
+      {label:'Stand your ground', sub:'+respect, +heat', run:function(){ state.respect += 15; state.heat = Math.min(100, state.heat+18); log('👊 You held the corner. Word travels — respect earned, heat too.'); } },
+    ]},
+    { id:'inspector', title:'A HEALTH INSPECTOR VISITS', neg:true, body:"<p class='flavor'>He's got a clipboard and a look that says he already knows the price of looking away.</p>", choices:[
+      {label:'Slip an envelope', sub:'-$400 flat', run:function(){ state.cash = Math.max(0, state.cash-400); log('✉️ An envelope changes hands. The clipboard closes.'); } },
+      {label:'Do it by the book', sub:'legit income -15% for 45s', run:function(){ applyTempMult('legit', 0.85, 45); log('📋 You do it clean. Business slows while the paperwork clears.'); } },
+    ]},
+    { id:'tribune', title:'THE TRIBUNE WANTS AN INTERVIEW', neg:false, body:"<p class='flavor'>A reporter's been asking around Devon Street about the man building an empire out of a folding cart.</p>", choices:[
+      {label:'Give the interview', sub:'legit income +25% for 60s', run:function(){ applyTempMult('legit', 1.25, 60); log('📰 The story runs. Foot traffic spikes across every storefront.'); } },
+      {label:'Stay quiet', sub:'+respect', run:function(){ state.respect += 10; log('🤐 You decline. Some people respect a man who doesn\'t need the attention.'); } },
+    ]},
+    { id:'cousin', title:'A COUSIN FROM DELHI CALLS', neg:false, body:"<p class='flavor'>He needs help. It's the kind of call you don't get to think about for very long.</p>", choices:[
+      {label:'Send the money', sub:'-$600 flat', run:function(){ state.cash = Math.max(0, state.cash-600); log('📞 You wire the money home. Family first.'); } },
+      {label:"Can't spare it", sub:'-5 respect', run:function(){ state.respect = Math.max(0, state.respect-5); log('📞 You explain you can\'t, not right now. It sits with you.'); } },
+    ]},
+    { id:'cops', title:'COPS ARE ASKING QUESTIONS', neg:true, body:"<p class='flavor'>Nothing official yet. Just questions, in the way that always precedes something official.</p>", choices:[
+      {label:'Have the Fixer handle it', sub:'-$900, -30 heat', run:function(){ state.cash=Math.max(0,state.cash-900); state.heat=Math.max(0,state.heat-30); log('🕶️ The Fixer makes a call. The questions stop.'); } },
+      {label:'Lay low', sub:'all income -20% for 40s', run:function(){ applyTempMult('all', 0.8, 40); log('🙇 You lay low for a while. Everything slows down.'); } },
+    ]},
+    { id:'hustler', title:'A TALENTED HUSTLER WANTS IN', neg:false, body:"<p class='flavor'>Sharp, hungry, reminds you a little of yourself six months ago.</p>", choices:[
+      {label:'Hire them on', sub:'free crew member, random venture', run:function(){ hireFreeCrew(); } },
+      {label:"Not worth the risk", sub:'+$500 flat', run:function(){ state.cash += 500; log('🤝 You pass, but they leave you something for your trouble.'); } },
+    ]},
+    { id:'investor', title:'A SILENT INVESTOR MAKES AN OFFER', neg:false, body:"<p class='flavor'>Cash up front, no questions, in exchange for a slice of everything going forward.</p>", choices:[
+      {label:'Take the deal', sub:'+$3000, income -5% forever', run:function(){ state.cash += 3000; state.investorPenalty = Math.min(0.5, (state.investorPenalty||0) + 0.05); log('💼 Cash in hand. A little less of everything is yours now.'); } },
+      {label:'Stay independent', sub:'+respect', run:function(){ state.respect += 8; log('🚪 You show him the door. Independence has its own price.'); } },
+    ]},
+    { id:'fire', title:'A GREASE FIRE AT THE CART', neg:true, body:"<p class='flavor'>Where it all started nearly goes up in smoke.</p>", choices:[
+      {label:'Pay for a fast fix', sub:'-$250 flat', run:function(){ state.cash=Math.max(0,state.cash-250); log('🔥 A quick repair keeps the cart running.'); } },
+      {label:'Rebuild slowly', sub:'legit income -30% for 30s', run:function(){ applyTempMult('legit', 0.7, 30); log('🔥 No cash lost, but business limps for a while.'); } },
+    ]},
+  ];
+
+  // ================= ASSETS: CARS & PROPERTIES =================
+  const cars = [
+    { id:'sedan', name:'Used Sedan', icon:'🚗', cost:800, speedMult:1.10, heistBonus:0.02, respectPerSec:0, color:'#7d8a99', len:26, wid:14 },
+    { id:'impala', name:"Impala '19", icon:'🚙', cost:5000, speedMult:1.25, heistBonus:0.05, respectPerSec:0, color:'#3e6b8a', len:29, wid:15 },
+    { id:'escalade', name:'Cadillac Escalade', icon:'🚘', cost:35000, speedMult:1.40, heistBonus:0.08, respectPerSec:0.15, color:'#20242c', len:32, wid:17 },
+    { id:'bentley', name:'Vintage Bentley', icon:'🏎️', cost:150000, speedMult:1.55, heistBonus:0.12, respectPerSec:0.4, color:'#c9a227', len:31, wid:16 },
+  ];
+  const properties = [
+    { id:'twoflat', name:'Rockwell Two-Flat', icon:'🏠', cost:3000, incomePerSec:1.1 },
+    { id:'retailstrip', name:'Devon Retail Strip', icon:'🏬', cost:22000, incomePerSec:7.5 },
+    { id:'aptbuilding', name:'Uptown Apartments', icon:'🏙️', cost:120000, incomePerSec:38 },
+    { id:'loft', name:'Riverside Lofts', icon:'🌆', cost:600000, incomePerSec:180 },
+  ];
+
+  // Independent shops — not yours. You can rob them (one-off, cooldown, risk)
+  // or extort them (permanent small income + permanent small heat, reversible).
+  const localBusinesses = [
+    { id:'patel', name:'Patel Grocery', icon:'🛒', owner:'Mr. Patel', robBase:900, extortIncome:0.8, extortHeat:0.12, district:'devon', x:260, y:430, extorted:false, nextRobAt:0 },
+    { id:'pawn', name:"Nowak's Pawn Shop", icon:'💍', owner:'Nowak', robBase:1500, extortIncome:1.3, extortHeat:0.18, district:'devon', x:520, y:400, extorted:false, nextRobAt:0 },
+    { id:'herbalist', name:'Golden Lotus Herbalist', icon:'🌿', owner:'Mrs. Lin', robBase:700, extortIncome:0.6, extortHeat:0.10, district:'devon', x:780, y:440, extorted:false, nextRobAt:0 },
+    { id:'bar', name:"O'Malley's Bar", icon:'🍺', owner:"O'Malley", robBase:1700, extortIncome:1.5, extortHeat:0.20, district:'devon', x:1040, y:410, extorted:false, nextRobAt:0 },
+    { id:'chopshop', name:'West Side Chop Shop', icon:'🔩', owner:'Deke', robBase:2000, extortIncome:1.8, extortHeat:0.22, district:'westside', x:220, y:560, extorted:false, nextRobAt:0 },
+    { id:'liquor', name:'Corner Liquor', icon:'🍾', owner:'Miss Odell', robBase:1100, extortIncome:1.0, extortHeat:0.15, district:'westside', x:920, y:600, extorted:false, nextRobAt:0 },
+    { id:'jewelers', name:'Whitfield & Co. Jewelers', icon:'💎', owner:'Mr. Whitfield', robBase:3500, extortIncome:2.2, extortHeat:0.25, district:'loop', x:320, y:300, extorted:false, nextRobAt:0 },
+    { id:'marlowe', name:'The Marlowe Club', icon:'🎷', owner:'Vivienne', robBase:2600, extortIncome:1.9, extortHeat:0.20, district:'loop', x:900, y:320, extorted:false, nextRobAt:0 },
+  ];
+
+  // Service buildings — not Ventures (no level/crew), just physical doors into
+  // existing tab systems (Bank/Assets/Politics) or a direct dialogue (the heist).
+  const serviceBuildings = [
+    { id:'bankHome', kind:'bankHome', name:'West Side Savings & Loan', icon:'🏦', district:'devon', x:1360, y:230 },
+    { id:'cardealer', kind:'garage', name:'Chicago Auto Exchange', icon:'🚗', district:'devon', x:1360, y:430 },
+    { id:'realty', kind:'realty', name:'Whitfield Realty', icon:'🏢', district:'devon', x:1360, y:630 },
+    { id:'cityhall', kind:'cityhall', name:'City Hall Annex', icon:'🏛️', district:'loop', x:1150, y:250 },
+    { id:'heistTarget', kind:'heist', name:'First Chicago Trust', icon:'🕵️', district:'loop', x:280, y:650 },
+  ];
+
+  // ================= TERRITORY: DISTRICTS =================
+  // Control is 0-100. >=60 is "yours" (bonus applies), <=25 is "rival controlled"
+  // (small penalty), in between is contested (neutral). Control drifts based on
+  // your presence there (muscle, active corners, ventures) vs. rival pressure.
+  const districts = [
+    { id:'devon', name:'Devon Street', homeTurf:true, control:65, pushCount:0, nextPushAt:0 },
+    { id:'westside', name:'West Side', homeTurf:false, control:15, pushCount:0, nextPushAt:0 },
+    { id:'loop', name:'The Loop', homeTurf:false, control:10, pushCount:0, nextPushAt:0 },
+  ];
+  function districtStatus(id){
+    const c = districts.find(d=>d.id===id).control;
+    return c>=60 ? 'yours' : (c<=25 ? 'rival' : 'contested');
+  }
+  function devonIncomeBonus(){ const s=districtStatus('devon'); return s==='yours'?1.15:(s==='rival'?0.9:1); }
+  function westsideHeatMult(){ const s=districtStatus('westside'); return s==='yours'?0.75:(s==='rival'?1.25:1); }
+  function westsideRateBonus(){ const s=districtStatus('westside'); return s==='yours'?1.15:(s==='rival'?0.85:1); }
+  function loopInterestMult(){ return districtStatus('loop')==='yours' ? 1.5 : 1; }
+  function loopHeistBonus(){ return districtStatus('loop')==='yours' ? 0.10 : 0; }
+  function pushCost(d){ return Math.ceil(20 * Math.pow(1.6, d.pushCount)); }
+  function pushDistrict(id){
+    const d = districts.find(x=>x.id===id);
+    if(state.playSeconds < d.nextPushAt) return;
+    const cost = pushCost(d);
+    if(state.respect < cost) return;
+    state.respect -= cost;
+    d.control = Math.min(100, d.control + 12);
+    d.pushCount += 1;
+    d.nextPushAt = state.playSeconds + 90;
+    log(`🗺️ You put weight behind your claim on ${d.name}. Control now ${Math.round(d.control)}%.`);
+    renderAll();
+  }
+
+  // ================= THE TRADE: PRODUCT, CORNERS =================
+  // Replaces the old abstract "Runners" venture. Product is produced at the
+  // Lab (cash-funded, no crew) and consumed by dealers stationed on corners
+  // across districts. No product in stock means a staffed corner just idles —
+  // same production/distribution coupling Dope Slinger runs on, just spatial now.
+  const corners = [
+    { id:'devonCorner', name:'Devon & Rockwell', district:'devon', tier:1, rate:3, consumption:1.4, dealerCost:250, x:700, y:800, dealer:false, busted:false, bustCooldownAt:0 },
+    { id:'ws1', name:'Cicero & 16th', district:'westside', tier:2, rate:9, consumption:4, dealerCost:900, x:320, y:260, dealer:false, busted:false, bustCooldownAt:0 },
+    { id:'ws2', name:'Pulaski Underpass', district:'westside', tier:2, rate:11, consumption:5, dealerCost:1200, x:1120, y:280, dealer:false, busted:false, bustCooldownAt:0 },
+    { id:'ws3', name:'Roosevelt Yard', district:'westside', tier:3, rate:22, consumption:9, dealerCost:3200, x:500, y:800, dealer:false, busted:false, bustCooldownAt:0 },
+    { id:'ws4', name:'The Warehouse Block', district:'westside', tier:3, rate:28, consumption:11, dealerCost:4200, x:1200, y:750, dealer:false, busted:false, bustCooldownAt:0 },
+  ];
+
+  // ================= POLITICS =================
+  // Influence is a cash-funded meter. Named politicians take individual favor
+  // (also cash) and each unlock a distinct permanent bonus at favor>=60.
+  // Running for office is a one-shot capstone gated behind enough influence.
+  const politicians = [
+    { id:'cole', name:'Alderman Cole', role:'Zoning', favor:0, pocketed:false, desc:"Zoning favors: -10% research cost on every venture once he's in your pocket.", flavor:"Cole stops pretending the envelopes are for his re-election fund. \"We understand each other now,\" is all he says." },
+    { id:'boyle', name:'Commissioner Boyle', role:'Police', favor:0, pocketed:false, desc:"Fewer patrols where it counts: -20% heat generation once he's in your pocket.", flavor:"Boyle doesn't say yes outright. He just stops assigning patrols to your streets, and that's answer enough." },
+    { id:'whitmore', name:'Judge Whitmore', role:'Courts', favor:0, pocketed:false, desc:"A friendlier bench: raids and busts cost 30% less once she's in your pocket.", flavor:"Whitmore never looks at you directly in public. In private, cases involving your name start moving oddly fast, and not against you." },
+  ];
+  function coleActive(){ return politicians.find(p=>p.id==='cole').favor >= 60; }
+  function boyleActive(){ return politicians.find(p=>p.id==='boyle').favor >= 60; }
+  function whitmoreActive(){ return politicians.find(p=>p.id==='whitmore').favor >= 60; }
+
+  // ================= GANG =================
+  // A small, hand-authored roster (not procedural) — each recruit requires an
+  // initiation trial through the dialogue engine and grants a distinct
+  // permanent bonus once inducted, plus counts toward Gang Strength for wars.
+  const gangRecruits = [
+    { id:'chino', name:'Chino', trait:'Fast and reckless', reqRespect:100, cost:1500, bonus:"Corners are 15% less likely to get busted.", inducted:false, dialogueKey:'initChino', district:'westside', x:250, y:480 },
+    { id:'nadia', name:'Nadia Volkov', trait:'Knows every cop by name', reqRespect:150, cost:3000, bonus:'-10% heat generation, citywide.', inducted:false, dialogueKey:'initNadia', district:'westside', x:900, y:460 },
+    { id:'bird', name:'Bird', trait:'Watches the corners', reqRespect:200, cost:4500, bonus:'+15% income from every corner.', inducted:false, dialogueKey:'initBird', district:'westside', x:1300, y:520 },
+    { id:'les', name:'Les "Lockjaw" Tavares', trait:"Doesn't talk, doesn't run", reqRespect:300, cost:8000, bonus:'+8% Gang Strength in territory wars.', inducted:false, dialogueKey:'initLes', district:'westside', x:650, y:850 },
+  ];
+  function gangStrength(){
+    const car = getEquippedCar();
+    let s = state.muscleCount*1 + gangRecruits.filter(g=>g.inducted).length*3;
+    if(car) s += car.heistBonus*10;
+    if(gangRecruits.find(g=>g.id==='les').inducted) s *= 1.08;
+    return s;
+  }
+  function rivalStrength(){
+    const ws = districts.find(d=>d.id==='westside');
+    return 20 + (100-ws.control)*0.3;
+  }
+
+  // ================= DIALOGUE ENGINE =================
+  // Reusable branching conversation tree. Any future NPC/mission/politics/gang
+  // interaction plugs into this same structure: { npcName, nodes:{ id:{text,choices:[{label,effect,next}]} } }
+  const dialogues = {
+    sanjay: {
+      npcName: 'Sanjay (Cousin)',
+      nodes: {
+        start: { text:"\"Still got the couch made up if you ever need it,\" Sanjay says, only half joking. \"Look at you, though. Didn't think you'd actually pull this off.\"",
+          choices:[
+            { label:'Thank him properly', next:'thanks', effect:function(){ state.respect += 2; } },
+            { label:'Ask if he\'s heard from home', next:'home' },
+            { label:'Keep it short', next:null },
+          ]},
+        thanks: { text:"He waves it off, but you can tell it lands somewhere. \"Just don't forget where you started, yeah?\"", choices:[ { label:'Leave', next:null } ] },
+        home: { text:"He goes quiet for a second. \"Everyone's careful about what they say on the phone these days. But your mother asks about you. Always.\"", choices:[ { label:'Leave', next:null } ] },
+        stage1: { text:"\"Ravi's still getting used to the cold,\" Sanjay says. \"Doesn't say much about Delhi. But he asks about you when you're not around.\"",
+          choices:[
+            { label:'Ask how you can help him settle', next:'stage1b', effect:function(){ state.respect += 3; } },
+            { label:'Just say thanks for looking out for him', next:'thanks' },
+            { label:'Keep it short', next:null },
+          ]},
+        stage1b: { text:"\"Just be around,\" Sanjay says. \"That's the whole thing, honestly. He doesn't need you to fix anything. He needs you to still be his cousin, not just — \" he gestures vaguely at everything you've built. \"This.\"", choices:[ { label:'Leave', next:null } ] },
+        stage2: { text:"Half the family's here now. Sanjay barely recognizes the block anymore — or you, some days. \"You used to ask my permission before you did anything. Now I hear about half of it after the fact.\"",
+          choices:[
+            { label:'"You could\'ve said no, back then."', next:'stage2b' },
+            { label:'"I still ask. You just don\'t remember."', next:'stage2c' },
+            { label:'Keep it short', next:null },
+          ]},
+        stage2b: { text:"He laughs, actually laughs. \"Fair. I never was much good at saying no to you.\"", choices:[ { label:'Leave', next:null } ] },
+        stage2c: { text:"\"Maybe,\" he says, not quite believing it, not quite not. \"Doesn't matter now either way.\"", choices:[ { label:'Leave', next:null } ] },
+        stage3: { text:"Everyone who's coming has come. Sanjay looks around the room — his mother, his brother, people who wouldn't have crossed the street for either of you a year ago now working for you — and doesn't say anything for a while. \"I keep waiting to feel like this was a bad idea,\" he finally says. \"It hasn't happened yet.\"",
+          choices:[
+            { label:'"It won\'t."', next:'stage3b', effect:function(){ state.respect += 5; } },
+            { label:'Say nothing, just nod', next:'stage3b' },
+          ]},
+        stage3b: { text:"He nods back. That's the whole conversation, and it's enough.", choices:[ { label:'Leave', next:null } ] },
+      }
+    },
+    dice: {
+      npcName: 'Dice',
+      nodes: {
+        start: { text:"Dice leans against the wall like he owns it, which — for now — his people mostly do. \"West Side's not exactly open for business, friend. Depends how polite you plan on being about it.\"",
+          choices:[
+            { label:'"I plan on owning it."', next:'bold', effect:function(){ state.respect += 3; } },
+            { label:"Keep it friendly", next:'friendly' },
+            { label:'Walk off', next:null },
+          ]},
+        bold: { text:"He laughs, short and humorless. \"Bold. We'll see how that holds up.\" Word of the exchange gets around either way.", choices:[ { label:'Leave', next:null } ] },
+        friendly: { text:"\"Smart,\" he says. \"For now.\" He doesn't move from the wall, but he doesn't stop you either.", choices:[ { label:'Leave', next:null } ] },
+        stage1: { text:"Dice doesn't lean against the wall this time — he's watching the street instead of you. \"You're not going away. I'll give you that much.\" He doesn't sound happy about it.",
+          choices:[
+            { label:'"Smart men adjust."', next:'stage1b' },
+            { label:'Say nothing, let him watch', next:null },
+          ]},
+        stage1b: { text:"\"I've adjusted before,\" he says. \"Ask around about the last guy who didn't.\" It's not quite a threat. It's not quite not one, either.", choices:[ { label:'Leave', next:null } ] },
+        stage2: { text:"There's no one at the wall anymore — or there is, but it isn't Dice's play now. He finds you anyway, hands half in his pockets, more tired than beaten. \"You won. I'm not going to pretend otherwise.\"",
+          choices:[
+            { label:'Offer him a way to stay useful', next:'stage2b', effect:function(){ state.respect += 8; state.cash += 600; } },
+            { label:'Tell him to disappear', next:'stage2c' },
+          ]},
+        stage2b: { text:"He looks almost surprised. \"Didn't figure you for generous.\" He slides you something — cash, a name, information, hard to say which mattered more — and walks off before either of you has to make it weirder than it is.", choices:[ { label:'Leave', next:null } ] },
+        stage2c: { text:"He nods once, like he expected that answer more than the other one. \"Didn't figure you for generous either way.\" He's gone within the week.", choices:[ { label:'Leave', next:null } ] },
+      }
+    },
+    reyes: {
+      npcName: 'Councilman Reyes',
+      nodes: {
+        start: { text:"Reyes shakes your hand like he's already decided you're worth knowing. \"A man builds what you've built, people downtown start asking who he is. I'd rather hear it from you first.\"",
+          choices:[
+            { label:'"Ask away."', next:'open' },
+            { label:'Keep it vague', next:'vague' },
+            { label:'Excuse yourself', next:null },
+          ]},
+        open: { text:"\"Appreciate the directness,\" he says, sliding you a card. \"City hall moves slow on its own. Sometimes it needs a push from outside.\" A conversation for another day, clearly.", choices:[ { label:'Leave', next:null } ] },
+        vague: { text:"He smiles like he expected that. \"Fair enough. Everyone in the Loop learns to talk like that eventually.\"", choices:[ { label:'Leave', next:null } ] },
+        stage1: { text:"\"You've been busy,\" Reyes says, and this time there's no small talk first. \"There's a seat opening up. The kind of seat a man with your kind of reach could actually hold, if he wanted it.\"",
+          choices:[
+            { label:'"I might want it."', next:'stage1b', effect:function(){ state.respect += 4; } },
+            { label:'"Not my kind of thing."', next:'stage1c' },
+          ]},
+        stage1b: { text:"\"Then build the influence to take it seriously,\" he says. \"I'll be watching either way.\"", choices:[ { label:'Leave', next:null } ] },
+        stage1c: { text:"\"Everyone says that,\" he says, \"right up until they don't.\" He doesn't push it further. He doesn't have to.", choices:[ { label:'Leave', next:null } ] },
+        stage2: { text:"Reyes greets you differently now — a hand on the shoulder instead of a handshake. \"Alderman,\" he says, testing how it sounds out loud. \"Suits you better than I expected it to.\"",
+          choices:[
+            { label:'"You knew before I did."', next:'stage2b' },
+            { label:'"Don\'t get used to it."', next:'stage2c' },
+          ]},
+        stage2b: { text:"\"I know most things before people do,\" he says, not quite joking. \"It's the job.\"", choices:[ { label:'Leave', next:null } ] },
+        stage2c: { text:"He laughs, genuinely this time. \"That's the first thing you've said that actually sounds like City Hall.\"", choices:[ { label:'Leave', next:null } ] },
+      }
+    },
+    campaign: {
+      npcName: 'City Hall',
+      nodes: {
+        start: { text:"Running for alderman means a real campaign — money, endorsements, and a night where it's decided one way or the other. You've got the influence downtown to be taken seriously. How do you want to run it?",
+          choices: [
+            { label:'Grassroots — cheap, risky', next:'result', effect:function(){ runCampaign('grassroots'); } },
+            { label:'Full machine — expensive, safer', next:'result', effect:function(){ runCampaign('machine'); } },
+            { label:'Not yet', next:null },
+          ]},
+        result: { text:'', choices:[ { label:'Leave', next:null } ] },
+      }
+    },
+    gangwar: {
+      npcName: 'West Side, After Dark',
+      nodes: {
+        start: { text:"Dice's people aren't going to hand West Side over. If you want it, you take it — the question is how loud you're willing to be about it.",
+          choices: [
+            { label:'Full assault — bigger swing, more heat', next:'result', effect:function(){ resolveWar('assault'); } },
+            { label:'Targeted hits — smaller swing, safer', next:'result', effect:function(){ resolveWar('targeted'); } },
+            { label:'Not tonight', next:null },
+          ]},
+        result: { text:'', choices:[ { label:'Leave', next:null } ] },
+      }
+    },
+    initChino: {
+      npcName: 'Chino',
+      nodes: {
+        start: { text:"Chino's run corners since he was fourteen. \"You want me in, I'm in. But I do this my way, or I don't do it.\"",
+          choices: [
+            { label:'Let him run it his way', next:'result', effect:function(){ inductRecruit('chino', 'safe'); } },
+            { label:'Test him first', next:'result', effect:function(){ inductRecruit('chino', 'test'); } },
+          ]},
+        result: { text:'', choices:[ { label:'Leave', next:null } ] },
+        checkin: { text:"\"Corners are quiet,\" Chino says, which from him counts as a full report. \"Nobody's dumb enough to try us twice.\"", choices:[ { label:'Leave', next:null } ] },
+      }
+    },
+    initLes: {
+      npcName: 'Les "Lockjaw" Tavares',
+      nodes: {
+        start: { text:"Les doesn't say much. He doesn't have to — everyone on the West Side already knows what he did the one time someone talked.",
+          choices: [
+            { label:'Vouch for him yourself', next:'result', effect:function(){ inductRecruit('les', 'safe'); } },
+            { label:'Have him prove himself', next:'result', effect:function(){ inductRecruit('les', 'test'); } },
+          ]},
+        result: { text:'', choices:[ { label:'Leave', next:null } ] },
+        checkin: { text:"Les nods at you. That's the whole conversation. It's also, somehow, exactly enough information.", choices:[ { label:'Leave', next:null } ] },
+      }
+    },
+    initNadia: {
+      npcName: 'Nadia Volkov',
+      nodes: {
+        start: { text:"Nadia knows every beat cop on the West Side by first name — and what each of them owes somebody. \"Trust is expensive,\" she says. \"But cheaper than a raid.\"",
+          choices: [
+            { label:'Pay what she asks', next:'result', effect:function(){ inductRecruit('nadia', 'safe'); } },
+            { label:'Negotiate hard', next:'result', effect:function(){ inductRecruit('nadia', 'test'); } },
+          ]},
+        result: { text:'', choices:[ { label:'Leave', next:null } ] },
+        checkin: { text:"\"Two patrols got rerouted this week,\" Nadia says, like she's mentioning the weather. \"You're welcome.\"", choices:[ { label:'Leave', next:null } ] },
+      }
+    },
+    initBird: {
+      npcName: 'Bird',
+      nodes: {
+        start: { text:"Bird's been a lookout since before you got here. Doesn't say much, sees everything. \"I watch corners. That's all I do. That's all I want to do.\"",
+          choices: [
+            { label:'"That\'s enough."', next:'result', effect:function(){ inductRecruit('bird', 'safe'); } },
+            { label:'Push him to do more', next:'result', effect:function(){ inductRecruit('bird', 'test'); } },
+          ]},
+        result: { text:'', choices:[ { label:'Leave', next:null } ] },
+        checkin: { text:"Bird just points — at a corner, a car parked a little too long, something you wouldn't have noticed. He's already looking somewhere else by the time you turn to see it.", choices:[ { label:'Leave', next:null } ] },
+      }
+    },
+    bankheist: {
+      npcName: 'First Chicago Trust — After Hours',
+      nodes: {
+        start: { text:"The vault's on a timer, the guard rotates every twenty minutes, and you've realistically got one real shot at this before they upgrade the locks. How do you want to play it?",
+          choices: [
+            { label:'Smash and grab, alone', next:'result', effect:function(){ resolveHeist('smash'); } },
+            { label:'Bring the crew', next:'result', effect:function(){ resolveHeist('crew'); } },
+            { label:'Walk away', next:null },
+          ]},
+        result: { text:'', choices:[ { label:'Leave', next:null } ] },
+      }
+    },
+  };
+  // Recurring NPCs don't have one fixed conversation — each has a small set of
+  // story stages gated on real progress (prestige, territory control, politics),
+  // so revisiting them later reflects what's actually happened in the other
+  // systems instead of repeating the same static lines forever.
+  function npcOpeningNode(npcKey){
+    if(npcKey==='sanjay'){
+      if(state.prestigeCount>=5) return 'stage3';
+      if(state.prestigeCount>=3) return 'stage2';
+      if(state.prestigeCount>=1) return 'stage1';
+      return 'start';
+    }
+    if(npcKey==='dice'){
+      const control = districts.find(d=>d.id==='westside').control;
+      if(control>=60) return 'stage2';
+      if(control>=25) return 'stage1';
+      return 'start';
+    }
+    if(npcKey==='reyes'){
+      if(state.electedOffice) return 'stage2';
+      if(state.influence>=50) return 'stage1';
+      return 'start';
+    }
+    return 'start';
+  }
+  function playDialogue(npcKey, nodeId){
+    const tree = dialogues[npcKey];
+    const node = tree.nodes[nodeId];
+    showModal({
+      eyebrow: tree.npcName,
+      title: tree.npcName.split(' (')[0],
+      body: `<p>${node.text}</p>`,
+      buttons: node.choices.map(c=> ({ label:c.label, onClick:function(){ if(c.effect) c.effect(); if(c.next){ playDialogue(npcKey, c.next); } else { renderAll(); } } }))
+    });
+  }
+
+  // ================= NPC REGISTRY =================
+  // Named NPCs are hand-authored and permanent (see `dialogues` above).
+  // Procedural NPCs are generated from pools — this is the seed for a larger
+  // rotating cast once robbery/recruitment lands in later phases.
+  const npcFirstNames = ['Marcus','Yolanda','Chen','Fatima','Danny','Rosa','Terrence','Aleksey','Priya','Deshawn','Grace','Miguel'];
+  const npcLastNames = ['Whitfield','Osei','Nowak','Reyes','Kowalski','Singh','Okafor','Brennan'];
+  const npcDispositions = ['Friendly','Wary','Business-minded','Streetwise'];
+  function generateNPC(){
+    return {
+      name: npcFirstNames[Math.floor(Math.random()*npcFirstNames.length)] + ' ' + npcLastNames[Math.floor(Math.random()*npcLastNames.length)],
+      disposition: npcDispositions[Math.floor(Math.random()*npcDispositions.length)],
+    };
+  }
+  function proceduralInteract(){
+    const npc = state.procNpc;
+    showModal({
+      eyebrow:'A Stranger', title: npc.name,
+      body:`<p>${npc.disposition} energy. Could be nothing, could be something.</p><p class="flavor">(New faces will show up as your territory grows — this one's just passing through for now.)</p>`,
+      buttons:[
+        { label:'Make conversation', onClick:function(){
+          if(Math.random()<0.5){ state.respect += 3; log(`🗣️ ${npc.name} respects the hustle. +3 respect.`); }
+          else { const tip = Math.ceil(20+Math.random()*60); state.cash += tip; log(`🗣️ Small talk with ${npc.name} turns into a $${tip} tip.`); }
+          renderAll();
+        }},
+        { label:'Walk away', onClick:function(){} },
+      ]
+    });
+  }
+
+  // ================= STATE =================
+  const state = {
+    cash: 47, respect: 0, heat: 0,
+    territoryTier: 0, negotiateTier: 0,
+    muscleCount: 0, ratCount: 0, bribeOn: false,
+    prestigeCount: 0, seenMilestones: new Set(),
+    started: false, lastTick: Date.now(), nextEventAt: 110 + Math.random()*60,
+    playSeconds: 0, investorPenalty: 0,
+    procNpc: generateNPC(),
+    bank: 0, nextHeistAt: 0,
+    ownedCars: [], equippedCar: null, ownedProperties: [],
+    currentDistrict: 'devon', product: 0, productLevel: 0, currentInterior: null,
+    influence: 0, influenceBuys: 0, electedOffice: false, nextCampaignAt: 0, nextWarAt: 0,
+  };
+
+  // ================= HELPERS =================
+  function fmt(n){
+    const sign = n<0?'-':''; n=Math.abs(n);
+    if(n < 1000) return sign+'$' + Math.floor(n);
+    const units=['','K','M','B','T']; let u=0; let v=n;
+    while(v>=1000 && u<units.length-1){ v/=1000; u++; }
+    return sign+'$' + v.toFixed(v<10?2:1) + units[u];
+  }
+  function fmtR(n){ return Math.floor(n).toLocaleString(); }
+  function discountMult(){ return Math.pow(0.93, state.negotiateTier) * (state.prestigeCount>=3?0.8:1); }
+  function globalIncomeMult(){ return Math.max(0.1, (1 + state.prestigeCount*0.5) * (1 - (state.investorPenalty||0))); }
+  function nadiaInducted(){ return gangRecruits.find(g=>g.id==='nadia').inducted; }
+  function chinoInducted(){ return gangRecruits.find(g=>g.id==='chino').inducted; }
+  function birdInducted(){ return gangRecruits.find(g=>g.id==='bird').inducted; }
+  function whitmoreMult(){ return whitmoreActive() ? 0.7 : 1; }
+  function researchCostFor(b){ return Math.ceil(b.researchCost * discountMult() * (coleActive()?0.9:1)); }
+  function heatMult(){ return Math.max(0.3, (state.bribeOn?0.4:1) * (state.prestigeCount>=2?0.65:1) * (boyleActive()?0.8:1) * (nadiaInducted()?0.9:1)); }
+  function crewCapGlobal(){ return 6 + state.territoryTier*4 + (state.prestigeCount>=3?6:0); }
+  function crewUsedGlobal(){ return businesses.reduce((s,b)=> s + (b.manager?0:b.crew), 0); }
+  function crewNeeded(b){ return b.level<=0 ? 0 : Math.ceil(b.level/5); }
+  function efficiency(b){
+    if(b.manager) return 1;
+    const need = crewNeeded(b);
+    if(need===0) return 1;
+    return Math.max(0.35, Math.min(1, b.crew/need));
+  }
+  function costForLevel(b){ return Math.ceil(b.baseCost * Math.pow(1.15, b.level) * discountMult()); }
+  function crewCostFor(b){ return Math.ceil(b.crewBaseCost * Math.pow(1.22, b.crew) * discountMult()); }
+  function managerCostFor(b){ return Math.ceil(b.baseCost * 45 * discountMult()); }
+  function territoryCost(){ return Math.ceil(40 * Math.pow(2.1, state.territoryTier)); }
+  function negotiateCost(){ return Math.ceil(25 * Math.pow(1.8, state.negotiateTier)); }
+  function muscleCost(){ return Math.ceil(80 * Math.pow(1.25, state.muscleCount)); }
+  function ratsCashCost(){ return Math.ceil(150 * Math.pow(1.3, state.ratCount)); }
+  function ratsRespectCost(){ return 5 + state.ratCount*2; }
+  function tempMultActive(b){ return b.tempMultExpire > Date.now() ? b.tempMult : 1; }
+  function applyTempMult(filter, mult, seconds){
+    businesses.forEach(b=>{ if(filter==='all' || b.category===filter){ b.tempMult = mult; b.tempMultExpire = Date.now() + seconds*1000; } });
+  }
+  function hireFreeCrew(){
+    const eligible = businesses.filter(b=> b.researched && !b.manager && b.level>0 && b.crew < crewNeeded(b)+2 && crewUsedGlobal() < crewCapGlobal());
+    if(eligible.length===0){ state.cash += 400; log('🤝 No open spot for them — they take a cash finder\'s fee instead.'); return; }
+    const b = eligible[Math.floor(Math.random()*eligible.length)];
+    b.crew += 1;
+    log(`🤝 They join the crew at ${b.name}, no questions asked.`);
+  }
+  function incomeFor(b){ return b.level * b.baseIncome * efficiency(b) * tempMultActive(b); }
+  function getEquippedCar(){ return cars.find(c=>c.id===state.equippedCar) || null; }
+  function propertiesIncome(){ return state.ownedProperties.reduce((s,id)=>{ const p=properties.find(x=>x.id===id); return s+(p?p.incomePerSec:0); }, 0); }
+  function localBizIncome(){ return localBusinesses.filter(b=>b.extorted).reduce((s,b)=> s+b.extortIncome, 0); }
+  function activeCorners(){ return corners.filter(c=> c.dealer && !c.busted); }
+  function cornerDemandPerSec(){ return activeCorners().reduce((s,c)=> s+c.consumption, 0); }
+  function cornerIncomePerSec(){
+    if(state.product <= 0) return 0;
+    const birdMult = birdInducted() ? 1.15 : 1;
+    return activeCorners().reduce((s,c)=>{
+      const districtMult = c.district==='westside' ? westsideRateBonus() : 1;
+      return s + c.rate*districtMult*birdMult;
+    }, 0);
+  }
+  function cornerHeatPerSec(){
+    return corners.filter(c=> c.dealer && !c.busted).reduce((s,c)=>{
+      const districtMult = c.district==='westside' ? westsideHeatMult() : 1;
+      return s + c.tier*0.4*districtMult;
+    }, 0);
+  }
+  function labCost(){ return Math.ceil(400 * Math.pow(1.22, state.productLevel) * discountMult()); }
+  function productCap(){ return 200 + state.productLevel*20; }
+  function electedOfficeIncome(){ return state.electedOffice ? (5 + state.prestigeCount*2) : 0; }
+  function rawTotalIncome(){ return (businesses.reduce((s,b)=> s+incomeFor(b), 0)*devonIncomeBonus() + propertiesIncome() + localBizIncome() + cornerIncomePerSec() + electedOfficeIncome()) * globalIncomeMult(); }
+  function bribeUpkeep(){ return state.bribeOn ? rawTotalIncome()*0.12 : 0; }
+  function netIncome(){ return rawTotalIncome() - bribeUpkeep(); }
+  function respectPerSec(){ const car=getEquippedCar(); return (state.muscleCount*0.6 + (car?car.respectPerSec:0)) * (state.prestigeCount>=5?1.25:1); }
+  function heatGenPerSec(){
+    const streetHeat = businesses.filter(b=>b.category==='street').reduce((s,b)=> s+(b.heatPerLevel||0)*b.level, 0);
+    const extortHeat = localBusinesses.filter(b=>b.extorted).reduce((s,b)=> s+b.extortHeat, 0);
+    return (state.muscleCount*0.5 + streetHeat + extortHeat + cornerHeatPerSec()) * heatMult();
+  }
+  function currentRank(){ let r=ranks[0]; for(const rk of ranks){ if(state.respect>=rk.respect) r=rk; } return r.title; }
+  function isUnlocked(b){
+    if(b.unlock.type==='start') return true;
+    if(b.unlock.type==='cash') return state.cash>=b.unlock.value || b.level>0 || b.researched;
+    if(b.unlock.type==='respect') return state.respect>=b.unlock.value || b.level>0 || b.researched;
+    return false;
+  }
+  function log(msg){
+    const wrap = document.getElementById('ticker');
+    const item = document.createElement('div');
+    item.className = 'ticker-item';
+    const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    item.innerHTML = `<span class="t-time">${time}</span><span>${msg}</span>`;
+    wrap.prepend(item);
+    while(wrap.children.length > 45) wrap.removeChild(wrap.lastChild);
+  }
+
+  // ================= MODAL =================
+  function showModal({eyebrow, title, body, stamp, buttons}){
+    document.getElementById('modal-eyebrow').textContent = eyebrow || '';
+    document.getElementById('modal-title').textContent = title || '';
+    document.getElementById('modal-body').innerHTML = body || '';
+    const stampEl = document.getElementById('modal-stamp');
+    if(stamp){ stampEl.style.display='block'; stampEl.textContent = stamp; } else { stampEl.style.display='none'; }
+    const footer = document.getElementById('modal-footer');
+    footer.innerHTML = '';
+    (buttons || [{label:'Continue'}]).forEach(btnDef=>{
+      const btn = document.createElement('button');
+      btn.className = 'modal-btn' + (btnDef.secondary ? ' secondary' : '');
+      btn.textContent = btnDef.label;
+      btn.onclick = function(){
+        document.getElementById('modal-overlay').classList.add('hidden');
+        if(btnDef.onClick) btnDef.onClick();
+      };
+      footer.appendChild(btn);
+    });
+    document.getElementById('modal-overlay').classList.remove('hidden');
+  }
+
+  function checkMilestones(){
+    for(const m of milestones){
+      if(state.cash >= m.at && !state.seenMilestones.has(m.at)){
+        state.seenMilestones.add(m.at);
+        showModal({ eyebrow:'Chicago Tribune — West Side Edition', title:m.title, body:m.body, buttons:[{label:'Keep Going'}] });
+        log(`📰 Headline: "${m.title.charAt(0)}${m.title.slice(1).toLowerCase()}"`);
+        break;
+      }
+    }
+  }
+
+  function maybeTriggerEvent(){
+    if(!state.started) return;
+    if(state.playSeconds < state.nextEventAt) return;
+    state.nextEventAt = state.playSeconds + 100 + Math.random()*70;
+    const ratWeight = Math.max(0.35, 1 - state.ratCount*0.09);
+    const pool = eventPool.filter(e=> !e.neg || Math.random() < ratWeight || Math.random() < 0.4);
+    const ev = (pool.length?pool:eventPool)[Math.floor(Math.random()*(pool.length?pool.length:eventPool.length))];
+    showModal({
+      eyebrow:'A Decision Has to Be Made', title: ev.title, body: ev.body,
+      buttons: ev.choices.map(c=> ({ label: `${c.label} (${c.sub})`, onClick: function(){ c.run(); renderAll(); } })),
+    });
+  }
+
+  // ================= VENTURE QUICK PANEL (used by the map) =================
+  function openVentureQuickPanel(b){
+    const unlocked = isUnlocked(b);
+    let bodyHtml = `<p>${b.flavor}</p>`;
+    let buttons = [];
+    if(!unlocked){
+      bodyHtml += `<p class="flavor">${b.unlock.type==='cash' ? ('Unlocks at '+fmt(b.unlock.value)+' cash') : ('Unlocks at '+b.unlock.value+' respect')}</p>`;
+    } else if(!b.researched){
+      const rc = researchCostFor(b);
+      buttons.push({ label:`Research (${fmt(rc)})`, onClick:function(){ if(state.cash>=rc){ state.cash-=rc; b.researched=true; log(`🔬 You research ${b.name}.`);} renderAll(); }});
+    } else {
+      bodyHtml += `<p class="flavor">Level ${b.level} · ${incomeFor(b).toFixed(1)}/s · Efficiency ${Math.round(efficiency(b)*100)}%</p>`;
+      const cost = costForLevel(b);
+      buttons.push({ label:`${b.level===0?'Open':'Expand'} (${fmt(cost)})`, onClick:function(){ if(state.cash>=cost){ state.cash-=cost; b.level+=1; if(b.category==='street') state.respect+=1; checkMilestones(); } renderAll(); }});
+      if(!b.manager){
+        const cc = crewCostFor(b);
+        buttons.push({ label:`+ Crew (${fmt(cc)})`, onClick:function(){ if(state.cash>=cc && crewUsedGlobal()<crewCapGlobal()){ state.cash-=cc; b.crew+=1; } renderAll(); }});
+      }
+    }
+    buttons.push({ label:'Close', secondary:true });
+    showModal({ eyebrow: b.category==='street'?'The Other Ledger':'Ventures', title:b.name, body:bodyHtml, buttons });
+  }
+
+  // ================= BANK =================
+  function depositAmount(rawAmt){
+    const amt = Math.floor(Number(rawAmt));
+    if(!isFinite(amt) || amt<=0){ log('🏦 Enter a valid amount to deposit.'); return; }
+    if(amt > state.cash){ log(`🏦 You don't have ${fmt(amt)} on hand to deposit.`); return; }
+    state.cash -= amt; state.bank += amt;
+    log(`🏦 You deposit ${fmt(amt)}. Safe from raids in there.`);
+    renderAll();
+  }
+  function withdrawAmount(rawAmt){
+    const amt = Math.floor(Number(rawAmt));
+    if(!isFinite(amt) || amt<=0){ log('🏦 Enter a valid amount to withdraw.'); return; }
+    if(amt > state.bank){ log(`🏦 There's only ${fmt(state.bank)} banked.`); return; }
+    state.bank -= amt; state.cash += amt;
+    log(`🏦 You withdraw ${fmt(amt)}.`);
+    renderAll();
+  }
+  function resolveHeist(approach){
+    const car = getEquippedCar();
+    const carBonus = car ? car.heistBonus : 0;
+    let chance, reward, failLossPct, heatOnAttempt, heatOnFail, respectOnFail;
+    if(approach==='smash'){
+      chance = Math.min(0.7, 0.40 + state.ratCount*0.03 + carBonus + loopHeistBonus());
+      reward = Math.round(Math.max(500, rawTotalIncome()*18) * (0.8+Math.random()*0.5));
+      failLossPct = 0.15; heatOnAttempt = 10; heatOnFail = 15; respectOnFail = 3;
+    } else {
+      chance = Math.min(0.78, 0.30 + state.muscleCount*0.04 + state.ratCount*0.03 + carBonus + loopHeistBonus());
+      reward = Math.round(Math.max(1800, rawTotalIncome()*50) * (0.8+Math.random()*0.5));
+      failLossPct = 0.22; heatOnAttempt = 20; heatOnFail = 25; respectOnFail = 10;
+    }
+    state.heat = Math.min(100, state.heat + heatOnAttempt);
+    state.nextHeistAt = state.playSeconds + 420;
+    const win = Math.random() < chance;
+    if(win){
+      state.cash += reward;
+      state.respect += Math.ceil(reward/400);
+      log(`💰 The job on First Chicago Trust pays out ${fmt(reward)}.`);
+      dialogues.bankheist.nodes.result.text = `Clean. You're out before the second patrol even swings back. <strong>${fmt(reward)}</strong> heavier, and word will get around.`;
+    } else {
+      const loss = Math.round(state.cash*failLossPct);
+      state.cash = Math.max(0, state.cash-loss);
+      state.heat = Math.min(100, state.heat+heatOnFail);
+      state.respect = Math.max(0, state.respect-respectOnFail);
+      log(`🚔 The job on First Chicago Trust goes sideways. Down ${fmt(loss)}, heat's up.`);
+      dialogues.bankheist.nodes.result.text = `It goes sideways fast. You get out, but not clean — <strong>${fmt(loss)}</strong> lost on the way, and there's heat on you now that wasn't there this morning.`;
+    }
+    renderAll();
+  }
+
+  // ================= LOCAL BUSINESSES (map-only, rob/extort) =================
+  function robLocalBiz(biz){
+    const car = getEquippedCar();
+    const carBonus = car ? car.heistBonus : 0;
+    let chance = 0.55 + state.ratCount*0.03 + carBonus - (state.heat>60 ? 0.15 : 0);
+    chance = Math.max(0.15, Math.min(0.85, chance));
+    biz.nextRobAt = state.playSeconds + 240;
+    if(Math.random() < chance){
+      const reward = Math.round(biz.robBase * (0.8+Math.random()*0.6));
+      state.cash += reward; state.respect += 2; state.heat = Math.min(100, state.heat+8);
+      log(`💵 You hit the till at ${biz.name} for ${fmt(reward)}.`);
+    } else {
+      const loss = Math.round(biz.robBase * 0.3);
+      state.cash = Math.max(0, state.cash-loss); state.respect = Math.max(0, state.respect-3); state.heat = Math.min(100, state.heat+15);
+      log(`🚨 ${biz.owner} isn't an easy mark. You're out ${fmt(loss)} and it's hotter out there now.`);
+    }
+    renderAll();
+  }
+  function openTillPanel(biz){
+    const canRob = state.playSeconds >= (biz.nextRobAt||0);
+    const cooldownLeft = Math.max(0, Math.ceil((biz.nextRobAt||0) - state.playSeconds));
+    const body = `<p>The register's right there. ${biz.owner} hasn't noticed you yet.</p>`;
+    const buttons = [];
+    buttons.push(canRob
+      ? { label:'Rob the Till', onClick:function(){ robLocalBiz(biz); } }
+      : { label:`Cooling Off (${cooldownLeft}s)`, secondary:true });
+    buttons.push({ label:'Walk away', secondary:true });
+    showModal({ eyebrow:'Cash Register', title:biz.name, body, buttons });
+  }
+  function openOwnerPanel(biz){
+    let body = `<p>${biz.owner} runs this place. Not part of your operation — yet.</p>`;
+    if(biz.extorted) body += `<p class="flavor">${biz.owner} pays tribute: +${biz.extortIncome.toFixed(1)}/s, +${biz.extortHeat.toFixed(2)} heat/s, ongoing.</p>`;
+    const buttons = [];
+    if(!biz.extorted){
+      buttons.push({ label:'Extort (needs 30 respect)', onClick:function(){
+        if(state.respect<30){ log(`🙅 ${biz.owner} laughs you off. You don't have the reputation for this yet.`); renderAll(); return; }
+        biz.extorted = true;
+        log(`🕶️ ${biz.owner} agrees to pay, one way or another.`);
+        renderAll();
+      }});
+    } else {
+      buttons.push({ label:'Let it go', onClick:function(){ biz.extorted=false; log(`🤝 You cut ${biz.owner} loose.`); renderAll(); } });
+    }
+    buttons.push({ label:'Walk away', secondary:true });
+    showModal({ eyebrow:'Business Owner', title:biz.owner, body, buttons });
+  }
+
+  // ================= ASSETS: CARS & PROPERTIES =================
+  function renderAssetsPanel(){
+    const carsWrap = document.getElementById('assets-cars');
+    const propWrap = document.getElementById('assets-buildings');
+    if(!carsWrap || !propWrap) return;
+
+    carsWrap.innerHTML = cars.map(c=>{
+      const owned = state.ownedCars.includes(c.id);
+      const equipped = state.equippedCar === c.id;
+      let btns;
+      if(!owned){
+        btns = `<div class="btn-row"><button class="mini-btn" ${state.cash>=c.cost?'':'disabled'} data-car-buy="${c.id}"><span>Buy</span><span class="cost">${fmt(c.cost)}</span></button></div>`;
+      } else {
+        btns = `<div class="btn-row">
+          ${equipped ? `<span class="managed-badge" style="flex:1;text-align:center;">Currently Driving</span>` : `<button class="mini-btn" data-car-equip="${c.id}"><span>Drive This</span></button>`}
+          <button class="mini-btn fire" data-car-sell="${c.id}"><span>Sell</span><span class="cost">${fmt(Math.round(c.cost*0.55))}</span></button>
+        </div>`;
+      }
+      return `<div class="street-card">
+        <h4>${c.icon} ${c.name}</h4>
+        <p>+${Math.round((c.speedMult-1)*100)}% map speed · +${Math.round(c.heistBonus*100)}% heist odds${c.respectPerSec?` · +${c.respectPerSec}/s respect`:''}</p>
+        ${btns}
+      </div>`;
+    }).join('');
+
+    propWrap.innerHTML = properties.map(p=>{
+      const owned = state.ownedProperties.includes(p.id);
+      const btns = owned
+        ? `<div class="btn-row"><button class="mini-btn fire" data-prop-sell="${p.id}"><span>Sell</span><span class="cost">${fmt(Math.round(p.cost*0.6))}</span></button></div>`
+        : `<div class="btn-row"><button class="mini-btn" ${state.cash>=p.cost?'':'disabled'} data-prop-buy="${p.id}"><span>Buy</span><span class="cost">${fmt(p.cost)}</span></button></div>`;
+      return `<div class="street-card respect-spend">
+        <h4>${p.icon} ${p.name}</h4>
+        <p>${owned ? `Owned — earning ${p.incomePerSec}/s, no crew needed` : `Passive rental income: ${p.incomePerSec}/s, no crew needed`}</p>
+        ${btns}
+      </div>`;
+    }).join('');
+
+    document.querySelectorAll('[data-car-buy]').forEach(btn=> btn.addEventListener('click', function(){
+      const id = btn.getAttribute('data-car-buy'); const c = cars.find(x=>x.id===id);
+      if(state.cash<c.cost) return;
+      state.cash -= c.cost; state.ownedCars.push(id);
+      if(!state.equippedCar) state.equippedCar = id;
+      log(`🚗 You pick up a ${c.name}.`); renderAll();
+    }));
+    document.querySelectorAll('[data-car-equip]').forEach(btn=> btn.addEventListener('click', function(){
+      state.equippedCar = btn.getAttribute('data-car-equip'); renderAll();
+    }));
+    document.querySelectorAll('[data-car-sell]').forEach(btn=> btn.addEventListener('click', function(){
+      const id = btn.getAttribute('data-car-sell'); const c = cars.find(x=>x.id===id);
+      state.ownedCars = state.ownedCars.filter(x=>x!==id);
+      if(state.equippedCar===id) state.equippedCar = state.ownedCars[0] || null;
+      state.cash += Math.round(c.cost*0.55);
+      log(`🚗 You sell the ${c.name}.`); renderAll();
+    }));
+    document.querySelectorAll('[data-prop-buy]').forEach(btn=> btn.addEventListener('click', function(){
+      const id = btn.getAttribute('data-prop-buy'); const p = properties.find(x=>x.id===id);
+      if(state.cash<p.cost) return;
+      state.cash -= p.cost; state.ownedProperties.push(id);
+      log(`🏢 You close on ${p.name}.`); renderAll();
+    }));
+    document.querySelectorAll('[data-prop-sell]').forEach(btn=> btn.addEventListener('click', function(){
+      const id = btn.getAttribute('data-prop-sell'); const p = properties.find(x=>x.id===id);
+      state.ownedProperties = state.ownedProperties.filter(x=>x!==id);
+      state.cash += Math.round(p.cost*0.6);
+      log(`🏢 You sell ${p.name}.`); renderAll();
+    }));
+  }
+
+  function renderBankPanel(){
+    const wrap = document.getElementById('bank-panel');
+    if(!wrap) return;
+    const canHeist = state.playSeconds >= state.nextHeistAt;
+    const cooldownLeft = Math.max(0, Math.ceil(state.nextHeistAt - state.playSeconds));
+    wrap.innerHTML = `
+      <div class="street-grid">
+        <div class="street-card respect-spend">
+          <h4>🏦 Vault Balance</h4>
+          <p>Cash in the bank is safe from raids and earns slow interest. Cash on hand is what actually buys things.</p>
+          <div class="row"><span>Banked</span><span id="bank-banked-value">${fmt(state.bank)}</span></div>
+          <div class="row"><span>On hand</span><span id="bank-onhand-value">${fmt(state.cash)}</span></div>
+
+          <div class="bank-form">
+            <label class="bank-form-label">Deposit</label>
+            <div class="bank-input-row">
+              <input type="number" id="deposit-input" class="bank-input" min="0" step="1" placeholder="Amount">
+              <button class="mini-btn" id="deposit-go"><span>Deposit</span></button>
+            </div>
+            <div class="btn-row">
+              <button class="mini-btn quick" data-deposit-quick="0.25"><span>25%</span></button>
+              <button class="mini-btn quick" data-deposit-quick="0.5"><span>50%</span></button>
+              <button class="mini-btn quick" data-deposit-quick="1"><span>Max</span></button>
+            </div>
+          </div>
+
+          <div class="bank-form">
+            <label class="bank-form-label">Withdraw</label>
+            <div class="bank-input-row">
+              <input type="number" id="withdraw-input" class="bank-input" min="0" step="1" placeholder="Amount">
+              <button class="mini-btn fire" id="withdraw-go"><span>Withdraw</span></button>
+            </div>
+            <div class="btn-row">
+              <button class="mini-btn quick" data-withdraw-quick="0.25"><span>25%</span></button>
+              <button class="mini-btn quick" data-withdraw-quick="0.5"><span>50%</span></button>
+              <button class="mini-btn quick" data-withdraw-quick="1"><span>Max</span></button>
+            </div>
+          </div>
+        </div>
+        <div class="street-card">
+          <h4>🕵️ First Chicago Trust</h4>
+          <p>A rival bank across town. Not yours to protect — a bigger score, and a bigger risk, than shaking down a corner shop.</p>
+          <div class="row"><span>Status</span><span id="heist-status-value">${canHeist ? 'Ready' : `Cooling off (${cooldownLeft}s)`}</span></div>
+          <button class="toggle-btn" ${canHeist?'':'disabled'} id="start-heist">Case the Vault</button>
+        </div>
+      </div>
+    `;
+    const depositInput = document.getElementById('deposit-input');
+    const withdrawInput = document.getElementById('withdraw-input');
+    document.getElementById('deposit-go').addEventListener('click', function(){ depositAmount(depositInput.value); });
+    document.getElementById('withdraw-go').addEventListener('click', function(){ withdrawAmount(withdrawInput.value); });
+    depositInput.addEventListener('keydown', function(e){ if(e.key==='Enter') depositAmount(depositInput.value); });
+    withdrawInput.addEventListener('keydown', function(e){ if(e.key==='Enter') withdrawAmount(withdrawInput.value); });
+    wrap.querySelectorAll('[data-deposit-quick]').forEach(btn=> btn.addEventListener('click', function(){
+      depositInput.value = Math.floor(state.cash * Number(btn.getAttribute('data-deposit-quick')));
+    }));
+    wrap.querySelectorAll('[data-withdraw-quick]').forEach(btn=> btn.addEventListener('click', function(){
+      withdrawInput.value = Math.floor(state.bank * Number(btn.getAttribute('data-withdraw-quick')));
+    }));
+    document.getElementById('start-heist').addEventListener('click', function(){
+      if(state.playSeconds < state.nextHeistAt) return;
+      playDialogue('bankheist', 'start');
+    });
+  }
+
+  // ================= THE TRADE: LAB & CORNERS =================
+  function upgradeLab(){
+    const cost = labCost();
+    if(state.cash < cost) return;
+    state.cash -= cost; state.productLevel += 1;
+    log(`🏭 The Lab steps up to level ${state.productLevel}. More product, more room to store it.`);
+    renderAll();
+  }
+  function assignDealer(corner){
+    if(corner.dealer || corner.busted) return;
+    if(state.cash < corner.dealerCost) return;
+    state.cash -= corner.dealerCost; corner.dealer = true;
+    log(`💼 A dealer's posted at ${corner.name}.`);
+    renderAll();
+  }
+  function fireDealer(corner){
+    if(!corner.dealer) return;
+    corner.dealer = false;
+    log(`💼 You pull the dealer off ${corner.name}.`);
+    renderAll();
+  }
+  function openCornerPanel(corner){
+    const d = districts.find(x=>x.id===corner.district);
+    let body = `<p>Tier ${corner.tier} corner in ${d.name}. ${corner.dealer ? `Staffed — moving ${corner.rate}/s when there's product to sell.` : 'No one working it right now.'}</p>`;
+    if(corner.busted){
+      const left = Math.max(0, Math.ceil(corner.bustCooldownAt - state.playSeconds));
+      body += `<p class="flavor">Busted. Cooling off for ${left}s before anyone will work it again.</p>`;
+    }
+    const buttons = [];
+    if(corner.busted){
+      buttons.push({ label:'Too hot right now', secondary:true });
+    } else if(corner.dealer){
+      buttons.push({ label:'Pull the dealer', onClick:function(){ fireDealer(corner); } });
+    } else {
+      buttons.push({ label:`Post a dealer (${fmt(corner.dealerCost)})`, onClick:function(){ assignDealer(corner); } });
+    }
+    buttons.push({ label:'Walk away', secondary:true });
+    showModal({ eyebrow:'The Trade', title:corner.name, body, buttons });
+  }
+
+  // ================= POLITICS: FUNCTIONS =================
+  function influenceCost(){ return Math.ceil(300 * Math.pow(1.35, state.influenceBuys)); }
+  function buyInfluence(){
+    const cost = influenceCost();
+    if(state.cash < cost) return;
+    state.cash -= cost; state.influence += 8; state.influenceBuys += 1;
+    log(`🏛️ Another envelope, another favor owed. Influence is at ${state.influence}.`);
+    renderAll();
+  }
+  function favorCost(p){ return Math.ceil(200 * Math.pow(1.25, Math.floor(p.favor/15))); }
+  function bribePolitician(id){
+    const p = politicians.find(x=>x.id===id);
+    const cost = favorCost(p);
+    if(state.cash < cost || p.favor>=100) return;
+    state.cash -= cost; p.favor = Math.min(100, p.favor+15);
+    log(`✉️ ${p.name} takes the envelope without much of a fight. Favor: ${p.favor}.`);
+    if(p.favor>=60 && !p.pocketed){
+      p.pocketed = true;
+      showModal({
+        eyebrow:'City Hall', title:`${p.name.toUpperCase()} IS IN YOUR POCKET`,
+        body:`<p>${p.flavor}</p><p class="flavor">${p.desc}</p>`,
+        buttons:[{label:'Good to know'}]
+      });
+    }
+    renderAll();
+  }
+  function runCampaign(style){
+    const bonusAvg = (coleActive()?0.03:0) + (boyleActive()?0.03:0) + (whitmoreActive()?0.03:0);
+    let cost, chance;
+    if(style==='grassroots'){ cost = 20000; chance = 0.35 + state.influence*0.002 + bonusAvg; }
+    else { cost = 120000; chance = 0.55 + state.influence*0.002 + bonusAvg; }
+    if(state.cash < cost){
+      dialogues.campaign.nodes.result.text = "You can't even front the filing fees on this one. Come back when the cash is there.";
+      renderAll(); return;
+    }
+    state.cash -= cost;
+    chance = Math.min(0.85, chance);
+    state.nextCampaignAt = state.playSeconds + 900;
+    const win = Math.random() < chance;
+    if(win){
+      state.electedOffice = true;
+      state.respect += 200;
+      dialogues.campaign.nodes.result.text = "It's close, but you pull it. <strong>Alderman Malhotra.</strong> The West Side just got a very different kind of representation — and a very different kind of income stream.";
+      log('🗳️ You win the aldermanic race. Alderman Malhotra now, if anyone asks.');
+    } else {
+      state.respect = Math.max(0, state.respect-30);
+      dialogues.campaign.nodes.result.text = "You lose, and lose publicly. It stings, and it costs you some standing before people stop bringing it up.";
+      log('🗳️ You lose the aldermanic race. Publicly. It stings.');
+    }
+    renderAll();
+  }
+
+  // ================= GANG: FUNCTIONS =================
+  function inductRecruit(id, style){
+    const g = gangRecruits.find(x=>x.id===id);
+    if(g.inducted) return;
+    if(state.respect < g.reqRespect || state.cash < g.cost){
+      dialogues[g.dialogueKey].nodes.result.text = "It doesn't happen. Not enough weight behind your name yet — come back when you're further along.";
+      renderAll(); return;
+    }
+    state.cash -= g.cost;
+    g.inducted = true;
+    let extra = '';
+    if(style==='test'){
+      // Proving yourself costs a little more up front but earns real respect.
+      const testCost = Math.round(g.cost*0.15);
+      if(state.cash >= testCost){ state.cash -= testCost; state.respect += 10; extra = ' You made them prove it, and they did. Word gets around — +10 respect.'; }
+      else { extra = " You wanted to test them, but couldn't cover it. They're in anyway."; }
+    } else {
+      state.respect += 4;
+    }
+    dialogues[g.dialogueKey].nodes.result.text = `${g.name} is in. ${g.bonus}${extra}`;
+    log(`🤝 ${g.name} joins the crew for real. ${g.bonus}`);
+    renderAll();
+  }
+  function resolveWar(style){
+    const ws = districts.find(d=>d.id==='westside');
+    const cost = style==='assault' ? 4000 : 1800;
+    if(state.cash < cost){
+      dialogues.gangwar.nodes.result.text = "You don't have the cash to back this up tonight. Come back when you do.";
+      renderAll(); return;
+    }
+    state.cash -= cost;
+    state.nextWarAt = state.playSeconds + 300;
+    const gs = gangStrength(), rs = rivalStrength();
+    const chance = Math.min(0.85, Math.max(0.15, gs/(gs+rs)));
+    const win = Math.random() < chance;
+    const swing = style==='assault' ? 30 : 15;
+    const heatAdd = style==='assault' ? 22 : 10;
+    state.heat = Math.min(100, state.heat + heatAdd);
+    if(win){
+      ws.control = Math.min(100, ws.control + swing);
+      state.respect += style==='assault' ? 40 : 20;
+      dialogues.gangwar.nodes.result.text = `It goes your way. West Side control climbs to ${Math.round(ws.control)}%. Dice's people fall back — for now.`;
+      log(`⚔️ You push West Side control to ${Math.round(ws.control)}% after tonight.`);
+    } else {
+      ws.control = Math.max(0, ws.control - Math.round(swing/2));
+      state.respect = Math.max(0, state.respect - 15);
+      dialogues.gangwar.nodes.result.text = `It doesn't go your way. You pull back before it gets worse — West Side control drops to ${Math.round(ws.control)}%.`;
+      log(`⚔️ The push on West Side fails. Control slips to ${Math.round(ws.control)}%.`);
+    }
+    renderAll();
+  }
+
+  function renderDistrictBar(){
+    const wrap = document.getElementById('district-bar');
+    if(!wrap) return;
+    wrap.innerHTML = districts.map(d=>{
+      const here = state.currentDistrict===d.id;
+      return `<button class="district-btn ${here?'active':''}" data-travel="${d.id}" ${here?'disabled':''}><span class="pin-dot"></span>${here?'You\'re in ':''}${d.name}</button>`;
+    }).join('');
+    wrap.querySelectorAll('[data-travel]').forEach(btn=> btn.addEventListener('click', function(){ travelTo(btn.getAttribute('data-travel')); }));
+  }
+  function renderLegend(){
+    const wrap = document.getElementById('map-legend');
+    if(!wrap) return;
+    wrap.innerHTML = `
+      <span class="legend-item"><span class="legend-swatch" style="background:#3e6b78;border:1px solid #6fa6b5;"></span>Your Ventures</span>
+      <span class="legend-item"><span class="legend-swatch" style="background:#7c3540;border:1px solid #b85c6b;"></span>Street Ventures</span>
+      <span class="legend-item"><span class="legend-swatch" style="background:#7a5f1a;border:1px solid #c9a227;"></span>Bank / Garage / City Hall</span>
+      <span class="legend-item"><span class="legend-swatch" style="border:1px dashed #7a6fb0;"></span>Local Business</span>
+      <span class="legend-item"><span class="legend-swatch pin" style="background:#d4a017;"></span>Corner (staffed)</span>
+      <span class="legend-item"><span class="legend-swatch pin" style="background:transparent;border:2px solid #a8394a;"></span>Corner (open)</span>
+      <span class="legend-item"><span class="legend-swatch" style="background:#d4a017;border-radius:50%;"></span>Person</span>
+      <span class="legend-item"><span class="legend-swatch" style="background:#e8e6de;border-radius:50%;border:2px solid #d4a017;"></span>You</span>
+      <span class="legend-item">Walk into any building's door to go inside</span>
+    `;
+  }
+  function renderTerritoryPanel(){
+    const wrap = document.getElementById('territory-panel');
+    if(!wrap) return;
+    const bonusText = { devon:'+15% income to every venture when yours', westside:'-25% corner heat, +15% corner income when yours', loop:'+50% bank interest, +10% heist odds when yours' };
+    wrap.innerHTML = districts.map(d=>{
+      const status = districtStatus(d.id);
+      const canPush = state.playSeconds>=d.nextPushAt && state.respect>=pushCost(d);
+      return `<div class="street-card ${status==='yours'?'respect-spend':''}">
+        <h4>${d.homeTurf?'🏠':'🗺️'} ${d.name}</h4>
+        <p>${bonusText[d.id]}</p>
+        <div class="control-track"><div class="control-fill" data-control-bar="${d.id}" style="width:${Math.round(d.control)}%"></div></div>
+        <div class="row"><span data-control-label="${d.id}">${Math.round(d.control)}% — ${status==='yours'?'Yours':(status==='rival'?'Rival Controlled':'Contested')}</span></div>
+        <button class="mini-btn" ${canPush?'':'disabled'} data-push="${d.id}"><span>Push</span><span class="cost">${pushCost(d)} resp</span></button>
+      </div>`;
+    }).join('');
+    wrap.querySelectorAll('[data-push]').forEach(btn=> btn.addEventListener('click', function(){ pushDistrict(btn.getAttribute('data-push')); }));
+  }
+
+  function renderPoliticsPanel(){
+    const wrap = document.getElementById('politics-panel');
+    if(!wrap) return;
+    const canOffice = state.influence >= 100;
+    const canCampaign = canOffice && state.playSeconds >= state.nextCampaignAt && !state.electedOffice;
+    wrap.innerHTML = `
+      <div class="street-grid">
+        <div class="street-card respect-spend">
+          <h4>🏛️ Influence</h4>
+          <p>Cash spent building pull downtown. Enough of it opens the door to running for office yourself.</p>
+          <div class="row"><span>Current</span><span>${Math.round(state.influence)}</span></div>
+          <button class="mini-btn" ${state.cash>=influenceCost()?'':'disabled'} id="buy-influence"><span>Fund Campaigns</span><span class="cost">${fmt(influenceCost())}</span></button>
+        </div>
+        ${politicians.map(p=>`
+        <div class="street-card">
+          <h4>${p.favor>=60?'✅':'✉️'} ${p.name}</h4>
+          <p>${p.role} · ${p.desc}</p>
+          <div class="control-track"><div class="control-fill" style="width:${p.favor}%"></div></div>
+          <div class="row"><span>Favor</span><span>${p.favor}/100 ${p.favor>=60?'— In your pocket':''}</span></div>
+          <button class="mini-btn" ${(state.cash>=favorCost(p) && p.favor<100)?'':'disabled'} data-bribe="${p.id}"><span>Bribe</span><span class="cost">${fmt(favorCost(p))}</span></button>
+        </div>`).join('')}
+        <div class="street-card ${canOffice?'respect-spend':''}">
+          <h4>🗳️ Run for Alderman</h4>
+          <p>${state.electedOffice ? 'You hold the seat. It comes with its own quiet income now.' : (canOffice ? 'You have the influence to be taken seriously. This is a one-shot swing — win or lose, it costs real money.' : `Needs 100 influence (currently ${Math.round(state.influence)}).`)}</p>
+          <button class="mini-btn" ${canCampaign?'':'disabled'} id="launch-campaign">${state.electedOffice ? '<span>Seat Held</span>' : '<span>Launch Campaign</span>'}</button>
+        </div>
+      </div>
+    `;
+    document.getElementById('buy-influence').addEventListener('click', buyInfluence);
+    wrap.querySelectorAll('[data-bribe]').forEach(btn=> btn.addEventListener('click', function(){ bribePolitician(btn.getAttribute('data-bribe')); }));
+    const campaignBtn = document.getElementById('launch-campaign');
+    if(campaignBtn) campaignBtn.addEventListener('click', function(){
+      if(state.electedOffice || !canCampaign) return;
+      playDialogue('campaign', 'start');
+    });
+  }
+
+  function renderGangPanel(){
+    const wrap = document.getElementById('gang-panel');
+    if(!wrap) return;
+    const gs = gangStrength(), rs = rivalStrength();
+    const canWar = state.playSeconds >= state.nextWarAt;
+    wrap.innerHTML = `
+      <div class="street-grid">
+        <div class="street-card">
+          <h4>💪 Gang Strength</h4>
+          <p>Muscle headcount plus every inducted member, weighed against West Side's defense.</p>
+          <div class="row"><span>Yours</span><span>${gs.toFixed(1)}</span></div>
+          <div class="row"><span>Rival (West Side)</span><span>${rs.toFixed(1)}</span></div>
+        </div>
+        ${gangRecruits.map(g=>{
+          const eligible = state.respect>=g.reqRespect;
+          return `<div class="street-card">
+            <h4>${g.inducted?'✅':'🕶️'} ${g.name}</h4>
+            <p>${g.trait} · ${g.bonus}</p>
+            ${g.inducted
+              ? `<button class="mini-btn manager" data-checkin="${g.id}"><span>Check In</span></button>`
+              : eligible
+                ? `<button class="mini-btn" ${state.cash>=g.cost?'':'disabled'} data-initiate="${g.id}"><span>Initiate</span><span class="cost">${fmt(g.cost)}</span></button>`
+                : `<div class="lock-note">Needs ${g.reqRespect} respect (currently ${Math.round(state.respect)})</div>`
+            }
+          </div>`;
+        }).join('')}
+        <div class="street-card">
+          <h4>⚔️ West Side War</h4>
+          <p>Declare on Dice's people directly — a bigger, faster swing on control than pushing alone, backed by your actual Gang Strength.</p>
+          <div class="row"><span>West Side Control</span><span>${Math.round(districts.find(d=>d.id==='westside').control)}%</span></div>
+          <button class="toggle-btn" ${canWar?'':'disabled'} id="declare-war">Declare War</button>
+        </div>
+      </div>
+    `;
+    wrap.querySelectorAll('[data-checkin]').forEach(btn=> btn.addEventListener('click', function(){
+      const g = gangRecruits.find(x=>x.id===btn.getAttribute('data-checkin'));
+      playDialogue(g.dialogueKey, 'checkin');
+    }));
+    wrap.querySelectorAll('[data-initiate]').forEach(btn=> btn.addEventListener('click', function(){
+      const g = gangRecruits.find(x=>x.id===btn.getAttribute('data-initiate'));
+      playDialogue(g.dialogueKey, 'start');
+    }));
+    const warBtn = document.getElementById('declare-war');
+    if(warBtn) warBtn.addEventListener('click', function(){
+      if(state.playSeconds < state.nextWarAt) return;
+      playDialogue('gangwar', 'start');
+    });
+  }
+
+  // ================= RENDER: VENTURE CARDS =================
+  function renderCard(b){
+    const unlocked = isUnlocked(b);
+    const el = document.createElement('div');
+    el.className = `card ${b.category} ${unlocked ? '' : 'locked'}`;
+    let inner = `<div class="card-top"><div class="card-icon">${b.icon}</div><div><div class="card-name">${b.name}</div><div class="card-flavor">${b.flavor}</div></div></div>`;
+
+    if(!unlocked){
+      let note = b.unlock.type==='cash' ? `Unlocks at ${fmt(b.unlock.value)} cash` : `Unlocks at ${b.unlock.value} respect`;
+      inner += `<div class="lock-note">${note}</div>`;
+    } else if(!b.researched){
+      const rc = researchCostFor(b);
+      inner += `<div class="lock-note">Not yet researched.</div>
+      <div class="btn-row"><button class="mini-btn" ${state.cash>=rc?'':'disabled'} data-action="research" data-id="${b.id}"><span>Research</span><span class="cost">${fmt(rc)}</span></button></div>`;
+    } else {
+      const cost = costForLevel(b);
+      const eff = efficiency(b);
+      const need = crewNeeded(b);
+      const crewCost = crewCostFor(b);
+      const crewFull = b.crew >= need+2;
+      const globalFull = crewUsedGlobal() >= crewCapGlobal();
+      const canHireCrew = !b.manager && !crewFull && !globalFull && state.cash >= crewCost;
+      const canFireCrew = !b.manager && b.crew>0;
+
+      inner += `<div class="card-stats"><span>Lvl <b>${b.level}</b></span><span>${incomeFor(b).toFixed(1)}/s</span><span class="${eff<0.7 && !b.manager?'eff-low':''}">Eff <b>${Math.round(eff*100)}%</b></span>${b.heatPerLevel ? `<span>+${(b.heatPerLevel*heatMult()).toFixed(2)} heat/s</span>` : ''}</div>`;
+      inner += `<div class="btn-row"><button class="mini-btn" ${state.cash>=cost?'':'disabled'} data-action="expand" data-id="${b.id}"><span>${b.level===0?'Open':'Expand'}</span><span class="cost">${fmt(cost)}</span></button></div>`;
+
+      if(b.manager){
+        inner += `<div class="managed-badge">Managed by ${b.managerName} — always at 100%</div>`;
+      } else {
+        inner += `<div class="btn-row">
+          <button class="mini-btn" ${canHireCrew?'':'disabled'} data-action="hirecrew" data-id="${b.id}"><span>+ Crew (${b.crew}/${need+2})</span><span class="cost">${fmt(crewCost)}</span></button>
+          <button class="mini-btn fire" ${canFireCrew?'':'disabled'} data-action="firecrew" data-id="${b.id}"><span>− Crew</span><span class="cost">refund 50%</span></button>
+        </div>`;
+        if(b.level >= b.managerLevelReq){
+          const mc = managerCostFor(b);
+          inner += `<div class="btn-row"><button class="mini-btn manager" ${state.cash>=mc?'':'disabled'} data-action="hiremanager" data-id="${b.id}"><span>Hire Manager: ${b.managerName.split(',')[0]}</span><span class="cost">${fmt(mc)}</span></button></div>`;
+        }
+      }
+    }
+    el.innerHTML = inner;
+    return el;
+  }
+
+  function wireCardActions(){
+    document.querySelectorAll('[data-action]').forEach(btn=>{
+      btn.addEventListener('click', function(){
+        const id = btn.getAttribute('data-id');
+        const action = btn.getAttribute('data-action');
+        const b = businesses.find(x=>x.id===id);
+        if(action==='research'){
+          const rc = researchCostFor(b);
+          if(state.cash<rc) return;
+          state.cash -= rc; b.researched = true;
+          log(`🔬 You research ${b.name}. It's ready to open.`);
+        } else if(action==='expand'){
+          const cost = costForLevel(b);
+          if(state.cash<cost) return;
+          state.cash -= cost; b.level += 1;
+          if(b.category==='street') state.respect += 1;
+          if(b.level===1) log(`${b.icon} ${b.name} opens its doors.`);
+          checkMilestones();
+        } else if(action==='hirecrew'){
+          const cc = crewCostFor(b);
+          if(state.cash<cc || crewUsedGlobal()>=crewCapGlobal()) return;
+          state.cash -= cc; b.crew += 1;
+        } else if(action==='firecrew'){
+          if(b.crew<=0) return;
+          const refund = Math.ceil(crewCostFor({...b, crew:b.crew-1}) * 0.5);
+          b.crew -= 1; state.cash += refund;
+        } else if(action==='hiremanager'){
+          const mc = managerCostFor(b);
+          if(state.cash<mc) return;
+          state.cash -= mc; b.manager = true; b.crew = 0;
+          log(`👔 ${b.managerName} now runs ${b.name} full-time.`);
+        }
+        renderAll();
+      });
+    });
+  }
+
+  // ================= RENDER: STREET PANEL =================
+  function renderStreetPanel(){
+    const wrap = document.getElementById('street-panel');
+    const mc = muscleCost();
+    const rcCash = ratsCashCost(), rcResp = ratsRespectCost();
+    wrap.innerHTML = `
+      <div class="street-card">
+        <h4>🥊 Muscle</h4><p>Earns respect passively. Draws heat while active.</p>
+        <div class="row"><span>Count</span><span>${state.muscleCount}</span></div>
+        <div class="row"><span>Generating</span><span>+${respectPerSec().toFixed(1)} respect/s</span></div>
+        <button class="mini-btn" ${state.cash>=mc?'':'disabled'} id="hire-muscle"><span>Hire Muscle</span><span class="cost">${fmt(mc)}</span></button>
+      </div>
+      <div class="street-card">
+        <h4>👮 Bribe the Cops</h4><p>Pay 12% of total income continuously to cut heat generation sharply.</p>
+        <div class="row"><span>Status</span><span>${state.bribeOn?'Paying':'Not paying'}</span></div>
+        <button class="toggle-btn ${state.bribeOn?'active':''}" id="toggle-bribe">${state.bribeOn?'Stop Paying':'Start Paying'}</button>
+      </div>
+      <div class="street-card">
+        <h4>🐀 Informants</h4><p>Cuts the odds of bad news finding you, and softens any raid that does land.</p>
+        <div class="row"><span>Count</span><span>${state.ratCount}</span></div>
+        <button class="mini-btn" ${(state.cash>=rcCash && state.respect>=rcResp)?'':'disabled'} id="hire-rat"><span>Hire Informant</span><span class="cost">${fmt(rcCash)} + ${rcResp} resp</span></button>
+      </div>
+      <div class="street-card respect-spend">
+        <h4>🗺️ Expand Territory</h4><p>Raises your citywide crew capacity, letting every venture run at full strength.</p>
+        <div class="row"><span>Crew Cap</span><span>${crewCapGlobal()}</span></div>
+        <button class="mini-btn" ${state.respect>=territoryCost()?'':'disabled'} id="buy-territory"><span>Expand</span><span class="cost">${territoryCost()} resp</span></button>
+      </div>
+      <div class="street-card respect-spend">
+        <h4>🤝 Negotiate</h4><p>Permanent discount on every venture, crew, and research cost, citywide.</p>
+        <div class="row"><span>Current discount</span><span>${Math.round((1-discountMult())*100)}%</span></div>
+        <button class="mini-btn" ${state.respect>=negotiateCost()?'':'disabled'} id="buy-negotiate"><span>Negotiate</span><span class="cost">${negotiateCost()} resp</span></button>
+      </div>
+      <div class="street-card">
+        <h4>🏭 The Lab</h4><p>Produces product for your dealers to sell. No product in stock, corners just idle.</p>
+        <div class="row"><span>Stock</span><span>${state.product.toFixed(0)} / ${productCap()}</span></div>
+        <div class="row"><span>Level</span><span>${state.productLevel}</span></div>
+        <button class="mini-btn" ${state.cash>=labCost()?'':'disabled'} id="upgrade-lab"><span>Upgrade</span><span class="cost">${fmt(labCost())}</span></button>
+      </div>
+      <div class="street-card">
+        <h4>💼 The Trade</h4><p>Dealers are managed from the map — walk up to a corner and press E. This is just the read-out.</p>
+        <div class="row"><span id="trade-summary">${state.product.toFixed(0)}/${productCap()} product · ${activeCorners().length}/${corners.length} corners staffed · ${cornerIncomePerSec().toFixed(1)}/s</span></div>
+      </div>
+    `;
+    document.getElementById('upgrade-lab').addEventListener('click', upgradeLab);
+    document.getElementById('hire-muscle').addEventListener('click', function(){ if(state.cash<muscleCost()) return; state.cash -= muscleCost(); state.muscleCount += 1; renderAll(); });
+    document.getElementById('toggle-bribe').addEventListener('click', function(){ state.bribeOn = !state.bribeOn; log(state.bribeOn ? '👮 You put the beat cops on the payroll.' : '👮 You cut the cops off. Heat will build faster.'); renderAll(); });
+    document.getElementById('hire-rat').addEventListener('click', function(){ if(state.cash<ratsCashCost() || state.respect<ratsRespectCost()) return; state.cash -= ratsCashCost(); state.respect -= ratsRespectCost(); state.ratCount += 1; renderAll(); });
+    document.getElementById('buy-territory').addEventListener('click', function(){ if(state.respect<territoryCost()) return; state.respect -= territoryCost(); state.territoryTier += 1; log(`🗺️ New blocks fall under your control. Crew capacity is now ${crewCapGlobal()}.`); renderAll(); });
+    document.getElementById('buy-negotiate').addEventListener('click', function(){ if(state.respect<negotiateCost()) return; state.respect -= negotiateCost(); state.negotiateTier += 1; log(`🤝 You've got leverage now. Everyone's prices just got friendlier.`); renderAll(); });
+  }
+
+  // ================= RENDER: ALL =================
+  function renderAll(){
+    const legitGrid = document.getElementById('grid-legit');
+    const streetGrid = document.getElementById('grid-street');
+    legitGrid.innerHTML=''; streetGrid.innerHTML='';
+    businesses.forEach(b=>{ const card = renderCard(b); (b.category==='legit' ? legitGrid : streetGrid).appendChild(card); });
+    wireCardActions();
+    renderStreetPanel();
+    renderBankPanel();
+    renderAssetsPanel();
+    renderDistrictBar();
+    renderLegend();
+    renderTerritoryPanel();
+    renderPoliticsPanel();
+    renderGangPanel();
+
+    document.getElementById('hud-cash').textContent = fmt(state.cash);
+    document.getElementById('hud-income').textContent = (netIncome()>=0?'+':'') + fmt(netIncome()) + '/s';
+    document.getElementById('hud-rank').textContent = currentRank();
+    document.getElementById('hud-respect').textContent = `${fmtR(state.respect)} respect`;
+    document.getElementById('heat-fill').style.width = Math.min(100, state.heat) + '%';
+    document.getElementById('hud-crew').textContent = `${crewUsedGlobal()} / ${crewCapGlobal()}`;
+
+    const prestigeBtn = document.getElementById('prestige-btn');
+    const threshold = 50000 * Math.pow(4, state.prestigeCount);
+    const nextFamily = familyTiers[Math.min(state.prestigeCount, familyTiers.length-1)];
+    if(state.cash >= threshold*0.2 || state.prestigeCount>0){
+      prestigeBtn.style.display = 'inline-block';
+      prestigeBtn.disabled = state.cash < threshold;
+      prestigeBtn.textContent = state.cash >= threshold ? `Send for Family (${nextFamily.name})` : `Send for Family — ${fmt(threshold)}`;
+    }
+  }
+
+  // Cheap per-tick refresh: updates numbers and enabled/disabled state on the
+  // EXISTING dom nodes without rebuilding them. renderAll() (above) tears down
+  // and rebuilds every card/button, which is only safe to call right after a
+  // user action — never on a timer, or a click can land mid-rebuild and get
+  // silently swallowed by the browser. This function is what the game loop
+  // calls every 250ms instead.
+  function refreshHUD(){
+    document.getElementById('hud-cash').textContent = fmt(state.cash);
+    document.getElementById('hud-income').textContent = (netIncome()>=0?'+':'') + fmt(netIncome()) + '/s';
+    document.getElementById('hud-rank').textContent = currentRank();
+    document.getElementById('hud-respect').textContent = `${fmtR(state.respect)} respect`;
+    document.getElementById('heat-fill').style.width = Math.min(100, state.heat) + '%';
+    document.getElementById('hud-crew').textContent = `${crewUsedGlobal()} / ${crewCapGlobal()}`;
+
+    const prestigeBtn = document.getElementById('prestige-btn');
+    const threshold = 50000 * Math.pow(4, state.prestigeCount);
+    const nextFamily = familyTiers[Math.min(state.prestigeCount, familyTiers.length-1)];
+    if(state.cash >= threshold*0.2 || state.prestigeCount>0){
+      prestigeBtn.style.display = 'inline-block';
+      prestigeBtn.disabled = state.cash < threshold;
+      prestigeBtn.textContent = state.cash >= threshold ? `Send for Family (${nextFamily.name})` : `Send for Family — ${fmt(threshold)}`;
+    }
+  }
+  function refreshAffordability(){
+    document.querySelectorAll('[data-action]').forEach(btn=>{
+      const id = btn.getAttribute('data-id');
+      const action = btn.getAttribute('data-action');
+      const b = businesses.find(x=>x.id===id);
+      if(!b) return;
+      if(action==='research') btn.disabled = state.cash < researchCostFor(b);
+      else if(action==='expand') btn.disabled = state.cash < costForLevel(b);
+      else if(action==='hirecrew'){
+        const need = crewNeeded(b);
+        btn.disabled = b.manager || b.crew>=need+2 || crewUsedGlobal()>=crewCapGlobal() || state.cash < crewCostFor(b);
+      } else if(action==='firecrew') btn.disabled = b.manager || b.crew<=0;
+      else if(action==='hiremanager') btn.disabled = state.cash < managerCostFor(b);
+    });
+    const hm=document.getElementById('hire-muscle'); if(hm) hm.disabled = state.cash<muscleCost();
+    const hr=document.getElementById('hire-rat'); if(hr) hr.disabled = !(state.cash>=ratsCashCost() && state.respect>=ratsRespectCost());
+    const bt=document.getElementById('buy-territory'); if(bt) bt.disabled = state.respect<territoryCost();
+    const bn=document.getElementById('buy-negotiate'); if(bn) bn.disabled = state.respect<negotiateCost();
+    document.querySelectorAll('[data-car-buy]').forEach(btn=>{ const c=cars.find(x=>x.id===btn.getAttribute('data-car-buy')); if(c) btn.disabled = state.cash<c.cost; });
+    document.querySelectorAll('[data-prop-buy]').forEach(btn=>{ const p=properties.find(x=>x.id===btn.getAttribute('data-prop-buy')); if(p) btn.disabled = state.cash<p.cost; });
+    const heistBtn=document.getElementById('start-heist'); if(heistBtn) heistBtn.disabled = state.playSeconds<state.nextHeistAt;
+    const bankedEl=document.getElementById('bank-banked-value'); if(bankedEl) bankedEl.textContent=fmt(state.bank);
+    const onhandEl=document.getElementById('bank-onhand-value'); if(onhandEl) onhandEl.textContent=fmt(state.cash);
+    const heistStatusEl=document.getElementById('heist-status-value');
+    if(heistStatusEl){
+      const canHeist = state.playSeconds >= state.nextHeistAt;
+      heistStatusEl.textContent = canHeist ? 'Ready' : `Cooling off (${Math.max(0,Math.ceil(state.nextHeistAt-state.playSeconds))}s)`;
+    }
+    const labBtn=document.getElementById('upgrade-lab'); if(labBtn) labBtn.disabled = state.cash<labCost();
+    document.querySelectorAll('[data-push]').forEach(btn=>{
+      const d = districts.find(x=>x.id===btn.getAttribute('data-push'));
+      if(d) btn.disabled = state.playSeconds<d.nextPushAt || state.respect<pushCost(d);
+    });
+    const buyInfluenceBtn=document.getElementById('buy-influence'); if(buyInfluenceBtn) buyInfluenceBtn.disabled = state.cash<influenceCost();
+    document.querySelectorAll('[data-bribe]').forEach(btn=>{
+      const p = politicians.find(x=>x.id===btn.getAttribute('data-bribe'));
+      if(p) btn.disabled = state.cash<favorCost(p) || p.favor>=100;
+    });
+    const campaignBtn=document.getElementById('launch-campaign');
+    if(campaignBtn && !state.electedOffice) campaignBtn.disabled = !(state.influence>=100 && state.playSeconds>=state.nextCampaignAt);
+    document.querySelectorAll('[data-initiate]').forEach(btn=>{
+      const g = gangRecruits.find(x=>x.id===btn.getAttribute('data-initiate'));
+      if(g) btn.disabled = state.cash<g.cost;
+    });
+    const warBtn=document.getElementById('declare-war'); if(warBtn) warBtn.disabled = state.playSeconds<state.nextWarAt;
+    refreshTerritory();
+  }
+  function refreshTerritory(){
+    districts.forEach(d=>{
+      const bar = document.querySelector(`[data-control-bar="${d.id}"]`);
+      if(bar) bar.style.width = Math.round(d.control) + '%';
+      const label = document.querySelector(`[data-control-label="${d.id}"]`);
+      if(label) label.textContent = `${Math.round(d.control)}% — ${districtStatus(d.id)==='yours'?'Yours':(districtStatus(d.id)==='rival'?'Rival Controlled':'Contested')}`;
+    });
+    const tradeEl = document.getElementById('trade-summary');
+    if(tradeEl){
+      const active = activeCorners().length;
+      tradeEl.textContent = `${state.product.toFixed(0)}/${productCap()} product · ${active}/${corners.length} corners staffed · ${cornerIncomePerSec().toFixed(1)}/s`;
+    }
+  }
+
+  // ================= PRESTIGE =================
+  document.getElementById('prestige-btn').addEventListener('click', function(){
+    const threshold = 50000 * Math.pow(4, state.prestigeCount);
+    if(state.cash < threshold) return;
+    const tier = familyTiers[Math.min(state.prestigeCount, familyTiers.length-1)];
+    showModal({
+      eyebrow:"O'Hare International — Arrivals", title:'SOMEONE LANDS', stamp:'Arrived',
+      body:`<p><strong>${tier.name}</strong> lands at O'Hare. ${tier.desc}</p><p class="flavor">It costs nearly everything in every till. Ventures you've researched and any manager you've hired stay with you. Crew, muscle, and informants have to be rebuilt.</p>`,
+      buttons:[{label:'Start Rebuilding', onClick:function(){
+        state.cash = 47; state.heat = 0; state.muscleCount = 0; state.ratCount = 0;
+        businesses.forEach(b=>{ b.level=0; b.crew=0; });
+        state.prestigeCount += 1;
+        log(`✈️ ${tier.name} lands at O'Hare. ${tier.desc}`);
+        renderAll(); scheduleSave();
+      }}]
+    });
+  });
+
+  // ================= TABS =================
+  let mapActive = false;
+  let mapLoopRunning = false;
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click', function(){ setTab(btn.getAttribute('data-tab')); });
+  });
+  function setTab(tab){
+    document.querySelectorAll('.tab-btn').forEach(b=> b.classList.toggle('active', b.getAttribute('data-tab')===tab));
+    document.querySelectorAll('.tab-panel').forEach(p=> p.classList.toggle('active', p.getAttribute('data-tab')===tab));
+    mapActive = (tab==='map');
+    if(mapActive && !mapLoopRunning){
+      mapLoopRunning = true;
+      lastFrame2 = Date.now(); // avoid a huge dt spike from time spent on another tab
+      requestAnimationFrame(mapLoop);
+    }
+  }
+
+  // ================= MAP (top-down, world + camera) =================
+  const canvas = document.getElementById('map-canvas');
+  const ctx = canvas.getContext('2d');
+  const VIEW_W = canvas.width, VIEW_H = canvas.height;
+  const WORLD_W = 1500, WORLD_H = 950;
+  const camera = { x:0, y:0 };
+  const player = { x:700, y:460, facing:Math.PI/2 };
+  const keys = {};
+
+  const mapBuildings = businesses.map((b,i)=>{
+    const row = i<5 ? 0 : 1;
+    const col = i % 5;
+    const rowX = [150,420,690,960,1230];
+    return { id:b.id, biz:b, district:'devon', x: rowX[col], y: row===0 ? (200+col%2*40) : (650+col%2*40) };
+  });
+  const mapNpcs = [
+    { id:'sanjay', name:'Sanjay', district:'devon', x:1300, y:820, type:'named' },
+    { id:'stranger', name:'Stranger', district:'devon', x:150, y:820, type:'procedural' },
+    { id:'dice', name:'Dice', district:'westside', x:750, y:300, type:'named' },
+    { id:'reyes', name:'Councilman Reyes', district:'loop', x:600, y:600, type:'named' },
+  ];
+  const spawnPoints = { devon:{x:700,y:460}, westside:{x:700,y:460}, loop:{x:700,y:460} };
+  // Each district gets its own palette and a small real-Chicago landmark detail,
+  // so the three maps read as different places rather than the same grid reskinned.
+  const districtThemes = {
+    devon: { bg:'#181b21', road:'rgba(62,124,140,0.16)', avenue:'rgba(62,124,140,0.28)', avenueName:'ROGERS AVE', landmark:'park', landmarkLabel:'INDIAN BOUNDARY PARK', accent:'#3e7c8c' },
+    westside: { bg:'#1d1717', road:'rgba(168,57,74,0.16)', avenue:'rgba(168,57,74,0.30)', avenueName:'OGDEN AVE', landmark:'rail', landmarkLabel:'RAIL YARD', accent:'#a8394a' },
+    loop: { bg:'#1a1810', road:'rgba(212,160,23,0.14)', avenue:'rgba(212,160,23,0.26)', avenueName:'WACKER DR', landmark:'river', landmarkLabel:'CHICAGO RIVER', accent:'#d4a017' },
+  };
+  let lastFrame2 = Date.now();
+
+  function inDistrict(m){ return m.district === state.currentDistrict; }
+
+  function travelTo(id){
+    if(state.currentDistrict === id) return;
+    state.currentInterior = null;
+    state.currentDistrict = id;
+    const spawn = spawnPoints[id] || {x:700,y:460};
+    player.x = spawn.x; player.y = spawn.y; player.facing = Math.PI/2;
+    Object.keys(keys).forEach(k=> keys[k]=false);
+    lastFrame2 = Date.now();
+    const d = districts.find(x=>x.id===id);
+    log(`🚗 You drive over to ${d.name}.`);
+    renderAll();
+  }
+
+  window.addEventListener('keydown', function(e){
+    const k = e.key.toLowerCase();
+    keys[k] = true;
+    if(k==='e') tryInteract();
+  });
+  window.addEventListener('keyup', function(e){ keys[e.key.toLowerCase()] = false; });
+  window.addEventListener('blur', function(){ Object.keys(keys).forEach(k=> keys[k]=false); });
+  document.getElementById('btn-interact').addEventListener('click', tryInteract);
+
+  // ---- interiors: a small generic room per building, with 1-2 physical hotspots ----
+  const ROOM_W = 480, ROOM_H = 280, ROOM_OX = (VIEW_W-ROOM_W)/2, ROOM_OY = (VIEW_H-ROOM_H)/2 - 10;
+  const DOOR_LOCAL = { x: ROOM_W/2, y: ROOM_H-6 };
+
+  function hotspotsFor(interior){
+    if(!interior) return [];
+    if(interior.kind==='venture'){
+      const b = businesses.find(x=>x.id===interior.refId);
+      return [{ id:'counter', x:ROOM_W/2, y:80, label:'Counter', icon:'🧾', action:()=> openVentureQuickPanel(b) }];
+    }
+    if(interior.kind==='local'){
+      const biz = localBusinesses.find(x=>x.id===interior.refId);
+      return [
+        { id:'register', x:ROOM_W*0.32, y:80, label:'Register', icon:'💵', action:()=> openTillPanel(biz) },
+        { id:'owner', x:ROOM_W*0.68, y:80, label:biz.owner, icon:'🙂', action:()=> openOwnerPanel(biz) },
+      ];
+    }
+    if(interior.kind==='bankHome') return [{ id:'teller', x:ROOM_W/2, y:80, label:'Teller Window', icon:'🏦', action:()=> setTab('bank') }];
+    if(interior.kind==='heist') return [{ id:'vault', x:ROOM_W/2, y:75, label:'Vault Door', icon:'🔐', action:function(){
+      if(state.playSeconds < state.nextHeistAt){ log("🔒 The vault's not worth trying yet. Give it time."); return; }
+      playDialogue('bankheist','start');
+    } }];
+    if(interior.kind==='garage') return [{ id:'dealer', x:ROOM_W/2, y:80, label:'Sales Desk', icon:'🔑', action:()=> setTab('assets') }];
+    if(interior.kind==='realty') return [{ id:'agent', x:ROOM_W/2, y:80, label:"Agent's Desk", icon:'📋', action:()=> setTab('assets') }];
+    if(interior.kind==='cityhall') return [{ id:'clerk', x:ROOM_W/2, y:80, label:"Clerk's Window", icon:'🏛️', action:()=> setTab('politics') }];
+    return [];
+  }
+
+  function enterBuilding(kind, refId, name){
+    state.currentInterior = { kind, refId, name, returnX:player.x, returnY:player.y, returnDistrict:state.currentDistrict };
+    player.x = DOOR_LOCAL.x; player.y = DOOR_LOCAL.y - 40; player.facing = -Math.PI/2;
+    Object.keys(keys).forEach(k=> keys[k]=false);
+    lastFrame2 = Date.now();
+    log(`🚪 You step into ${name}.`);
+    renderAll();
+  }
+  function exitBuilding(){
+    const ret = state.currentInterior;
+    if(!ret) return;
+    state.currentInterior = null;
+    player.x = ret.returnX; player.y = ret.returnY; player.facing = Math.PI/2;
+    Object.keys(keys).forEach(k=> keys[k]=false);
+    lastFrame2 = Date.now();
+    renderAll();
+  }
+
+  function nearestMarker(){
+    if(state.currentInterior){
+      let best = null, bestDist = 46;
+      const dDoor = Math.hypot(player.x-DOOR_LOCAL.x, player.y-DOOR_LOCAL.y);
+      if(dDoor < bestDist){ bestDist = dDoor; best = { type:'door', ref:{label:'Exit'} }; }
+      hotspotsFor(state.currentInterior).forEach(h=>{
+        const d = Math.hypot(player.x-h.x, player.y-h.y);
+        if(d < bestDist){ bestDist = d; best = { type:'hotspot', ref:h }; }
+      });
+      return best;
+    }
+    let best = null, bestDist = 46;
+    mapBuildings.filter(inDistrict).forEach(m=>{
+      const d = Math.hypot(player.x-m.x, player.y-m.y);
+      if(d < bestDist){ bestDist = d; best = {type:'building', ref:m}; }
+    });
+    serviceBuildings.filter(inDistrict).forEach(m=>{
+      const d = Math.hypot(player.x-m.x, player.y-m.y);
+      if(d < bestDist){ bestDist = d; best = {type:'service', ref:m}; }
+    });
+    mapNpcs.filter(inDistrict).forEach(m=>{
+      const d = Math.hypot(player.x-m.x, player.y-m.y);
+      if(d < bestDist){ bestDist = d; best = {type:'npc', ref:m}; }
+    });
+    gangRecruits.filter(inDistrict).forEach(m=>{
+      const d = Math.hypot(player.x-m.x, player.y-m.y);
+      if(d < bestDist){ bestDist = d; best = {type:'gangnpc', ref:m}; }
+    });
+    localBusinesses.filter(inDistrict).forEach(m=>{
+      const d = Math.hypot(player.x-m.x, player.y-m.y);
+      if(d < bestDist){ bestDist = d; best = {type:'local', ref:m}; }
+    });
+    corners.filter(inDistrict).forEach(m=>{
+      const d = Math.hypot(player.x-m.x, player.y-m.y);
+      if(d < bestDist){ bestDist = d; best = {type:'corner', ref:m}; }
+    });
+    return best;
+  }
+  function tryInteract(){
+    if(!mapActive) return;
+    const m = nearestMarker();
+    if(!m) return;
+    if(m.type==='door') exitBuilding();
+    else if(m.type==='hotspot') m.ref.action();
+    else if(m.type==='building') enterBuilding('venture', m.ref.id, m.ref.biz.name);
+    else if(m.type==='service') enterBuilding(m.ref.kind, m.ref.id, m.ref.name);
+    else if(m.type==='local') enterBuilding('local', m.ref.id, m.ref.name);
+    else if(m.type==='corner') openCornerPanel(m.ref);
+    else if(m.type==='gangnpc') playDialogue(m.ref.dialogueKey, m.ref.inducted ? 'checkin' : 'start');
+    else if(m.ref.type==='named') playDialogue(m.ref.id, npcOpeningNode(m.ref.id));
+    else proceduralInteract();
+  }
+
+  function currentSpeed(){
+    if(state.currentInterior) return 150;
+    const car = getEquippedCar();
+    return 190 * (car ? car.speedMult : 1);
+  }
+
+  // ---- small drawing helpers ----
+  function roundRect(x, y, w, h, r){
+    ctx.beginPath();
+    ctx.moveTo(x+r, y);
+    ctx.arcTo(x+w, y, x+w, y+h, r);
+    ctx.arcTo(x+w, y+h, x, y+h, r);
+    ctx.arcTo(x, y+h, x, y, r);
+    ctx.arcTo(x, y, x+w, y, r);
+    ctx.closePath();
+  }
+  function labelChip(text, x, y){
+    ctx.font = '9px IBM Plex Mono, monospace';
+    const w = ctx.measureText(text).width + 8;
+    ctx.fillStyle = 'rgba(10,11,16,0.6)';
+    roundRect(x-w/2, y-8, w, 14, 4);
+    ctx.fill();
+    ctx.fillStyle = '#c8cad8';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, x, y-1);
+  }
+  function drawPin(x, y, size, fillColor, strokeColor, hollow){
+    ctx.beginPath();
+    ctx.arc(x, y-size*0.35, size, Math.PI*1.05, Math.PI*-0.05, false);
+    ctx.lineTo(x, y+size*0.95);
+    ctx.closePath();
+    if(hollow){ ctx.fillStyle = 'rgba(20,22,31,0.75)'; ctx.fill(); }
+    else { ctx.fillStyle = fillColor; ctx.fill(); }
+    ctx.strokeStyle = strokeColor; ctx.lineWidth = 1.6; ctx.stroke();
+  }
+  // Extruded "3D block" building: a front face plus a roof and one side face,
+  // offset toward the upper-right, so every structure reads as a real volume
+  // instead of a flat icon — this is the core visual signature of the map now.
+  function drawBuilding3D(sx, sy, w, h, front, roof, side, stroke){
+    const depth = Math.max(8, Math.min(16, w*0.22));
+    roundRect(sx-w/2+3, sy-h/2+4, w, h, 6); ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(sx+w/2, sy-h/2); ctx.lineTo(sx+w/2+depth, sy-h/2-depth);
+    ctx.lineTo(sx+w/2+depth, sy+h/2-depth); ctx.lineTo(sx+w/2, sy+h/2);
+    ctx.closePath(); ctx.fillStyle = side; ctx.fill(); ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(sx-w/2, sy-h/2); ctx.lineTo(sx-w/2+depth, sy-h/2-depth);
+    ctx.lineTo(sx+w/2+depth, sy-h/2-depth); ctx.lineTo(sx+w/2, sy-h/2);
+    ctx.closePath(); ctx.fillStyle = roof; ctx.fill(); ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke();
+    roundRect(sx-w/2, sy-h/2, w, h, 4);
+    ctx.fillStyle = front; ctx.fill(); ctx.strokeStyle = stroke; ctx.lineWidth = 1.6; ctx.stroke();
+    return depth;
+  }
+  function drawPlayer(sx, sy){
+    const car = !state.currentInterior ? getEquippedCar() : null;
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.rotate(player.facing);
+    if(car){
+      const len=car.len, wid=car.wid;
+      // headlight cone, pointing forward (+x in local space)
+      const grad = ctx.createLinearGradient(len/2,0,len/2+50,0);
+      grad.addColorStop(0,'rgba(255,250,225,0.4)'); grad.addColorStop(1,'rgba(255,250,225,0)');
+      ctx.beginPath();
+      ctx.moveTo(len/2, -wid/2); ctx.lineTo(len/2+50, -wid*1.7); ctx.lineTo(len/2+50, wid*1.7); ctx.lineTo(len/2, wid/2);
+      ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+      // shadow
+      roundRect(-len/2+2, -wid/2+2, len, wid, 4); ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.fill();
+      // body
+      roundRect(-len/2, -wid/2, len, wid, 4);
+      ctx.fillStyle = car.color; ctx.fill(); ctx.strokeStyle='rgba(0,0,0,0.45)'; ctx.lineWidth=1.4; ctx.stroke();
+      // windshield
+      ctx.fillStyle='rgba(190,215,230,0.55)';
+      roundRect(len*0.05,-wid/2+2.5,len*0.32,wid-5,2); ctx.fill();
+    } else {
+      ctx.beginPath(); ctx.arc(1,2,9,0,Math.PI*2); ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.fill();
+      ctx.beginPath(); ctx.arc(0,0,9,0,Math.PI*2); ctx.fillStyle='#f0efe8'; ctx.fill();
+      ctx.strokeStyle='#d4a017'; ctx.lineWidth=2; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(6,0); ctx.lineTo(12,-4.5); ctx.lineTo(12,4.5); ctx.closePath();
+      ctx.fillStyle='#d4a017'; ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function mapLoop(){
+    if(!mapActive){ mapLoopRunning = false; return; }
+    const now = Date.now();
+    const dt = Math.min(0.05, Math.max(0, (now-lastFrame2)/1000));
+    lastFrame2 = now;
+
+    let dx=0, dy=0;
+    if(keys['arrowup']||keys['w']) dy -= 1;
+    if(keys['arrowdown']||keys['s']) dy += 1;
+    if(keys['arrowleft']||keys['a']) dx -= 1;
+    if(keys['arrowright']||keys['d']) dx += 1;
+    if(dx||dy){
+      const len = Math.hypot(dx,dy);
+      const spd = currentSpeed();
+      player.facing = Math.atan2(dy,dx);
+      player.x += (dx/len) * spd * dt;
+      player.y += (dy/len) * spd * dt;
+      if(state.currentInterior){
+        player.x = Math.max(20, Math.min(ROOM_W-20, player.x));
+        player.y = Math.max(20, Math.min(ROOM_H-14, player.y));
+      } else {
+        player.x = Math.max(16, Math.min(WORLD_W-16, player.x));
+        player.y = Math.max(16, Math.min(WORLD_H-16, player.y));
+      }
+    }
+
+    ctx.clearRect(0,0,VIEW_W,VIEW_H);
+
+    if(state.currentInterior){
+      drawInteriorScene();
+    } else {
+      camera.x = Math.max(0, Math.min(WORLD_W-VIEW_W, player.x - VIEW_W/2));
+      camera.y = Math.max(0, Math.min(WORLD_H-VIEW_H, player.y - VIEW_H/2));
+      drawExteriorScene();
+    }
+
+    const near = nearestMarker();
+    let hintLabel = '';
+    if(near){
+      if(near.type==='door') hintLabel = 'Exit';
+      else if(near.type==='hotspot') hintLabel = near.ref.label;
+      else if(near.type==='building') hintLabel = near.ref.biz.name;
+      else if(near.type==='service') hintLabel = near.ref.name;
+      else if(near.type==='local') hintLabel = near.ref.name;
+      else if(near.type==='corner') hintLabel = near.ref.name;
+      else if(near.type==='gangnpc') hintLabel = near.ref.name;
+      else hintLabel = (near.ref.type==='named' ? near.ref.name : state.procNpc.name);
+    }
+    document.getElementById('map-hint').textContent = near
+      ? `Press E to interact — ${hintLabel}`
+      : (state.currentInterior ? `Inside ${state.currentInterior.name}` : `Driving around ${districts.find(d=>d.id===state.currentDistrict).name}`);
+
+    requestAnimationFrame(mapLoop);
+  }
+
+  function drawExteriorScene(){
+    const theme = districtThemes[state.currentDistrict];
+    const cx = camera.x, cy = camera.y;
+    const inView = (wx,wy,pad)=> wx>cx-pad && wx<cx+VIEW_W+pad && wy>cy-pad && wy<cy+VIEW_H+pad;
+
+    ctx.fillStyle = theme.bg; ctx.fillRect(0,0,VIEW_W,VIEW_H);
+
+    ctx.strokeStyle = theme.road; ctx.lineWidth = 1;
+    const gridStart = 38 - (cx % 38);
+    for(let gx=gridStart; gx<=VIEW_W; gx+=38){ ctx.beginPath(); ctx.moveTo(gx,0); ctx.lineTo(gx,VIEW_H); ctx.stroke(); }
+    const gridStartY = 38 - (cy % 38);
+    for(let gy=gridStartY; gy<=VIEW_H; gy+=38){ ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(VIEW_W,gy); ctx.stroke(); }
+
+    ctx.strokeStyle = theme.avenue; ctx.lineWidth = 5;
+    [270, 700, 1130].forEach(wx=>{ const sx=wx-cx; if(sx>-10&&sx<VIEW_W+10){ ctx.beginPath(); ctx.moveTo(sx,0); ctx.lineTo(sx,VIEW_H); ctx.stroke(); } });
+    [220, 460, 730].forEach(wy=>{ const sy=wy-cy; if(sy>-10&&sy<VIEW_H+10){ ctx.beginPath(); ctx.moveTo(0,sy); ctx.lineTo(VIEW_W,sy); ctx.stroke(); } });
+
+    // landmark, fixed to world edges so it scrolls naturally with the camera
+    ctx.save();
+    if(theme.landmark==='park'){
+      const sy = WORLD_H-40-cy;
+      if(sy>-40 && sy<VIEW_H+40){
+        ctx.fillStyle='rgba(90,140,90,0.18)'; ctx.fillRect(0,sy,VIEW_W,44);
+        ctx.strokeStyle='rgba(90,140,90,0.4)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(0,sy); ctx.lineTo(VIEW_W,sy); ctx.stroke();
+        ctx.fillStyle='rgba(150,200,150,0.6)'; ctx.font='10px IBM Plex Mono, monospace'; ctx.textAlign='left'; ctx.textBaseline='middle';
+        ctx.fillText('🌳 '+theme.landmarkLabel, 14, sy+22);
+      }
+    } else if(theme.landmark==='rail'){
+      const sx = WORLD_W-40-cx;
+      if(sx>-40 && sx<VIEW_W+40){
+        ctx.fillStyle='rgba(140,140,150,0.10)'; ctx.fillRect(sx,0,44,VIEW_H);
+        ctx.strokeStyle='rgba(200,200,210,0.25)'; ctx.lineWidth=1;
+        for(let ty=6; ty<VIEW_H; ty+=12){ ctx.beginPath(); ctx.moveTo(sx,ty); ctx.lineTo(sx+44,ty); ctx.stroke(); }
+        ctx.save(); ctx.translate(sx+22, VIEW_H/2); ctx.rotate(Math.PI/2);
+        ctx.fillStyle='rgba(210,210,220,0.6)'; ctx.font='10px IBM Plex Mono, monospace'; ctx.textAlign='center';
+        ctx.fillText(theme.landmarkLabel, 0, 0); ctx.restore();
+      }
+    } else if(theme.landmark==='river'){
+      const sy = 0-cy;
+      if(sy>-40 && sy<VIEW_H){
+        ctx.fillStyle='rgba(70,120,160,0.22)'; ctx.fillRect(0,Math.max(0,sy),VIEW_W,32+Math.min(0,sy));
+        ctx.strokeStyle='rgba(110,160,200,0.35)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(0,sy+32); ctx.lineTo(VIEW_W,sy+32); ctx.stroke();
+        ctx.fillStyle='rgba(160,200,225,0.75)'; ctx.font='10px IBM Plex Mono, monospace'; ctx.textAlign='left'; ctx.textBaseline='middle';
+        ctx.fillText('🌊 '+theme.landmarkLabel, 14, sy+16);
+      }
+    }
+    ctx.restore();
+
+    // ---- ventures: appearance reflects real ownership state ----
+    mapBuildings.filter(inDistrict).forEach(m=>{
+      if(!inView(m.x,m.y,80)) return;
+      const b = m.biz;
+      const unlocked = isUnlocked(b);
+      const opened = unlocked && b.researched && b.level>0;
+      const big = b.baseCost >= 50000, small = b.baseCost < 1000;
+      const w = big?66:(small?48:56), h = big?56:(small?40:48);
+      const legit = b.category==='legit';
+      const sx = m.x-camera.x, sy = m.y-camera.y;
+      let front, roof, side, stroke;
+      if(!opened){ front='#33353d'; roof='#3d3f48'; side='#24262c'; stroke='#44464e'; }
+      else if(legit){ front='#3e6b78'; roof='#54899a'; side='#294a53'; stroke='#6fa6b5'; }
+      else { front='#7c3540'; roof='#9c4453'; side='#54232b'; stroke='#b85c6b'; }
+      const depth = drawBuilding3D(sx, sy, w, h, front, roof, side, stroke);
+      if(opened){
+        // lit windows, scaled with level as a sign of activity
+        const rows = Math.min(3, 1+Math.floor(b.level/8));
+        ctx.fillStyle = 'rgba(255,224,150,0.85)';
+        for(let r=0;r<rows;r++){
+          ctx.fillRect(sx-w/2+6, sy-h/2+8+r*10, w-12, 5);
+        }
+        if(b.level>=10){
+          // awning/sign bar
+          ctx.fillStyle = legit? '#d4a017' : '#e0546b';
+          ctx.fillRect(sx-w/2, sy+h/2-6, w, 6);
+          ctx.fillStyle='#1a1305'; ctx.font='bold 7px IBM Plex Mono, monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+          ctx.fillText(b.name.split(' ')[0].toUpperCase(), sx, sy+h/2-3);
+        }
+        if(b.manager){
+          ctx.beginPath(); ctx.moveTo(sx+w/2+depth, sy-h/2-depth); ctx.lineTo(sx+w/2+depth+12, sy-h/2-depth-4); ctx.lineTo(sx+w/2+depth, sy-h/2-depth-8);
+          ctx.closePath(); ctx.fillStyle='#7a6fb0'; ctx.fill();
+        }
+      } else if(unlocked && !b.researched){
+        ctx.fillStyle='rgba(200,200,210,0.5)'; ctx.font='7px IBM Plex Mono, monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText('FOR LEASE', sx, sy);
+      }
+      labelChip(b.name.split(' ')[0], sx, sy+h/2+12);
+    });
+
+    // ---- service buildings (bank, garage, realty, city hall, heist target) ----
+    serviceBuildings.filter(inDistrict).forEach(m=>{
+      if(!inView(m.x,m.y,70)) return;
+      const sx=m.x-camera.x, sy=m.y-camera.y;
+      const palette = {
+        bankHome:['#7a5f1a','#987a26','#513e10','#c9a227'],
+        garage:['#3e6b78','#54899a','#294a53','#6fa6b5'],
+        realty:['#3e6b78','#54899a','#294a53','#6fa6b5'],
+        cityhall:['#7a5f1a','#987a26','#513e10','#c9a227'],
+        heist:['#5a2a33','#743642','#3c1c22','#8a4c58'],
+      }[m.kind];
+      drawBuilding3D(sx, sy, 58, 48, palette[0], palette[1], palette[2], palette[3]);
+      ctx.font='18px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#f0efe8';
+      ctx.fillText(m.icon, sx, sy-2);
+      labelChip(m.name.split(' ').slice(0,2).join(' '), sx, sy+34);
+    });
+
+    // ---- local businesses (independent — dashed until extorted) ----
+    localBusinesses.filter(inDistrict).forEach(m=>{
+      if(!inView(m.x,m.y,60)) return;
+      const sx=m.x-camera.x, sy=m.y-camera.y;
+      const w=44, h=36;
+      if(m.extorted) drawBuilding3D(sx, sy, w, h, '#8a6a1a', '#a8862a', '#5c460f', '#d4a017');
+      else {
+        roundRect(sx-w/2+2, sy-h/2+3, w, h, 6); ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.fill();
+        roundRect(sx-w/2, sy-h/2, w, h, 6);
+        ctx.fillStyle='rgba(122,111,176,0.16)'; ctx.fill();
+        ctx.strokeStyle='#7a6fb0'; ctx.lineWidth=1.4; ctx.setLineDash([4,3]); ctx.stroke(); ctx.setLineDash([]);
+      }
+      ctx.font='15px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#f0efe8';
+      ctx.fillText(m.icon, sx, sy-2);
+      labelChip(m.name.split(' ')[0], sx, sy+h/2+9);
+    });
+
+    // ---- corners (street-level, no building — pin markers) ----
+    corners.filter(inDistrict).forEach(m=>{
+      if(!inView(m.x,m.y,40)) return;
+      const sx=m.x-camera.x, sy=m.y-camera.y;
+      const staffed = m.dealer && !m.busted;
+      const color = m.busted ? '#5f6275' : (staffed ? '#d4a017' : '#a8394a');
+      drawPin(sx, sy, 12, color, color, !staffed && !m.busted);
+      ctx.fillStyle = m.busted ? '#c8cad8' : '#1a1305';
+      ctx.font='bold 11px IBM Plex Mono, monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(m.busted?'×':'$', sx, sy-4.5);
+      labelChip(m.name.split(' ')[0], sx, sy+18);
+    });
+
+    // ---- people (named/procedural NPCs + gang recruits) ----
+    mapNpcs.filter(inDistrict).forEach(m=>{
+      if(!inView(m.x,m.y,40)) return;
+      const sx=m.x-camera.x, sy=m.y-camera.y;
+      const color = m.type==='named' ? '#d4a017' : '#7a6fb0';
+      drawPersonMarker(sx, sy, color, '#ffffff');
+      const label = m.type==='named' ? m.name : state.procNpc.name;
+      labelChip(label, sx, sy+21);
+    });
+    gangRecruits.filter(inDistrict).forEach(m=>{
+      if(!inView(m.x,m.y,40)) return;
+      const sx=m.x-camera.x, sy=m.y-camera.y;
+      drawPersonMarker(sx, sy, m.inducted?'#d4a017':'#5f6275', m.inducted?'#fff':'#a8394a');
+      labelChip(m.name.split(' ')[0], sx, sy+21);
+    });
+
+    drawPlayer(player.x-camera.x, player.y-camera.y);
+  }
+
+  function drawPersonMarker(sx, sy, fill, ring){
+    ctx.save();
+    ctx.beginPath(); ctx.arc(sx, sy+1.5, 11, 0, Math.PI*2); ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(sx, sy, 11, 0, Math.PI*2); ctx.fillStyle=fill; ctx.fill();
+    ctx.strokeStyle=ring; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.restore();
+    ctx.font='12px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#1a1305';
+    ctx.fillText('🙂', sx, sy);
+  }
+
+  function drawInteriorScene(){
+    ctx.fillStyle = '#101116'; ctx.fillRect(0,0,VIEW_W,VIEW_H);
+    const ox=ROOM_OX, oy=ROOM_OY;
+    // floor
+    ctx.fillStyle = '#232734'; ctx.fillRect(ox, oy, ROOM_W, ROOM_H);
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth=1;
+    for(let fx=0; fx<ROOM_W; fx+=28){ ctx.beginPath(); ctx.moveTo(ox+fx,oy); ctx.lineTo(ox+fx,oy+ROOM_H); ctx.stroke(); }
+    // walls
+    ctx.strokeStyle = '#454a5c'; ctx.lineWidth = 6;
+    ctx.strokeRect(ox, oy, ROOM_W, ROOM_H);
+    // door gap
+    ctx.fillStyle = '#101116';
+    ctx.fillRect(ox+DOOR_LOCAL.x-26, oy+ROOM_H-4, 52, 10);
+    ctx.fillStyle = 'rgba(212,160,23,0.7)'; ctx.font='9px IBM Plex Mono, monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('EXIT', ox+DOOR_LOCAL.x, oy+ROOM_H+14);
+
+    hotspotsFor(state.currentInterior).forEach(h=>{
+      const sx = ox+h.x, sy = oy+h.y;
+      roundRect(sx-28, sy-18, 56, 36, 5);
+      ctx.fillStyle = 'rgba(212,160,23,0.14)'; ctx.fill();
+      ctx.strokeStyle = '#d4a017'; ctx.lineWidth = 1.4; ctx.stroke();
+      ctx.font='16px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#f0efe8';
+      ctx.fillText(h.icon, sx, sy-2);
+      labelChip(h.label, sx, sy+26);
+    });
+
+    drawPlayer(ox+player.x, oy+player.y);
+  }
+
+  // ================= SETTINGS =================
+  document.getElementById('quiet-toggle').addEventListener('change', function(e){
+    document.body.classList.toggle('quiet', e.target.checked);
+    scheduleSave();
+  });
+  document.getElementById('theme-toggle').addEventListener('change', function(e){
+    document.body.classList.toggle('light', e.target.checked);
+    scheduleSave();
+  });
+  document.getElementById('save-now-btn').addEventListener('click', function(){ saveGame(true); });
+  document.getElementById('reset-btn').addEventListener('click', function(){
+    showModal({
+      eyebrow:'Are You Sure', title:'RESET ALL PROGRESS',
+      body:`<p>This clears everything — cash, ventures, respect, territory — and starts the story over from Devon Street, day one. There's no undoing this.</p>`,
+      buttons:[
+        { label:'Cancel', secondary:true },
+        { label:'Reset Everything', onClick:async function(){
+          try{ await window.storage.delete('seat-save-v1', false); }catch(e){}
+          location.reload();
+        }},
+      ]
+    });
+  });
+
+  // ================= PERSISTENT SAVE =================
+  function serializeState(){
+    return {
+      cash: state.cash, respect: state.respect, heat: state.heat,
+      territoryTier: state.territoryTier, negotiateTier: state.negotiateTier,
+      muscleCount: state.muscleCount, ratCount: state.ratCount, bribeOn: state.bribeOn,
+      prestigeCount: state.prestigeCount, seenMilestones: Array.from(state.seenMilestones),
+      playSeconds: state.playSeconds, investorPenalty: state.investorPenalty,
+      started: state.started, procNpc: state.procNpc,
+      quiet: document.body.classList.contains('quiet'),
+      light: document.body.classList.contains('light'),
+      businesses: businesses.map(b=> ({ id:b.id, level:b.level, crew:b.crew, manager:b.manager, researched:b.researched })),
+      bank: state.bank, nextHeistAt: state.nextHeistAt,
+      ownedCars: state.ownedCars, equippedCar: state.equippedCar, ownedProperties: state.ownedProperties,
+      localBusinesses: localBusinesses.map(b=> ({ id:b.id, extorted:b.extorted, nextRobAt:b.nextRobAt })),
+      currentDistrict: state.currentDistrict, product: state.product, productLevel: state.productLevel,
+      districts: districts.map(d=> ({ id:d.id, control:d.control, pushCount:d.pushCount, nextPushAt:d.nextPushAt })),
+      corners: corners.map(c=> ({ id:c.id, dealer:c.dealer, busted:c.busted, bustCooldownAt:c.bustCooldownAt })),
+      influence: state.influence, influenceBuys: state.influenceBuys, electedOffice: state.electedOffice,
+      nextCampaignAt: state.nextCampaignAt, nextWarAt: state.nextWarAt,
+      politicians: politicians.map(p=> ({ id:p.id, favor:p.favor, pocketed:p.pocketed })),
+      gangRecruits: gangRecruits.map(g=> ({ id:g.id, inducted:g.inducted })),
+    };
+  }
+  let saveTimer = null;
+  function scheduleSave(){
+    if(saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(function(){ saveGame(false); }, 1500);
+  }
+  async function saveGame(manual){
+    try{
+      await window.storage.set('seat-save-v1', JSON.stringify(serializeState()), false);
+      const stamp = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+      document.getElementById('save-status').textContent = (manual?'Saved just now — ':'Last saved ') + stamp;
+    }catch(e){
+      document.getElementById('save-status').textContent = 'Save failed — progress is only in this session';
+    }
+  }
+  async function loadGame(){
+    try{
+      const res = await window.storage.get('seat-save-v1', false);
+      if(res && res.value){
+        const d = JSON.parse(res.value);
+        state.cash=d.cash; state.respect=d.respect; state.heat=d.heat;
+        state.territoryTier=d.territoryTier; state.negotiateTier=d.negotiateTier;
+        state.muscleCount=d.muscleCount; state.ratCount=d.ratCount; state.bribeOn=d.bribeOn;
+        state.prestigeCount=d.prestigeCount; state.seenMilestones = new Set(d.seenMilestones||[]);
+        state.playSeconds=d.playSeconds||0; state.investorPenalty=Math.min(0.5, d.investorPenalty||0);
+        state.started = d.started; if(d.procNpc) state.procNpc = d.procNpc;
+        (d.businesses||[]).forEach(sb=>{ const b=businesses.find(x=>x.id===sb.id); if(b){ b.level=sb.level; b.crew=sb.crew; b.manager=sb.manager; b.researched=sb.researched; } });
+        if(d.quiet){ document.body.classList.add('quiet'); document.getElementById('quiet-toggle').checked = true; }
+        if(d.light){ document.body.classList.add('light'); document.getElementById('theme-toggle').checked = true; }
+        state.bank = d.bank||0; state.nextHeistAt = d.nextHeistAt||0;
+        state.ownedCars = d.ownedCars||[]; state.equippedCar = d.equippedCar||null; state.ownedProperties = d.ownedProperties||[];
+        (d.localBusinesses||[]).forEach(sb=>{ const b=localBusinesses.find(x=>x.id===sb.id); if(b){ b.extorted=sb.extorted; b.nextRobAt=sb.nextRobAt; } });
+        state.currentDistrict = d.currentDistrict || 'devon'; state.product = d.product||0; state.productLevel = d.productLevel||0;
+        (d.districts||[]).forEach(sd=>{ const dist=districts.find(x=>x.id===sd.id); if(dist){ dist.control=sd.control; dist.pushCount=sd.pushCount; dist.nextPushAt=sd.nextPushAt; } });
+        (d.corners||[]).forEach(sc=>{ const c=corners.find(x=>x.id===sc.id); if(c){ c.dealer=sc.dealer; c.busted=sc.busted; c.bustCooldownAt=sc.bustCooldownAt; } });
+        state.influence=d.influence||0; state.influenceBuys=d.influenceBuys||0; state.electedOffice=d.electedOffice||false;
+        state.nextCampaignAt=d.nextCampaignAt||0; state.nextWarAt=d.nextWarAt||0;
+        (d.politicians||[]).forEach(sp=>{ const p=politicians.find(x=>x.id===sp.id); if(p){ p.favor=sp.favor; p.pocketed=sp.pocketed||false; } });
+        (d.gangRecruits||[]).forEach(sg=>{ const g=gangRecruits.find(x=>x.id===sg.id); if(g) g.inducted=sg.inducted; });
+        return true;
+      }
+    }catch(e){ /* no save yet */ }
+    return false;
+  }
+
+  // ================= GAME LOOP =================
+  let lastFrame = Date.now();
+  setInterval(function(){
+    if(!state.started) return;
+    const now = Date.now();
+    const dt = Math.min(2, (now-lastFrame)/1000);
+    lastFrame = now;
+    state.playSeconds += dt;
+
+    state.cash += netIncome()*dt;
+    state.respect += respectPerSec()*dt;
+    state.bank += state.bank * 0.00035 * loopInterestMult() * dt;
+
+    // The Lab produces Product; active corners consume it to generate the
+    // income already counted in netIncome() above via cornerIncomePerSec().
+    if(state.productLevel > 0){
+      state.product = Math.min(productCap(), state.product + state.productLevel*1.1*dt);
+    }
+    if(state.product > 0){
+      state.product = Math.max(0, state.product - cornerDemandPerSec()*dt);
+    }
+
+    // Corners can get busted independently of the big citywide raid once heat
+    // runs hot — an earlier, smaller warning that the street layer is exposed.
+    if(state.heat >= 70){
+      const bustRoll = (state.heat-70)/30 * 0.02 * dt * (chinoInducted() ? 0.85 : 1);
+      corners.forEach(c=>{
+        if(c.dealer && !c.busted && Math.random() < bustRoll){
+          c.busted = true; c.dealer = false; c.bustCooldownAt = state.playSeconds + 180;
+          state.product = Math.max(0, state.product - state.product*0.3*whitmoreMult());
+          state.cash = Math.max(0, state.cash - 200*c.tier*whitmoreMult());
+          log(`🚔 ${c.name} gets hit. Dealer's gone, some product's gone with it.`);
+        }
+      });
+    }
+    corners.forEach(c=>{ if(c.busted && state.playSeconds >= c.bustCooldownAt) c.busted = false; });
+
+    // Territory drifts toward whoever's actually maintaining a presence there.
+    districts.forEach(d=>{
+      const cornerPresence = corners.filter(c=>c.district===d.id && c.dealer && !c.busted).length * 1.2;
+      const venturePresence = d.id==='devon' ? businesses.filter(b=>b.researched && b.level>0).length*0.3 : 0;
+      const presence = state.muscleCount*0.15 + cornerPresence + venturePresence;
+      const pressure = d.homeTurf ? 0.15 : 0.35;
+      d.control = Math.max(0, Math.min(100, d.control + (presence-pressure)*dt));
+    });
+
+    const gen = heatGenPerSec();
+    state.heat += (gen - 0.5) * dt;
+    if(state.heat < 0) state.heat = 0;
+
+    if(state.heat >= 100){
+      const lossPct = Math.max(0.05, 0.15 - state.ratCount*0.01) * whitmoreMult();
+      const loss = state.cash * lossPct;
+      state.cash -= loss; state.respect = Math.max(0, state.respect-5); state.heat = 30;
+      log(`🚨 Someone official-looking cleans out ${fmt(loss)} "in fines."`);
+      const extortedList = localBusinesses.filter(b=>b.extorted);
+      if(extortedList.length && Math.random()<0.4){
+        const victim = extortedList[Math.floor(Math.random()*extortedList.length)];
+        victim.extorted = false;
+        log(`🐀 ${victim.owner} stops paying after the heat. Word is they went to the cops.`);
+      }
+    }
+
+    checkMilestones();
+    maybeTriggerEvent();
+    refreshHUD();
+    refreshAffordability();
+    scheduleSave();
+    state.lastTick = now;
+  }, 250);
+
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState==='visible' && state.started){
+      const away = (Date.now() - state.lastTick)/1000;
+      if(away > 25){
+        const capped = Math.min(away, 7200);
+        const earned = netIncome() * capped;
+        state.cash += earned;
+        const mins = Math.round(capped/60);
+        showModal({ eyebrow:'Business Report', title:"WHILE YOU WERE OUT",
+          body:`<p>Managers and crew kept things running. In the <strong>${mins} minute${mins===1?'':'s'}</strong> you were gone, the operation cleared <strong>${fmt(earned)}</strong>.</p>`,
+          buttons:[{label:'Good'}] });
+        log(`📒 Business Report: ${fmt(earned)} earned while you were away.`);
+        renderAll();
+      }
+    }
+    state.lastTick = Date.now();
+    if(document.visibilityState==='hidden') saveGame(false);
+  });
+
+  // ================= BOOT =================
+  (async function boot(){
+    const loaded = await loadGame();
+    if(loaded && state.started){
+      const spawn = spawnPoints[state.currentDistrict] || {x:380,y:380};
+      player.x = spawn.x; player.y = spawn.y;
+      renderAll();
+      log('📓 Picked up right where you left off.');
+      return;
+    }
+    showModal({
+      eyebrow:'Case File — A. Malhotra', title:'FROM DELHI, RUNNING', stamp:'New Arrival',
+      body:`
+        <p>Six months ago, <strong>Arjun Malhotra</strong> watched two men burn down his uncle's shop in Karol Bagh over a debt that was never really about money. He left Delhi with a duffel bag, four hundred dollars sewn into a jacket lining, and a phone number for a cousin in Chicago he'd met exactly once, at a wedding, years ago.</p>
+        <p class="flavor">The cousin's couch lasted three weeks. The four hundred dollars lasted six. Now he's got a folding cart, a griddle he doesn't fully own yet, and a corner of Devon Street nobody wanted badly enough to fight him for.</p>
+        <p><strong>Three things will build the empire: what you make, who runs it for you, and who you know.</strong> Everything from here is his to build.</p>
+      `,
+      buttons:[{label:'Open the Cart', onClick:function(){
+        state.started = true; state.lastTick = Date.now(); lastFrame = Date.now();
+        renderAll();
+        log('🌭 Day one. Forty-seven dollars and a folding table on Devon Street.');
+        scheduleSave();
+      }}]
+    });
+    renderAll();
+  })();
+
+})();
+</script>
+</body>
+</html>
