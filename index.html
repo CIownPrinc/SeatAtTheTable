@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
   :root{
     --bg:#14161f; --bg-panel:#1b1e29; --bg-card:#20232f;
@@ -114,7 +115,13 @@
   .district-btn.active .pin-dot{opacity:1;}
   .control-track{width:100%;height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin:4px 0;}
   .control-fill{height:100%;background:linear-gradient(90deg,var(--maroon),var(--gold));transition:width .4s;}
-  #map-canvas{background:#1a1c26;border:1px solid var(--line);border-radius:8px;max-width:100%;touch-action:none;}
+  #scene3d-container{position:relative;width:760px;max-width:100%;height:440px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:#0a0b10;touch-action:none;}
+  #scene3d-container canvas.webgl-canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block;}
+  #interior-canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:none;}
+  #minimap-canvas{position:absolute;top:10px;right:10px;width:150px;height:150px;border-radius:8px;border:2px solid var(--gold);background:#12141c;cursor:grab;z-index:5;}
+  #minimap-canvas:active{cursor:grabbing;}
+  .minimap-clear-btn{position:absolute;top:14px;right:14px;width:22px;height:22px;border-radius:50%;border:1px solid var(--line);background:rgba(10,11,16,0.7);color:var(--text-faint);font-size:11px;line-height:1;cursor:pointer;z-index:6;display:none;}
+  .minimap-clear-btn.show{display:block;}
   .map-hint{font-family:var(--font-mono);font-size:12px;color:var(--text-dim);min-height:18px;}
   .map-legend{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;padding:10px 14px;background:var(--bg-panel);border:1px solid var(--line);border-radius:6px;margin-top:4px;}
   .legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim);font-family:var(--font-body);}
@@ -213,13 +220,17 @@
 
   <div class="tab-panel" data-tab="map">
     <div class="section-eyebrow">The City</div>
-    <p class="pillar-desc"><strong>WASD or arrow keys</strong> to walk. Walk up to any marker and press <strong>E</strong> to interact — or tap Interact below on mobile. Use the buttons under "Travel" to drive to a different part of the city.</p>
+    <p class="pillar-desc"><strong>WASD or arrow keys</strong> to walk or drive, <strong>E</strong> to interact (enter buildings, get in/out of your car). Drag the minimap to look around, click it to drop a GPS waypoint.</p>
     <div class="district-bar-wrap">
       <div class="district-bar-label">Travel</div>
       <div class="district-bar" id="district-bar"></div>
     </div>
     <div class="map-wrap">
-      <canvas id="map-canvas" width="760" height="440"></canvas>
+      <div id="scene3d-container">
+        <canvas id="interior-canvas" width="760" height="440"></canvas>
+        <canvas id="minimap-canvas" width="150" height="150"></canvas>
+        <button class="minimap-clear-btn" id="minimap-clear" title="Clear waypoint">✕</button>
+      </div>
       <div class="map-hint" id="map-hint">&nbsp;</div>
       <div class="map-controls">
         <button class="dpad-btn" id="btn-interact" style="width:auto;padding:0 16px;">Interact (E)</button>
@@ -741,6 +752,9 @@
     bank: 0, nextHeistAt: 0,
     ownedCars: [], equippedCar: null, ownedProperties: [],
     currentDistrict: 'devon', product: 0, productLevel: 0, currentInterior: null,
+    inVehicle: false,
+    waypoints: { devon:null, westside:null, loop:null },
+    parkedCarPos: { devon:null, westside:null, loop:null },
     influence: 0, influenceBuys: 0, electedOffice: false, nextCampaignAt: 0, nextWarAt: 0,
   };
 
@@ -1045,17 +1059,17 @@
       if(state.cash<c.cost) return;
       state.cash -= c.cost; state.ownedCars.push(id);
       if(!state.equippedCar) state.equippedCar = id;
-      log(`🚗 You pick up a ${c.name}.`); renderAll();
+      log(`🚗 You pick up a ${c.name}.`); updateParkedCarMesh(); refreshPlayerModel(); renderAll();
     }));
     document.querySelectorAll('[data-car-equip]').forEach(btn=> btn.addEventListener('click', function(){
-      state.equippedCar = btn.getAttribute('data-car-equip'); renderAll();
+      state.equippedCar = btn.getAttribute('data-car-equip'); updateParkedCarMesh(); refreshPlayerModel(); renderAll();
     }));
     document.querySelectorAll('[data-car-sell]').forEach(btn=> btn.addEventListener('click', function(){
       const id = btn.getAttribute('data-car-sell'); const c = cars.find(x=>x.id===id);
       state.ownedCars = state.ownedCars.filter(x=>x!==id);
       if(state.equippedCar===id) state.equippedCar = state.ownedCars[0] || null;
       state.cash += Math.round(c.cost*0.55);
-      log(`🚗 You sell the ${c.name}.`); renderAll();
+      log(`🚗 You sell the ${c.name}.`); updateParkedCarMesh(); refreshPlayerModel(); renderAll();
     }));
     document.querySelectorAll('[data-prop-buy]').forEach(btn=> btn.addEventListener('click', function(){
       const id = btn.getAttribute('data-prop-buy'); const p = properties.find(x=>x.id===id);
@@ -1692,14 +1706,12 @@
     }
   }
 
-  // ================= MAP (top-down, world + camera) =================
-  const canvas = document.getElementById('map-canvas');
-  const ctx = canvas.getContext('2d');
-  const VIEW_W = canvas.width, VIEW_H = canvas.height;
+  // ================= MAP: 3D WORLD + MINIMAP + INTERIORS =================
+  const VIEW_W = 760, VIEW_H = 440;
   const WORLD_W = 1500, WORLD_H = 950;
-  const camera = { x:0, y:0 };
   const player = { x:700, y:460, facing:Math.PI/2 };
   const keys = {};
+  let lastFrame2 = Date.now();
 
   const mapBuildings = businesses.map((b,i)=>{
     const row = i<5 ? 0 : 1;
@@ -1714,38 +1726,84 @@
     { id:'reyes', name:'Councilman Reyes', district:'loop', x:600, y:600, type:'named' },
   ];
   const spawnPoints = { devon:{x:700,y:460}, westside:{x:700,y:460}, loop:{x:700,y:460} };
-  // Each district gets its own palette and a small real-Chicago landmark detail,
-  // so the three maps read as different places rather than the same grid reskinned.
   const districtThemes = {
-    devon: { bg:'#181b21', road:'rgba(62,124,140,0.16)', avenue:'rgba(62,124,140,0.28)', avenueName:'ROGERS AVE', landmark:'park', landmarkLabel:'INDIAN BOUNDARY PARK', accent:'#3e7c8c' },
-    westside: { bg:'#1d1717', road:'rgba(168,57,74,0.16)', avenue:'rgba(168,57,74,0.30)', avenueName:'OGDEN AVE', landmark:'rail', landmarkLabel:'RAIL YARD', accent:'#a8394a' },
-    loop: { bg:'#1a1810', road:'rgba(212,160,23,0.14)', avenue:'rgba(212,160,23,0.26)', avenueName:'WACKER DR', landmark:'river', landmarkLabel:'CHICAGO RIVER', accent:'#d4a017' },
+    devon: { ground:'#232a26', parkLabel:'INDIAN BOUNDARY PARK', hasRail:false, hasRiver:false },
+    westside: { ground:'#2a2222', parkLabel:'CICERO GREEN', hasRail:true, hasRiver:false },
+    loop: { ground:'#211f16', parkLabel:'MILLENNIUM PARK', hasRail:false, hasRiver:true },
   };
-  let lastFrame2 = Date.now();
 
   function inDistrict(m){ return m.district === state.currentDistrict; }
 
-  function travelTo(id){
-    if(state.currentDistrict === id) return;
-    state.currentInterior = null;
-    state.currentDistrict = id;
-    const spawn = spawnPoints[id] || {x:700,y:460};
-    player.x = spawn.x; player.y = spawn.y; player.facing = Math.PI/2;
-    Object.keys(keys).forEach(k=> keys[k]=false);
-    lastFrame2 = Date.now();
-    const d = districts.find(x=>x.id===id);
-    log(`🚗 You drive over to ${d.name}.`);
-    renderAll();
+  // ---- road network: same rectangles drive BOTH the visual roads and vehicle collision ----
+  const roadNetwork = {
+    vertical: [{x:270,w:74},{x:700,w:74},{x:1130,w:74}],
+    horizontal: [{y:220,w:74},{y:460,w:74},{y:730,w:74}],
+  };
+  function isOnRoad(x,y){
+    return roadNetwork.vertical.some(r=> Math.abs(x-r.x)<=r.w/2) || roadNetwork.horizontal.some(r=> Math.abs(y-r.y)<=r.w/2);
   }
 
-  window.addEventListener('keydown', function(e){
-    const k = e.key.toLowerCase();
-    keys[k] = true;
-    if(k==='e') tryInteract();
-  });
-  window.addEventListener('keyup', function(e){ keys[e.key.toLowerCase()] = false; });
-  window.addEventListener('blur', function(){ Object.keys(keys).forEach(k=> keys[k]=false); });
-  document.getElementById('btn-interact').addEventListener('click', tryInteract);
+  // ---- deterministic filler city: same layout every time, not regenerated per load ----
+  function seededRandom(seed){
+    return function(){
+      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  const districtSeeds = { devon:1001, westside:2002, loop:3003 };
+  function occupiedZones(districtId){
+    const zones = [];
+    const add = (arr,r)=> arr.filter(m=>m.district===districtId).forEach(m=> zones.push({x:m.x,y:m.y,r}));
+    add(mapBuildings,70); add(serviceBuildings,70); add(localBusinesses,60);
+    add(corners,50); add(mapNpcs,50); add(gangRecruits,50);
+    return zones;
+  }
+  function generateFillerLayout(districtId){
+    const rand = seededRandom(districtSeeds[districtId]);
+    const occupied = occupiedZones(districtId);
+    const xBands = [[15,235],[305,665],[735,1095],[1165,1485]];
+    const yBands = [[15,185],[255,425],[495,695],[765,935]];
+    const parkBand = { xi:0, yi: districtId==='loop' ? 1 : 3 };
+    const lotBand = { xi:3, yi: districtId==='loop' ? 3 : 0 };
+    const filler = [];
+    for(let xi=0; xi<xBands.length; xi++){
+      for(let yi=0; yi<yBands.length; yi++){
+        const x0=xBands[xi][0], x1=xBands[xi][1], y0=yBands[yi][0], y1=yBands[yi][1];
+        const cx=(x0+x1)/2, cy=(y0+y1)/2;
+        if(occupied.some(o=> Math.abs(o.x-cx)<(x1-x0)/2+30 && Math.abs(o.y-cy)<(y1-y0)/2+30)) continue;
+        if(xi===parkBand.xi && yi===parkBand.yi){ filler.push({kind:'park', x0,y0,x1,y1}); continue; }
+        if(xi===lotBand.xi && yi===lotBand.yi){ filler.push({kind:'lot', x0,y0,x1,y1}); continue; }
+        const count = 1 + Math.floor(rand()*2);
+        for(let n=0;n<count;n++){
+          const w=40+rand()*50, d=40+rand()*50, h=14+rand()*46;
+          const fx = x0+20+rand()*Math.max(10,(x1-x0-w-40));
+          const fy = y0+20+rand()*Math.max(10,(y1-y0-d-40));
+          filler.push({kind:'building', x:fx+w/2, y:fy+d/2, w, d, h, hue:rand()});
+        }
+      }
+    }
+    return filler;
+  }
+  const fillerCache = {};
+  function fillerFor(districtId){
+    if(!fillerCache[districtId]) fillerCache[districtId] = generateFillerLayout(districtId);
+    return fillerCache[districtId];
+  }
+  function buildingSolids(districtId){
+    const list = [];
+    mapBuildings.filter(m=>m.district===districtId).forEach(m=>{
+      const w = m.biz.baseCost>=50000?66:(m.biz.baseCost<1000?46:56);
+      list.push({x:m.x,y:m.y,hw:w/2+6,hd:(w*0.85)/2+6});
+    });
+    serviceBuildings.filter(m=>m.district===districtId).forEach(m=> list.push({x:m.x,y:m.y,hw:35,hd:31}));
+    localBusinesses.filter(m=>m.district===districtId).forEach(m=> list.push({x:m.x,y:m.y,hw:27,hd:24}));
+    fillerFor(districtId).filter(f=>f.kind==='building').forEach(f=> list.push({x:f.x,y:f.y,hw:f.w/2+4,hd:f.d/2+4}));
+    return list;
+  }
+  function collidesBuilding(x,y,solids){ return solids.some(s=> Math.abs(x-s.x)<s.hw && Math.abs(y-s.y)<s.hd); }
+  let currentSolids = [];
 
   // ---- interiors: a small generic room per building, with 1-2 physical hotspots ----
   const ROOM_W = 480, ROOM_H = 280, ROOM_OX = (VIEW_W-ROOM_W)/2, ROOM_OY = (VIEW_H-ROOM_H)/2 - 10;
@@ -1776,6 +1834,7 @@
   }
 
   function enterBuilding(kind, refId, name){
+    if(state.inVehicle) exitVehicle();
     state.currentInterior = { kind, refId, name, returnX:player.x, returnY:player.y, returnDistrict:state.currentDistrict };
     player.x = DOOR_LOCAL.x; player.y = DOOR_LOCAL.y - 40; player.facing = -Math.PI/2;
     Object.keys(keys).forEach(k=> keys[k]=false);
@@ -1793,50 +1852,86 @@
     renderAll();
   }
 
+  // ---- vehicle: explicit enter/exit, matches the "Enter Vehicle" prompt pattern ----
+  function enterVehicle(){
+    if(!getEquippedCar()) return;
+    state.inVehicle = true;
+    refreshPlayerModel(); updateParkedCarMesh();
+    log('🚗 You get in.');
+    renderAll();
+  }
+  function exitVehicle(){
+    if(!state.inVehicle) return;
+    state.inVehicle = false;
+    state.parkedCarPos[state.currentDistrict] = { x:player.x, y:player.y };
+    refreshPlayerModel(); updateParkedCarMesh();
+    log('🚶 You park up and get out.');
+    renderAll();
+  }
+
+  function travelTo(id){
+    if(state.currentDistrict === id) return;
+    state.currentInterior = null;
+    state.currentDistrict = id;
+    const spawn = spawnPoints[id] || {x:700,y:460};
+    player.x = spawn.x; player.y = spawn.y; player.facing = Math.PI/2;
+    Object.keys(keys).forEach(k=> keys[k]=false);
+    lastFrame2 = Date.now();
+    buildDistrictScene(id);
+    refreshPlayerModel();
+    const d = districts.find(x=>x.id===id);
+    log(`🚗 You drive over to ${d.name}.`);
+    renderAll();
+  }
+
+  window.addEventListener('keydown', function(e){
+    const k = e.key.toLowerCase();
+    keys[k] = true;
+    if(k==='e') tryInteract();
+  });
+  window.addEventListener('keyup', function(e){ keys[e.key.toLowerCase()] = false; });
+  window.addEventListener('blur', function(){ Object.keys(keys).forEach(k=> keys[k]=false); });
+  document.getElementById('btn-interact').addEventListener('click', tryInteract);
+
   function nearestMarker(){
     if(state.currentInterior){
-      let best = null, bestDist = 46;
+      let best=null, bestDist=46;
       const dDoor = Math.hypot(player.x-DOOR_LOCAL.x, player.y-DOOR_LOCAL.y);
-      if(dDoor < bestDist){ bestDist = dDoor; best = { type:'door', ref:{label:'Exit'} }; }
+      if(dDoor<bestDist){ bestDist=dDoor; best={type:'door', ref:{label:'Exit'}}; }
       hotspotsFor(state.currentInterior).forEach(h=>{
         const d = Math.hypot(player.x-h.x, player.y-h.y);
-        if(d < bestDist){ bestDist = d; best = { type:'hotspot', ref:h }; }
+        if(d<bestDist){ bestDist=d; best={type:'hotspot', ref:h}; }
       });
       return best;
     }
-    let best = null, bestDist = 46;
-    mapBuildings.filter(inDistrict).forEach(m=>{
-      const d = Math.hypot(player.x-m.x, player.y-m.y);
-      if(d < bestDist){ bestDist = d; best = {type:'building', ref:m}; }
-    });
-    serviceBuildings.filter(inDistrict).forEach(m=>{
-      const d = Math.hypot(player.x-m.x, player.y-m.y);
-      if(d < bestDist){ bestDist = d; best = {type:'service', ref:m}; }
-    });
-    mapNpcs.filter(inDistrict).forEach(m=>{
-      const d = Math.hypot(player.x-m.x, player.y-m.y);
-      if(d < bestDist){ bestDist = d; best = {type:'npc', ref:m}; }
-    });
-    gangRecruits.filter(inDistrict).forEach(m=>{
-      const d = Math.hypot(player.x-m.x, player.y-m.y);
-      if(d < bestDist){ bestDist = d; best = {type:'gangnpc', ref:m}; }
-    });
-    localBusinesses.filter(inDistrict).forEach(m=>{
-      const d = Math.hypot(player.x-m.x, player.y-m.y);
-      if(d < bestDist){ bestDist = d; best = {type:'local', ref:m}; }
-    });
-    corners.filter(inDistrict).forEach(m=>{
-      const d = Math.hypot(player.x-m.x, player.y-m.y);
-      if(d < bestDist){ bestDist = d; best = {type:'corner', ref:m}; }
-    });
+    if(state.inVehicle) return null;
+    let best=null, bestDist=46;
+    const car = getEquippedCar();
+    const parked = state.parkedCarPos[state.currentDistrict];
+    if(car && parked){
+      const d = Math.hypot(player.x-parked.x, player.y-parked.y);
+      if(d<bestDist){ bestDist=d; best={type:'car', ref:parked}; }
+    }
+    mapBuildings.filter(inDistrict).forEach(m=>{ const d=Math.hypot(player.x-m.x,player.y-m.y); if(d<bestDist){ bestDist=d; best={type:'building',ref:m}; } });
+    serviceBuildings.filter(inDistrict).forEach(m=>{ const d=Math.hypot(player.x-m.x,player.y-m.y); if(d<bestDist){ bestDist=d; best={type:'service',ref:m}; } });
+    mapNpcs.filter(inDistrict).forEach(m=>{ const d=Math.hypot(player.x-m.x,player.y-m.y); if(d<bestDist){ bestDist=d; best={type:'npc',ref:m}; } });
+    gangRecruits.filter(inDistrict).forEach(m=>{ const d=Math.hypot(player.x-m.x,player.y-m.y); if(d<bestDist){ bestDist=d; best={type:'gangnpc',ref:m}; } });
+    localBusinesses.filter(inDistrict).forEach(m=>{ const d=Math.hypot(player.x-m.x,player.y-m.y); if(d<bestDist){ bestDist=d; best={type:'local',ref:m}; } });
+    corners.filter(inDistrict).forEach(m=>{ const d=Math.hypot(player.x-m.x,player.y-m.y); if(d<bestDist){ bestDist=d; best={type:'corner',ref:m}; } });
     return best;
   }
   function tryInteract(){
     if(!mapActive) return;
+    if(state.currentInterior){
+      const m = nearestMarker();
+      if(!m) return;
+      if(m.type==='door') exitBuilding(); else if(m.type==='hotspot') m.ref.action();
+      return;
+    }
+    if(state.inVehicle){ exitVehicle(); return; }
     const m = nearestMarker();
     if(!m) return;
-    if(m.type==='door') exitBuilding();
-    else if(m.type==='hotspot') m.ref.action();
+    if(m.type==='car') enterVehicle();
     else if(m.type==='building') enterBuilding('venture', m.ref.id, m.ref.biz.name);
     else if(m.type==='service') enterBuilding(m.ref.kind, m.ref.id, m.ref.name);
     else if(m.type==='local') enterBuilding('local', m.ref.id, m.ref.name);
@@ -1848,88 +1943,374 @@
 
   function currentSpeed(){
     if(state.currentInterior) return 150;
-    const car = getEquippedCar();
-    return 190 * (car ? car.speedMult : 1);
+    if(state.inVehicle){ const car=getEquippedCar(); return 210*(car?car.speedMult:1); }
+    return 150;
+  }
+  function tryMove(nx, ny, solids){
+    if(nx<16||nx>WORLD_W-16||ny<16||ny>WORLD_H-16) return false;
+    if(collidesBuilding(nx,ny,solids)) return false;
+    if(state.inVehicle && !isOnRoad(nx,ny)) return false;
+    return true;
   }
 
-  // ---- small drawing helpers ----
-  function roundRect(x, y, w, h, r){
-    ctx.beginPath();
-    ctx.moveTo(x+r, y);
-    ctx.arcTo(x+w, y, x+w, y+h, r);
-    ctx.arcTo(x+w, y+h, x, y+h, r);
-    ctx.arcTo(x, y+h, x, y, r);
-    ctx.arcTo(x, y, x+w, y, r);
-    ctx.closePath();
-  }
-  function labelChip(text, x, y){
-    ctx.font = '9px IBM Plex Mono, monospace';
-    const w = ctx.measureText(text).width + 8;
-    ctx.fillStyle = 'rgba(10,11,16,0.6)';
-    roundRect(x-w/2, y-8, w, 14, 4);
-    ctx.fill();
-    ctx.fillStyle = '#c8cad8';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(text, x, y-1);
-  }
-  function drawPin(x, y, size, fillColor, strokeColor, hollow){
-    ctx.beginPath();
-    ctx.arc(x, y-size*0.35, size, Math.PI*1.05, Math.PI*-0.05, false);
-    ctx.lineTo(x, y+size*0.95);
-    ctx.closePath();
-    if(hollow){ ctx.fillStyle = 'rgba(20,22,31,0.75)'; ctx.fill(); }
-    else { ctx.fillStyle = fillColor; ctx.fill(); }
-    ctx.strokeStyle = strokeColor; ctx.lineWidth = 1.6; ctx.stroke();
-  }
-  // Extruded "3D block" building: a front face plus a roof and one side face,
-  // offset toward the upper-right, so every structure reads as a real volume
-  // instead of a flat icon — this is the core visual signature of the map now.
-  function drawBuilding3D(sx, sy, w, h, front, roof, side, stroke){
-    const depth = Math.max(8, Math.min(16, w*0.22));
-    roundRect(sx-w/2+3, sy-h/2+4, w, h, 6); ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(sx+w/2, sy-h/2); ctx.lineTo(sx+w/2+depth, sy-h/2-depth);
-    ctx.lineTo(sx+w/2+depth, sy+h/2-depth); ctx.lineTo(sx+w/2, sy+h/2);
-    ctx.closePath(); ctx.fillStyle = side; ctx.fill(); ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(sx-w/2, sy-h/2); ctx.lineTo(sx-w/2+depth, sy-h/2-depth);
-    ctx.lineTo(sx+w/2+depth, sy-h/2-depth); ctx.lineTo(sx+w/2, sy-h/2);
-    ctx.closePath(); ctx.fillStyle = roof; ctx.fill(); ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke();
-    roundRect(sx-w/2, sy-h/2, w, h, 4);
-    ctx.fillStyle = front; ctx.fill(); ctx.strokeStyle = stroke; ctx.lineWidth = 1.6; ctx.stroke();
-    return depth;
-  }
-  function drawPlayer(sx, sy){
-    const car = !state.currentInterior ? getEquippedCar() : null;
-    ctx.save();
-    ctx.translate(sx, sy);
-    ctx.rotate(player.facing);
-    if(car){
-      const len=car.len, wid=car.wid;
-      // headlight cone, pointing forward (+x in local space)
-      const grad = ctx.createLinearGradient(len/2,0,len/2+50,0);
-      grad.addColorStop(0,'rgba(255,250,225,0.4)'); grad.addColorStop(1,'rgba(255,250,225,0)');
-      ctx.beginPath();
-      ctx.moveTo(len/2, -wid/2); ctx.lineTo(len/2+50, -wid*1.7); ctx.lineTo(len/2+50, wid*1.7); ctx.lineTo(len/2, wid/2);
-      ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
-      // shadow
-      roundRect(-len/2+2, -wid/2+2, len, wid, 4); ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.fill();
-      // body
-      roundRect(-len/2, -wid/2, len, wid, 4);
-      ctx.fillStyle = car.color; ctx.fill(); ctx.strokeStyle='rgba(0,0,0,0.45)'; ctx.lineWidth=1.4; ctx.stroke();
-      // windshield
-      ctx.fillStyle='rgba(190,215,230,0.55)';
-      roundRect(len*0.05,-wid/2+2.5,len*0.32,wid-5,2); ctx.fill();
-    } else {
-      ctx.beginPath(); ctx.arc(1,2,9,0,Math.PI*2); ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.fill();
-      ctx.beginPath(); ctx.arc(0,0,9,0,Math.PI*2); ctx.fillStyle='#f0efe8'; ctx.fill();
-      ctx.strokeStyle='#d4a017'; ctx.lineWidth=2; ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(6,0); ctx.lineTo(12,-4.5); ctx.lineTo(12,4.5); ctx.closePath();
-      ctx.fillStyle='#d4a017'; ctx.fill();
+  // ================= THREE.JS SCENE =================
+  let scene, camera3d, renderer, worldGroup, playerGroup, sunLight, waypointBeacon, parkedCarMesh;
+
+  function disposeObj(o){
+    if(o.geometry) o.geometry.dispose();
+    if(o.material){
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      mats.forEach(m=>{ if(m.map) m.map.dispose(); m.dispose(); });
     }
-    ctx.restore();
+  }
+  function clearGroup(g){ while(g.children.length){ const c=g.children.pop(); c.traverse(disposeObj); } }
+
+  function box(w,h,d,color){
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), new THREE.MeshStandardMaterial({color, roughness:0.85, metalness:0.05}));
+    m.castShadow = true; m.receiveShadow = true;
+    return m;
+  }
+  function addSign(parent, text, w, h, y, color){
+    const c = document.createElement('canvas'); c.width=256; c.height=64;
+    const cctx = c.getContext('2d');
+    cctx.fillStyle='rgba(10,11,16,0.85)'; cctx.fillRect(0,0,256,64);
+    cctx.fillStyle=color; cctx.font='bold 30px sans-serif'; cctx.textAlign='center'; cctx.textBaseline='middle';
+    cctx.fillText(text.slice(0,16), 128, 32);
+    const tex = new THREE.CanvasTexture(c);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, depthTest:false}));
+    sprite.scale.set(w,h,1); sprite.position.y = y;
+    parent.add(sprite);
+  }
+  function buildPedestrianModel(color){
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(6,7,20,8), new THREE.MeshStandardMaterial({color: color||'#e8e6de'}));
+    body.position.y = 14; body.castShadow=true; g.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(6,10,10), new THREE.MeshStandardMaterial({color:'#d9b48f'}));
+    head.position.y = 28; head.castShadow=true; g.add(head);
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(2.2,6,6), new THREE.MeshStandardMaterial({color:'#d4a017'}));
+    nose.rotation.x = Math.PI/2; nose.position.set(0,14,8); g.add(nose);
+    return g;
+  }
+  function buildCarModel(car){
+    const g = new THREE.Group();
+    const body = box(car.len, 14, car.wid, car.color);
+    body.position.y = 9; g.add(body);
+    const cabin = box(car.len*0.45, 10, car.wid*0.85, '#1c1e24');
+    cabin.position.set(car.len*0.05, 18, 0); g.add(cabin);
+    const wheelMat = new THREE.MeshStandardMaterial({color:'#151515'});
+    [[car.len*0.32,car.wid/2],[car.len*0.32,-car.wid/2],[-car.len*0.32,car.wid/2],[-car.len*0.32,-car.wid/2]].forEach(function(pair){
+      const wx=pair[0], wz=pair[1];
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(5,5,4,10), wheelMat);
+      wheel.rotation.x = Math.PI/2; wheel.position.set(wx,5,wz); wheel.castShadow=true; g.add(wheel);
+    });
+    const beam = new THREE.Mesh(new THREE.ConeGeometry(9,40,10,1,true), new THREE.MeshBasicMaterial({color:'#fff6d8', transparent:true, opacity:0.16, side:THREE.DoubleSide}));
+    beam.rotation.x = -Math.PI/2; beam.position.set(car.len/2+18, 9, 0);
+    g.add(beam);
+    return g;
+  }
+  function buildingColorFor(b){
+    const unlocked = isUnlocked(b);
+    const opened = unlocked && b.researched && b.level>0;
+    const legit = b.category==='legit';
+    if(!opened) return { color:'#33353d', h:26 };
+    return { color: legit ? '#3e6b78' : '#7c3540', h: 24+Math.min(70,b.level*3) };
   }
 
+  function buildDistrictScene(districtId){
+    clearGroup(worldGroup);
+    const theme = districtThemes[districtId];
+
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W,WORLD_H), new THREE.MeshStandardMaterial({color:theme.ground, roughness:1}));
+    ground.rotation.x = -Math.PI/2; ground.position.set(WORLD_W/2,0,WORLD_H/2); ground.receiveShadow=true;
+    worldGroup.add(ground);
+
+    const roadMat = new THREE.MeshStandardMaterial({color:'#2b2d35', roughness:0.9});
+    roadNetwork.vertical.forEach(function(r){
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(r.w,WORLD_H), roadMat);
+      m.rotation.x=-Math.PI/2; m.position.set(r.x,0.05,WORLD_H/2); m.receiveShadow=true; worldGroup.add(m);
+    });
+    roadNetwork.horizontal.forEach(function(r){
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W,r.w), roadMat);
+      m.rotation.x=-Math.PI/2; m.position.set(WORLD_W/2,0.05,r.y); m.receiveShadow=true; worldGroup.add(m);
+    });
+
+    mapBuildings.filter(function(m){return m.district===districtId;}).forEach(function(m){
+      const info = buildingColorFor(m.biz);
+      const bw = m.biz.baseCost>=50000?66:(m.biz.baseCost<1000?46:56), bd=bw*0.85;
+      const mesh = box(bw, info.h, bd, info.color);
+      mesh.position.set(m.x, info.h/2, m.y);
+      worldGroup.add(mesh);
+      addSign(mesh, m.biz.name.split(' ')[0], 34, 9, info.h/2+10, m.biz.category==='legit'?'#8fd0e0':'#f0a0ae');
+    });
+
+    serviceBuildings.filter(function(m){return m.district===districtId;}).forEach(function(m){
+      const palette = { bankHome:'#7a5f1a', garage:'#3e6b78', realty:'#3e6b78', cityhall:'#7a5f1a', heist:'#5a2a33' };
+      const mesh = box(58,34,50, palette[m.kind]);
+      mesh.position.set(m.x,17,m.y); worldGroup.add(mesh);
+      addSign(mesh, m.name.split(' ').slice(0,2).join(' '), 40, 9, 26, '#ffe6a0');
+    });
+
+    localBusinesses.filter(function(m){return m.district===districtId;}).forEach(function(m){
+      const color = m.extorted ? '#8a6a1a' : '#4a4360';
+      const mesh = box(42,20,36,color);
+      mesh.position.set(m.x,10,m.y); worldGroup.add(mesh);
+      addSign(mesh, m.name.split(' ')[0], 32, 8, 18, m.extorted?'#ffd77a':'#b8aee0');
+    });
+
+    corners.filter(function(m){return m.district===districtId;}).forEach(function(m){
+      const staffed = m.dealer && !m.busted;
+      const color = m.busted ? '#5f6275' : (staffed ? '#d4a017' : '#a8394a');
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(1.4,1.4,26,6), new THREE.MeshStandardMaterial({color:'#2a2c33'}));
+      pole.position.set(m.x,13,m.y); pole.castShadow=true; worldGroup.add(pole);
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(7,10,10), new THREE.MeshStandardMaterial({color, emissive:color, emissiveIntensity:0.4}));
+      orb.position.set(m.x,28,m.y); worldGroup.add(orb);
+      addSign(pole, m.name.split(' ')[0], 30, 8, 22, '#f0efe8');
+    });
+
+    function addPerson(m, color){
+      const g = buildPedestrianModel(color);
+      g.position.set(m.x,0,m.y); worldGroup.add(g);
+      addSign(g, m.type==='named' ? m.name : (m.name||'?'), 28, 7, 34, '#f0efe8');
+    }
+    mapNpcs.filter(function(m){return m.district===districtId;}).forEach(function(m){ addPerson(m, m.type==='named'?'#d4a017':'#7a6fb0'); });
+    gangRecruits.filter(function(m){return m.district===districtId;}).forEach(function(m){ addPerson(m, m.inducted?'#d4a017':'#5f6275'); });
+
+    fillerFor(districtId).forEach(function(f){
+      if(f.kind==='building'){
+        const color = f.hue<0.5 ? '#3a3f4a' : '#4a4238';
+        const mesh = box(f.w, f.h, f.d, color);
+        mesh.position.set(f.x, f.h/2, f.y);
+        worldGroup.add(mesh);
+      } else if(f.kind==='park'){
+        const cx=(f.x0+f.x1)/2, cy=(f.y0+f.y1)/2, w=f.x1-f.x0, d=f.y1-f.y0;
+        const grass = new THREE.Mesh(new THREE.PlaneGeometry(w,d), new THREE.MeshStandardMaterial({color:'#2c4a30', roughness:1}));
+        grass.rotation.x=-Math.PI/2; grass.position.set(cx,0.08,cy); grass.receiveShadow=true; worldGroup.add(grass);
+        const rand = seededRandom(Math.floor(cx*7+cy*13));
+        for(let i=0;i<6;i++){
+          const tx=f.x0+20+rand()*(w-40), ty=f.y0+20+rand()*(d-40);
+          const trunk = new THREE.Mesh(new THREE.CylinderGeometry(2,2.5,10,6), new THREE.MeshStandardMaterial({color:'#4a3624'}));
+          trunk.position.set(tx,5,ty); trunk.castShadow=true; worldGroup.add(trunk);
+          const leaves = new THREE.Mesh(new THREE.ConeGeometry(9,20,7), new THREE.MeshStandardMaterial({color:'#2f5c38'}));
+          leaves.position.set(tx,18,ty); leaves.castShadow=true; worldGroup.add(leaves);
+        }
+        if(districtId==='loop'){
+          const bean = new THREE.Mesh(new THREE.SphereGeometry(20,24,18), new THREE.MeshStandardMaterial({color:'#c9c9d4', metalness:1, roughness:0.08}));
+          bean.scale.set(1.6,0.85,1); bean.position.set(cx,22,cy); bean.castShadow=true; bean.receiveShadow=true;
+          worldGroup.add(bean);
+          addSign(bean, 'THE BEAN', 44, 10, 34, '#e8e6de');
+        } else {
+          addSign(grass, theme.parkLabel, 44, 9, 4, '#a8d0a8');
+        }
+      } else if(f.kind==='lot'){
+        const cx=(f.x0+f.x1)/2, cy=(f.y0+f.y1)/2, w=f.x1-f.x0, d=f.y1-f.y0;
+        const lot = new THREE.Mesh(new THREE.PlaneGeometry(w,d), new THREE.MeshStandardMaterial({color:'#26282e', roughness:1}));
+        lot.rotation.x=-Math.PI/2; lot.position.set(cx,0.08,cy); lot.receiveShadow=true; worldGroup.add(lot);
+        const rand = seededRandom(Math.floor(cx*11+cy*17));
+        const carColors=['#556070','#704040','#405560','#606050'];
+        for(let i=0;i<5;i++){
+          const px=f.x0+18+rand()*(w-36), py=f.y0+18+rand()*(d-36);
+          const c = box(20,9,11, carColors[Math.floor(rand()*carColors.length)]);
+          c.position.set(px,4.5,py); c.rotation.y = rand()*Math.PI;
+          worldGroup.add(c);
+        }
+      }
+    });
+
+    if(theme.hasRail){
+      const rail = new THREE.Mesh(new THREE.PlaneGeometry(40,WORLD_H), new THREE.MeshStandardMaterial({color:'#2a2a2e', roughness:1}));
+      rail.rotation.x=-Math.PI/2; rail.position.set(WORLD_W-30,0.06,WORLD_H/2); rail.receiveShadow=true; worldGroup.add(rail);
+      for(let ty=20; ty<WORLD_H; ty+=26){ const tie=box(36,2,4,'#3a3530'); tie.position.set(WORLD_W-30,1,ty); worldGroup.add(tie); }
+    }
+    if(theme.hasRiver){
+      const river = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W,46), new THREE.MeshStandardMaterial({color:'#1c3a52', roughness:0.3, metalness:0.3}));
+      river.rotation.x=-Math.PI/2; river.position.set(WORLD_W/2,0.06,20); river.receiveShadow=true; worldGroup.add(river);
+    }
+
+    currentSolids = buildingSolids(districtId);
+    updateParkedCarMesh();
+    rebuildWaypointBeacon();
+
+    if(sunLight){
+      sunLight.position.set(WORLD_W*0.4, 420, WORLD_H*0.25);
+      sunLight.target.position.set(WORLD_W/2, 0, WORLD_H/2);
+      sunLight.target.updateMatrixWorld();
+    }
+  }
+
+  function refreshPlayerModel(){
+    clearGroup(playerGroup);
+    if(state.inVehicle){ const car=getEquippedCar(); if(car) playerGroup.add(buildCarModel(car)); }
+    else playerGroup.add(buildPedestrianModel('#f0efe8'));
+  }
+  function updateParkedCarMesh(){
+    if(parkedCarMesh){ worldGroup.remove(parkedCarMesh); parkedCarMesh.traverse(disposeObj); parkedCarMesh=null; }
+    const car = getEquippedCar();
+    if(car && !state.inVehicle){
+      const pos = state.parkedCarPos[state.currentDistrict] || spawnPoints[state.currentDistrict];
+      parkedCarMesh = buildCarModel(car);
+      parkedCarMesh.position.set(pos.x,0,pos.y);
+      worldGroup.add(parkedCarMesh);
+    }
+  }
+  function rebuildWaypointBeacon(){
+    if(waypointBeacon){ worldGroup.remove(waypointBeacon); waypointBeacon.traverse(disposeObj); waypointBeacon=null; }
+    const wp = state.waypoints[state.currentDistrict];
+    if(!wp) return;
+    const g = new THREE.Group();
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(2,2,140,8), new THREE.MeshStandardMaterial({color:'#d4a017', emissive:'#d4a017', emissiveIntensity:0.6, transparent:true, opacity:0.5}));
+    beam.position.y = 70; g.add(beam);
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(10,18,8), new THREE.MeshStandardMaterial({color:'#d4a017', emissive:'#d4a017', emissiveIntensity:0.8}));
+    cone.position.y = 148; g.add(cone);
+    g.position.set(wp.x,0,wp.y);
+    worldGroup.add(g); waypointBeacon = g;
+  }
+
+  function initScene(){
+    const container = document.getElementById('scene3d-container');
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color('#0a0b10');
+    scene.fog = new THREE.Fog(0x0a0b10, 480, 1050);
+
+    camera3d = new THREE.PerspectiveCamera(50, VIEW_W/VIEW_H, 1, 3000);
+    renderer = new THREE.WebGLRenderer({antialias:true});
+    renderer.setSize(VIEW_W, VIEW_H);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.domElement.classList.add('webgl-canvas');
+    container.insertBefore(renderer.domElement, container.firstChild);
+
+    scene.add(new THREE.AmbientLight(0x8891a8, 0.65));
+    sunLight = new THREE.DirectionalLight(0xfff2d0, 0.9);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.set(1024,1024);
+    sunLight.shadow.camera.left=-500; sunLight.shadow.camera.right=500;
+    sunLight.shadow.camera.top=500; sunLight.shadow.camera.bottom=-500;
+    sunLight.shadow.camera.near=10; sunLight.shadow.camera.far=1200;
+    scene.add(sunLight); scene.add(sunLight.target);
+
+    worldGroup = new THREE.Group(); scene.add(worldGroup);
+    playerGroup = new THREE.Group(); scene.add(playerGroup);
+
+    buildDistrictScene(state.currentDistrict);
+    refreshPlayerModel();
+  }
+  initScene();
+
+  // ================= MINIMAP (simple 2D, pannable, waypoints) =================
+  const minimapCanvas = document.getElementById('minimap-canvas');
+  const mctx = minimapCanvas.getContext('2d');
+  const minimapPan = { x:0, y:0 };
+  const MINIMAP_SCALE = 150/420;
+  let minimapDragging=false, minimapDragStart=null, minimapDragMoved=false;
+
+  minimapCanvas.addEventListener('mousedown', function(e){
+    minimapDragging = true; minimapDragMoved = false;
+    minimapDragStart = { clientX:e.clientX, clientY:e.clientY, panX:minimapPan.x, panY:minimapPan.y };
+  });
+  window.addEventListener('mousemove', function(e){
+    if(!minimapDragging) return;
+    const ddx = e.clientX - minimapDragStart.clientX, ddy = e.clientY - minimapDragStart.clientY;
+    if(Math.abs(ddx)>3 || Math.abs(ddy)>3) minimapDragMoved = true;
+    minimapPan.x = minimapDragStart.panX - ddx/MINIMAP_SCALE;
+    minimapPan.y = minimapDragStart.panY - ddy/MINIMAP_SCALE;
+  });
+  window.addEventListener('mouseup', function(e){
+    if(!minimapDragging) return;
+    minimapDragging = false;
+    if(!minimapDragMoved && !state.currentInterior){
+      const rect = minimapCanvas.getBoundingClientRect();
+      const px = e.clientX-rect.left, py = e.clientY-rect.top;
+      const wx = player.x + minimapPan.x + (px-75)/MINIMAP_SCALE;
+      const wy = player.y + minimapPan.y + (py-75)/MINIMAP_SCALE;
+      state.waypoints[state.currentDistrict] = { x:Math.max(0,Math.min(WORLD_W,wx)), y:Math.max(0,Math.min(WORLD_H,wy)) };
+      rebuildWaypointBeacon();
+      document.getElementById('minimap-clear').classList.add('show');
+      scheduleSave();
+    }
+  });
+  document.getElementById('minimap-clear').addEventListener('click', function(){
+    state.waypoints[state.currentDistrict] = null;
+    rebuildWaypointBeacon();
+    this.classList.remove('show');
+    scheduleSave();
+  });
+
+  function drawMinimap(){
+    mctx.fillStyle = '#12141c'; mctx.fillRect(0,0,150,150);
+    if(state.currentInterior){
+      mctx.fillStyle='#6c7080'; mctx.font='10px IBM Plex Mono, monospace'; mctx.textAlign='center'; mctx.textBaseline='middle';
+      mctx.fillText('Indoors', 75, 75);
+      mctx.strokeStyle='rgba(212,160,23,0.5)'; mctx.strokeRect(0.5,0.5,149,149);
+      return;
+    }
+    const centerX = player.x + minimapPan.x, centerY = player.y + minimapPan.y;
+    const proj = function(wx,wy){ return { x:75+(wx-centerX)*MINIMAP_SCALE, y:75+(wy-centerY)*MINIMAP_SCALE }; };
+    mctx.strokeStyle='rgba(120,120,135,0.4)'; mctx.lineWidth=3;
+    roadNetwork.vertical.forEach(function(r){ const p1=proj(r.x,0), p2=proj(r.x,WORLD_H); mctx.beginPath(); mctx.moveTo(p1.x,p1.y); mctx.lineTo(p2.x,p2.y); mctx.stroke(); });
+    roadNetwork.horizontal.forEach(function(r){ const p1=proj(0,r.y), p2=proj(WORLD_W,r.y); mctx.beginPath(); mctx.moveTo(p1.x,p1.y); mctx.lineTo(p2.x,p2.y); mctx.stroke(); });
+    const dot = function(wx,wy,color,size){ const p=proj(wx,wy); if(p.x<-6||p.x>156||p.y<-6||p.y>156) return; mctx.beginPath(); mctx.arc(p.x,p.y,size,0,Math.PI*2); mctx.fillStyle=color; mctx.fill(); };
+    mapBuildings.filter(inDistrict).forEach(function(m){ dot(m.x,m.y, m.biz.category==='legit'?'#3e7c8c':'#a8394a', 3); });
+    serviceBuildings.filter(inDistrict).forEach(function(m){ dot(m.x,m.y,'#d4a017',3); });
+    localBusinesses.filter(inDistrict).forEach(function(m){ dot(m.x,m.y,'#7a6fb0',2.5); });
+    corners.filter(inDistrict).forEach(function(m){ dot(m.x,m.y, m.busted?'#5f6275':(m.dealer?'#d4a017':'#a8394a'), 2); });
+    mapNpcs.filter(inDistrict).forEach(function(m){ dot(m.x,m.y,'#f0efe8',2); });
+    gangRecruits.filter(inDistrict).forEach(function(m){ dot(m.x,m.y,'#f0efe8',2); });
+    const wp = state.waypoints[state.currentDistrict];
+    if(wp){
+      const p = proj(wp.x,wp.y);
+      mctx.strokeStyle='#d4a017'; mctx.lineWidth=2;
+      mctx.beginPath(); mctx.moveTo(p.x-6,p.y); mctx.lineTo(p.x+6,p.y); mctx.moveTo(p.x,p.y-6); mctx.lineTo(p.x,p.y+6); mctx.stroke();
+      mctx.beginPath(); mctx.arc(p.x,p.y,7,0,Math.PI*2); mctx.stroke();
+    }
+    const pp = proj(player.x,player.y);
+    mctx.save(); mctx.translate(pp.x,pp.y); mctx.rotate(player.facing);
+    mctx.beginPath(); mctx.moveTo(6,0); mctx.lineTo(-4,-4); mctx.lineTo(-4,4); mctx.closePath();
+    mctx.fillStyle='#d4a017'; mctx.fill(); mctx.restore();
+    mctx.strokeStyle='rgba(212,160,23,0.5)'; mctx.lineWidth=1; mctx.strokeRect(0.5,0.5,149,149);
+  }
+
+  // ================= INTERIOR (lightweight 2D scene) =================
+  const interiorCanvas = document.getElementById('interior-canvas');
+  const ictx = interiorCanvas.getContext('2d');
+  function iRoundRect(x,y,w,h,r){
+    ictx.beginPath(); ictx.moveTo(x+r,y);
+    ictx.arcTo(x+w,y,x+w,y+h,r); ictx.arcTo(x+w,y+h,x,y+h,r);
+    ictx.arcTo(x,y+h,x,y,r); ictx.arcTo(x,y,x+w,y,r); ictx.closePath();
+  }
+  function iLabelChip(text,x,y){
+    ictx.font='9px IBM Plex Mono, monospace';
+    const w = ictx.measureText(text).width+8;
+    ictx.fillStyle='rgba(10,11,16,0.6)'; iRoundRect(x-w/2,y-8,w,14,4); ictx.fill();
+    ictx.fillStyle='#c8cad8'; ictx.textAlign='center'; ictx.textBaseline='middle'; ictx.fillText(text,x,y-1);
+  }
+  function drawInteriorScene(){
+    ictx.clearRect(0,0,VIEW_W,VIEW_H);
+    ictx.fillStyle='#101116'; ictx.fillRect(0,0,VIEW_W,VIEW_H);
+    const ox=ROOM_OX, oy=ROOM_OY;
+    ictx.fillStyle='#232734'; ictx.fillRect(ox,oy,ROOM_W,ROOM_H);
+    ictx.strokeStyle='rgba(255,255,255,0.04)'; ictx.lineWidth=1;
+    for(let fx=0; fx<ROOM_W; fx+=28){ ictx.beginPath(); ictx.moveTo(ox+fx,oy); ictx.lineTo(ox+fx,oy+ROOM_H); ictx.stroke(); }
+    ictx.strokeStyle='#454a5c'; ictx.lineWidth=6; ictx.strokeRect(ox,oy,ROOM_W,ROOM_H);
+    ictx.fillStyle='#101116'; ictx.fillRect(ox+DOOR_LOCAL.x-26, oy+ROOM_H-4, 52, 10);
+    ictx.fillStyle='rgba(212,160,23,0.7)'; ictx.font='9px IBM Plex Mono, monospace'; ictx.textAlign='center'; ictx.textBaseline='middle';
+    ictx.fillText('EXIT', ox+DOOR_LOCAL.x, oy+ROOM_H+14);
+    hotspotsFor(state.currentInterior).forEach(function(h){
+      const sx=ox+h.x, sy=oy+h.y;
+      iRoundRect(sx-28,sy-18,56,36,5); ictx.fillStyle='rgba(212,160,23,0.14)'; ictx.fill();
+      ictx.strokeStyle='#d4a017'; ictx.lineWidth=1.4; ictx.stroke();
+      ictx.font='16px sans-serif'; ictx.textAlign='center'; ictx.textBaseline='middle'; ictx.fillStyle='#f0efe8';
+      ictx.fillText(h.icon, sx, sy-2);
+      iLabelChip(h.label, sx, sy+26);
+    });
+    const px=ox+player.x, py=oy+player.y;
+    ictx.save(); ictx.translate(px,py); ictx.rotate(player.facing);
+    ictx.beginPath(); ictx.arc(0,0,9,0,Math.PI*2); ictx.fillStyle='#f0efe8'; ictx.fill();
+    ictx.strokeStyle='#d4a017'; ictx.lineWidth=2; ictx.stroke();
+    ictx.beginPath(); ictx.moveTo(6,0); ictx.lineTo(12,-4.5); ictx.lineTo(12,4.5); ictx.closePath();
+    ictx.fillStyle='#d4a017'; ictx.fill(); ictx.restore();
+  }
+
+  // ================= MAIN LOOP =================
   function mapLoop(){
     if(!mapActive){ mapLoopRunning = false; return; }
     const now = Date.now();
@@ -1945,237 +2326,54 @@
       const len = Math.hypot(dx,dy);
       const spd = currentSpeed();
       player.facing = Math.atan2(dy,dx);
-      player.x += (dx/len) * spd * dt;
-      player.y += (dy/len) * spd * dt;
+      const stepX = (dx/len)*spd*dt, stepY = (dy/len)*spd*dt;
       if(state.currentInterior){
-        player.x = Math.max(20, Math.min(ROOM_W-20, player.x));
-        player.y = Math.max(20, Math.min(ROOM_H-14, player.y));
+        player.x = Math.max(20, Math.min(ROOM_W-20, player.x+stepX));
+        player.y = Math.max(20, Math.min(ROOM_H-14, player.y+stepY));
       } else {
-        player.x = Math.max(16, Math.min(WORLD_W-16, player.x));
-        player.y = Math.max(16, Math.min(WORLD_H-16, player.y));
+        const tryX = player.x+stepX, tryY = player.y+stepY;
+        if(tryMove(tryX,tryY,currentSolids)){ player.x=tryX; player.y=tryY; }
+        else if(tryMove(tryX,player.y,currentSolids)){ player.x=tryX; }
+        else if(tryMove(player.x,tryY,currentSolids)){ player.y=tryY; }
       }
     }
-
-    ctx.clearRect(0,0,VIEW_W,VIEW_H);
 
     if(state.currentInterior){
+      renderer.domElement.style.display = 'none';
+      interiorCanvas.style.display = 'block';
       drawInteriorScene();
     } else {
-      camera.x = Math.max(0, Math.min(WORLD_W-VIEW_W, player.x - VIEW_W/2));
-      camera.y = Math.max(0, Math.min(WORLD_H-VIEW_H, player.y - VIEW_H/2));
-      drawExteriorScene();
+      interiorCanvas.style.display = 'none';
+      renderer.domElement.style.display = 'block';
+      playerGroup.position.set(player.x, 0, player.y);
+      playerGroup.rotation.y = -player.facing + Math.PI/2;
+      camera3d.position.set(player.x, 260, player.y+72);
+      camera3d.lookAt(player.x, 0, player.y);
+      renderer.render(scene, camera3d);
     }
+    drawMinimap();
 
     const near = nearestMarker();
-    let hintLabel = '';
+    const hintEl = document.getElementById('map-hint');
     if(near){
-      if(near.type==='door') hintLabel = 'Exit';
-      else if(near.type==='hotspot') hintLabel = near.ref.label;
-      else if(near.type==='building') hintLabel = near.ref.biz.name;
-      else if(near.type==='service') hintLabel = near.ref.name;
-      else if(near.type==='local') hintLabel = near.ref.name;
-      else if(near.type==='corner') hintLabel = near.ref.name;
-      else if(near.type==='gangnpc') hintLabel = near.ref.name;
-      else hintLabel = (near.ref.type==='named' ? near.ref.name : state.procNpc.name);
+      let label = '';
+      if(near.type==='door') label='Exit';
+      else if(near.type==='hotspot') label=near.ref.label;
+      else if(near.type==='car') label='Enter ' + (getEquippedCar()?getEquippedCar().name:'car');
+      else if(near.type==='building') label=near.ref.biz.name;
+      else if(near.type==='service') label=near.ref.name;
+      else if(near.type==='local') label=near.ref.name;
+      else if(near.type==='corner') label=near.ref.name;
+      else if(near.type==='gangnpc') label=near.ref.name;
+      else label = (near.ref.type==='named' ? near.ref.name : state.procNpc.name);
+      hintEl.textContent = 'Press E to interact — ' + label;
+    } else if(state.inVehicle){
+      hintEl.textContent = 'Press E to park and get out';
+    } else {
+      hintEl.textContent = state.currentInterior ? ('Inside ' + state.currentInterior.name) : ('Driving around ' + districts.find(function(d){return d.id===state.currentDistrict;}).name);
     }
-    document.getElementById('map-hint').textContent = near
-      ? `Press E to interact — ${hintLabel}`
-      : (state.currentInterior ? `Inside ${state.currentInterior.name}` : `Driving around ${districts.find(d=>d.id===state.currentDistrict).name}`);
 
     requestAnimationFrame(mapLoop);
-  }
-
-  function drawExteriorScene(){
-    const theme = districtThemes[state.currentDistrict];
-    const cx = camera.x, cy = camera.y;
-    const inView = (wx,wy,pad)=> wx>cx-pad && wx<cx+VIEW_W+pad && wy>cy-pad && wy<cy+VIEW_H+pad;
-
-    ctx.fillStyle = theme.bg; ctx.fillRect(0,0,VIEW_W,VIEW_H);
-
-    ctx.strokeStyle = theme.road; ctx.lineWidth = 1;
-    const gridStart = 38 - (cx % 38);
-    for(let gx=gridStart; gx<=VIEW_W; gx+=38){ ctx.beginPath(); ctx.moveTo(gx,0); ctx.lineTo(gx,VIEW_H); ctx.stroke(); }
-    const gridStartY = 38 - (cy % 38);
-    for(let gy=gridStartY; gy<=VIEW_H; gy+=38){ ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(VIEW_W,gy); ctx.stroke(); }
-
-    ctx.strokeStyle = theme.avenue; ctx.lineWidth = 5;
-    [270, 700, 1130].forEach(wx=>{ const sx=wx-cx; if(sx>-10&&sx<VIEW_W+10){ ctx.beginPath(); ctx.moveTo(sx,0); ctx.lineTo(sx,VIEW_H); ctx.stroke(); } });
-    [220, 460, 730].forEach(wy=>{ const sy=wy-cy; if(sy>-10&&sy<VIEW_H+10){ ctx.beginPath(); ctx.moveTo(0,sy); ctx.lineTo(VIEW_W,sy); ctx.stroke(); } });
-
-    // landmark, fixed to world edges so it scrolls naturally with the camera
-    ctx.save();
-    if(theme.landmark==='park'){
-      const sy = WORLD_H-40-cy;
-      if(sy>-40 && sy<VIEW_H+40){
-        ctx.fillStyle='rgba(90,140,90,0.18)'; ctx.fillRect(0,sy,VIEW_W,44);
-        ctx.strokeStyle='rgba(90,140,90,0.4)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(0,sy); ctx.lineTo(VIEW_W,sy); ctx.stroke();
-        ctx.fillStyle='rgba(150,200,150,0.6)'; ctx.font='10px IBM Plex Mono, monospace'; ctx.textAlign='left'; ctx.textBaseline='middle';
-        ctx.fillText('🌳 '+theme.landmarkLabel, 14, sy+22);
-      }
-    } else if(theme.landmark==='rail'){
-      const sx = WORLD_W-40-cx;
-      if(sx>-40 && sx<VIEW_W+40){
-        ctx.fillStyle='rgba(140,140,150,0.10)'; ctx.fillRect(sx,0,44,VIEW_H);
-        ctx.strokeStyle='rgba(200,200,210,0.25)'; ctx.lineWidth=1;
-        for(let ty=6; ty<VIEW_H; ty+=12){ ctx.beginPath(); ctx.moveTo(sx,ty); ctx.lineTo(sx+44,ty); ctx.stroke(); }
-        ctx.save(); ctx.translate(sx+22, VIEW_H/2); ctx.rotate(Math.PI/2);
-        ctx.fillStyle='rgba(210,210,220,0.6)'; ctx.font='10px IBM Plex Mono, monospace'; ctx.textAlign='center';
-        ctx.fillText(theme.landmarkLabel, 0, 0); ctx.restore();
-      }
-    } else if(theme.landmark==='river'){
-      const sy = 0-cy;
-      if(sy>-40 && sy<VIEW_H){
-        ctx.fillStyle='rgba(70,120,160,0.22)'; ctx.fillRect(0,Math.max(0,sy),VIEW_W,32+Math.min(0,sy));
-        ctx.strokeStyle='rgba(110,160,200,0.35)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(0,sy+32); ctx.lineTo(VIEW_W,sy+32); ctx.stroke();
-        ctx.fillStyle='rgba(160,200,225,0.75)'; ctx.font='10px IBM Plex Mono, monospace'; ctx.textAlign='left'; ctx.textBaseline='middle';
-        ctx.fillText('🌊 '+theme.landmarkLabel, 14, sy+16);
-      }
-    }
-    ctx.restore();
-
-    // ---- ventures: appearance reflects real ownership state ----
-    mapBuildings.filter(inDistrict).forEach(m=>{
-      if(!inView(m.x,m.y,80)) return;
-      const b = m.biz;
-      const unlocked = isUnlocked(b);
-      const opened = unlocked && b.researched && b.level>0;
-      const big = b.baseCost >= 50000, small = b.baseCost < 1000;
-      const w = big?66:(small?48:56), h = big?56:(small?40:48);
-      const legit = b.category==='legit';
-      const sx = m.x-camera.x, sy = m.y-camera.y;
-      let front, roof, side, stroke;
-      if(!opened){ front='#33353d'; roof='#3d3f48'; side='#24262c'; stroke='#44464e'; }
-      else if(legit){ front='#3e6b78'; roof='#54899a'; side='#294a53'; stroke='#6fa6b5'; }
-      else { front='#7c3540'; roof='#9c4453'; side='#54232b'; stroke='#b85c6b'; }
-      const depth = drawBuilding3D(sx, sy, w, h, front, roof, side, stroke);
-      if(opened){
-        // lit windows, scaled with level as a sign of activity
-        const rows = Math.min(3, 1+Math.floor(b.level/8));
-        ctx.fillStyle = 'rgba(255,224,150,0.85)';
-        for(let r=0;r<rows;r++){
-          ctx.fillRect(sx-w/2+6, sy-h/2+8+r*10, w-12, 5);
-        }
-        if(b.level>=10){
-          // awning/sign bar
-          ctx.fillStyle = legit? '#d4a017' : '#e0546b';
-          ctx.fillRect(sx-w/2, sy+h/2-6, w, 6);
-          ctx.fillStyle='#1a1305'; ctx.font='bold 7px IBM Plex Mono, monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
-          ctx.fillText(b.name.split(' ')[0].toUpperCase(), sx, sy+h/2-3);
-        }
-        if(b.manager){
-          ctx.beginPath(); ctx.moveTo(sx+w/2+depth, sy-h/2-depth); ctx.lineTo(sx+w/2+depth+12, sy-h/2-depth-4); ctx.lineTo(sx+w/2+depth, sy-h/2-depth-8);
-          ctx.closePath(); ctx.fillStyle='#7a6fb0'; ctx.fill();
-        }
-      } else if(unlocked && !b.researched){
-        ctx.fillStyle='rgba(200,200,210,0.5)'; ctx.font='7px IBM Plex Mono, monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.fillText('FOR LEASE', sx, sy);
-      }
-      labelChip(b.name.split(' ')[0], sx, sy+h/2+12);
-    });
-
-    // ---- service buildings (bank, garage, realty, city hall, heist target) ----
-    serviceBuildings.filter(inDistrict).forEach(m=>{
-      if(!inView(m.x,m.y,70)) return;
-      const sx=m.x-camera.x, sy=m.y-camera.y;
-      const palette = {
-        bankHome:['#7a5f1a','#987a26','#513e10','#c9a227'],
-        garage:['#3e6b78','#54899a','#294a53','#6fa6b5'],
-        realty:['#3e6b78','#54899a','#294a53','#6fa6b5'],
-        cityhall:['#7a5f1a','#987a26','#513e10','#c9a227'],
-        heist:['#5a2a33','#743642','#3c1c22','#8a4c58'],
-      }[m.kind];
-      drawBuilding3D(sx, sy, 58, 48, palette[0], palette[1], palette[2], palette[3]);
-      ctx.font='18px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#f0efe8';
-      ctx.fillText(m.icon, sx, sy-2);
-      labelChip(m.name.split(' ').slice(0,2).join(' '), sx, sy+34);
-    });
-
-    // ---- local businesses (independent — dashed until extorted) ----
-    localBusinesses.filter(inDistrict).forEach(m=>{
-      if(!inView(m.x,m.y,60)) return;
-      const sx=m.x-camera.x, sy=m.y-camera.y;
-      const w=44, h=36;
-      if(m.extorted) drawBuilding3D(sx, sy, w, h, '#8a6a1a', '#a8862a', '#5c460f', '#d4a017');
-      else {
-        roundRect(sx-w/2+2, sy-h/2+3, w, h, 6); ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.fill();
-        roundRect(sx-w/2, sy-h/2, w, h, 6);
-        ctx.fillStyle='rgba(122,111,176,0.16)'; ctx.fill();
-        ctx.strokeStyle='#7a6fb0'; ctx.lineWidth=1.4; ctx.setLineDash([4,3]); ctx.stroke(); ctx.setLineDash([]);
-      }
-      ctx.font='15px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#f0efe8';
-      ctx.fillText(m.icon, sx, sy-2);
-      labelChip(m.name.split(' ')[0], sx, sy+h/2+9);
-    });
-
-    // ---- corners (street-level, no building — pin markers) ----
-    corners.filter(inDistrict).forEach(m=>{
-      if(!inView(m.x,m.y,40)) return;
-      const sx=m.x-camera.x, sy=m.y-camera.y;
-      const staffed = m.dealer && !m.busted;
-      const color = m.busted ? '#5f6275' : (staffed ? '#d4a017' : '#a8394a');
-      drawPin(sx, sy, 12, color, color, !staffed && !m.busted);
-      ctx.fillStyle = m.busted ? '#c8cad8' : '#1a1305';
-      ctx.font='bold 11px IBM Plex Mono, monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(m.busted?'×':'$', sx, sy-4.5);
-      labelChip(m.name.split(' ')[0], sx, sy+18);
-    });
-
-    // ---- people (named/procedural NPCs + gang recruits) ----
-    mapNpcs.filter(inDistrict).forEach(m=>{
-      if(!inView(m.x,m.y,40)) return;
-      const sx=m.x-camera.x, sy=m.y-camera.y;
-      const color = m.type==='named' ? '#d4a017' : '#7a6fb0';
-      drawPersonMarker(sx, sy, color, '#ffffff');
-      const label = m.type==='named' ? m.name : state.procNpc.name;
-      labelChip(label, sx, sy+21);
-    });
-    gangRecruits.filter(inDistrict).forEach(m=>{
-      if(!inView(m.x,m.y,40)) return;
-      const sx=m.x-camera.x, sy=m.y-camera.y;
-      drawPersonMarker(sx, sy, m.inducted?'#d4a017':'#5f6275', m.inducted?'#fff':'#a8394a');
-      labelChip(m.name.split(' ')[0], sx, sy+21);
-    });
-
-    drawPlayer(player.x-camera.x, player.y-camera.y);
-  }
-
-  function drawPersonMarker(sx, sy, fill, ring){
-    ctx.save();
-    ctx.beginPath(); ctx.arc(sx, sy+1.5, 11, 0, Math.PI*2); ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.fill();
-    ctx.beginPath(); ctx.arc(sx, sy, 11, 0, Math.PI*2); ctx.fillStyle=fill; ctx.fill();
-    ctx.strokeStyle=ring; ctx.lineWidth=1.5; ctx.stroke();
-    ctx.restore();
-    ctx.font='12px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#1a1305';
-    ctx.fillText('🙂', sx, sy);
-  }
-
-  function drawInteriorScene(){
-    ctx.fillStyle = '#101116'; ctx.fillRect(0,0,VIEW_W,VIEW_H);
-    const ox=ROOM_OX, oy=ROOM_OY;
-    // floor
-    ctx.fillStyle = '#232734'; ctx.fillRect(ox, oy, ROOM_W, ROOM_H);
-    ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth=1;
-    for(let fx=0; fx<ROOM_W; fx+=28){ ctx.beginPath(); ctx.moveTo(ox+fx,oy); ctx.lineTo(ox+fx,oy+ROOM_H); ctx.stroke(); }
-    // walls
-    ctx.strokeStyle = '#454a5c'; ctx.lineWidth = 6;
-    ctx.strokeRect(ox, oy, ROOM_W, ROOM_H);
-    // door gap
-    ctx.fillStyle = '#101116';
-    ctx.fillRect(ox+DOOR_LOCAL.x-26, oy+ROOM_H-4, 52, 10);
-    ctx.fillStyle = 'rgba(212,160,23,0.7)'; ctx.font='9px IBM Plex Mono, monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText('EXIT', ox+DOOR_LOCAL.x, oy+ROOM_H+14);
-
-    hotspotsFor(state.currentInterior).forEach(h=>{
-      const sx = ox+h.x, sy = oy+h.y;
-      roundRect(sx-28, sy-18, 56, 36, 5);
-      ctx.fillStyle = 'rgba(212,160,23,0.14)'; ctx.fill();
-      ctx.strokeStyle = '#d4a017'; ctx.lineWidth = 1.4; ctx.stroke();
-      ctx.font='16px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#f0efe8';
-      ctx.fillText(h.icon, sx, sy-2);
-      labelChip(h.label, sx, sy+26);
-    });
-
-    drawPlayer(ox+player.x, oy+player.y);
   }
 
   // ================= SETTINGS =================
@@ -2224,6 +2422,7 @@
       nextCampaignAt: state.nextCampaignAt, nextWarAt: state.nextWarAt,
       politicians: politicians.map(p=> ({ id:p.id, favor:p.favor, pocketed:p.pocketed })),
       gangRecruits: gangRecruits.map(g=> ({ id:g.id, inducted:g.inducted })),
+      inVehicle: state.inVehicle, waypoints: state.waypoints, parkedCarPos: state.parkedCarPos,
     };
   }
   let saveTimer = null;
@@ -2264,6 +2463,9 @@
         state.nextCampaignAt=d.nextCampaignAt||0; state.nextWarAt=d.nextWarAt||0;
         (d.politicians||[]).forEach(sp=>{ const p=politicians.find(x=>x.id===sp.id); if(p){ p.favor=sp.favor; p.pocketed=sp.pocketed||false; } });
         (d.gangRecruits||[]).forEach(sg=>{ const g=gangRecruits.find(x=>x.id===sg.id); if(g) g.inducted=sg.inducted; });
+        state.inVehicle = d.inVehicle||false;
+        state.waypoints = Object.assign({devon:null,westside:null,loop:null}, d.waypoints||{});
+        state.parkedCarPos = Object.assign({devon:null,westside:null,loop:null}, d.parkedCarPos||{});
         return true;
       }
     }catch(e){ /* no save yet */ }
@@ -2364,8 +2566,10 @@
   (async function boot(){
     const loaded = await loadGame();
     if(loaded && state.started){
-      const spawn = spawnPoints[state.currentDistrict] || {x:380,y:380};
+      const spawn = spawnPoints[state.currentDistrict] || {x:700,y:460};
       player.x = spawn.x; player.y = spawn.y;
+      buildDistrictScene(state.currentDistrict);
+      refreshPlayerModel();
       renderAll();
       log('📓 Picked up right where you left off.');
       return;
