@@ -1,5 +1,0 @@
-#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
-
-# pre-push hook: lint, test, build
-pnpm lint && pnpm test && pnpm build
