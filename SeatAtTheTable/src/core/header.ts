@@ -1,17 +1,17 @@
 // LEGAL: ================= VENTURE DATA =================
   const businesses = [
-    { id:'cart', name:"Kailash's Cart", flavor:"Chaat masala on a cheap bun. The regulars start lining up before sunrise.", category:'legit', icon:'🌭', baseCost:10, researchCost:0, baseIncome:0.4, unlock:{type:'start'}, crewBaseCost:8, managerLevelReq:12, managerName:'Nikhil, the Cart Foreman' },
-    { id:'store', name:"Corner Store", flavor:"Cigarettes, scratch tickets, and a register that never balances.", category:'legit', icon:'🏪', baseCost:150, researchCost:90, baseIncome:2.6, unlock:{type:'cash', value:120}, crewBaseCost:60, managerLevelReq:12, managerName:'Priya, Store Manager' },
-    { id:'laundromat', name:"Sudsy Laundromat", flavor:"Quarters in, cash out. Nobody asks questions about the back room.", category:'legit', icon:'🧺', baseCost:600, researchCost:350, baseIncome:9, unlock:{type:'cash', value:500}, crewBaseCost:220, managerLevelReq:14, managerName:'Big Tomasz' },
-    { id:'backroom_cards', name:"Backroom Card Games", flavor:"High-stakes poker runs after hours. The house takes 5% of every pot.", category:'street', icon:'🃏', baseCost:3500, researchCost:1800, baseIncome:35, heatPerLevel:0.3, unlock:{type:'respect', value:25}, crewBaseCost:1200, managerLevelReq:14, managerName:'Dealer Vik' },
-    { id:'garage', name:"Ashok's Auto Garage", flavor:"Honest repairs by day. A generous re-painting service by night.", category:'legit', icon:'🔧', baseCost:2500, researchCost:1500, baseIncome:26, unlock:{type:'cash', value:2000}, crewBaseCost:900, managerLevelReq:15, managerName:'Ashok Himself' },
-    { id:'cab', name:"Windy City Cab Co.", flavor:"A fleet of gypsy cabs. They know every alley shortcut in the city.", category:'legit', icon:'🚕', baseCost:6000, researchCost:3600, baseIncome:55, unlock:{type:'cash', value:5000}, crewBaseCost:2200, managerLevelReq:15, managerName:'Dispatcher Rosa' },
-    { id:'chop_ring', name:"Stolen Vehicle Export Ring", flavor:"Cars lifted from the Loop, re-VINed at Ashok's, and shipped out on midnight freighters.", category:'street', icon:'🚗', baseCost:24000, researchCost:14000, baseIncome:180, heatPerLevel:0.7, unlock:{type:'respect', value:100}, crewBaseCost:8500, managerLevelReq:16, managerName:'Chop Foreman Deke' },
-    { id:'restaurant', name:"Chicago Chaat House", flavor:"The flagship. A line out the door and a write-up in the Tribune.", category:'legit', icon:'🍛', baseCost:18000, researchCost:11000, baseIncome:140, unlock:{type:'cash', value:15000}, crewBaseCost:6800, managerLevelReq:16, managerName:'Head Chef Meera' },
-    { id:'lounge', name:"Marigold Lounge", flavor:"A nightclub named for the flowers Arjun's mother strung on the door in Delhi.", category:'legit', icon:'🥂', baseCost:70000, researchCost:42000, baseIncome:470, unlock:{type:'cash', value:60000}, crewBaseCost:27000, managerLevelReq:17, managerName:'Lena, House Manager' },
-    { id:'wire_network', name:"Underground Bookmaking & Wire Ops", flavor:"High-volume sports betting and offshore wire transfers, handled quietly in the Marigold VIP booths.", category:'street', icon:'📞', baseCost:120000, researchCost:75000, baseIncome:850, heatPerLevel:1.2, unlock:{type:'respect', value:300}, crewBaseCost:42000, managerLevelReq:17, managerName:'Bookie Sal' },
-    { id:'realestate', name:"West Side Holdings", flavor:"Buildings with Arjun's name on the paperwork and nobody else's.", category:'legit', icon:'🏢', baseCost:260000, researchCost:150000, baseIncome:1550, unlock:{type:'cash', value:220000}, crewBaseCost:95000, managerLevelReq:18, managerName:'Counsel Whitfield' },
-    { id:'syndicate_logistics', name:"Syndicate Freight & Contraband", flavor:"Controlling the docks. Everything that moves through the West Side pays a tariff before hitting the street.", category:'street', icon:'📦', baseCost:550000, researchCost:320000, baseIncome:3800, heatPerLevel:2.0, unlock:{type:'respect', value:800}, crewBaseCost:180000, managerLevelReq:18, managerName:'Dockmaster Chen' },
+    { id:'cart', name:"Kailash's Cart", flavor:"Chaat masala on a cheap bun. The regulars start lining up before sunrise.", category:'legit', icon:'🌭', baseCost:10, researchCost:0, baseIncome:0.25, unlock:{type:'start'}, crewBaseCost:6, managerLevelReq:12, managerName:'Nikhil, the Cart Foreman' },
+    { id:'store', name:"Corner Store", flavor:"Cigarettes, scratch tickets, and a register that never balances.", category:'legit', icon:'🏪', baseCost:150, researchCost:90, baseIncome:1.5, unlock:{type:'cash', value:120}, crewBaseCost:42, managerLevelReq:12, managerName:'Priya, Store Manager' },
+    { id:'laundromat', name:"Sudsy Laundromat", flavor:"Quarters in, cash out. Nobody asks questions about the back room.", category:'legit', icon:'🧺', baseCost:600, researchCost:350, baseIncome:5, unlock:{type:'cash', value:500}, crewBaseCost:154, managerLevelReq:14, managerName:'Big Tomasz' },
+    { id:'backroom_cards', name:"Backroom Card Games", flavor:"High-stakes poker runs after hours. The house takes 5% of every pot.", category:'street', icon:'🃏', baseCost:3500, researchCost:1800, baseIncome:20, heatPerLevel:0.3, unlock:{type:'respect', value:25}, crewBaseCost:840, managerLevelReq:14, managerName:'Dealer Vik' },
+    { id:'garage', name:"Ashok's Auto Garage", flavor:"Honest repairs by day. A generous re-painting service by night.", category:'legit', icon:'🔧', baseCost:2500, researchCost:1500, baseIncome:15, unlock:{type:'cash', value:2000}, crewBaseCost:630, managerLevelReq:15, managerName:'Ashok Himself' },
+    { id:'cab', name:"Windy City Cab Co.", flavor:"A fleet of gypsy cabs. They know every alley shortcut in the city.", category:'legit', icon:'🚕', baseCost:6000, researchCost:3600, baseIncome:32, unlock:{type:'cash', value:5000}, crewBaseCost:1540, managerLevelReq:15, managerName:'Dispatcher Rosa' },
+    { id:'chop_ring', name:"Stolen Vehicle Export Ring", flavor:"Cars lifted from the Loop, re-VINed at Ashok's, and shipped out on midnight freighters.", category:'street', icon:'🚗', baseCost:24000, researchCost:14000, baseIncome:110, heatPerLevel:0.7, unlock:{type:'respect', value:100}, crewBaseCost:5950, managerLevelReq:16, managerName:'Chop Foreman Deke' },
+    { id:'restaurant', name:"Chicago Chaat House", flavor:"The flagship. A line out the door and a write-up in the Tribune.", category:'legit', icon:'🍛', baseCost:18000, researchCost:11000, baseIncome:85, unlock:{type:'cash', value:15000}, crewBaseCost:4760, managerLevelReq:16, managerName:'Head Chef Meera' },
+    { id:'lounge', name:"Marigold Lounge", flavor:"A nightclub named for the flowers Arjun's mother strung on the door in Delhi.", category:'legit', icon:'🥂', baseCost:70000, researchCost:42000, baseIncome:280, unlock:{type:'cash', value:60000}, crewBaseCost:18900, managerLevelReq:17, managerName:'Lena, House Manager' },
+    { id:'wire_network', name:"Underground Bookmaking & Wire Ops", flavor:"High-volume sports betting and offshore wire transfers, handled quietly in the Marigold VIP booths.", category:'street', icon:'📞', baseCost:120000, researchCost:75000, baseIncome:450, heatPerLevel:1.2, unlock:{type:'respect', value:300}, crewBaseCost:29400, managerLevelReq:17, managerName:'Bookie Sal' },
+    { id:'realestate', name:"West Side Holdings", flavor:"Buildings with Arjun's name on the paperwork and nobody else's.", category:'legit', icon:'🏢', baseCost:260000, researchCost:150000, baseIncome:850, unlock:{type:'cash', value:220000}, crewBaseCost:66500, managerLevelReq:18, managerName:'Counsel Whitfield' },
+    { id:'syndicate_logistics', name:"Syndicate Freight & Contraband", flavor:"Controlling the docks. Everything that moves through the West Side pays a tariff before hitting the street.", category:'street', icon:'📦', baseCost:550000, researchCost:320000, baseIncome:1600, heatPerLevel:2.0, unlock:{type:'respect', value:800}, crewBaseCost:126000, managerLevelReq:18, managerName:'Dockmaster Chen' },
   ];
   businesses.forEach(b=>{ b.level=0; b.crew=0; b.manager=false; b.researched = b.unlock.type==='start'; b.tempMult=1; b.tempMultExpire=0; });
 
@@ -22,12 +22,17 @@
   ];
 
   const milestones = [
-    { at:200, title:"CHAAT CART TURNS A REAL PROFIT", body:"<p class='flavor'><strong>Two hundred dollars.</strong> He landed at O'Hare with a duffel bag and a cousin's phone number. This is the first cash that is entirely his.</p>" },
-    { at:2000, title:"DEVON STREET TAKES NOTICE", body:"<p class='flavor'>People who wouldn't look at him six months ago now nod when he walks past. It makes him paranoid. They watch him like a mark, or a boss. He isn't sure which is worse.</p>" },
-    { at:20000, title:"A NAME ON THE LEASE", body:"<p class='flavor'>He signs a commercial lease under his own name for the first time. No cousin co-signing, no favor owed. He sits in his car for ten minutes afterward, doors locked, just staring at the keys.</p>" },
-    { at:150000, title:"THE TRIBUNE WRITES HIM UP", body:"<p class='flavor'>A critic calls the Chaat House the best thing to happen to Devon Street in a decade. His mother has the clipping read to her three times over the phone. He sleeps with a gun under the mattress for a week.</p>" },
-    { at:750000, title:"THEY ASK HIM TO SIT DOWN", body:"<p class='flavor'>The kind of men who used to make people disappear for a living now pull out a chair for him. He used to run from rooms like this. Now, they pour him a drink and ask for his thoughts.</p>" },
-    { at:3000000, title:"WEST SIDE, EAST DELHI", body:"<p class='flavor'>His name is on buildings, a restaurant with a two-hour wait, and a ledger only four people have ever seen. The men he ran from in Delhi wouldn't recognize him.</p>" },
+    { id:'first_venture', title:"CHAAT CART TURNS A REAL PROFIT", body:"<p class='flavor'><strong>Two hundred dollars.</strong> He landed at O'Hare with a duffel bag and a cousin's phone number. This is the first cash that is entirely his.</p>" },
+    { id:'local_boss', title:"DEVON STREET TAKES NOTICE", body:"<p class='flavor'>People who ignored him six months ago nod when he walks past. A local merchant offers him a free coffee. He throws it out. Nothing on Devon Street is free.</p>" },
+    { id:'first_property', title:"A NAME ON THE LEASE", body:"<p class='flavor'>He signs a commercial lease under his own name for the first time. No cousin co-signing, no favor owed. He sits in his car for ten minutes afterward, doors locked, just staring at the keys.</p>" },
+    { id:'chaat_house', title:"THE TRIBUNE WRITES HIM UP", body:"<p class='flavor'>A critic calls the Chaat House the best thing to happen to Devon Street in a decade. His mother has the clipping read to her three times over the phone. He sleeps with a gun under the mattress for a week.</p>" },
+    { id:'kingpin', title:"THEY ASK HIM TO SIT DOWN", body:"<p class='flavor'>The kind of men who used to make people disappear for a living now pull out a chair for him. He used to run from rooms like this. Now, they pour him a drink and ask for his thoughts.</p>" },
+    { id:'heist', title:"WEST SIDE, EAST DELHI", body:"<p class='flavor'>His name is on buildings, a restaurant with a two-hour wait, and a ledger only four people have ever seen. The men he ran from in Delhi wouldn't recognize him.</p>" },
+    { id:'extortion', title:"THE PRICE OF DOING BUSINESS", body:"<p class='flavor'>He walks into a neighborhood shop and demands a cut of their register. He remembers when men did this to his uncle. The register clicks open anyway. The money feels different this time.</p>" },
+    { id:'raid', title:"KICKING IN THE DOORS", body:"<p class='flavor'>Sirens in the alley, flashing lights in the front window. The police take the cash, the product, and a chunk of his street reputation. He stands on the sidewalk watching it happen. Next time, he'll pay the right people.</p>" },
+    { id:'crew_induct', title:"A SEAT AT THE TABLE", body:"<p class='flavor'>He brings someone into the inner circle. They aren't just runners on a corner anymore—they're family. He pours them a drink, but keeps an eye on the door. Trust is expensive.</p>" },
+    { id:'bentley', title:"THE HEAVY MACHINERY", body:"<p class='flavor'>He buys a vintage Bentley with cash. It's too big for the narrow streets, too loud, too impossible to ignore. That's exactly why he bought it. He wants everyone to see him coming.</p>" },
+    { id:'docks', title:"CONTROLLING THE DOCKS", body:"<p class='flavor'>Nothing moves through the West Side without his say-so. The cargo ships, the trucks, the longshoremen—they all pay a tariff. The city's arteries belong to him now.</p>" },
   ];
 
   const familyTiers = [
@@ -81,10 +86,10 @@
     { id:'bentley', name:'Vintage Bentley', icon:'🏎️', cost:150000, speedMult:1.55, heistBonus:0.12, respectPerSec:0.4, color:'#c9a227', len:31, wid:16 },
   ];
   const properties = [
-    { id:'twoflat', name:'Rockwell Two-Flat', icon:'🏠', cost:3000, incomePerSec:1.1 },
-    { id:'retailstrip', name:'Devon Retail Strip', icon:'🏬', cost:22000, incomePerSec:7.5 },
-    { id:'aptbuilding', name:'Uptown Apartments', icon:'🏙️', cost:120000, incomePerSec:38 },
-    { id:'loft', name:'Riverside Lofts', icon:'🌆', cost:600000, incomePerSec:180 },
+    { id:'twoflat', name:'Rockwell Two-Flat', icon:'🏠', cost:3000, incomePerSec:4.5 },
+    { id:'retailstrip', name:'Devon Retail Strip', icon:'🏬', cost:22000, incomePerSec:32 },
+    { id:'aptbuilding', name:'Uptown Apartments', icon:'🏙️', cost:120000, incomePerSec:165 },
+    { id:'loft', name:'Riverside Lofts', icon:'🌆', cost:600000, incomePerSec:800 },
   ];
 
   // LEGAL: Independent shops — not yours. You can rob them (one-off, cooldown, risk)
@@ -564,15 +569,14 @@
     document.getElementById('modal-overlay').classList.remove('hidden');
   }
 
-  function checkMilestones(){
-    for(const m of milestones){
-      if(state.cash >= m.at && !state.seenMilestones.has(m.at)){
-        state.seenMilestones.add(m.at);
-        showModal({ eyebrow:'Chicago Tribune — West Side Edition', title:m.title, body:m.body, buttons:[{label:'Keep Going'}] });
-        log(`📰 Headline: "${m.title.charAt(0)}${m.title.slice(1).toLowerCase()}"`);
-        break;
-      }
-    }
+  function triggerMilestone(id: string){
+    if(state.seenMilestones.has(id)) return;
+    const m = milestones.find(x => x.id === id);
+    if(!m) return;
+    state.seenMilestones.add(id);
+    showModal({ eyebrow:'Chicago Tribune — West Side Edition', title:m.title, body:m.body, buttons:[{label:'Keep Going'}] });
+    log(`📰 Headline: "${m.title.charAt(0)}${m.title.slice(1).toLowerCase()}"`);
+    scheduleSave();
   }
 
   function maybeTriggerEvent(){
@@ -601,7 +605,7 @@
     } else {
       bodyHtml += `<p class="flavor">Level ${b.level} · ${incomeFor(b).toFixed(1)}/s · Efficiency ${Math.round(efficiency(b)*100)}%</p>`;
       const cost = costForLevel(b);
-      buttons.push({ label:`${b.level===0?'Open':'Expand'} (${fmt(cost)})`, onClick:function(){ if(state.cash>=cost){ state.cash-=cost; b.level+=1; if(b.category==='street') state.respect+=1; checkMilestones(); } renderAll(); }});
+      buttons.push({ label:`${b.level===0?'Open':'Expand'} (${fmt(cost)})`, onClick:function(){ if(state.cash>=cost){ state.cash-=cost; b.level+=1; if(b.category==='street') state.respect+=1; if(b.level===1){ triggerMilestone('first_venture'); if(b.id==='restaurant') triggerMilestone('chaat_house'); if(b.id==='syndicate_logistics') triggerMilestone('docks'); } } renderAll(); }});
       if(!b.manager){
         const cc = crewCostFor(b);
         buttons.push({ label:`+ Crew (${fmt(cc)})`, onClick:function(){ if(state.cash>=cc && crewUsedGlobal()<crewCapGlobal()){ state.cash-=cc; b.crew+=1; } renderAll(); }});
@@ -647,6 +651,7 @@
     if(win){
       state.cash += reward;
       state.respect += Math.ceil(reward/400);
+      triggerMilestone('heist');
       log(`💰 The job on First Chicago Trust pays out ${fmt(reward)}.`);
       dialogues.bankheist.nodes.result.text = `Clean. You're out before the second patrol even swings back. <strong>${fmt(reward)}</strong> heavier, and word will get around.`;
     } else {
@@ -697,6 +702,7 @@
       buttons.push({ label:'Extort (needs 30 respect)', onClick:function(){
         if(state.respect<30){ log(`🙅 ${biz.owner} laughs you off. You don't have the reputation for this yet.`); renderAll(); return; }
         biz.extorted = true;
+        triggerMilestone('extortion');
         log(`🕶️ ${biz.owner} agrees to pay, one way or another.`);
         renderAll();
       }});
@@ -749,6 +755,7 @@
       if(state.cash<c.cost) return;
       state.cash -= c.cost; state.ownedCars.push(id);
       if(!state.equippedCar) state.equippedCar = id;
+      if(id === 'bentley') triggerMilestone('bentley');
       log(`🚗 You pick up a ${c.name}.`); updateParkedCarMesh(); refreshPlayerModel(); renderAll();
     }));
     document.querySelectorAll('[data-car-equip]').forEach(btn=> btn.addEventListener('click', function(){
@@ -765,6 +772,7 @@
       const id = btn.getAttribute('data-prop-buy'); const p = properties.find(x=>x.id===id);
       if(state.cash<p.cost) return;
       state.cash -= p.cost; state.ownedProperties.push(id);
+      if(state.ownedProperties.length === 1) triggerMilestone('first_property');
       log(`🏢 You close on ${p.name}.`); renderAll();
     }));
     document.querySelectorAll('[data-prop-sell]').forEach(btn=> btn.addEventListener('click', function(){
@@ -942,6 +950,7 @@
     }
     state.cash -= g.cost;
     g.inducted = true;
+    triggerMilestone('crew_induct');
     let extra = '';
     if(style==='test'){
       // LEGAL: Proving yourself costs a little more up front but earns real respect.
@@ -1285,12 +1294,16 @@
   // LEGAL: silently swallowed by the browser. This function is what the game loop
   // LEGAL: calls every 250ms instead.
   function refreshHUD(){
+    const rank = currentRank();
     document.getElementById('hud-cash').textContent = fmt(state.cash);
     document.getElementById('hud-income').textContent = (netIncome()>=0?'+':'') + fmt(netIncome()) + '/s';
-    document.getElementById('hud-rank').textContent = currentRank();
+    document.getElementById('hud-rank').textContent = rank;
     document.getElementById('hud-respect').textContent = `${fmtR(state.respect)} respect`;
     document.getElementById('heat-fill').style.width = Math.min(100, state.heat) + '%';
     document.getElementById('hud-crew').textContent = `${crewUsedGlobal()} / ${crewCapGlobal()}`;
+
+    if(rank === 'Local Boss') triggerMilestone('local_boss');
+    if(rank === 'West Side Kingpin') triggerMilestone('kingpin');
 
     const prestigeBtn = document.getElementById('prestige-btn');
     const threshold = 50000 * Math.pow(4, state.prestigeCount);
@@ -2218,7 +2231,7 @@
         state.cash=d.cash; state.respect=d.respect; state.heat=d.heat;
         state.territoryTier=d.territoryTier; state.negotiateTier=d.negotiateTier;
         state.muscleCount=d.muscleCount; state.ratCount=d.ratCount; state.bribeOn=d.bribeOn;
-        state.prestigeCount=d.prestigeCount; state.seenMilestones = new Set(d.seenMilestones||[]);
+        state.prestigeCount=d.prestigeCount; state.seenMilestones = new Set((d.seenMilestones||[]).map(x=>String(x)));
         state.playSeconds=d.playSeconds||0; state.investorPenalty=Math.min(0.5, d.investorPenalty||0);
         state.started = d.started; if(d.procNpc) state.procNpc = d.procNpc;
         if(d.lastTick) state.lastTick = d.lastTick;
@@ -2298,6 +2311,7 @@
       const lossPct = Math.max(0.05, 0.15 - state.ratCount*0.01) * whitmoreMult();
       const loss = state.cash * lossPct;
       state.cash -= loss; state.respect = Math.max(0, state.respect-5); state.heat = 30;
+      triggerMilestone('raid');
       log(`🚨 Someone official-looking cleans out ${fmt(loss)} "in fines."`);
       const extortedList = localBusinesses.filter(b=>b.extorted);
       if(extortedList.length && Math.random()<0.4){
