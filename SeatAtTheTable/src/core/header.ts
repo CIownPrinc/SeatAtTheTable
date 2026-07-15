@@ -22,12 +22,12 @@
   ];
 
   const milestones = [
-    { at:200, title:"CHAAT CART TURNS A REAL PROFIT", body:"<p class='flavor'><strong>Two hundred dollars.</strong> It won't buy a neighborhood. But to a guy who landed at O'Hare with nothing but a duffel bag and a phone number for a cousin he'd never met, it’s the first real money he's made.</p>" },
-    { at:2000, title:"DEVON STREET TAKES NOTICE", body:"<p class='flavor'>People who wouldn't look at him six months ago nod when he walks past. Back home, men wanted something from him. Here, for the first time, people want to be near him. It makes him paranoid. They watch him like a mark, or a boss. He isn't sure which is worse.</p>" },
+    { at:200, title:"CHAAT CART TURNS A REAL PROFIT", body:"<p class='flavor'><strong>Two hundred dollars.</strong> He landed at O'Hare with a duffel bag and a cousin's phone number. This is the first cash that is entirely his.</p>" },
+    { at:2000, title:"DEVON STREET TAKES NOTICE", body:"<p class='flavor'>People who wouldn't look at him six months ago now nod when he walks past. It makes him paranoid. They watch him like a mark, or a boss. He isn't sure which is worse.</p>" },
     { at:20000, title:"A NAME ON THE LEASE", body:"<p class='flavor'>He signs a commercial lease under his own name for the first time. No cousin co-signing, no favor owed. He sits in his car for ten minutes afterward, doors locked, just staring at the keys.</p>" },
     { at:150000, title:"THE TRIBUNE WRITES HIM UP", body:"<p class='flavor'>A critic calls the Chaat House the best thing to happen to Devon Street in a decade. His mother has the clipping read to her three times over the phone. He sleeps with a gun under the mattress for a week.</p>" },
     { at:750000, title:"THEY ASK HIM TO SIT DOWN", body:"<p class='flavor'>The kind of men who used to make people disappear for a living now pull out a chair for him. He used to run from rooms like this. Now, they pour him a drink and ask for his thoughts.</p>" },
-    { at:3000000, title:"WEST SIDE, EAST DELHI", body:"<p class='flavor'>His name is on buildings, a restaurant with a two-hour wait, and a ledger only four people have ever seen in full. He isn't sure the men he ran from in Delhi would even recognize him. He isn't sure he does.</p>" },
+    { at:3000000, title:"WEST SIDE, EAST DELHI", body:"<p class='flavor'>His name is on buildings, a restaurant with a two-hour wait, and a ledger only four people have ever seen. The men he ran from in Delhi wouldn't recognize him.</p>" },
   ];
 
   const familyTiers = [
