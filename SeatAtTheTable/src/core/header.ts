@@ -750,37 +750,6 @@
       </div>`;
     }).join('');
 
-    document.querySelectorAll('[data-car-buy]').forEach(btn=> btn.addEventListener('click', function(){
-      const id = btn.getAttribute('data-car-buy'); const c = cars.find(x=>x.id===id);
-      if(state.cash<c.cost) return;
-      state.cash -= c.cost; state.ownedCars.push(id);
-      if(!state.equippedCar) state.equippedCar = id;
-      if(id === 'bentley') triggerMilestone('bentley');
-      log(`🚗 You pick up a ${c.name}.`); updateParkedCarMesh(); refreshPlayerModel(); renderAll();
-    }));
-    document.querySelectorAll('[data-car-equip]').forEach(btn=> btn.addEventListener('click', function(){
-      state.equippedCar = btn.getAttribute('data-car-equip'); updateParkedCarMesh(); refreshPlayerModel(); renderAll();
-    }));
-    document.querySelectorAll('[data-car-sell]').forEach(btn=> btn.addEventListener('click', function(){
-      const id = btn.getAttribute('data-car-sell'); const c = cars.find(x=>x.id===id);
-      state.ownedCars = state.ownedCars.filter(x=>x!==id);
-      if(state.equippedCar===id) state.equippedCar = state.ownedCars[0] || null;
-      state.cash += Math.round(c.cost*0.55);
-      log(`🚗 You sell the ${c.name}.`); updateParkedCarMesh(); refreshPlayerModel(); renderAll();
-    }));
-    document.querySelectorAll('[data-prop-buy]').forEach(btn=> btn.addEventListener('click', function(){
-      const id = btn.getAttribute('data-prop-buy'); const p = properties.find(x=>x.id===id);
-      if(state.cash<p.cost) return;
-      state.cash -= p.cost; state.ownedProperties.push(id);
-      if(state.ownedProperties.length === 1) triggerMilestone('first_property');
-      log(`🏢 You close on ${p.name}.`); renderAll();
-    }));
-    document.querySelectorAll('[data-prop-sell]').forEach(btn=> btn.addEventListener('click', function(){
-      const id = btn.getAttribute('data-prop-sell'); const p = properties.find(x=>x.id===id);
-      state.ownedProperties = state.ownedProperties.filter(x=>x!==id);
-      state.cash += Math.round(p.cost*0.6);
-      log(`🏢 You sell ${p.name}.`); renderAll();
-    }));
   }
 
   function renderBankPanel(){
@@ -1165,41 +1134,76 @@
     return el;
   }
 
-  function wireCardActions(){
-    document.querySelectorAll('[data-action]').forEach(btn=>{
-      btn.addEventListener('click', function(){
-        const id = btn.getAttribute('data-id');
-        const action = btn.getAttribute('data-action');
-        const b = businesses.find(x=>x.id===id);
-        if(action==='research'){
-          const rc = researchCostFor(b);
-          if(state.cash<rc) return;
-          state.cash -= rc; b.researched = true;
-          log(`🔬 You research ${b.name}. It's ready to open.`);
-        } else if(action==='expand'){
-          const cost = costForLevel(b);
-          if(state.cash<cost) return;
-          state.cash -= cost; b.level += 1;
-          if(b.category==='street') state.respect += 1;
-          if(b.level===1) log(`${b.icon} ${b.name} opens its doors.`);
-          checkMilestones();
-        } else if(action==='hirecrew'){
-          const cc = crewCostFor(b);
-          if(state.cash<cc || crewUsedGlobal()>=crewCapGlobal()) return;
-          state.cash -= cc; b.crew += 1;
-        } else if(action==='firecrew'){
-          if(b.crew<=0) return;
-          const refund = Math.ceil(crewCostFor({...b, crew:b.crew-1}) * 0.5);
-          b.crew -= 1; state.cash += refund;
-        } else if(action==='hiremanager'){
-          const mc = managerCostFor(b);
-          if(state.cash<mc) return;
-          state.cash -= mc; b.manager = true; b.crew = 0;
-          log(`👔 ${b.managerName} now runs ${b.name} full-time.`);
-        }
-        renderAll();
-      });
-    });
+  function handleCardAction(e){
+    const btn = (e.target as HTMLElement).closest('[data-action]');
+    if(!btn) return;
+    const id = btn.getAttribute('data-id');
+    const action = btn.getAttribute('data-action');
+    const b = businesses.find(x=>x.id===id);
+    if(!b) return;
+    if(action==='research'){
+      const rc = researchCostFor(b);
+      if(state.cash<rc) return;
+      state.cash -= rc; b.researched = true;
+      log(`🔬 You research ${b.name}. It's ready to open.`);
+    } else if(action==='expand'){
+      const cost = costForLevel(b);
+      if(state.cash<cost) return;
+      state.cash -= cost; b.level += 1;
+      if(b.category==='street') state.respect += 1;
+      if(b.level===1) {
+        log(`${b.icon} ${b.name} opens its doors.`);
+        triggerMilestone('first_venture');
+        if(b.id==='restaurant') triggerMilestone('chaat_house');
+        if(b.id==='syndicate_logistics') triggerMilestone('docks');
+      }
+    } else if(action==='hirecrew'){
+      const cc = crewCostFor(b);
+      if(state.cash<cc || crewUsedGlobal()>=crewCapGlobal()) return;
+      state.cash -= cc; b.crew += 1;
+    } else if(action==='firecrew'){
+      if(b.crew<=0) return;
+      const refund = Math.ceil(crewCostFor({...b, crew:b.crew-1}) * 0.5);
+      b.crew -= 1; state.cash += refund;
+    } else if(action==='hiremanager'){
+      const mc = managerCostFor(b);
+      if(state.cash<mc) return;
+      state.cash -= mc; b.manager = true; b.crew = 0;
+      log(`👔 ${b.managerName} now runs ${b.name} full-time.`);
+    }
+    renderAll();
+  }
+
+  function handleAssetAction(e){
+    const btn = (e.target as HTMLElement).closest('[data-car-buy],[data-car-equip],[data-car-sell],[data-prop-buy],[data-prop-sell]');
+    if(!btn) return;
+    if(btn.hasAttribute('data-car-buy')){
+      const id = btn.getAttribute('data-car-buy'); const c = cars.find(x=>x.id===id);
+      if(state.cash<c.cost) return;
+      state.cash -= c.cost; state.ownedCars.push(id);
+      if(!state.equippedCar) state.equippedCar = id;
+      if(id === 'bentley') triggerMilestone('bentley');
+      log(`🚗 You pick up a ${c.name}.`); updateParkedCarMesh(); refreshPlayerModel(); renderAll();
+    } else if(btn.hasAttribute('data-car-equip')){
+      state.equippedCar = btn.getAttribute('data-car-equip'); updateParkedCarMesh(); refreshPlayerModel(); renderAll();
+    } else if(btn.hasAttribute('data-car-sell')){
+      const id = btn.getAttribute('data-car-sell'); const c = cars.find(x=>x.id===id);
+      state.ownedCars = state.ownedCars.filter(x=>x!==id);
+      if(state.equippedCar===id) state.equippedCar = state.ownedCars[0] || null;
+      state.cash += Math.round(c.cost*0.55);
+      log(`🚗 You sell the ${c.name}.`); updateParkedCarMesh(); refreshPlayerModel(); renderAll();
+    } else if(btn.hasAttribute('data-prop-buy')){
+      const id = btn.getAttribute('data-prop-buy'); const p = properties.find(x=>x.id===id);
+      if(state.cash<p.cost) return;
+      state.cash -= p.cost; state.ownedProperties.push(id);
+      if(state.ownedProperties.length === 1) triggerMilestone('first_property');
+      log(`🏢 You close on ${p.name}.`); renderAll();
+    } else if(btn.hasAttribute('data-prop-sell')){
+      const id = btn.getAttribute('data-prop-sell'); const p = properties.find(x=>x.id===id);
+      state.ownedProperties = state.ownedProperties.filter(x=>x!==id);
+      state.cash += Math.round(p.cost*0.6);
+      log(`🏢 You sell ${p.name}.`); renderAll();
+    }
   }
 
   // LEGAL: ================= RENDER: STREET PANEL =================
@@ -1259,7 +1263,6 @@
     const streetGrid = document.getElementById('grid-street');
     legitGrid.innerHTML=''; streetGrid.innerHTML='';
     businesses.forEach(b=>{ const card = renderCard(b); (b.category==='legit' ? legitGrid : streetGrid).appendChild(card); });
-    wireCardActions();
     renderStreetPanel();
     renderBankPanel();
     renderAssetsPanel();
@@ -1284,7 +1287,6 @@
       prestigeBtn.disabled = state.cash < threshold;
       prestigeBtn.textContent = state.cash >= threshold ? `Send for Family (${nextFamily.name})` : `Send for Family — ${fmt(threshold)}`;
     }
-    scheduleSave();
   }
 
   // LEGAL: Cheap per-tick refresh: updates numbers and enabled/disabled state on the
@@ -2321,7 +2323,7 @@
       }
     }
 
-    checkMilestones();
+
     maybeTriggerEvent();
     refreshHUD();
     refreshAffordability();
@@ -2388,6 +2390,12 @@
       }}]
     });
     renderAll();
+    // LEGAL: Wire stable delegation listeners exactly once at boot. These containers
+    // LEGAL: are never destroyed, so listeners accumulate at exactly 1 per container.
+    document.getElementById('grid-legit').addEventListener('click', handleCardAction);
+    document.getElementById('grid-street').addEventListener('click', handleCardAction);
+    document.getElementById('assets-cars').addEventListener('click', handleAssetAction);
+    document.getElementById('assets-buildings').addEventListener('click', handleAssetAction);
   })();
 
   // LEGAL: ================= TOOLTIPS =================
