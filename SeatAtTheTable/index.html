@@ -15,8 +15,8 @@
   <div class="hud-title">Seat at the <span>Table</span></div>
   <div class="hud-stats">
     <div class="stat"><div class="stat-label">Cash</div><div class="stat-value" id="hud-cash">$47</div><div class="stat-sub" id="hud-income">+$0/s</div></div>
-    <div class="stat"><div class="stat-label">Standing<span class="info-icon" data-tooltip="Your street reputation. Higher standing unlocks better territory, bigger crews, and lowers prices across the board.">?</span></div><div class="stat-value teal" id="hud-rank">Nobody</div><div class="stat-sub" id="hud-respect">0 respect</div></div>
-    <div class="stat"><div class="stat-label">Heat<span class="info-icon" data-tooltip="Police attention. Fills as you run illegal operations. At 100%, you get raided, losing a massive cut of cash and respect.">?</span></div><div class="heat-bar"><div class="heat-fill" id="heat-fill"></div></div></div>
+    <div class="stat"><div class="stat-label">Standing<span class="info-icon" data-tooltip="Your street reputation. Higher Standing unlocks better territory, bigger crews, and lowers prices across the board.">?</span></div><div class="stat-value teal" id="hud-rank">Nobody</div><div class="stat-sub" id="hud-respect">0 respect</div></div>
+    <div class="stat"><div class="stat-label">Heat<span class="info-icon" data-tooltip="Police attention. Fills as you run illegal operations. At 100%, you get raided, losing a massive cut of cash and Respect.">?</span></div><div class="heat-bar"><div class="heat-fill" id="heat-fill"></div></div></div>
     <div class="stat"><div class="stat-label">Crew<span class="info-icon" data-tooltip="Your available manpower. Buy territory to increase maximum crew size. Crew can be assigned to run your legitimate fronts or illicit street operations.">?</span></div><div class="stat-value violet" id="hud-crew" style="font-size:15px;">0 / 6</div></div>
     <button class="prestige-btn" id="prestige-btn" style="display:none;"></button>
   </div>
@@ -36,15 +36,15 @@
 
   <div class="tab-panel active" data-tab="empire">
     <div class="section-eyebrow">Legitimate Ventures — Cash &amp; Fronts</div>
-    <p class="pillar-desc">Cash builds your businesses. Research a venture once, then expand it level by level — but a venture only earns what its crew can actually move.</p>
+    <p class="pillar-desc">Cash buys properties and pays crew. Research a venture once, then expand it level by level. But remember... a business only earns what its crew can actually do.</p>
     <div class="grid" id="grid-legit"></div>
 
     <div class="section-eyebrow" style="margin-top:26px;">The Other Ledger — Underground Operations</div>
-    <p class="pillar-desc">The hidden side of your empire. Illicit operations generate massive cash yields, but every level and assigned crew member generates continuous police Heat.</p>
+    <p class="pillar-desc">The hidden side of your empire. Illegal operations generate massive cash yields, but every level and assigned crew member generates continuous police attention.</p>
     <div class="grid" id="grid-street"></div>
 
     <div class="section-eyebrow">The Street — Muscle &amp; Respect</div>
-    <p class="pillar-desc">Muscle earns respect but draws heat. Bribes and informants manage the risk. Respect buys territory (more crew capacity) and leverage (lower prices everywhere).</p>
+    <p class="pillar-desc">Muscle earns Respect but draws Heat. Bribes and informants manage Heat. That Respect can be used to buy territory for your crew and even lower prices.</p>
     <div class="street-grid" id="street-panel"></div>
   </div>
 
@@ -69,18 +69,18 @@
     </div>
 
     <div class="section-eyebrow" style="margin-top:26px;">Territory Control</div>
-    <p class="pillar-desc">Control drifts toward whoever actually maintains a presence — muscle, staffed corners, running ventures. Push it directly with respect.</p>
+    <p class="pillar-desc">Control drifts toward whoever maintains a presence — muscle, staffed corners, running ventures. Push it directly with Respect.</p>
     <div class="street-grid" id="territory-panel"></div>
   </div>
 
   <div class="tab-panel" data-tab="bank">
     <div class="section-eyebrow">First Chicago Trust &amp; Yours</div>
-    <p class="pillar-desc">Bank what you don't need on hand. It's slow money, but it's safe money — heat can't touch it.</p>
+    <p class="pillar-desc">Bank what you don't need on hand. It's slow money, but it's safe money — Heat can't touch it.</p>
     <div id="bank-panel"></div>
   </div>
   <div class="tab-panel" data-tab="politics">
     <div class="section-eyebrow">City Hall</div>
-    <p class="pillar-desc">Influence opens doors. Favor with specific people opens specific doors. Enough of both, and you can ask for a seat instead of a favor.</p>
+    <p class="pillar-desc">Influence opens doors. Favor with specific people opens specific doors. Get enough of both, and you can ask for a seat instead of a favor.</p>
     <div id="politics-panel"></div>
   </div>
   <div class="tab-panel" data-tab="gang">
@@ -94,7 +94,7 @@
     <div class="street-grid" id="assets-cars"></div>
 
     <div class="section-eyebrow" style="margin-top:26px;">Property</div>
-    <p class="pillar-desc">Buildings you just own. No crew, no research, no expansion — just a check every second.</p>
+    <p class="pillar-desc">Buildings you just own. No crew, no research, no expansion. Just a check every second.</p>
     <div class="street-grid" id="assets-buildings"></div>
   </div>
 
