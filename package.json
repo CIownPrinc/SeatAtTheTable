@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "prepare": "husky install",
+    "prepare": "husky",
     "dev": "turbo run dev",
     "build": "turbo run build",
     "lint": "eslint .",
@@ -21,6 +21,7 @@
       "onFail": "download"
     }
   },
+  "packageManager": "pnpm@11.13.0",
   "type": "module",
   "dependencies": {
     "@shadcn/ui": "^0.0.4",
