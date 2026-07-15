@@ -3,20 +3,22 @@
     { id:'cart', name:"Kailash's Cart", flavor:"A hot-dog stand with a chaat masala twist. Devon Street regulars line up before the sun's fully out.", category:'legit', icon:'🌭', baseCost:10, researchCost:0, baseIncome:0.4, unlock:{type:'start'}, crewBaseCost:8, managerLevelReq:12, managerName:'Nikhil, the Cart Foreman' },
     { id:'store', name:"Corner Store", flavor:"Milk, cigarettes, lottery tickets, and a till that never quite balances honestly.", category:'legit', icon:'🏪', baseCost:150, researchCost:90, baseIncome:2.6, unlock:{type:'cash', value:120}, crewBaseCost:60, managerLevelReq:12, managerName:'Priya, Store Manager' },
     { id:'laundromat', name:"Sudsy Laundromat", flavor:"Quarters in, cash out. Nobody asks questions about the back room.", category:'legit', icon:'🧺', baseCost:600, researchCost:350, baseIncome:9, unlock:{type:'cash', value:500}, crewBaseCost:220, managerLevelReq:14, managerName:'Big Tomasz' },
+    { id:'backroom_cards', name:"Backroom Card Games", flavor:"High-stakes poker games run after hours inside the laundromat back room. House takes 5% of every pot.", category:'street', icon:'🃏', baseCost:3500, researchCost:1800, baseIncome:35, heatPerLevel:0.3, unlock:{type:'respect', value:25}, crewBaseCost:1200, managerLevelReq:14, managerName:'Dealer Vik' },
     { id:'garage', name:"Ashok's Auto Garage", flavor:"Honest repairs by day. A very generous re-painting service by night.", category:'legit', icon:'🔧', baseCost:2500, researchCost:1500, baseIncome:26, unlock:{type:'cash', value:2000}, crewBaseCost:900, managerLevelReq:15, managerName:'Ashok Himself' },
     { id:'cab', name:"Windy City Cab Co.", flavor:"A fleet of gypsy cabs that know every alley shortcut in the city.", category:'legit', icon:'🚕', baseCost:6000, researchCost:3600, baseIncome:55, unlock:{type:'cash', value:5000}, crewBaseCost:2200, managerLevelReq:15, managerName:'Dispatcher Rosa' },
-    { id:'fixer', name:"The Fixer Network", flavor:"You stop being someone who has problems solved and become the one who solves them, for a price.", category:'street', icon:'🕶️', baseCost:9000, researchCost:5400, baseIncome:70, heatPerLevel:0.6, unlock:{type:'respect', value:60}, crewBaseCost:3400, managerLevelReq:16, managerName:'The Quiet Man' },
+    { id:'chop_ring', name:"Stolen Vehicle Export Ring", flavor:"Luxury vehicles lifted from Loop garages, re-VINed at Ashok's shop, and shipped out on cargo trucks overnight.", category:'street', icon:'🚗', baseCost:24000, researchCost:14000, baseIncome:180, heatPerLevel:0.7, unlock:{type:'respect', value:100}, crewBaseCost:8500, managerLevelReq:16, managerName:'Chop Foreman Deke' },
     { id:'restaurant', name:"Chicago Chaat House", flavor:"Your flagship. A line out the door and a write-up in the Tribune's food section.", category:'legit', icon:'🍛', baseCost:18000, researchCost:11000, baseIncome:140, unlock:{type:'cash', value:15000}, crewBaseCost:6800, managerLevelReq:16, managerName:'Head Chef Meera' },
     { id:'lounge', name:"Marigold Lounge", flavor:"A nightclub named for the flowers your mother used to string on the door in Delhi.", category:'legit', icon:'🥂', baseCost:70000, researchCost:42000, baseIncome:470, unlock:{type:'cash', value:60000}, crewBaseCost:27000, managerLevelReq:17, managerName:'Lena, House Manager' },
-    { id:'outfit', name:"A Seat at the Table", flavor:"The men who actually run this half of the city finally asked you to sit down.", category:'street', icon:'♟️', baseCost:220000, researchCost:130000, baseIncome:1400, heatPerLevel:1.1, unlock:{type:'respect', value:400}, crewBaseCost:85000, managerLevelReq:18, managerName:'Uncle Sandeep' },
+    { id:'wire_network', name:"Underground Bookmaking & Wire Ops", flavor:"High-volume sports betting, illicit credit lines, and offshore wire transfers handled quietly through the VIP booths at Marigold Lounge.", category:'street', icon:'📞', baseCost:120000, researchCost:75000, baseIncome:850, heatPerLevel:1.2, unlock:{type:'respect', value:300}, crewBaseCost:42000, managerLevelReq:17, managerName:'Bookie Sal' },
     { id:'realestate', name:"West Side Holdings", flavor:"Buildings with your name on the paperwork and nobody else's.", category:'legit', icon:'🏢', baseCost:260000, researchCost:150000, baseIncome:1550, unlock:{type:'cash', value:220000}, crewBaseCost:95000, managerLevelReq:18, managerName:'Counsel Whitfield' },
+    { id:'syndicate_logistics', name:"Syndicate Freight & Contraband", flavor:"Controlling the commercial warehouse docks. Whatever moves through the West Side—unmarked freight, counterfeit goods, or contraband—pays your tariff before hitting the street.", category:'street', icon:'📦', baseCost:550000, researchCost:320000, baseIncome:3800, heatPerLevel:2.0, unlock:{type:'respect', value:800}, crewBaseCost:180000, managerLevelReq:18, managerName:'Dockmaster Chen' },
   ];
   businesses.forEach(b=>{ b.level=0; b.crew=0; b.manager=false; b.researched = b.unlock.type==='start'; b.tempMult=1; b.tempMultExpire=0; });
 
   const ranks = [
-    {respect:0, title:'Nobody'},{respect:5, title:'Street Runner'},{respect:25, title:'Corner Boy'},
-    {respect:60, title:'Known Quantity'},{respect:150, title:'Fixer'},{respect:400, title:'Made Man'},
-    {respect:900, title:'Lieutenant'},{respect:2000, title:'Underboss'},{respect:5000, title:"The West Side's Own"},
+    {respect:0, title:'Unknown'},{respect:5, title:'Devon Street Vendor'},{respect:25, title:'Neighborhood Operator'},
+    {respect:60, title:'Local Boss'},{respect:150, title:'Connected Figure'},{respect:400, title:'Syndicate Partner'},
+    {respect:900, title:'West Side Kingpin'},{respect:2000, title:'Chicago Power Broker'},{respect:5000, title:"The City's Shadow Boss"},
   ];
 
   const milestones = [
@@ -54,7 +56,7 @@
       {label:"Can't spare it", sub:'-5 respect', run:function(){ state.respect = Math.max(0, state.respect-5); log('📞 You explain you can\'t, not right now. It sits with you.'); } },
     ]},
     { id:'cops', title:'COPS ARE ASKING QUESTIONS', neg:true, body:"<p class='flavor'>Nothing official yet. Just questions, in the way that always precedes something official.</p>", choices:[
-      {label:'Have the Fixer handle it', sub:'-$900, -30 heat', run:function(){ state.cash=Math.max(0,state.cash-900); state.heat=Math.max(0,state.heat-30); log('🕶️ The Fixer makes a call. The questions stop.'); } },
+      {label:'Have your network handle it', sub:'-$900, -30 heat', run:function(){ state.cash=Math.max(0,state.cash-900); state.heat=Math.max(0,state.heat-30); log('🕶️ Your underground network pulls strings. The questions stop.'); } },
       {label:'Lay low', sub:'all income -20% for 40s', run:function(){ applyTempMult('all', 0.8, 40); log('🙇 You lay low for a while. Everything slows down.'); } },
     ]},
     { id:'hustler', title:'A TALENTED HUSTLER WANTS IN', neg:false, body:"<p class='flavor'>Sharp, hungry, reminds you a little of yourself six months ago.</p>", choices:[
