@@ -2375,3 +2375,58 @@
     });
     renderAll();
   })();
+
+  // LEGAL: ================= TOOLTIPS =================
+  const globalTooltip = document.getElementById('global-tooltip');
+  document.addEventListener('mouseover', (e) => {
+    const target = (e.target as HTMLElement).closest('[data-tooltip]');
+    if (target && globalTooltip) {
+      globalTooltip.textContent = target.getAttribute('data-tooltip') || '';
+      globalTooltip.classList.add('visible');
+      
+      const rect = target.getBoundingClientRect();
+      let left = rect.left + rect.width / 2 - globalTooltip.offsetWidth / 2;
+      let top = rect.top - globalTooltip.offsetHeight - 8;
+      
+      if (left < 10) left = 10;
+      if (left + globalTooltip.offsetWidth > window.innerWidth - 10) {
+        left = window.innerWidth - globalTooltip.offsetWidth - 10;
+      }
+      if (top < 10) {
+        top = rect.bottom + 8;
+      }
+      
+      globalTooltip.style.left = left + 'px';
+      globalTooltip.style.top = top + 'px';
+    }
+  });
+  document.addEventListener('mouseout', (e) => {
+    if ((e.target as HTMLElement).closest('[data-tooltip]')) {
+      if (globalTooltip) globalTooltip.classList.remove('visible');
+    }
+  });
+
+  // LEGAL: ================= KEYBOARD SHORTCUTS =================
+  document.addEventListener('keydown', (e) => {
+    if (!state.started) return;
+    // LEGAL: Don't trigger shortcuts if user is typing in an input
+    if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+
+    // LEGAL: Save shortcut: Ctrl+S or Cmd+S
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      const saveBtn = document.getElementById('save-now-btn');
+      if(saveBtn) saveBtn.click();
+      return;
+    }
+
+    // LEGAL: Tab switching (1-6)
+    const tabs = ['empire', 'map', 'bank', 'politics', 'gang', 'settings'];
+    const key = parseInt(e.key);
+    if (!isNaN(key) && key >= 1 && key <= 6) {
+      e.preventDefault();
+      const targetTab = tabs[key - 1];
+      const tabBtn = document.querySelector(`.tab-btn[data-tab="${targetTab}"]`) as HTMLElement;
+      if (tabBtn) tabBtn.click();
+    }
+  });
