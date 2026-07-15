@@ -437,15 +437,15 @@
 
   // LEGAL: ================= STOCK MARKET =================
   const stockMarket = [
-    { symbol: 'MGV', name: 'MegaSaver', logo: 'MegaSaver.png', desc: "Everyday low prices, everyday low wages.", basePrice: 45, vol: 0.04 },
-    { symbol: 'QKC', name: 'QuickCart', logo: 'quickcart.png', desc: "Next-day delivery, lifetime subscription.", basePrice: 120, vol: 0.05 },
-    { symbol: 'MUD', name: 'Mudster', logo: 'mudster.png', desc: "For the concrete jungle.", basePrice: 35, vol: 0.06 },
-    { symbol: 'ELC', name: 'Electron', logo: 'electron.png', desc: "The future is electric, and heavily subsidized.", basePrice: 210, vol: 0.08 },
-    { symbol: 'BNJ', name: 'BeanJuice', logo: 'beanjuice.png', desc: "Eight dollars for hot bean water.", basePrice: 18, vol: 0.03 },
-    { symbol: 'CLS', name: 'ClipStream', logo: 'ClipStream.png', desc: "Monetizing attention spans by the second.", basePrice: 85, vol: 0.07 },
-    { symbol: 'PML', name: 'Pomello', logo: 'Pomello.png', desc: "Closed ecosystem, open wallets.", basePrice: 160, vol: 0.04 },
-    { symbol: 'FCT', name: 'First Chicago Trust', logo: '', icon: '🏛️', desc: "Old money. Doesn't ask questions.", basePrice: 65, vol: 0.02 },
-    { symbol: 'MWG', name: 'Midwest Global', logo: '', icon: '🏦', desc: "Too big to fail, too connected to prosecute.", basePrice: 90, vol: 0.03 },
+    { symbol: 'MGV', name: 'MegaSaver', logo: 'MegaSaver.png', desc: "Everyday low prices, everyday low wages.", founded: 1962, fullDesc: "Founded in 1962. MegaSaver pioneered the art of crushing local businesses by selling bulk goods at a loss. Their true profit comes from real estate and relentless supply-chain extortion.", basePrice: 45, vol: 0.04 },
+    { symbol: 'QKC', name: 'QuickCart', logo: 'quickcart.png', desc: "Next-day delivery, lifetime subscription.", founded: 1994, fullDesc: "Founded in 1994 out of a garage. Now they own the garage, the street it's on, and the logistics network that runs through it. They bleed money on shipping just to watch competitors suffocate.", basePrice: 120, vol: 0.05 },
+    { symbol: 'MUD', name: 'Mudster', logo: 'mudster.png', desc: "For the concrete jungle.", founded: 1941, fullDesc: "Born in 1941 for war, now repurposed for suburban driveways. Mudster sells the illusion of rugged independence to people stuck in gridlock traffic. High margins, fanatic loyalty.", basePrice: 35, vol: 0.06 },
+    { symbol: 'ELC', name: 'Electron', logo: 'electron.png', desc: "The future is electric, and heavily subsidized.", founded: 2003, fullDesc: "Founded in 2003. They sell carbon credits disguised as luxury vehicles. Wall Street loves them because they promise to fix the climate while quietly ignoring the lithium strip mines.", basePrice: 210, vol: 0.08 },
+    { symbol: 'BNJ', name: 'BeanJuice', logo: 'beanjuice.png', desc: "Eight dollars for hot bean water.", founded: 1971, fullDesc: "Since 1971, they've convinced the world that burnt espresso is a premium lifestyle product. They operate like a bank that pays no interest, holding billions in unspent gift cards.", basePrice: 18, vol: 0.03 },
+    { symbol: 'CLS', name: 'ClipStream', logo: 'ClipStream.png', desc: "Monetizing attention spans by the second.", founded: 2005, fullDesc: "Launched in 2005. They don't make anything; they just host the vanity of millions and sell the resulting behavioral data to the highest bidder. An unstoppable digital tollbooth.", basePrice: 85, vol: 0.07 },
+    { symbol: 'PML', name: 'Pomello', logo: 'Pomello.png', desc: "Closed ecosystem, open wallets.", founded: 1976, fullDesc: "Founded in 1976. They design shiny boxes that trap users in a proprietary gilded cage. They have more cash on hand than most sovereign nations, and lawyers to protect every dime.", basePrice: 160, vol: 0.04 },
+    { symbol: 'FCT', name: 'First Chicago Trust', logo: '', icon: '🏛️', desc: "Old money. Doesn't ask questions.", founded: 1883, fullDesc: "Established in 1883. They built this city's skyline by looking the other way when the ledgers didn't add up. Safe, reliable, and deeply embedded in political machinery.", basePrice: 65, vol: 0.02 },
+    { symbol: 'MWG', name: 'Midwest Global', logo: '', icon: '🏦', desc: "Too big to fail, too connected to prosecute.", founded: 1911, fullDesc: "Founded in 1911. They've weathered depressions and scandals by making sure they owe the right people and the right people owe them. A financial fortress.", basePrice: 90, vol: 0.03 },
   ];
 
   // LEGAL: ================= STATE =================
@@ -464,7 +464,8 @@
     waypoints: { devon:null, westside:null, loop:null },
     parkedCarPos: { devon:null, westside:null, loop:null },
     influence: 0, influenceBuys: 0, electedOffice: false, nextCampaignAt: 0, nextWarAt: 0,
-    portfolio: {}, marketPrices: {}, nextMarketTickAt: 0,
+    portfolio: {}, marketPrices: {}, marketHistory: {}, nextMarketTickAt: 0,
+    financeView: 'vault', activeStock: null,
   };
 
   // LEGAL: ================= HELPERS =================
@@ -769,59 +770,131 @@
   function renderBankPanel(){
     const wrap = document.getElementById('bank-panel');
     if(!wrap) return;
-    const canHeist = state.playSeconds >= state.nextHeistAt;
-    const cooldownLeft = Math.max(0, Math.ceil(state.nextHeistAt - state.playSeconds));
-    wrap.innerHTML = `
-      <div class="street-grid">
-        <div class="street-card respect-spend">
-          <h4>🏦 Vault Balance</h4>
-          <p>Cash in the bank is safe from raids and earns slow interest. Cash on hand is what actually buys things.</p>
-          <div class="row"><span>Banked</span><span id="bank-banked-value">${fmt(state.bank)}</span></div>
-          <div class="row"><span>On hand</span><span id="bank-onhand-value">${fmt(state.cash)}</span></div>
-
-          <div class="bank-form">
-            <label class="bank-form-label">Deposit</label>
-            <div class="bank-input-row">
-              <input type="number" id="deposit-input" class="bank-input" min="0" step="1" placeholder="Amount">
-              <button class="mini-btn" id="deposit-go"><span>Deposit</span></button>
+    
+    if(state.financeView === 'vault') {
+      const canHeist = state.playSeconds >= state.nextHeistAt;
+      const cooldownLeft = Math.max(0, Math.ceil(state.nextHeistAt - state.playSeconds));
+      wrap.innerHTML = `
+        <div class="street-grid">
+          <div class="street-card respect-spend">
+            <h4>🏦 Vault Balance</h4>
+            <p>Cash in the bank is safe from raids and earns slow interest. Cash on hand is what actually buys things.</p>
+            <div class="row"><span>Banked</span><span id="bank-banked-value">${fmt(state.bank)}</span></div>
+            <div class="row"><span>On hand</span><span id="bank-onhand-value">${fmt(state.cash)}</span></div>
+            <div class="bank-form">
+              <label class="bank-form-label">Deposit</label>
+              <div class="bank-input-row">
+                <input type="number" id="deposit-input" class="bank-input" min="0" step="1" placeholder="Amount">
+                <button class="mini-btn" id="deposit-go"><span>Deposit</span></button>
+              </div>
+              <div class="btn-row">
+                <button class="mini-btn quick" data-deposit-quick="0.25"><span>25%</span></button>
+                <button class="mini-btn quick" data-deposit-quick="0.5"><span>50%</span></button>
+                <button class="mini-btn quick" data-deposit-quick="1"><span>Max</span></button>
+              </div>
             </div>
-            <div class="btn-row">
-              <button class="mini-btn quick" data-deposit-quick="0.25"><span>25%</span></button>
-              <button class="mini-btn quick" data-deposit-quick="0.5"><span>50%</span></button>
-              <button class="mini-btn quick" data-deposit-quick="1"><span>Max</span></button>
+            <div class="bank-form">
+              <label class="bank-form-label">Withdraw</label>
+              <div class="bank-input-row">
+                <input type="number" id="withdraw-input" class="bank-input" min="0" step="1" placeholder="Amount">
+                <button class="mini-btn fire" id="withdraw-go"><span>Withdraw</span></button>
+              </div>
+              <div class="btn-row">
+                <button class="mini-btn quick" data-withdraw-quick="0.25"><span>25%</span></button>
+                <button class="mini-btn quick" data-withdraw-quick="0.5"><span>50%</span></button>
+                <button class="mini-btn quick" data-withdraw-quick="1"><span>Max</span></button>
+              </div>
             </div>
           </div>
-
-          <div class="bank-form">
-            <label class="bank-form-label">Withdraw</label>
-            <div class="bank-input-row">
-              <input type="number" id="withdraw-input" class="bank-input" min="0" step="1" placeholder="Amount">
-              <button class="mini-btn fire" id="withdraw-go"><span>Withdraw</span></button>
-            </div>
-            <div class="btn-row">
-              <button class="mini-btn quick" data-withdraw-quick="0.25"><span>25%</span></button>
-              <button class="mini-btn quick" data-withdraw-quick="0.5"><span>50%</span></button>
-              <button class="mini-btn quick" data-withdraw-quick="1"><span>Max</span></button>
-            </div>
+          <div class="street-card">
+            <h4>📈 LCN Exchange</h4>
+            <p>The Liberty City National Exchange. Buy, sell, and short your way to the top. Just remember: the house always wins.</p>
+            <button class="toggle-btn" id="go-lcn">Access Terminal</button>
+            <h4 style="margin-top:20px;">🕵️ First Chicago Trust</h4>
+            <p>A rival bank across town. A bigger score, and a bigger risk, than shaking down a corner shop.</p>
+            <div class="row"><span>Status</span><span id="heist-status-value">${canHeist ? 'Ready' : `Cooling off (${cooldownLeft}s)`}</span></div>
+            <button class="toggle-btn" ${canHeist?'':'disabled'} id="start-heist">Case the Vault</button>
           </div>
         </div>
-        <div class="street-card">
-          <h4>🕵️ First Chicago Trust</h4>
-          <p>A rival bank across town. Not yours to protect — a bigger score, and a bigger risk, than shaking down a corner shop.</p>
-          <div class="row"><span>Status</span><span id="heist-status-value">${canHeist ? 'Ready' : `Cooling off (${cooldownLeft}s)`}</span></div>
-          <button class="toggle-btn" ${canHeist?'':'disabled'} id="start-heist">Case the Vault</button>
+      `;
+    } else if(state.financeView === 'lcn-home') {
+      let totalPortfolio = 0;
+      stockMarket.forEach(s => {
+        const pos = state.portfolio[s.symbol];
+        if(pos && pos.shares > 0) totalPortfolio += pos.shares * state.marketPrices[s.symbol];
+      });
+      wrap.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+          <h3 style="font-size:20px; color:#d4a017;">Liberty City National</h3>
+          <button class="mini-btn" id="go-vault">Log Out</button>
         </div>
-      </div>
-      <h3 style="margin-top:20px; font-size:16px; color:#d4a017;">LCN Exchange</h3>
-      <div class="street-grid">
-        ${stockMarket.map(s => {
-          const price = state.marketPrices[s.symbol] || s.basePrice;
-          const pos = state.portfolio[s.symbol] || { shares: 0, avgCost: 0 };
-          return `<div class="street-card">
-            <h4>${s.logo ? `<img src="/${s.logo}" style="width:24px; height:24px; vertical-align:middle; margin-right:8px; border-radius:4px;">` : (s.icon + ' ')} ${s.name} (${s.symbol})</h4>
-            <p>${s.desc}</p>
-            <div class="row"><span>Price</span><span id="price-${s.symbol}">$${price.toFixed(2)}</span></div>
-            <div class="row"><span>Owned</span><span id="shares-${s.symbol}">${pos.shares}</span></div>
+        
+        <div class="street-grid">
+          <div class="street-card respect-spend">
+            <h4>📊 Your Holdings</h4>
+            <div class="row"><span>Portfolio Value</span><span>${fmt(totalPortfolio)}</span></div>
+            <div class="row"><span>Cash Available</span><span>${fmt(state.cash)}</span></div>
+            <div style="margin-top:10px;">
+              ${stockMarket.filter(s => state.portfolio[s.symbol]?.shares > 0).map(s => {
+                const pos = state.portfolio[s.symbol];
+                const val = pos.shares * state.marketPrices[s.symbol];
+                return `<div class="row" style="font-size:12px;"><span>${s.symbol} (${pos.shares} sh)</span><span>${fmt(val)}</span></div>`;
+              }).join('') || '<p class="flavor">No active positions.</p>'}
+            </div>
+          </div>
+          <div class="street-card">
+            <h4>🗞️ Market News</h4>
+            <p class="flavor">"MUDSTER RECALLS 40,000 VEHICLES OVER EXPLODING CUPHOLDERS."</p>
+            <p class="flavor">"MEGASAVER CEO SEEN YACHT-SHOPPING AFTER MASS LAYOFFS."</p>
+            <p class="flavor">"BEANJUICE LAUNCHES $14 'DECONSTRUCTED' AMERICANO."</p>
+          </div>
+        </div>
+        
+        <h4 style="margin-top:20px; border-bottom:1px solid #444; padding-bottom:5px;">Tradable Assets</h4>
+        <div class="street-grid" style="margin-top:10px;">
+          ${stockMarket.map(s => {
+            const price = state.marketPrices[s.symbol] || s.basePrice;
+            const history = state.marketHistory[s.symbol] || [];
+            const prevPrice = history.length > 1 ? history[history.length - 2] : price;
+            const pct = prevPrice ? ((price - prevPrice) / prevPrice * 100) : 0;
+            const color = pct >= 0 ? '#4caf50' : '#f44336';
+            const sign = pct >= 0 ? '+' : '';
+            return `<div class="street-card lcn-stock-btn" data-sym="${s.symbol}" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <h4 style="margin:0;">${s.logo ? `<img src="/${s.logo}" style="width:20px; height:20px; vertical-align:middle; margin-right:6px; border-radius:4px;">` : (s.icon + ' ')} ${s.symbol}</h4>
+                <div style="font-size:11px; color:#aaa; margin-top:2px;">${s.name}</div>
+              </div>
+              <div style="text-align:right;">
+                <div id="lcn-home-price-${s.symbol}">$${price.toFixed(2)}</div>
+                <div id="lcn-home-pct-${s.symbol}" style="font-size:11px; color:${color};">${sign}${pct.toFixed(2)}%</div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      `;
+    } else if(state.financeView === 'lcn-stock' && state.activeStock) {
+      const s = stockMarket.find(x => x.symbol === state.activeStock);
+      if(!s) { state.financeView = 'lcn-home'; renderBankPanel(); return; }
+      
+      const price = state.marketPrices[s.symbol];
+      const pos = state.portfolio[s.symbol] || { shares: 0, avgCost: 0 };
+      const val = pos.shares * price;
+      const pl = val - (pos.shares * pos.avgCost);
+      const plColor = pl >= 0 ? '#4caf50' : '#f44336';
+      
+      wrap.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+          <h3 style="font-size:20px; color:#d4a017; margin:0;">${s.logo ? `<img src="/${s.logo}" style="width:24px; height:24px; vertical-align:middle; margin-right:8px; border-radius:4px;">` : (s.icon + ' ')} ${s.name} (${s.symbol})</h3>
+          <button class="mini-btn" id="go-lcn-home">Back to Exchange</button>
+        </div>
+        <p style="font-size:12px; color:#aaa;">${s.fullDesc}</p>
+        <div style="margin:20px 0;">
+          <canvas id="stock-chart" width="400" height="150" style="width:100%; max-width:100%; height:150px; background:#1a1a1a; border:1px solid #333; border-radius:4px;"></canvas>
+        </div>
+        <div class="street-grid">
+          <div class="street-card respect-spend">
+            <h4>Trade ${s.symbol}</h4>
+            <div class="row" style="font-size:16px; margin-bottom:15px;"><span>Current Price</span><strong id="price-${s.symbol}">$${price.toFixed(2)}</strong></div>
             <div class="bank-form">
               <div class="btn-row">
                 <button class="mini-btn quick" data-trade="buy-10" data-sym="${s.symbol}"><span>Buy 10</span></button>
@@ -839,10 +912,47 @@
                 <button class="mini-btn fire" data-trade="sell-custom" data-sym="${s.symbol}"><span>Sell</span></button>
               </div>
             </div>
-          </div>`;
-        }).join('')}
-      </div>
-    `;
+          </div>
+          <div class="street-card">
+            <h4>Your Position</h4>
+            <div class="row"><span>Shares Owned</span><span>${pos.shares}</span></div>
+            <div class="row"><span>Avg Cost</span><span>$${pos.avgCost.toFixed(2)}</span></div>
+            <div class="row"><span>Total Value</span><span>$${val.toFixed(2)}</span></div>
+            <div class="row"><span>Profit/Loss</span><span style="color:${plColor};">$${pl.toFixed(2)}</span></div>
+            <div class="row" style="margin-top:10px; padding-top:10px; border-top:1px solid #333;">
+              <span>Cash Available</span><span>${fmt(state.cash)}</span>
+            </div>
+          </div>
+        </div>
+      `;
+      drawStockChart(s.symbol);
+    }
+  }
+
+  function drawStockChart(symbol) {
+    const canvas = document.getElementById('stock-chart') as HTMLCanvasElement;
+    if(!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if(!ctx) return;
+    const history = state.marketHistory[symbol] || [];
+    if(history.length < 2) return;
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const min = Math.min(...history) * 0.95;
+    const max = Math.max(...history) * 1.05;
+    const range = max - min;
+    const stepX = canvas.width / (history.length - 1);
+    
+    ctx.beginPath();
+    history.forEach((val, i) => {
+      const x = i * stepX;
+      const y = canvas.height - ((val - min) / range * canvas.height);
+      if(i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = '#4caf50';
+    ctx.lineWidth = 2;
+    ctx.stroke();
   }
 
   function tickMarket(){
@@ -851,14 +961,39 @@
       const p = state.marketPrices[s.symbol];
       const drift = (s.basePrice - p) * 0.02; 
       const shock = p * s.vol * (Math.random() - 0.5);
-      state.marketPrices[s.symbol] = Math.max(1, p + drift + shock);
+      const newPrice = Math.max(1, p + drift + shock);
+      state.marketPrices[s.symbol] = newPrice;
+      
+      if(!state.marketHistory[s.symbol]) state.marketHistory[s.symbol] = [];
+      state.marketHistory[s.symbol].push(newPrice);
+      if(state.marketHistory[s.symbol].length > 30) state.marketHistory[s.symbol].shift();
     });
+    
     const activeTab = document.querySelector('.tab-btn.active');
     if (activeTab && activeTab.getAttribute('data-tab') === 'bank') {
-      stockMarket.forEach(s => {
-        const priceEl = document.getElementById(`price-${s.symbol}`);
-        if(priceEl) priceEl.textContent = `$${state.marketPrices[s.symbol].toFixed(2)}`;
-      });
+      if(state.financeView === 'lcn-home') {
+        stockMarket.forEach(s => {
+          const price = state.marketPrices[s.symbol];
+          const history = state.marketHistory[s.symbol];
+          const prevPrice = history.length > 1 ? history[history.length - 2] : price;
+          const pct = ((price - prevPrice) / prevPrice * 100);
+          
+          const priceEl = document.getElementById(`lcn-home-price-${s.symbol}`);
+          const pctEl = document.getElementById(`lcn-home-pct-${s.symbol}`);
+          if(priceEl) priceEl.textContent = `$${price.toFixed(2)}`;
+          if(pctEl) {
+            pctEl.textContent = `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
+            pctEl.style.color = pct >= 0 ? '#4caf50' : '#f44336';
+          }
+        });
+      } else if(state.financeView === 'lcn-stock' && state.activeStock) {
+        const s = stockMarket.find(x => x.symbol === state.activeStock);
+        if(s) {
+          const priceEl = document.getElementById(`price-${s.symbol}`);
+          if(priceEl) priceEl.textContent = `$${state.marketPrices[s.symbol].toFixed(2)}`;
+          drawStockChart(s.symbol);
+        }
+      }
     }
   }
 
@@ -1279,6 +1414,13 @@
       if(inp) inp.value = String(Math.floor(state.bank * Number(quickWithdraw.getAttribute('data-withdraw-quick'))));
       return;
     }
+    const stockRow = target.closest('.lcn-stock-btn');
+    if(stockRow) {
+      state.financeView = 'lcn-stock';
+      state.activeStock = stockRow.getAttribute('data-sym');
+      renderBankPanel();
+      return;
+    }
     const tradeBtn = target.closest('[data-trade]');
     if(tradeBtn) {
       const action = tradeBtn.getAttribute('data-trade');
@@ -1307,7 +1449,13 @@
     }
     const btn = target.closest('button');
     if(!btn) return;
-    if(btn.id === 'deposit-go'){
+    if(btn.id === 'go-lcn'){
+      state.financeView = 'lcn-home'; renderBankPanel();
+    } else if(btn.id === 'go-vault'){
+      state.financeView = 'vault'; renderBankPanel();
+    } else if(btn.id === 'go-lcn-home'){
+      state.financeView = 'lcn-home'; renderBankPanel();
+    } else if(btn.id === 'deposit-go'){
       const inp = document.getElementById('deposit-input') as HTMLInputElement;
       depositAmount(inp?.value);
     } else if(btn.id === 'withdraw-go'){
@@ -2367,7 +2515,8 @@
       politicians: politicians.map(p=> ({ id:p.id, favor:p.favor, pocketed:p.pocketed })),
       gangRecruits: gangRecruits.map(g=> ({ id:g.id, inducted:g.inducted })),
       inVehicle: state.inVehicle, waypoints: state.waypoints, parkedCarPos: state.parkedCarPos,
-      marketPrices: state.marketPrices, portfolio: state.portfolio,
+      marketPrices: state.marketPrices, portfolio: state.portfolio, marketHistory: state.marketHistory,
+      financeView: state.financeView, activeStock: state.activeStock,
     };
   }
   let saveTimer = null;
@@ -2423,10 +2572,14 @@
         state.parkedCarPos = Object.assign({devon:null,westside:null,loop:null}, d.parkedCarPos||{});
         state.marketPrices = d.marketPrices || {};
         state.portfolio = d.portfolio || {};
+        state.marketHistory = d.marketHistory || {};
+        state.financeView = d.financeView || 'vault';
+        state.activeStock = d.activeStock || null;
         // LEGAL: Initialize any missing stocks in the market
         stockMarket.forEach(s => {
           if(!state.marketPrices[s.symbol]) state.marketPrices[s.symbol] = s.basePrice;
           if(!state.portfolio[s.symbol]) state.portfolio[s.symbol] = { shares: 0, avgCost: 0 };
+          if(!state.marketHistory[s.symbol]) state.marketHistory[s.symbol] = [];
         });
         return true;
       }
