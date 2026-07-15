@@ -444,8 +444,8 @@
     { symbol: 'BNJ', name: 'BeanJuice', logo: 'beanjuice.png', desc: "Eight dollars for hot bean water.", founded: 1971, fullDesc: "Since 1971, they've convinced the world that burnt espresso is a premium lifestyle product. They operate like a bank that pays no interest, holding billions in unspent gift cards.", basePrice: 18, vol: 0.03 },
     { symbol: 'CLS', name: 'ClipStream', logo: 'ClipStream.png', desc: "Monetizing attention spans by the second.", founded: 2005, fullDesc: "Launched in 2005. They don't make anything; they just host the vanity of millions and sell the resulting behavioral data to the highest bidder. An unstoppable digital tollbooth.", basePrice: 85, vol: 0.07 },
     { symbol: 'PML', name: 'Pomello', logo: 'Pomello.png', desc: "Closed ecosystem, open wallets.", founded: 1976, fullDesc: "Founded in 1976. They design shiny boxes that trap users in a proprietary gilded cage. They have more cash on hand than most sovereign nations, and lawyers to protect every dime.", basePrice: 160, vol: 0.04 },
-    { symbol: 'FCT', name: 'First Windhaven Trust', logo: '', icon: '🏛️', desc: "Old money. Doesn't ask questions.", founded: 1883, fullDesc: "Established in 1883. They built this city's skyline by looking the other way when the ledgers didn't add up. Safe, reliable, and deeply embedded in political machinery.", basePrice: 65, vol: 0.02 },
-    { symbol: 'MWG', name: 'Heartland Global', logo: '', icon: '🏦', desc: "Too big to fail, too connected to prosecute.", founded: 1911, fullDesc: "Founded in 1911. They've weathered depressions and scandals by making sure they owe the right people and the right people owe them. A financial fortress.", basePrice: 90, vol: 0.03 },
+    { symbol: 'FWT', name: 'First Windhaven Trust', logo: '', icon: '🏛️', desc: "Old money. Doesn't ask questions.", founded: 1883, fullDesc: "Established in 1883. They built this city's skyline by looking the other way when the ledgers didn't add up. Safe, reliable, and deeply embedded in political machinery.", basePrice: 65, vol: 0.02 },
+    { symbol: 'HLG', name: 'Heartland Global', logo: '', icon: '🏦', desc: "Too big to fail, too connected to prosecute.", founded: 1911, fullDesc: "Founded in 1911. They've weathered depressions and scandals by making sure they owe the right people and the right people owe them. A financial fortress.", basePrice: 90, vol: 0.03 },
   ];
 
   // LEGAL: ================= STATE =================
@@ -1005,7 +1005,7 @@
       }
       state.currentNews.unshift(state.newsQueue.pop());
       if(state.currentNews.length > 3) state.currentNews.pop();
-      state.nextNewsAt = state.playSeconds + 15;
+      state.nextNewsAt = state.playSeconds + 45;
       
       const newsCard = document.getElementById('market-news-card');
       if(newsCard) {
@@ -2032,14 +2032,14 @@
     return m;
   }
   function addSign(parent, text, w, h, y, color){
-    const c = document.createElement('canvas'); c.width=256; c.height=64;
+    const c = document.createElement('canvas'); c.width=512; c.height=64;
     const cctx = c.getContext('2d');
-    cctx.fillStyle='rgba(10,11,16,0.85)'; cctx.fillRect(0,0,256,64);
+    cctx.fillStyle='rgba(10,11,16,0.85)'; cctx.fillRect(0,0,512,64);
     cctx.fillStyle=color; cctx.font='bold 30px sans-serif'; cctx.textAlign='center'; cctx.textBaseline='middle';
-    cctx.fillText(text.slice(0,16), 128, 32);
+    cctx.fillText(text.slice(0,32), 256, 32);
     const tex = new THREE.CanvasTexture(c);
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, depthTest:false}));
-    sprite.scale.set(w,h,1); sprite.position.y = y;
+    sprite.scale.set(w * 1.5, h, 1); sprite.position.y = y;
     parent.add(sprite);
   }
   function buildPedestrianModel(color){
@@ -2101,7 +2101,7 @@
       const mesh = box(bw, info.h, bd, info.color);
       mesh.position.set(m.x, info.h/2, m.y);
       worldGroup.add(mesh);
-      addSign(mesh, m.biz.name.split(' ')[0], 34, 9, info.h/2+10, m.biz.category==='legit'?'#8fd0e0':'#f0a0ae');
+      addSign(mesh, m.biz.name, 34, 9, info.h/2+10, m.biz.category==='legit'?'#8fd0e0':'#f0a0ae');
     });
 
     serviceBuildings.filter(function(m){return m.district===districtId;}).forEach(function(m){
@@ -2115,7 +2115,7 @@
       const color = m.extorted ? '#8a6a1a' : '#4a4360';
       const mesh = box(42,20,36,color);
       mesh.position.set(m.x,10,m.y); worldGroup.add(mesh);
-      addSign(mesh, m.name.split(' ')[0], 32, 8, 18, m.extorted?'#ffd77a':'#b8aee0');
+      addSign(mesh, m.name, 32, 8, 18, m.extorted?'#ffd77a':'#b8aee0');
     });
 
     corners.filter(function(m){return m.district===districtId;}).forEach(function(m){
@@ -2125,7 +2125,7 @@
       pole.position.set(m.x,13,m.y); pole.castShadow=true; worldGroup.add(pole);
       const orb = new THREE.Mesh(new THREE.SphereGeometry(7,10,10), new THREE.MeshStandardMaterial({color, emissive:color, emissiveIntensity:0.4}));
       orb.position.set(m.x,28,m.y); worldGroup.add(orb);
-      addSign(pole, m.name.split(' ')[0], 30, 8, 22, '#f0efe8');
+      addSign(pole, m.name, 30, 8, 22, '#f0efe8');
     });
 
     function addPerson(m, color){
