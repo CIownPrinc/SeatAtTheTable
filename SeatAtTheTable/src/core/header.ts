@@ -435,6 +435,19 @@
     });
   }
 
+  // LEGAL: ================= STOCK MARKET =================
+  const stockMarket = [
+    { symbol: 'MGV', name: 'MegaSaver', logo: 'MegaSaver.png', desc: "Everyday low prices, everyday low wages.", basePrice: 45, vol: 0.04 },
+    { symbol: 'QKC', name: 'QuickCart', logo: 'quickcart.png', desc: "Next-day delivery, lifetime subscription.", basePrice: 120, vol: 0.05 },
+    { symbol: 'MUD', name: 'Mudster', logo: 'mudster.png', desc: "For the concrete jungle.", basePrice: 35, vol: 0.06 },
+    { symbol: 'ELC', name: 'Electron', logo: 'electron.png', desc: "The future is electric, and heavily subsidized.", basePrice: 210, vol: 0.08 },
+    { symbol: 'BNJ', name: 'BeanJuice', logo: 'beanjuice.png', desc: "Eight dollars for hot bean water.", basePrice: 18, vol: 0.03 },
+    { symbol: 'CLS', name: 'ClipStream', logo: 'ClipStream.png', desc: "Monetizing attention spans by the second.", basePrice: 85, vol: 0.07 },
+    { symbol: 'PML', name: 'Pomello', logo: 'Pomello.png', desc: "Closed ecosystem, open wallets.", basePrice: 160, vol: 0.04 },
+    { symbol: 'FCT', name: 'First Chicago Trust', logo: '', icon: '🏛️', desc: "Old money. Doesn't ask questions.", basePrice: 65, vol: 0.02 },
+    { symbol: 'MWG', name: 'Midwest Global', logo: '', icon: '🏦', desc: "Too big to fail, too connected to prosecute.", basePrice: 90, vol: 0.03 },
+  ];
+
   // LEGAL: ================= STATE =================
   const state = {
     cash: 47, respect: 0, heat: 0,
@@ -451,6 +464,7 @@
     waypoints: { devon:null, westside:null, loop:null },
     parkedCarPos: { devon:null, westside:null, loop:null },
     influence: 0, influenceBuys: 0, electedOffice: false, nextCampaignAt: 0, nextWarAt: 0,
+    portfolio: {}, marketPrices: {}, nextMarketTickAt: 0,
   };
 
   // LEGAL: ================= HELPERS =================
@@ -798,8 +812,79 @@
           <button class="toggle-btn" ${canHeist?'':'disabled'} id="start-heist">Case the Vault</button>
         </div>
       </div>
+      <h3 style="margin-top:20px; font-size:16px; color:#d4a017;">LCN Exchange</h3>
+      <div class="street-grid">
+        ${stockMarket.map(s => {
+          const price = state.marketPrices[s.symbol] || s.basePrice;
+          const pos = state.portfolio[s.symbol] || { shares: 0, avgCost: 0 };
+          return `<div class="street-card">
+            <h4>${s.logo ? `<img src="/${s.logo}" style="width:24px; height:24px; vertical-align:middle; margin-right:8px; border-radius:4px;">` : (s.icon + ' ')} ${s.name} (${s.symbol})</h4>
+            <p>${s.desc}</p>
+            <div class="row"><span>Price</span><span id="price-${s.symbol}">$${price.toFixed(2)}</span></div>
+            <div class="row"><span>Owned</span><span id="shares-${s.symbol}">${pos.shares}</span></div>
+            <div class="bank-form">
+              <div class="btn-row">
+                <button class="mini-btn quick" data-trade="buy-10" data-sym="${s.symbol}"><span>Buy 10</span></button>
+                <button class="mini-btn quick" data-trade="buy-100" data-sym="${s.symbol}"><span>Buy 100</span></button>
+                <button class="mini-btn quick" data-trade="buy-max" data-sym="${s.symbol}"><span>Buy Max</span></button>
+              </div>
+              <div class="btn-row">
+                <button class="mini-btn quick fire" data-trade="sell-10" data-sym="${s.symbol}"><span>Sell 10</span></button>
+                <button class="mini-btn quick fire" data-trade="sell-100" data-sym="${s.symbol}"><span>Sell 100</span></button>
+                <button class="mini-btn quick fire" data-trade="sell-max" data-sym="${s.symbol}"><span>Sell Max</span></button>
+              </div>
+              <div class="bank-input-row" style="margin-top:6px;">
+                <input type="number" id="trade-input-${s.symbol}" class="bank-input" min="1" step="1" placeholder="Custom Amt">
+                <button class="mini-btn" data-trade="buy-custom" data-sym="${s.symbol}"><span>Buy</span></button>
+                <button class="mini-btn fire" data-trade="sell-custom" data-sym="${s.symbol}"><span>Sell</span></button>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
       </div>
     `;
+  }
+
+  function tickMarket(){
+    stockMarket.forEach(s => {
+      if(!state.marketPrices[s.symbol]) state.marketPrices[s.symbol] = s.basePrice;
+      const p = state.marketPrices[s.symbol];
+      const drift = (s.basePrice - p) * 0.02; 
+      const shock = p * s.vol * (Math.random() - 0.5);
+      state.marketPrices[s.symbol] = Math.max(1, p + drift + shock);
+    });
+    const activeTab = document.querySelector('.tab-btn.active');
+    if (activeTab && activeTab.getAttribute('data-tab') === 'bank') {
+      stockMarket.forEach(s => {
+        const priceEl = document.getElementById(`price-${s.symbol}`);
+        if(priceEl) priceEl.textContent = `$${state.marketPrices[s.symbol].toFixed(2)}`;
+      });
+    }
+  }
+
+  function tradeStock(symbol, amount, isBuy) {
+    if(amount <= 0 || isNaN(amount)) return;
+    const price = state.marketPrices[symbol];
+    if(!price) return;
+    const pos = state.portfolio[symbol];
+    if(!pos) return;
+
+    if(isBuy) {
+      const cost = price * amount;
+      if(state.cash < cost) return;
+      state.cash -= cost;
+      const totalCost = (pos.shares * pos.avgCost) + cost;
+      pos.shares += amount;
+      pos.avgCost = totalCost / pos.shares;
+    } else {
+      if(pos.shares < amount) amount = pos.shares;
+      if(amount <= 0) return;
+      const revenue = price * amount;
+      state.cash += revenue;
+      pos.shares -= amount;
+      if(pos.shares === 0) pos.avgCost = 0;
+    }
+    renderAll();
   }
 
   // LEGAL: ================= THE TRADE: LAB & CORNERS =================
@@ -1192,6 +1277,32 @@
     if(quickWithdraw){
       const inp = document.getElementById('withdraw-input') as HTMLInputElement;
       if(inp) inp.value = String(Math.floor(state.bank * Number(quickWithdraw.getAttribute('data-withdraw-quick'))));
+      return;
+    }
+    const tradeBtn = target.closest('[data-trade]');
+    if(tradeBtn) {
+      const action = tradeBtn.getAttribute('data-trade');
+      const sym = tradeBtn.getAttribute('data-sym');
+      const price = state.marketPrices[sym];
+      const pos = state.portfolio[sym];
+      if(!price || !pos) return;
+      
+      let amount = 0;
+      let isBuy = action.startsWith('buy');
+      const suffix = action.split('-')[1];
+
+      if(suffix === '10') amount = 10;
+      else if(suffix === '100') amount = 100;
+      else if(suffix === 'max') {
+        if(isBuy) amount = Math.floor(state.cash / price);
+        else amount = pos.shares;
+      }
+      else if(suffix === 'custom') {
+        const inp = document.getElementById(`trade-input-${sym}`) as HTMLInputElement;
+        amount = parseInt(inp?.value, 10);
+      }
+      
+      tradeStock(sym, amount, isBuy);
       return;
     }
     const btn = target.closest('button');
@@ -2256,6 +2367,7 @@
       politicians: politicians.map(p=> ({ id:p.id, favor:p.favor, pocketed:p.pocketed })),
       gangRecruits: gangRecruits.map(g=> ({ id:g.id, inducted:g.inducted })),
       inVehicle: state.inVehicle, waypoints: state.waypoints, parkedCarPos: state.parkedCarPos,
+      marketPrices: state.marketPrices, portfolio: state.portfolio,
     };
   }
   let saveTimer = null;
@@ -2309,6 +2421,13 @@
         state.inVehicle = d.inVehicle||false;
         state.waypoints = Object.assign({devon:null,westside:null,loop:null}, d.waypoints||{});
         state.parkedCarPos = Object.assign({devon:null,westside:null,loop:null}, d.parkedCarPos||{});
+        state.marketPrices = d.marketPrices || {};
+        state.portfolio = d.portfolio || {};
+        // LEGAL: Initialize any missing stocks in the market
+        stockMarket.forEach(s => {
+          if(!state.marketPrices[s.symbol]) state.marketPrices[s.symbol] = s.basePrice;
+          if(!state.portfolio[s.symbol]) state.portfolio[s.symbol] = { shares: 0, avgCost: 0 };
+        });
         return true;
       }
     }catch(e){ /* no save yet */ }
@@ -2327,6 +2446,11 @@
     state.cash += netIncome()*dt;
     state.respect += respectPerSec()*dt;
     state.bank += state.bank * 0.00035 * loopInterestMult() * dt;
+
+    if (state.playSeconds > state.nextMarketTickAt) {
+      tickMarket();
+      state.nextMarketTickAt = state.playSeconds + 3; // LEGAL: Tick market every 3 seconds
+    }
 
     // LEGAL: The Lab produces Product; active corners consume it to generate the
     // LEGAL: income already counted in netIncome() above via cornerIncomePerSec().
