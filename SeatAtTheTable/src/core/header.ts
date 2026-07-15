@@ -798,23 +798,8 @@
           <button class="toggle-btn" ${canHeist?'':'disabled'} id="start-heist">Case the Vault</button>
         </div>
       </div>
+      </div>
     `;
-    const depositInput = document.getElementById('deposit-input');
-    const withdrawInput = document.getElementById('withdraw-input');
-    document.getElementById('deposit-go').addEventListener('click', function(){ depositAmount(depositInput.value); });
-    document.getElementById('withdraw-go').addEventListener('click', function(){ withdrawAmount(withdrawInput.value); });
-    depositInput.addEventListener('keydown', function(e){ if(e.key==='Enter') depositAmount(depositInput.value); });
-    withdrawInput.addEventListener('keydown', function(e){ if(e.key==='Enter') withdrawAmount(withdrawInput.value); });
-    wrap.querySelectorAll('[data-deposit-quick]').forEach(btn=> btn.addEventListener('click', function(){
-      depositInput.value = Math.floor(state.cash * Number(btn.getAttribute('data-deposit-quick')));
-    }));
-    wrap.querySelectorAll('[data-withdraw-quick]').forEach(btn=> btn.addEventListener('click', function(){
-      withdrawInput.value = Math.floor(state.bank * Number(btn.getAttribute('data-withdraw-quick')));
-    }));
-    document.getElementById('start-heist').addEventListener('click', function(){
-      if(state.playSeconds < state.nextHeistAt) return;
-      playDialogue('bankheist', 'start');
-    });
   }
 
   // LEGAL: ================= THE TRADE: LAB & CORNERS =================
@@ -969,7 +954,6 @@
       const here = state.currentDistrict===d.id;
       return `<button class="district-btn ${here?'active':''}" data-travel="${d.id}" ${here?'disabled':''}><span class="pin-dot"></span>${here?'You\'re in ':''}${d.name}</button>`;
     }).join('');
-    wrap.querySelectorAll('[data-travel]').forEach(btn=> btn.addEventListener('click', function(){ travelTo(btn.getAttribute('data-travel')); }));
   }
   function renderLegend(){
     const wrap = document.getElementById('map-legend');
@@ -1001,7 +985,6 @@
         <button class="mini-btn" ${canPush?'':'disabled'} data-push="${d.id}"><span>Push</span><span class="cost">${pushCost(d)} resp</span></button>
       </div>`;
     }).join('');
-    wrap.querySelectorAll('[data-push]').forEach(btn=> btn.addEventListener('click', function(){ pushDistrict(btn.getAttribute('data-push')); }));
   }
 
   function renderPoliticsPanel(){
@@ -1032,13 +1015,6 @@
         </div>
       </div>
     `;
-    document.getElementById('buy-influence').addEventListener('click', buyInfluence);
-    wrap.querySelectorAll('[data-bribe]').forEach(btn=> btn.addEventListener('click', function(){ bribePolitician(btn.getAttribute('data-bribe')); }));
-    const campaignBtn = document.getElementById('launch-campaign');
-    if(campaignBtn) campaignBtn.addEventListener('click', function(){
-      if(state.electedOffice || !canCampaign) return;
-      playDialogue('campaign', 'start');
-    });
   }
 
   function renderGangPanel(){
@@ -1075,19 +1051,6 @@
         </div>
       </div>
     `;
-    wrap.querySelectorAll('[data-checkin]').forEach(btn=> btn.addEventListener('click', function(){
-      const g = gangRecruits.find(x=>x.id===btn.getAttribute('data-checkin'));
-      playDialogue(g.dialogueKey, 'checkin');
-    }));
-    wrap.querySelectorAll('[data-initiate]').forEach(btn=> btn.addEventListener('click', function(){
-      const g = gangRecruits.find(x=>x.id===btn.getAttribute('data-initiate'));
-      playDialogue(g.dialogueKey, 'start');
-    }));
-    const warBtn = document.getElementById('declare-war');
-    if(warBtn) warBtn.addEventListener('click', function(){
-      if(state.playSeconds < state.nextWarAt) return;
-      playDialogue('gangwar', 'start');
-    });
   }
 
   // LEGAL: ================= RENDER: VENTURE CARDS =================
@@ -1206,8 +1169,107 @@
     }
   }
 
+  function handleStreetAction(e){
+    const btn = (e.target as HTMLElement).closest('button');
+    if(!btn) return;
+    if(btn.id === 'upgrade-lab'){ upgradeLab(); }
+    else if(btn.id === 'hire-muscle'){ if(state.cash<muscleCost()) return; state.cash -= muscleCost(); state.muscleCount += 1; renderAll(); }
+    else if(btn.id === 'toggle-bribe'){ state.bribeOn = !state.bribeOn; log(state.bribeOn ? '👮 You put the beat cops on the payroll.' : '👮 You cut the cops off. Heat will build faster.'); renderAll(); }
+    else if(btn.id === 'hire-rat'){ if(state.cash<ratsCashCost() || state.respect<ratsRespectCost()) return; state.cash -= ratsCashCost(); state.respect -= ratsRespectCost(); state.ratCount += 1; renderAll(); }
+    else if(btn.id === 'buy-territory'){ if(state.respect<territoryCost()) return; state.respect -= territoryCost(); state.territoryTier += 1; log(`🗺️ New blocks fall under your control. Crew capacity is now ${crewCapGlobal()}.`); renderAll(); }
+    else if(btn.id === 'buy-negotiate'){ if(state.respect<negotiateCost()) return; state.respect -= negotiateCost(); state.negotiateTier += 1; log(`🤝 You've got leverage now. Everyone's prices just got friendlier.`); renderAll(); }
+  }
+
+  function handleBankAction(e){
+    const target = e.target as HTMLElement;
+    const quickDeposit = target.closest('[data-deposit-quick]');
+    if(quickDeposit){
+      const inp = document.getElementById('deposit-input') as HTMLInputElement;
+      if(inp) inp.value = String(Math.floor(state.cash * Number(quickDeposit.getAttribute('data-deposit-quick'))));
+      return;
+    }
+    const quickWithdraw = target.closest('[data-withdraw-quick]');
+    if(quickWithdraw){
+      const inp = document.getElementById('withdraw-input') as HTMLInputElement;
+      if(inp) inp.value = String(Math.floor(state.bank * Number(quickWithdraw.getAttribute('data-withdraw-quick'))));
+      return;
+    }
+    const btn = target.closest('button');
+    if(!btn) return;
+    if(btn.id === 'deposit-go'){
+      const inp = document.getElementById('deposit-input') as HTMLInputElement;
+      depositAmount(inp?.value);
+    } else if(btn.id === 'withdraw-go'){
+      const inp = document.getElementById('withdraw-input') as HTMLInputElement;
+      withdrawAmount(inp?.value);
+    } else if(btn.id === 'start-heist'){
+      if(state.playSeconds < state.nextHeistAt) return;
+      playDialogue('bankheist', 'start');
+    }
+  }
+  function handleBankKeydown(e){
+    if((e as KeyboardEvent).key !== 'Enter') return;
+    const target = e.target as HTMLInputElement;
+    if(target.id === 'deposit-input') depositAmount(target.value);
+    else if(target.id === 'withdraw-input') withdrawAmount(target.value);
+  }
+
+  function handleTerritoryAction(e){
+    const btn = (e.target as HTMLElement).closest('[data-push]');
+    if(!btn) return;
+    pushDistrict(btn.getAttribute('data-push'));
+  }
+
+  function handlePoliticsAction(e){
+    const target = e.target as HTMLElement;
+    const bribeBtn = target.closest('[data-bribe]');
+    if(bribeBtn){ bribePolitician(bribeBtn.getAttribute('data-bribe')); return; }
+    const btn = target.closest('button');
+    if(!btn) return;
+    if(btn.id === 'buy-influence'){ buyInfluence(); }
+    else if(btn.id === 'launch-campaign'){
+      if(state.electedOffice) return;
+      if(!(state.influence >= 100 && state.playSeconds >= state.nextCampaignAt)) return;
+      playDialogue('campaign', 'start');
+    }
+  }
+
+  function handleGangAction(e){
+    const target = e.target as HTMLElement;
+    const checkinBtn = target.closest('[data-checkin]');
+    if(checkinBtn){ const g = gangRecruits.find(x=>x.id===checkinBtn.getAttribute('data-checkin')); if(g) playDialogue(g.dialogueKey, 'checkin'); return; }
+    const initiateBtn = target.closest('[data-initiate]');
+    if(initiateBtn){ const g = gangRecruits.find(x=>x.id===initiateBtn.getAttribute('data-initiate')); if(g) playDialogue(g.dialogueKey, 'start'); return; }
+    const btn = target.closest('button');
+    if(!btn) return;
+    if(btn.id === 'declare-war'){ if(state.playSeconds < state.nextWarAt) return; playDialogue('gangwar', 'start'); }
+  }
+
+  function handleDistrictAction(e){
+    const btn = (e.target as HTMLElement).closest('[data-travel]');
+    if(!btn) return;
+    travelTo(btn.getAttribute('data-travel'));
+  }
+
+  // LEGAL: Wire all delegation listeners exactly once at boot. Stable containers
+  // LEGAL: never get destroyed so each handler accumulates at exactly 1 per container.
+  function wireDelegation(){
+    document.getElementById('grid-legit').addEventListener('click', handleCardAction);
+    document.getElementById('grid-street').addEventListener('click', handleCardAction);
+    document.getElementById('assets-cars').addEventListener('click', handleAssetAction);
+    document.getElementById('assets-buildings').addEventListener('click', handleAssetAction);
+    document.getElementById('street-panel').addEventListener('click', handleStreetAction);
+    const bankPanel = document.getElementById('bank-panel');
+    if(bankPanel){ bankPanel.addEventListener('click', handleBankAction); bankPanel.addEventListener('keydown', handleBankKeydown); }
+    document.getElementById('territory-panel').addEventListener('click', handleTerritoryAction);
+    document.getElementById('politics-panel').addEventListener('click', handlePoliticsAction);
+    document.getElementById('gang-panel').addEventListener('click', handleGangAction);
+    document.getElementById('district-bar').addEventListener('click', handleDistrictAction);
+  }
+
   // LEGAL: ================= RENDER: STREET PANEL =================
   function renderStreetPanel(){
+
     const wrap = document.getElementById('street-panel');
     const mc = muscleCost();
     const rcCash = ratsCashCost(), rcResp = ratsRespectCost();
@@ -1249,12 +1311,6 @@
         <div class="row"><span id="trade-summary">${state.product.toFixed(0)}/${productCap()} product · ${activeCorners().length}/${corners.length} corners staffed · ${cornerIncomePerSec().toFixed(1)}/s</span></div>
       </div>
     `;
-    document.getElementById('upgrade-lab').addEventListener('click', upgradeLab);
-    document.getElementById('hire-muscle').addEventListener('click', function(){ if(state.cash<muscleCost()) return; state.cash -= muscleCost(); state.muscleCount += 1; renderAll(); });
-    document.getElementById('toggle-bribe').addEventListener('click', function(){ state.bribeOn = !state.bribeOn; log(state.bribeOn ? '👮 You put the beat cops on the payroll.' : '👮 You cut the cops off. Heat will build faster.'); renderAll(); });
-    document.getElementById('hire-rat').addEventListener('click', function(){ if(state.cash<ratsCashCost() || state.respect<ratsRespectCost()) return; state.cash -= ratsCashCost(); state.respect -= ratsRespectCost(); state.ratCount += 1; renderAll(); });
-    document.getElementById('buy-territory').addEventListener('click', function(){ if(state.respect<territoryCost()) return; state.respect -= territoryCost(); state.territoryTier += 1; log(`🗺️ New blocks fall under your control. Crew capacity is now ${crewCapGlobal()}.`); renderAll(); });
-    document.getElementById('buy-negotiate').addEventListener('click', function(){ if(state.respect<negotiateCost()) return; state.respect -= negotiateCost(); state.negotiateTier += 1; log(`🤝 You've got leverage now. Everyone's prices just got friendlier.`); renderAll(); });
   }
 
   // LEGAL: ================= RENDER: ALL =================
@@ -2353,6 +2409,7 @@
 
   // LEGAL: ================= BOOT =================
   (async function boot(){
+    wireDelegation();
     const loaded = await loadGame();
     if(loaded && state.started){
       const away = (Date.now() - state.lastTick)/1000;
@@ -2390,12 +2447,6 @@
       }}]
     });
     renderAll();
-    // LEGAL: Wire stable delegation listeners exactly once at boot. These containers
-    // LEGAL: are never destroyed, so listeners accumulate at exactly 1 per container.
-    document.getElementById('grid-legit').addEventListener('click', handleCardAction);
-    document.getElementById('grid-street').addEventListener('click', handleCardAction);
-    document.getElementById('assets-cars').addEventListener('click', handleAssetAction);
-    document.getElementById('assets-buildings').addEventListener('click', handleAssetAction);
   })();
 
   // LEGAL: ================= TOOLTIPS =================
