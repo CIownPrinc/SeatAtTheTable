@@ -2170,7 +2170,7 @@
       muscleCount: state.muscleCount, ratCount: state.ratCount, bribeOn: state.bribeOn,
       prestigeCount: state.prestigeCount, seenMilestones: Array.from(state.seenMilestones),
       playSeconds: state.playSeconds, investorPenalty: state.investorPenalty,
-      started: state.started, procNpc: state.procNpc,
+      started: state.started, procNpc: state.procNpc, lastTick: state.lastTick,
       quiet: document.body.classList.contains('quiet'),
       light: document.body.classList.contains('light'),
       businesses: businesses.map(b=> ({ id:b.id, level:b.level, crew:b.crew, manager:b.manager, researched:b.researched })),
@@ -2221,6 +2221,7 @@
         state.prestigeCount=d.prestigeCount; state.seenMilestones = new Set(d.seenMilestones||[]);
         state.playSeconds=d.playSeconds||0; state.investorPenalty=Math.min(0.5, d.investorPenalty||0);
         state.started = d.started; if(d.procNpc) state.procNpc = d.procNpc;
+        if(d.lastTick) state.lastTick = d.lastTick;
         (d.businesses||[]).forEach(sb=>{ const b=businesses.find(x=>x.id===sb.id); if(b){ b.level=sb.level; b.crew=sb.crew; b.manager=sb.manager; b.researched=sb.researched; } });
         if(d.quiet){ document.body.classList.add('quiet'); document.getElementById('quiet-toggle').checked = true; }
         if(d.light){ document.body.classList.add('light'); document.getElementById('theme-toggle').checked = true; }
@@ -2338,6 +2339,18 @@
   (async function boot(){
     const loaded = await loadGame();
     if(loaded && state.started){
+      const away = (Date.now() - state.lastTick)/1000;
+      if(away > 25){
+        const capped = Math.min(away, 7200);
+        const earned = netIncome() * capped;
+        state.cash += earned;
+        const mins = Math.round(capped/60);
+        showModal({ eyebrow:'Business Report', title:"WHILE YOU WERE OUT",
+          body:`<p>Managers and crew kept things running. In the <strong>${mins} minute${mins===1?'':'s'}</strong> you were gone, the operation cleared <strong>${fmt(earned)}</strong>.</p>`,
+          buttons:[{label:'Good'}] });
+        log(`📒 Business Report: ${fmt(earned)} earned while you were away.`);
+      }
+
       const spawn = spawnPoints[state.currentDistrict] || {x:700,y:460};
       player.x = spawn.x; player.y = spawn.y;
       buildDistrictScene(state.currentDistrict);
