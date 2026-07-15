@@ -1,316 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Seat at the Table</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<style>
-  :root{
-    --bg:#14161f; --bg-panel:#1b1e29; --bg-card:#20232f;
-    --line:#2a2d3d; --line-soft:#24273350;
-    --text:#e8e6de; --text-dim:#9a9db0; --text-faint:#5f6275;
-    --gold:#d4a017; --gold-soft:rgba(212,160,23,0.14);
-    --teal:#3e7c8c; --teal-soft:rgba(62,124,140,0.16);
-    --maroon:#a8394a; --maroon-soft:rgba(168,57,74,0.16);
-    --violet:#7a6fb0; --violet-soft:rgba(122,111,176,0.16);
-    --font-display:'Oswald',sans-serif; --font-body:'IBM Plex Sans',sans-serif; --font-mono:'IBM Plex Mono',monospace;
-  }
-  body.light{
-    --bg:#f2ede2; --bg-panel:#ffffff; --bg-card:#faf7f0;
-    --line:#ddd5c2; --line-soft:#ddd5c250;
-    --text:#2a2620; --text-dim:#5c5748; --text-faint:#8b846d;
-    --gold:#a9740a; --gold-soft:rgba(169,116,10,0.12);
-    --teal:#2c6470; --teal-soft:rgba(44,100,112,0.10);
-    --maroon:#8c2f39; --maroon-soft:rgba(140,47,57,0.10);
-    --violet:#5c4f8c; --violet-soft:rgba(92,79,140,0.10);
-  }
-  *{box-sizing:border-box;}
-  body{margin:0;background:radial-gradient(ellipse 900px 500px at 20% -10%, rgba(62,124,140,0.08), transparent),radial-gradient(ellipse 700px 500px at 90% 10%, rgba(212,160,23,0.05), transparent),var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;transition:background-color .2s, color .2s;}
-  body.quiet .card-flavor, body.quiet .pillar-desc, body.quiet .modal-body p.flavor{display:none;}
-
-  /* ---------- HUD ---------- */
-  .hud{position:sticky;top:0;z-index:40;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 22px;background:rgba(20,22,31,0.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);flex-wrap:wrap;}
-  .hud-title{font-family:var(--font-display);font-weight:600;letter-spacing:0.06em;font-size:14px;color:var(--text-dim);text-transform:uppercase;white-space:nowrap;}
-  .hud-title span{color:var(--gold);}
-  .hud-stats{display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
-  .stat{display:flex;flex-direction:column;gap:2px;min-width:78px;}
-  .stat-label{font-size:9.5px;letter-spacing:0.11em;text-transform:uppercase;color:var(--text-faint);font-family:var(--font-display);}
-  .stat-value{font-family:var(--font-mono);font-size:17px;font-weight:600;color:var(--gold);}
-  .stat-value.teal{color:var(--teal);}
-  .stat-value.violet{color:var(--violet);}
-  .stat-sub{font-size:10.5px;color:var(--text-dim);}
-  .heat-bar{width:90px;height:6px;border-radius:3px;background:#2a2d3d;overflow:hidden;margin-top:2px;}
-  .heat-fill{height:100%;background:linear-gradient(90deg,var(--maroon),#e0546b);width:0%;transition:width .4s;}
-  .prestige-btn{font-family:var(--font-display);text-transform:uppercase;letter-spacing:0.05em;font-size:11.5px;font-weight:600;background:var(--gold-soft);border:1px solid var(--gold);color:var(--gold);padding:8px 14px;border-radius:4px;cursor:pointer;white-space:nowrap;}
-  .prestige-btn:disabled{opacity:0.35;cursor:not-allowed;}
-
-  /* ---------- TABS ---------- */
-  .tab-bar{position:sticky;top:63px;z-index:39;display:flex;gap:2px;padding:0 22px;background:rgba(20,22,31,0.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);overflow-x:auto;}
-  .tab-btn{font-family:var(--font-display);font-size:12px;letter-spacing:0.06em;text-transform:uppercase;font-weight:600;color:var(--text-faint);background:transparent;border:none;border-bottom:2px solid transparent;padding:12px 14px;cursor:pointer;white-space:nowrap;}
-  .tab-btn:hover{color:var(--text-dim);}
-  .tab-btn.active{color:var(--gold);border-bottom-color:var(--gold);}
-  .tab-btn .soon{font-size:8.5px;color:var(--text-faint);margin-left:4px;font-family:var(--font-mono);text-transform:none;}
-
-  /* ---------- MAIN ---------- */
-  main{max-width:1220px;margin:0 auto;padding:22px 22px 60px;}
-  .tab-panel{display:none;}
-  .tab-panel.active{display:block;}
-  .section-eyebrow{font-family:var(--font-display);font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-faint);display:flex;align-items:center;gap:10px;margin:30px 0 4px;}
-  .section-eyebrow::after{content:'';flex:1;height:1px;background:var(--line);}
-  .section-eyebrow:first-child{margin-top:0;}
-  .pillar-desc{font-size:12.5px;color:var(--text-faint);margin:0 0 14px;max-width:640px;}
-
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:13px;}
-  .card{background:var(--bg-card);border:1px solid var(--line);border-radius:6px;padding:15px 17px;display:flex;flex-direction:column;gap:9px;position:relative;}
-  .card.legit{border-left:3px solid var(--teal);}
-  .card.street{border-left:3px solid var(--maroon);}
-  .card.locked{opacity:0.5;}
-  .card-top{display:flex;align-items:flex-start;gap:11px;}
-  .card-icon{width:36px;height:36px;border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;background:var(--teal-soft);}
-  .card.street .card-icon{background:var(--maroon-soft);}
-  .card-name{font-family:var(--font-display);font-size:15.5px;font-weight:600;}
-  .card-flavor{font-size:11.5px;color:var(--text-dim);line-height:1.4;margin-top:2px;}
-  .card-stats{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:10.5px;color:var(--text-faint);font-family:var(--font-mono);border-top:1px solid var(--line-soft);padding-top:8px;}
-  .card-stats b{color:var(--text-dim);font-weight:600;}
-  .eff-low{color:var(--maroon)!important;}
-  .btn-row{display:flex;gap:7px;flex-wrap:wrap;}
-  .mini-btn{flex:1;min-width:90px;font-family:var(--font-body);font-weight:600;font-size:12px;background:transparent;border:1px solid var(--line);color:var(--text);padding:8px 9px;border-radius:4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px;}
-  .card.legit .mini-btn:hover:not(:disabled){border-color:var(--teal);background:var(--teal-soft);}
-  .card.street .mini-btn:hover:not(:disabled){border-color:var(--maroon);background:var(--maroon-soft);}
-  .mini-btn:disabled{opacity:0.4;cursor:not-allowed;}
-  .mini-btn .cost{font-family:var(--font-mono);color:var(--gold);font-size:11px;}
-  .mini-btn.fire .cost{color:var(--text-faint);}
-  .mini-btn.manager{border-color:var(--violet);color:var(--violet);}
-  .lock-note{font-size:11px;color:var(--text-faint);font-style:italic;}
-  .managed-badge{font-size:11px;color:var(--violet);font-family:var(--font-mono);border-top:1px solid var(--line-soft);padding-top:8px;}
-
-  .street-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:13px;}
-  .street-card{background:var(--bg-card);border:1px solid var(--line);border-left:3px solid var(--maroon);border-radius:6px;padding:15px 17px;display:flex;flex-direction:column;gap:8px;}
-  .street-card.respect-spend{border-left-color:var(--gold);}
-  .street-card h4{margin:0;font-family:var(--font-display);font-size:14.5px;}
-  .street-card p{margin:0;font-size:11.5px;color:var(--text-dim);line-height:1.4;}
-  .street-card .row{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;color:var(--text-faint);}
-  .toggle-btn{font-family:var(--font-display);font-weight:600;font-size:12px;padding:8px;border-radius:4px;border:1px solid var(--maroon);background:transparent;color:var(--maroon);cursor:pointer;}
-  .toggle-btn.active{background:var(--maroon);color:#fff;}
-  .bank-form{border-top:1px solid var(--line-soft);padding-top:10px;margin-top:2px;display:flex;flex-direction:column;gap:7px;}
-  .bank-form-label{font-family:var(--font-display);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-faint);}
-  .bank-input-row{display:flex;gap:7px;}
-  .bank-input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);font-family:var(--font-mono);font-size:13px;padding:8px 10px;}
-  .bank-input:focus{outline:none;border-color:var(--gold);}
-  .bank-input::-webkit-outer-spin-button, .bank-input::-webkit-inner-spin-button{opacity:0.6;}
-  .mini-btn.quick{flex:1;min-width:0;font-size:11px;padding:6px 4px;color:var(--text-faint);}
-
-  /* ---------- MAP ---------- */
-  .map-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;}
-  .district-bar-wrap{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
-  .district-bar-label{font-family:var(--font-display);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-faint);}
-  .district-bar{display:flex;gap:8px;flex-wrap:wrap;}
-  .district-btn{font-family:var(--font-display);font-size:12.5px;letter-spacing:0.03em;font-weight:600;padding:9px 16px;border-radius:20px;border:1px solid var(--line);background:var(--bg-card);color:var(--text-dim);cursor:pointer;display:flex;align-items:center;gap:6px;}
-  .district-btn:hover:not(.active){border-color:var(--text-dim);color:var(--text);}
-  .district-btn.active{border-color:var(--gold);color:var(--gold);background:var(--gold-soft);cursor:default;}
-  .district-btn .pin-dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:0;}
-  .district-btn.active .pin-dot{opacity:1;}
-  .control-track{width:100%;height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin:4px 0;}
-  .control-fill{height:100%;background:linear-gradient(90deg,var(--maroon),var(--gold));transition:width .4s;}
-  #scene3d-container{position:relative;width:760px;max-width:100%;height:440px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:#0a0b10;touch-action:none;}
-  #scene3d-container canvas.webgl-canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block;}
-  #interior-canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:none;}
-  #minimap-canvas{position:absolute;top:10px;right:10px;width:150px;height:150px;border-radius:8px;border:2px solid var(--gold);background:#12141c;cursor:grab;z-index:5;}
-  #minimap-canvas:active{cursor:grabbing;}
-  .minimap-clear-btn{position:absolute;top:14px;right:14px;width:22px;height:22px;border-radius:50%;border:1px solid var(--line);background:rgba(10,11,16,0.7);color:var(--text-faint);font-size:11px;line-height:1;cursor:pointer;z-index:6;display:none;}
-  .minimap-clear-btn.show{display:block;}
-  .map-hint{font-family:var(--font-mono);font-size:12px;color:var(--text-dim);min-height:18px;}
-  .map-legend{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;padding:10px 14px;background:var(--bg-panel);border:1px solid var(--line);border-radius:6px;margin-top:4px;}
-  .legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim);font-family:var(--font-body);}
-  .legend-swatch{width:12px;height:12px;border-radius:3px;flex-shrink:0;display:inline-block;}
-  .legend-swatch.pin{border-radius:50% 50% 50% 0;transform:rotate(45deg);}
-  .map-controls{display:flex;gap:8px;margin-top:4px;}
-  .dpad-btn{width:46px;height:46px;border-radius:8px;border:1px solid var(--line);background:var(--bg-card);color:var(--text-dim);font-size:16px;cursor:pointer;}
-  .dpad-btn:active{background:var(--teal-soft);border-color:var(--teal);}
-
-  /* ---------- PLACEHOLDER PANELS ---------- */
-  .placeholder{background:var(--bg-card);border:1px dashed var(--line);border-radius:8px;padding:40px 28px;text-align:center;color:var(--text-faint);}
-  .placeholder h3{font-family:var(--font-display);color:var(--text-dim);margin:0 0 8px;font-size:18px;text-transform:uppercase;letter-spacing:0.04em;}
-  .placeholder p{font-size:12.5px;max-width:420px;margin:0 auto;line-height:1.5;}
-
-  /* ---------- SETTINGS ---------- */
-  .settings-block{background:var(--bg-card);border:1px solid var(--line);border-radius:8px;padding:20px 22px;max-width:480px;display:flex;flex-direction:column;gap:16px;}
-  .settings-row{display:flex;justify-content:space-between;align-items:center;gap:14px;}
-  .settings-row .label{font-size:13px;color:var(--text);}
-  .settings-row .sub{font-size:11px;color:var(--text-faint);margin-top:2px;}
-  .switch{position:relative;width:42px;height:23px;flex-shrink:0;}
-  .switch input{opacity:0;width:0;height:0;}
-  .slider-track{position:absolute;inset:0;background:var(--line);border-radius:12px;cursor:pointer;transition:.2s;}
-  .slider-track::before{content:'';position:absolute;width:17px;height:17px;left:3px;top:3px;background:var(--text-dim);border-radius:50%;transition:.2s;}
-  .switch input:checked + .slider-track{background:var(--gold-soft);border:1px solid var(--gold);}
-  .switch input:checked + .slider-track::before{transform:translateX(19px);background:var(--gold);}
-  .settings-btn{font-family:var(--font-display);text-transform:uppercase;letter-spacing:0.04em;font-size:12px;font-weight:600;padding:9px 14px;border-radius:4px;border:1px solid var(--line);background:transparent;color:var(--text-dim);cursor:pointer;}
-  .settings-btn:hover{border-color:var(--teal);color:var(--text);}
-  .settings-btn.danger:hover{border-color:var(--maroon);color:var(--maroon);}
-  .save-status{font-family:var(--font-mono);font-size:11px;color:var(--text-faint);}
-
-  /* ---------- TICKER ---------- */
-  .ticker-wrap{margin-top:14px;background:var(--bg-panel);border:1px solid var(--line);border-radius:6px;max-height:150px;overflow-y:auto;}
-  .ticker-item{padding:8px 15px;border-bottom:1px solid var(--line-soft);font-size:12px;color:var(--text-dim);font-family:var(--font-mono);display:flex;gap:10px;}
-  .ticker-item:last-child{border-bottom:none;}
-  .ticker-item .t-time{color:var(--text-faint);white-space:nowrap;}
-
-  /* ---------- MODAL ---------- */
-  .modal-overlay{position:fixed;inset:0;background:rgba(10,11,16,0.82);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;}
-  .modal-overlay.hidden{display:none;}
-  .modal{background:var(--bg-panel);border:1px solid var(--line);border-radius:8px;max-width:540px;width:100%;padding:0;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,0.6);animation:riseIn .3s ease;}
-  @keyframes riseIn{from{opacity:0;transform:translateY(12px) scale(0.98);}to{opacity:1;transform:none;}}
-  .modal-header{background:linear-gradient(135deg, rgba(212,160,23,0.10), rgba(62,124,140,0.06));border-bottom:1px solid var(--line);padding:20px 24px 16px;position:relative;}
-  .modal-eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:0.13em;color:var(--text-faint);text-transform:uppercase;}
-  .modal-title{font-family:var(--font-display);font-size:22px;font-weight:700;margin-top:4px;}
-  .stamp{position:absolute;top:16px;right:20px;border:2px solid var(--maroon);color:var(--maroon);font-family:var(--font-display);font-weight:700;font-size:10px;letter-spacing:0.1em;padding:5px 9px;border-radius:3px;transform:rotate(-9deg);text-transform:uppercase;opacity:0.85;}
-  .modal-body{padding:18px 24px;}
-  .modal-body p{font-size:13.5px;line-height:1.6;color:var(--text-dim);margin:0 0 11px;}
-  .modal-body p:last-child{margin-bottom:0;}
-  .modal-body strong{color:var(--text);}
-  .modal-footer{padding:14px 24px 20px;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;}
-  .modal-btn{font-family:var(--font-display);text-transform:uppercase;letter-spacing:0.05em;font-weight:600;font-size:12.5px;background:var(--gold);color:#1a1305;border:none;padding:10px 20px;border-radius:4px;cursor:pointer;}
-  .modal-btn.secondary{background:transparent;border:1px solid var(--line);color:var(--text-dim);}
-  .clip-rule{width:34px;height:2px;background:var(--gold);margin:10px 0 0 24px;}
-
-  @media (max-width:640px){ .hud{padding:11px 14px;} .tab-bar{padding:0 10px;} main{padding:16px 12px 50px;} }
-</style>
-</head>
-<body>
-
-<div class="hud">
-  <div class="hud-title">Seat at the <span>Table</span></div>
-  <div class="hud-stats">
-    <div class="stat"><div class="stat-label">Cash</div><div class="stat-value" id="hud-cash">$47</div><div class="stat-sub" id="hud-income">+$0/s</div></div>
-    <div class="stat"><div class="stat-label">Standing</div><div class="stat-value teal" id="hud-rank">Nobody</div><div class="stat-sub" id="hud-respect">0 respect</div></div>
-    <div class="stat"><div class="stat-label">Heat</div><div class="heat-bar"><div class="heat-fill" id="heat-fill"></div></div></div>
-    <div class="stat"><div class="stat-label">Crew</div><div class="stat-value violet" id="hud-crew" style="font-size:15px;">0 / 6</div></div>
-    <button class="prestige-btn" id="prestige-btn" style="display:none;"></button>
-  </div>
-</div>
-
-<div class="tab-bar" id="tab-bar">
-  <button class="tab-btn active" data-tab="empire">Empire</button>
-  <button class="tab-btn" data-tab="map">Map</button>
-  <button class="tab-btn" data-tab="bank">Bank</button>
-  <button class="tab-btn" data-tab="politics">Politics</button>
-  <button class="tab-btn" data-tab="gang">Gang</button>
-  <button class="tab-btn" data-tab="assets">Assets</button>
-  <button class="tab-btn" data-tab="settings">Settings</button>
-</div>
-
-<main>
-
-  <div class="tab-panel active" data-tab="empire">
-    <div class="section-eyebrow">Ventures — Production</div>
-    <p class="pillar-desc">Cash builds your businesses. Research a venture once, then expand it level by level — but a venture only earns what its crew can actually move.</p>
-    <div class="grid" id="grid-legit"></div>
-
-    <div class="section-eyebrow" style="margin-top:26px;">The Other Ledger — Production</div>
-    <p class="pillar-desc">Same rules, riskier trade. Street ventures earn well but generate heat.</p>
-    <div class="grid" id="grid-street"></div>
-
-    <div class="section-eyebrow">The Street — Muscle &amp; Respect</div>
-    <p class="pillar-desc">Muscle earns respect but draws heat. Bribes and informants manage the risk. Respect buys territory (more crew capacity) and leverage (lower prices everywhere).</p>
-    <div class="street-grid" id="street-panel"></div>
-  </div>
-
-  <div class="tab-panel" data-tab="map">
-    <div class="section-eyebrow">The City</div>
-    <p class="pillar-desc"><strong>WASD or arrow keys</strong> to walk or drive, <strong>E</strong> to interact (enter buildings, get in/out of your car). Drag the minimap to look around, click it to drop a GPS waypoint.</p>
-    <div class="district-bar-wrap">
-      <div class="district-bar-label">Travel</div>
-      <div class="district-bar" id="district-bar"></div>
-    </div>
-    <div class="map-wrap">
-      <div id="scene3d-container">
-        <canvas id="interior-canvas" width="760" height="440"></canvas>
-        <canvas id="minimap-canvas" width="150" height="150"></canvas>
-        <button class="minimap-clear-btn" id="minimap-clear" title="Clear waypoint">✕</button>
-      </div>
-      <div class="map-hint" id="map-hint">&nbsp;</div>
-      <div class="map-controls">
-        <button class="dpad-btn" id="btn-interact" style="width:auto;padding:0 16px;">Interact (E)</button>
-      </div>
-      <div class="map-legend" id="map-legend"></div>
-    </div>
-
-    <div class="section-eyebrow" style="margin-top:26px;">Territory Control</div>
-    <p class="pillar-desc">Control drifts toward whoever actually maintains a presence — muscle, staffed corners, running ventures. Push it directly with respect.</p>
-    <div class="street-grid" id="territory-panel"></div>
-  </div>
-
-  <div class="tab-panel" data-tab="bank">
-    <div class="section-eyebrow">First Chicago Trust &amp; Yours</div>
-    <p class="pillar-desc">Bank what you don't need on hand. It's slow money, but it's safe money — heat can't touch it.</p>
-    <div id="bank-panel"></div>
-  </div>
-  <div class="tab-panel" data-tab="politics">
-    <div class="section-eyebrow">City Hall</div>
-    <p class="pillar-desc">Influence opens doors. Favor with specific people opens specific doors. Enough of both, and you can ask for a seat instead of a favor.</p>
-    <div id="politics-panel"></div>
-  </div>
-  <div class="tab-panel" data-tab="gang">
-    <div class="section-eyebrow">Your People</div>
-    <p class="pillar-desc">A crew isn't a headcount, it's specific people who owe you something. Initiate them from here, meet them on the map.</p>
-    <div id="gang-panel"></div>
-  </div>
-  <div class="tab-panel" data-tab="assets">
-    <div class="section-eyebrow">Garage</div>
-    <p class="pillar-desc">A better ride moves you faster around the city and makes every job a little easier to walk away from.</p>
-    <div class="street-grid" id="assets-cars"></div>
-
-    <div class="section-eyebrow" style="margin-top:26px;">Property</div>
-    <p class="pillar-desc">Buildings you just own. No crew, no research, no expansion — just a check every second.</p>
-    <div class="street-grid" id="assets-buildings"></div>
-  </div>
-
-  <div class="tab-panel" data-tab="settings">
-    <div class="section-eyebrow">Settings</div>
-    <div class="settings-block">
-      <div class="settings-row">
-        <div><div class="label">Light mode</div><div class="sub">Switch from the dark noir theme to a lighter palette</div></div>
-        <label class="switch"><input type="checkbox" id="theme-toggle"><span class="slider-track"></span></label>
-      </div>
-      <div class="settings-row">
-        <div><div class="label">Quiet mode</div><div class="sub">Hide flavor text, keep just the numbers</div></div>
-        <label class="switch"><input type="checkbox" id="quiet-toggle"><span class="slider-track"></span></label>
-      </div>
-      <div class="settings-row">
-        <div><div class="label">Autosave</div><div class="sub">Saves automatically every few seconds</div></div>
-        <span class="save-status" id="save-status">Not saved yet</span>
-      </div>
-      <div class="settings-row">
-        <button class="settings-btn" id="save-now-btn">Save Now</button>
-        <button class="settings-btn danger" id="reset-btn">Reset Progress</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="section-eyebrow">Word on the Street</div>
-  <div class="ticker-wrap" id="ticker"></div>
-</main>
-
-<div class="modal-overlay hidden" id="modal-overlay">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-eyebrow" id="modal-eyebrow">Case File</div>
-      <div class="modal-title" id="modal-title">Title</div>
-      <div class="stamp" id="modal-stamp" style="display:none;">Arrived</div>
-    </div>
-    <div class="clip-rule"></div>
-    <div class="modal-body" id="modal-body"></div>
-    <div class="modal-footer" id="modal-footer"></div>
-  </div>
-</div>
-
-<script>
-(function(){
-
-  // ================= VENTURE DATA =================
+// LEGAL: ================= VENTURE DATA =================
   const businesses = [
     { id:'cart', name:"Kailash's Cart", flavor:"A hot-dog stand with a chaat masala twist. Devon Street regulars line up before the sun's fully out.", category:'legit', icon:'🌭', baseCost:10, researchCost:0, baseIncome:0.4, unlock:{type:'start'}, crewBaseCost:8, managerLevelReq:12, managerName:'Nikhil, the Cart Foreman' },
     { id:'store', name:"Corner Store", flavor:"Milk, cigarettes, lottery tickets, and a till that never quite balances honestly.", category:'legit', icon:'🏪', baseCost:150, researchCost:90, baseIncome:2.6, unlock:{type:'cash', value:120}, crewBaseCost:60, managerLevelReq:12, managerName:'Priya, Store Manager' },
@@ -383,7 +71,7 @@
     ]},
   ];
 
-  // ================= ASSETS: CARS & PROPERTIES =================
+  // LEGAL: ================= ASSETS: CARS & PROPERTIES =================
   const cars = [
     { id:'sedan', name:'Used Sedan', icon:'🚗', cost:800, speedMult:1.10, heistBonus:0.02, respectPerSec:0, color:'#7d8a99', len:26, wid:14 },
     { id:'impala', name:"Impala '19", icon:'🚙', cost:5000, speedMult:1.25, heistBonus:0.05, respectPerSec:0, color:'#3e6b8a', len:29, wid:15 },
@@ -397,8 +85,8 @@
     { id:'loft', name:'Riverside Lofts', icon:'🌆', cost:600000, incomePerSec:180 },
   ];
 
-  // Independent shops — not yours. You can rob them (one-off, cooldown, risk)
-  // or extort them (permanent small income + permanent small heat, reversible).
+  // LEGAL: Independent shops — not yours. You can rob them (one-off, cooldown, risk)
+  // LEGAL: or extort them (permanent small income + permanent small heat, reversible).
   const localBusinesses = [
     { id:'patel', name:'Patel Grocery', icon:'🛒', owner:'Mr. Patel', robBase:900, extortIncome:0.8, extortHeat:0.12, district:'devon', x:260, y:430, extorted:false, nextRobAt:0 },
     { id:'pawn', name:"Nowak's Pawn Shop", icon:'💍', owner:'Nowak', robBase:1500, extortIncome:1.3, extortHeat:0.18, district:'devon', x:520, y:400, extorted:false, nextRobAt:0 },
@@ -410,8 +98,8 @@
     { id:'marlowe', name:'The Marlowe Club', icon:'🎷', owner:'Vivienne', robBase:2600, extortIncome:1.9, extortHeat:0.20, district:'loop', x:900, y:320, extorted:false, nextRobAt:0 },
   ];
 
-  // Service buildings — not Ventures (no level/crew), just physical doors into
-  // existing tab systems (Bank/Assets/Politics) or a direct dialogue (the heist).
+  // LEGAL: Service buildings — not Ventures (no level/crew), just physical doors into
+  // LEGAL: existing tab systems (Bank/Assets/Politics) or a direct dialogue (the heist).
   const serviceBuildings = [
     { id:'bankHome', kind:'bankHome', name:'West Side Savings & Loan', icon:'🏦', district:'devon', x:1360, y:230 },
     { id:'cardealer', kind:'garage', name:'Chicago Auto Exchange', icon:'🚗', district:'devon', x:1360, y:430 },
@@ -420,10 +108,10 @@
     { id:'heistTarget', kind:'heist', name:'First Chicago Trust', icon:'🕵️', district:'loop', x:280, y:650 },
   ];
 
-  // ================= TERRITORY: DISTRICTS =================
-  // Control is 0-100. >=60 is "yours" (bonus applies), <=25 is "rival controlled"
-  // (small penalty), in between is contested (neutral). Control drifts based on
-  // your presence there (muscle, active corners, ventures) vs. rival pressure.
+  // LEGAL: ================= TERRITORY: DISTRICTS =================
+  // LEGAL: Control is 0-100. >=60 is "yours" (bonus applies), <=25 is "rival controlled"
+  // LEGAL: (small penalty), in between is contested (neutral). Control drifts based on
+  // LEGAL: your presence there (muscle, active corners, ventures) vs. rival pressure.
   const districts = [
     { id:'devon', name:'Devon Street', homeTurf:true, control:65, pushCount:0, nextPushAt:0 },
     { id:'westside', name:'West Side', homeTurf:false, control:15, pushCount:0, nextPushAt:0 },
@@ -452,11 +140,11 @@
     renderAll();
   }
 
-  // ================= THE TRADE: PRODUCT, CORNERS =================
-  // Replaces the old abstract "Runners" venture. Product is produced at the
-  // Lab (cash-funded, no crew) and consumed by dealers stationed on corners
-  // across districts. No product in stock means a staffed corner just idles —
-  // same production/distribution coupling Dope Slinger runs on, just spatial now.
+  // LEGAL: ================= THE TRADE: PRODUCT, CORNERS =================
+  // LEGAL: Replaces the old abstract "Runners" venture. Product is produced at the
+  // LEGAL: Lab (cash-funded, no crew) and consumed by dealers stationed on corners
+  // LEGAL: across districts. No product in stock means a staffed corner just idles —
+  // LEGAL: same production/distribution coupling Dope Slinger runs on, just spatial now.
   const corners = [
     { id:'devonCorner', name:'Devon & Rockwell', district:'devon', tier:1, rate:3, consumption:1.4, dealerCost:250, x:700, y:800, dealer:false, busted:false, bustCooldownAt:0 },
     { id:'ws1', name:'Cicero & 16th', district:'westside', tier:2, rate:9, consumption:4, dealerCost:900, x:320, y:260, dealer:false, busted:false, bustCooldownAt:0 },
@@ -465,10 +153,10 @@
     { id:'ws4', name:'The Warehouse Block', district:'westside', tier:3, rate:28, consumption:11, dealerCost:4200, x:1200, y:750, dealer:false, busted:false, bustCooldownAt:0 },
   ];
 
-  // ================= POLITICS =================
-  // Influence is a cash-funded meter. Named politicians take individual favor
-  // (also cash) and each unlock a distinct permanent bonus at favor>=60.
-  // Running for office is a one-shot capstone gated behind enough influence.
+  // LEGAL: ================= POLITICS =================
+  // LEGAL: Influence is a cash-funded meter. Named politicians take individual favor
+  // LEGAL: (also cash) and each unlock a distinct permanent bonus at favor>=60.
+  // LEGAL: Running for office is a one-shot capstone gated behind enough influence.
   const politicians = [
     { id:'cole', name:'Alderman Cole', role:'Zoning', favor:0, pocketed:false, desc:"Zoning favors: -10% research cost on every venture once he's in your pocket.", flavor:"Cole stops pretending the envelopes are for his re-election fund. \"We understand each other now,\" is all he says." },
     { id:'boyle', name:'Commissioner Boyle', role:'Police', favor:0, pocketed:false, desc:"Fewer patrols where it counts: -20% heat generation once he's in your pocket.", flavor:"Boyle doesn't say yes outright. He just stops assigning patrols to your streets, and that's answer enough." },
@@ -478,10 +166,10 @@
   function boyleActive(){ return politicians.find(p=>p.id==='boyle').favor >= 60; }
   function whitmoreActive(){ return politicians.find(p=>p.id==='whitmore').favor >= 60; }
 
-  // ================= GANG =================
-  // A small, hand-authored roster (not procedural) — each recruit requires an
-  // initiation trial through the dialogue engine and grants a distinct
-  // permanent bonus once inducted, plus counts toward Gang Strength for wars.
+  // LEGAL: ================= GANG =================
+  // LEGAL: A small, hand-authored roster (not procedural) — each recruit requires an
+  // LEGAL: initiation trial through the dialogue engine and grants a distinct
+  // LEGAL: permanent bonus once inducted, plus counts toward Gang Strength for wars.
   const gangRecruits = [
     { id:'chino', name:'Chino', trait:'Fast and reckless', reqRespect:100, cost:1500, bonus:"Corners are 15% less likely to get busted.", inducted:false, dialogueKey:'initChino', district:'westside', x:250, y:480 },
     { id:'nadia', name:'Nadia Volkov', trait:'Knows every cop by name', reqRespect:150, cost:3000, bonus:'-10% heat generation, citywide.', inducted:false, dialogueKey:'initNadia', district:'westside', x:900, y:460 },
@@ -500,9 +188,9 @@
     return 20 + (100-ws.control)*0.3;
   }
 
-  // ================= DIALOGUE ENGINE =================
-  // Reusable branching conversation tree. Any future NPC/mission/politics/gang
-  // interaction plugs into this same structure: { npcName, nodes:{ id:{text,choices:[{label,effect,next}]} } }
+  // LEGAL: ================= DIALOGUE ENGINE =================
+  // LEGAL: Reusable branching conversation tree. Any future NPC/mission/politics/gang
+  // LEGAL: interaction plugs into this same structure: { npcName, nodes:{ id:{text,choices:[{label,effect,next}]} } }
   const dialogues = {
     sanjay: {
       npcName: 'Sanjay (Cousin)',
@@ -676,10 +364,10 @@
       }
     },
   };
-  // Recurring NPCs don't have one fixed conversation — each has a small set of
-  // story stages gated on real progress (prestige, territory control, politics),
-  // so revisiting them later reflects what's actually happened in the other
-  // systems instead of repeating the same static lines forever.
+  // LEGAL: Recurring NPCs don't have one fixed conversation — each has a small set of
+  // LEGAL: story stages gated on real progress (prestige, territory control, politics),
+  // LEGAL: so revisiting them later reflects what's actually happened in the other
+  // LEGAL: systems instead of repeating the same static lines forever.
   function npcOpeningNode(npcKey){
     if(npcKey==='sanjay'){
       if(state.prestigeCount>=5) return 'stage3';
@@ -711,10 +399,10 @@
     });
   }
 
-  // ================= NPC REGISTRY =================
-  // Named NPCs are hand-authored and permanent (see `dialogues` above).
-  // Procedural NPCs are generated from pools — this is the seed for a larger
-  // rotating cast once robbery/recruitment lands in later phases.
+  // LEGAL: ================= NPC REGISTRY =================
+  // LEGAL: Named NPCs are hand-authored and permanent (see `dialogues` above).
+  // LEGAL: Procedural NPCs are generated from pools — this is the seed for a larger
+  // LEGAL: rotating cast once robbery/recruitment lands in later phases.
   const npcFirstNames = ['Marcus','Yolanda','Chen','Fatima','Danny','Rosa','Terrence','Aleksey','Priya','Deshawn','Grace','Miguel'];
   const npcLastNames = ['Whitfield','Osei','Nowak','Reyes','Kowalski','Singh','Okafor','Brennan'];
   const npcDispositions = ['Friendly','Wary','Business-minded','Streetwise'];
@@ -740,7 +428,7 @@
     });
   }
 
-  // ================= STATE =================
+  // LEGAL: ================= STATE =================
   const state = {
     cash: 47, respect: 0, heat: 0,
     territoryTier: 0, negotiateTier: 0,
@@ -758,7 +446,7 @@
     influence: 0, influenceBuys: 0, electedOffice: false, nextCampaignAt: 0, nextWarAt: 0,
   };
 
-  // ================= HELPERS =================
+  // LEGAL: ================= HELPERS =================
   function fmt(n){
     const sign = n<0?'-':''; n=Math.abs(n);
     if(n < 1000) return sign+'$' + Math.floor(n);
@@ -852,7 +540,7 @@
     while(wrap.children.length > 45) wrap.removeChild(wrap.lastChild);
   }
 
-  // ================= MODAL =================
+  // LEGAL: ================= MODAL =================
   function showModal({eyebrow, title, body, stamp, buttons}){
     document.getElementById('modal-eyebrow').textContent = eyebrow || '';
     document.getElementById('modal-title').textContent = title || '';
@@ -898,7 +586,7 @@
     });
   }
 
-  // ================= VENTURE QUICK PANEL (used by the map) =================
+  // LEGAL: ================= VENTURE QUICK PANEL (used by the map) =================
   function openVentureQuickPanel(b){
     const unlocked = isUnlocked(b);
     let bodyHtml = `<p>${b.flavor}</p>`;
@@ -921,7 +609,7 @@
     showModal({ eyebrow: b.category==='street'?'The Other Ledger':'Ventures', title:b.name, body:bodyHtml, buttons });
   }
 
-  // ================= BANK =================
+  // LEGAL: ================= BANK =================
   function depositAmount(rawAmt){
     const amt = Math.floor(Number(rawAmt));
     if(!isFinite(amt) || amt<=0){ log('🏦 Enter a valid amount to deposit.'); return; }
@@ -970,7 +658,7 @@
     renderAll();
   }
 
-  // ================= LOCAL BUSINESSES (map-only, rob/extort) =================
+  // LEGAL: ================= LOCAL BUSINESSES (map-only, rob/extort) =================
   function robLocalBiz(biz){
     const car = getEquippedCar();
     const carBonus = car ? car.heistBonus : 0;
@@ -1017,7 +705,7 @@
     showModal({ eyebrow:'Business Owner', title:biz.owner, body, buttons });
   }
 
-  // ================= ASSETS: CARS & PROPERTIES =================
+  // LEGAL: ================= ASSETS: CARS & PROPERTIES =================
   function renderAssetsPanel(){
     const carsWrap = document.getElementById('assets-cars');
     const propWrap = document.getElementById('assets-buildings');
@@ -1150,7 +838,7 @@
     });
   }
 
-  // ================= THE TRADE: LAB & CORNERS =================
+  // LEGAL: ================= THE TRADE: LAB & CORNERS =================
   function upgradeLab(){
     const cost = labCost();
     if(state.cash < cost) return;
@@ -1190,7 +878,7 @@
     showModal({ eyebrow:'The Trade', title:corner.name, body, buttons });
   }
 
-  // ================= POLITICS: FUNCTIONS =================
+  // LEGAL: ================= POLITICS: FUNCTIONS =================
   function influenceCost(){ return Math.ceil(300 * Math.pow(1.35, state.influenceBuys)); }
   function buyInfluence(){
     const cost = influenceCost();
@@ -1242,7 +930,7 @@
     renderAll();
   }
 
-  // ================= GANG: FUNCTIONS =================
+  // LEGAL: ================= GANG: FUNCTIONS =================
   function inductRecruit(id, style){
     const g = gangRecruits.find(x=>x.id===id);
     if(g.inducted) return;
@@ -1254,7 +942,7 @@
     g.inducted = true;
     let extra = '';
     if(style==='test'){
-      // Proving yourself costs a little more up front but earns real respect.
+      // LEGAL: Proving yourself costs a little more up front but earns real respect.
       const testCost = Math.round(g.cost*0.15);
       if(state.cash >= testCost){ state.cash -= testCost; state.respect += 10; extra = ' You made them prove it, and they did. Word gets around — +10 respect.'; }
       else { extra = " You wanted to test them, but couldn't cover it. They're in anyway."; }
@@ -1422,7 +1110,7 @@
     });
   }
 
-  // ================= RENDER: VENTURE CARDS =================
+  // LEGAL: ================= RENDER: VENTURE CARDS =================
   function renderCard(b){
     const unlocked = isUnlocked(b);
     const el = document.createElement('div');
@@ -1503,7 +1191,7 @@
     });
   }
 
-  // ================= RENDER: STREET PANEL =================
+  // LEGAL: ================= RENDER: STREET PANEL =================
   function renderStreetPanel(){
     const wrap = document.getElementById('street-panel');
     const mc = muscleCost();
@@ -1554,7 +1242,7 @@
     document.getElementById('buy-negotiate').addEventListener('click', function(){ if(state.respect<negotiateCost()) return; state.respect -= negotiateCost(); state.negotiateTier += 1; log(`🤝 You've got leverage now. Everyone's prices just got friendlier.`); renderAll(); });
   }
 
-  // ================= RENDER: ALL =================
+  // LEGAL: ================= RENDER: ALL =================
   function renderAll(){
     const legitGrid = document.getElementById('grid-legit');
     const streetGrid = document.getElementById('grid-street');
@@ -1587,12 +1275,12 @@
     }
   }
 
-  // Cheap per-tick refresh: updates numbers and enabled/disabled state on the
-  // EXISTING dom nodes without rebuilding them. renderAll() (above) tears down
-  // and rebuilds every card/button, which is only safe to call right after a
-  // user action — never on a timer, or a click can land mid-rebuild and get
-  // silently swallowed by the browser. This function is what the game loop
-  // calls every 250ms instead.
+  // LEGAL: Cheap per-tick refresh: updates numbers and enabled/disabled state on the
+  // LEGAL: EXISTING dom nodes without rebuilding them. renderAll() (above) tears down
+  // LEGAL: and rebuilds every card/button, which is only safe to call right after a
+  // LEGAL: user action — never on a timer, or a click can land mid-rebuild and get
+  // LEGAL: silently swallowed by the browser. This function is what the game loop
+  // LEGAL: calls every 250ms instead.
   function refreshHUD(){
     document.getElementById('hud-cash').textContent = fmt(state.cash);
     document.getElementById('hud-income').textContent = (netIncome()>=0?'+':'') + fmt(netIncome()) + '/s';
@@ -1671,7 +1359,7 @@
     }
   }
 
-  // ================= PRESTIGE =================
+  // LEGAL: ================= PRESTIGE =================
   document.getElementById('prestige-btn').addEventListener('click', function(){
     const threshold = 50000 * Math.pow(4, state.prestigeCount);
     if(state.cash < threshold) return;
@@ -1689,7 +1377,7 @@
     });
   });
 
-  // ================= TABS =================
+  // LEGAL: ================= TABS =================
   let mapActive = false;
   let mapLoopRunning = false;
   document.querySelectorAll('.tab-btn').forEach(btn=>{
@@ -1701,12 +1389,12 @@
     mapActive = (tab==='map');
     if(mapActive && !mapLoopRunning){
       mapLoopRunning = true;
-      lastFrame2 = Date.now(); // avoid a huge dt spike from time spent on another tab
+      lastFrame2 = Date.now(); // LEGAL: avoid a huge dt spike from time spent on another tab
       requestAnimationFrame(mapLoop);
     }
   }
 
-  // ================= MAP: 3D WORLD + MINIMAP + INTERIORS =================
+  // LEGAL: ================= MAP: 3D WORLD + MINIMAP + INTERIORS =================
   const VIEW_W = 760, VIEW_H = 440;
   const WORLD_W = 1500, WORLD_H = 950;
   const player = { x:700, y:460, facing:Math.PI/2 };
@@ -1734,7 +1422,7 @@
 
   function inDistrict(m){ return m.district === state.currentDistrict; }
 
-  // ---- road network: same rectangles drive BOTH the visual roads and vehicle collision ----
+  // LEGAL: ---- road network: same rectangles drive BOTH the visual roads and vehicle collision ----
   const roadNetwork = {
     vertical: [{x:270,w:74},{x:700,w:74},{x:1130,w:74}],
     horizontal: [{y:220,w:74},{y:460,w:74},{y:730,w:74}],
@@ -1743,7 +1431,7 @@
     return roadNetwork.vertical.some(r=> Math.abs(x-r.x)<=r.w/2) || roadNetwork.horizontal.some(r=> Math.abs(y-r.y)<=r.w/2);
   }
 
-  // ---- deterministic filler city: same layout every time, not regenerated per load ----
+  // LEGAL: ---- deterministic filler city: same layout every time, not regenerated per load ----
   function seededRandom(seed){
     return function(){
       seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
@@ -1805,7 +1493,7 @@
   function collidesBuilding(x,y,solids){ return solids.some(s=> Math.abs(x-s.x)<s.hw && Math.abs(y-s.y)<s.hd); }
   let currentSolids = [];
 
-  // ---- interiors: a small generic room per building, with 1-2 physical hotspots ----
+  // LEGAL: ---- interiors: a small generic room per building, with 1-2 physical hotspots ----
   const ROOM_W = 480, ROOM_H = 280, ROOM_OX = (VIEW_W-ROOM_W)/2, ROOM_OY = (VIEW_H-ROOM_H)/2 - 10;
   const DOOR_LOCAL = { x: ROOM_W/2, y: ROOM_H-6 };
 
@@ -1852,7 +1540,7 @@
     renderAll();
   }
 
-  // ---- vehicle: explicit enter/exit, matches the "Enter Vehicle" prompt pattern ----
+  // LEGAL: ---- vehicle: explicit enter/exit, matches the "Enter Vehicle" prompt pattern ----
   function enterVehicle(){
     if(!getEquippedCar()) return;
     state.inVehicle = true;
@@ -1953,7 +1641,7 @@
     return true;
   }
 
-  // ================= THREE.JS SCENE =================
+  // LEGAL: ================= THREE.JS SCENE =================
   let scene, camera3d, renderer, worldGroup, playerGroup, sunLight, waypointBeacon, parkedCarMesh;
 
   function disposeObj(o){
@@ -2196,7 +1884,7 @@
   }
   initScene();
 
-  // ================= MINIMAP (simple 2D, pannable, waypoints) =================
+  // LEGAL: ================= MINIMAP (simple 2D, pannable, waypoints) =================
   const minimapCanvas = document.getElementById('minimap-canvas');
   const mctx = minimapCanvas.getContext('2d');
   const minimapPan = { x:0, y:0 };
@@ -2269,7 +1957,7 @@
     mctx.strokeStyle='rgba(212,160,23,0.5)'; mctx.lineWidth=1; mctx.strokeRect(0.5,0.5,149,149);
   }
 
-  // ================= INTERIOR (lightweight 2D scene) =================
+  // LEGAL: ================= INTERIOR (lightweight 2D scene) =================
   const interiorCanvas = document.getElementById('interior-canvas');
   const ictx = interiorCanvas.getContext('2d');
   function iRoundRect(x,y,w,h,r){
@@ -2310,7 +1998,7 @@
     ictx.fillStyle='#d4a017'; ictx.fill(); ictx.restore();
   }
 
-  // ================= MAIN LOOP =================
+  // LEGAL: ================= MAIN LOOP =================
   function mapLoop(){
     if(!mapActive){ mapLoopRunning = false; return; }
     const now = Date.now();
@@ -2376,7 +2064,7 @@
     requestAnimationFrame(mapLoop);
   }
 
-  // ================= SETTINGS =================
+  // LEGAL: ================= SETTINGS =================
   document.getElementById('quiet-toggle').addEventListener('change', function(e){
     document.body.classList.toggle('quiet', e.target.checked);
     scheduleSave();
@@ -2400,7 +2088,7 @@
     });
   });
 
-  // ================= PERSISTENT SAVE =================
+  // LEGAL: ================= PERSISTENT SAVE =================
   function serializeState(){
     return {
       cash: state.cash, respect: state.respect, heat: state.heat,
@@ -2472,7 +2160,7 @@
     return false;
   }
 
-  // ================= GAME LOOP =================
+  // LEGAL: ================= GAME LOOP =================
   let lastFrame = Date.now();
   setInterval(function(){
     if(!state.started) return;
@@ -2485,8 +2173,8 @@
     state.respect += respectPerSec()*dt;
     state.bank += state.bank * 0.00035 * loopInterestMult() * dt;
 
-    // The Lab produces Product; active corners consume it to generate the
-    // income already counted in netIncome() above via cornerIncomePerSec().
+    // LEGAL: The Lab produces Product; active corners consume it to generate the
+    // LEGAL: income already counted in netIncome() above via cornerIncomePerSec().
     if(state.productLevel > 0){
       state.product = Math.min(productCap(), state.product + state.productLevel*1.1*dt);
     }
@@ -2494,8 +2182,8 @@
       state.product = Math.max(0, state.product - cornerDemandPerSec()*dt);
     }
 
-    // Corners can get busted independently of the big citywide raid once heat
-    // runs hot — an earlier, smaller warning that the street layer is exposed.
+    // LEGAL: Corners can get busted independently of the big citywide raid once heat
+    // LEGAL: runs hot — an earlier, smaller warning that the street layer is exposed.
     if(state.heat >= 70){
       const bustRoll = (state.heat-70)/30 * 0.02 * dt * (chinoInducted() ? 0.85 : 1);
       corners.forEach(c=>{
@@ -2509,7 +2197,7 @@
     }
     corners.forEach(c=>{ if(c.busted && state.playSeconds >= c.bustCooldownAt) c.busted = false; });
 
-    // Territory drifts toward whoever's actually maintaining a presence there.
+    // LEGAL: Territory drifts toward whoever's actually maintaining a presence there.
     districts.forEach(d=>{
       const cornerPresence = corners.filter(c=>c.district===d.id && c.dealer && !c.busted).length * 1.2;
       const venturePresence = d.id==='devon' ? businesses.filter(b=>b.researched && b.level>0).length*0.3 : 0;
@@ -2562,7 +2250,7 @@
     if(document.visibilityState==='hidden') saveGame(false);
   });
 
-  // ================= BOOT =================
+  // LEGAL: ================= BOOT =================
   (async function boot(){
     const loaded = await loadGame();
     if(loaded && state.started){
@@ -2590,8 +2278,3 @@
     });
     renderAll();
   })();
-
-})();
-</script>
-</body>
-</html>

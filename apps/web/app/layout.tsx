@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Create a single client instance for the entire app
+// LEGAL: Create a single client instance for the entire app
 const queryClient = new QueryClient();
 
 export const metadata: Metadata = {

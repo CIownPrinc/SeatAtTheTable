@@ -1,0 +1,8 @@
+{
+  "name": "eslint-plugin-comment-policy",
+  "version": "1.0.0",
+  "main": "index.js",
+  "peerDependencies": {
+    "eslint": "^9.0.0"
+  }
+}

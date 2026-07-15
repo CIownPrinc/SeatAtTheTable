@@ -1,0 +1,2 @@
+
+// LEGAL: Expose to window

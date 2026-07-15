@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Seat at the Table</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<link rel="stylesheet" href="./src/styles/main.css">
+</head>
+<body>
+
+<div class="hud">
+  <div class="hud-title">Seat at the <span>Table</span></div>
+  <div class="hud-stats">
+    <div class="stat"><div class="stat-label">Cash</div><div class="stat-value" id="hud-cash">$47</div><div class="stat-sub" id="hud-income">+$0/s</div></div>
+    <div class="stat"><div class="stat-label">Standing</div><div class="stat-value teal" id="hud-rank">Nobody</div><div class="stat-sub" id="hud-respect">0 respect</div></div>
+    <div class="stat"><div class="stat-label">Heat</div><div class="heat-bar"><div class="heat-fill" id="heat-fill"></div></div></div>
+    <div class="stat"><div class="stat-label">Crew</div><div class="stat-value violet" id="hud-crew" style="font-size:15px;">0 / 6</div></div>
+    <button class="prestige-btn" id="prestige-btn" style="display:none;"></button>
+  </div>
+</div>
+
+<div class="tab-bar" id="tab-bar">
+  <button class="tab-btn active" data-tab="empire">Empire</button>
+  <button class="tab-btn" data-tab="map">Map</button>
+  <button class="tab-btn" data-tab="bank">Bank</button>
+  <button class="tab-btn" data-tab="politics">Politics</button>
+  <button class="tab-btn" data-tab="gang">Gang</button>
+  <button class="tab-btn" data-tab="assets">Assets</button>
+  <button class="tab-btn" data-tab="settings">Settings</button>
+</div>
+
+<main>
+
+  <div class="tab-panel active" data-tab="empire">
+    <div class="section-eyebrow">Ventures — Production</div>
+    <p class="pillar-desc">Cash builds your businesses. Research a venture once, then expand it level by level — but a venture only earns what its crew can actually move.</p>
+    <div class="grid" id="grid-legit"></div>
+
+    <div class="section-eyebrow" style="margin-top:26px;">The Other Ledger — Production</div>
+    <p class="pillar-desc">Same rules, riskier trade. Street ventures earn well but generate heat.</p>
+    <div class="grid" id="grid-street"></div>
+
+    <div class="section-eyebrow">The Street — Muscle &amp; Respect</div>
+    <p class="pillar-desc">Muscle earns respect but draws heat. Bribes and informants manage the risk. Respect buys territory (more crew capacity) and leverage (lower prices everywhere).</p>
+    <div class="street-grid" id="street-panel"></div>
+  </div>
+
+  <div class="tab-panel" data-tab="map">
+    <div class="section-eyebrow">The City</div>
+    <p class="pillar-desc"><strong>WASD or arrow keys</strong> to walk or drive, <strong>E</strong> to interact (enter buildings, get in/out of your car). Drag the minimap to look around, click it to drop a GPS waypoint.</p>
+    <div class="district-bar-wrap">
+      <div class="district-bar-label">Travel</div>
+      <div class="district-bar" id="district-bar"></div>
+    </div>
+    <div class="map-wrap">
+      <div id="scene3d-container">
+        <canvas id="interior-canvas" width="760" height="440"></canvas>
+        <canvas id="minimap-canvas" width="150" height="150"></canvas>
+        <button class="minimap-clear-btn" id="minimap-clear" title="Clear waypoint">✕</button>
+      </div>
+      <div class="map-hint" id="map-hint">&nbsp;</div>
+      <div class="map-controls">
+        <button class="dpad-btn" id="btn-interact" style="width:auto;padding:0 16px;">Interact (E)</button>
+      </div>
+      <div class="map-legend" id="map-legend"></div>
+    </div>
+
+    <div class="section-eyebrow" style="margin-top:26px;">Territory Control</div>
+    <p class="pillar-desc">Control drifts toward whoever actually maintains a presence — muscle, staffed corners, running ventures. Push it directly with respect.</p>
+    <div class="street-grid" id="territory-panel"></div>
+  </div>
+
+  <div class="tab-panel" data-tab="bank">
+    <div class="section-eyebrow">First Chicago Trust &amp; Yours</div>
+    <p class="pillar-desc">Bank what you don't need on hand. It's slow money, but it's safe money — heat can't touch it.</p>
+    <div id="bank-panel"></div>
+  </div>
+  <div class="tab-panel" data-tab="politics">
+    <div class="section-eyebrow">City Hall</div>
+    <p class="pillar-desc">Influence opens doors. Favor with specific people opens specific doors. Enough of both, and you can ask for a seat instead of a favor.</p>
+    <div id="politics-panel"></div>
+  </div>
+  <div class="tab-panel" data-tab="gang">
+    <div class="section-eyebrow">Your People</div>
+    <p class="pillar-desc">A crew isn't a headcount, it's specific people who owe you something. Initiate them from here, meet them on the map.</p>
+    <div id="gang-panel"></div>
+  </div>
+  <div class="tab-panel" data-tab="assets">
+    <div class="section-eyebrow">Garage</div>
+    <p class="pillar-desc">A better ride moves you faster around the city and makes every job a little easier to walk away from.</p>
+    <div class="street-grid" id="assets-cars"></div>
+
+    <div class="section-eyebrow" style="margin-top:26px;">Property</div>
+    <p class="pillar-desc">Buildings you just own. No crew, no research, no expansion — just a check every second.</p>
+    <div class="street-grid" id="assets-buildings"></div>
+  </div>
+
+  <div class="tab-panel" data-tab="settings">
+    <div class="section-eyebrow">Settings</div>
+    <div class="settings-block">
+      <div class="settings-row">
+        <div><div class="label">Light mode</div><div class="sub">Switch from the dark noir theme to a lighter palette</div></div>
+        <label class="switch"><input type="checkbox" id="theme-toggle"><span class="slider-track"></span></label>
+      </div>
+      <div class="settings-row">
+        <div><div class="label">Quiet mode</div><div class="sub">Hide flavor text, keep just the numbers</div></div>
+        <label class="switch"><input type="checkbox" id="quiet-toggle"><span class="slider-track"></span></label>
+      </div>
+      <div class="settings-row">
+        <div><div class="label">Autosave</div><div class="sub">Saves automatically every few seconds</div></div>
+        <span class="save-status" id="save-status">Not saved yet</span>
+      </div>
+      <div class="settings-row">
+        <button class="settings-btn" id="save-now-btn">Save Now</button>
+        <button class="settings-btn danger" id="reset-btn">Reset Progress</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-eyebrow">Word on the Street</div>
+  <div class="ticker-wrap" id="ticker"></div>
+</main>
+
+<div class="modal-overlay hidden" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-eyebrow" id="modal-eyebrow">Case File</div>
+      <div class="modal-title" id="modal-title">Title</div>
+      <div class="stamp" id="modal-stamp" style="display:none;">Arrived</div>
+    </div>
+    <div class="clip-rule"></div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<script type="module" src="./src/main.ts"></script>
+</body>
+</html>
