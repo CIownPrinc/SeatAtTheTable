@@ -127,7 +127,7 @@
   .placeholder p{font-size:12.5px;max-width:420px;margin:0 auto;line-height:1.5;}
 
   /* ---------- SETTINGS ---------- */
-  .settings-block{background:var(--bg-card);border:1px solid var(--line);border-radius:8px;padding:20px 22px;max-width:480px;display:flex;flex-direction:column;gap:16px;}
+  .settings-block{background:var(--bg-card);border:1px solid var(--line);border-radius:8px;padding:20px 22px;max-width:580px;display:flex;flex-direction:column;gap:16px;}
   .settings-row{display:flex;justify-content:space-between;align-items:center;gap:14px;}
   .settings-row .label{font-size:13px;color:var(--text);}
   .settings-row .sub{font-size:11px;color:var(--text-faint);margin-top:2px;}

@@ -113,8 +113,11 @@
         <div><div class="label">Autosave</div><div class="sub">Saves automatically every few seconds</div></div>
         <span class="save-status" id="save-status">Not saved yet</span>
       </div>
-      <div class="settings-row">
+      <div class="settings-row" style="flex-wrap:wrap; gap:8px;">
         <button class="settings-btn" id="save-now-btn">Save Now</button>
+        <button class="settings-btn" id="export-save-btn">Download Save (.json)</button>
+        <button class="settings-btn" id="import-save-btn">Upload Save</button>
+        <input type="file" id="import-save-input" accept=".json" style="display:none;">
         <button class="settings-btn danger" id="reset-btn">Reset Progress</button>
       </div>
     </div>

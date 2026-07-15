@@ -1275,6 +1275,7 @@
       prestigeBtn.disabled = state.cash < threshold;
       prestigeBtn.textContent = state.cash >= threshold ? `Send for Family (${nextFamily.name})` : `Send for Family — ${fmt(threshold)}`;
     }
+    scheduleSave();
   }
 
   // LEGAL: Cheap per-tick refresh: updates numbers and enabled/disabled state on the
@@ -2075,7 +2076,78 @@
     document.body.classList.toggle('light', e.target.checked);
     scheduleSave();
   });
+  const storageAdapter = {
+    async set(key, value){
+      if(window.storage && typeof window.storage.set === 'function'){
+        try { await window.storage.set(key, value, false); return; } catch(e){}
+      }
+      try { window.localStorage.setItem(key, value); } catch(e){}
+    },
+    async get(key){
+      if(window.storage && typeof window.storage.get === 'function'){
+        try {
+          const res = await window.storage.get(key, false);
+          if(res && res.value) return res.value;
+        } catch(e){}
+      }
+      try { return window.localStorage.getItem(key); } catch(e){ return null; }
+    },
+    async delete(key){
+      if(window.storage && typeof window.storage.delete === 'function'){
+        try { await window.storage.delete(key, false); return; } catch(e){}
+      }
+      try { window.localStorage.removeItem(key); } catch(e){}
+    }
+  };
+
   document.getElementById('save-now-btn').addEventListener('click', function(){ saveGame(true); });
+  document.getElementById('export-save-btn').addEventListener('click', function(){
+    const data = JSON.stringify(serializeState(), null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const stamp = new Date().toISOString().slice(0, 10);
+    a.download = `seat-at-the-table-save-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    log('💾 Game save exported to JSON file.');
+  });
+  const importSaveInput = document.getElementById('import-save-input');
+  document.getElementById('import-save-btn').addEventListener('click', function(){
+    if(importSaveInput) importSaveInput.click();
+  });
+  if(importSaveInput){
+    importSaveInput.addEventListener('change', function(e){
+      const file = (e.target && e.target.files) ? e.target.files[0] : null;
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = async function(evt){
+        try {
+          const content = evt.target ? evt.target.result : null;
+          if(typeof content !== 'string') return;
+          const parsed = JSON.parse(content);
+          if(typeof parsed.cash === 'number' && Array.isArray(parsed.businesses)){
+            await storageAdapter.set('seat-save-v1', JSON.stringify(parsed));
+            showModal({
+              eyebrow: 'Save File Loaded', title: 'IMPORT SUCCESSFUL', stamp: 'Restored',
+              body: `<p>Save file <strong>${file.name}</strong> has been successfully verified and stored.</p><p class="flavor">Your Chicago empire will now reload with the imported ledger.</p>`,
+              buttons: [{ label: 'Enter Chicago', onClick: function(){ location.reload(); } }]
+            });
+          } else {
+            alert('Invalid save file structure.');
+          }
+        } catch(err){
+          alert('Failed to parse save file. Please check that it is valid JSON.');
+        }
+        importSaveInput.value = '';
+      };
+      reader.readAsText(file);
+    });
+  }
+
   document.getElementById('reset-btn').addEventListener('click', function(){
     showModal({
       eyebrow:'Are You Sure', title:'RESET ALL PROGRESS',
@@ -2083,7 +2155,7 @@
       buttons:[
         { label:'Cancel', secondary:true },
         { label:'Reset Everything', onClick:async function(){
-          try{ await window.storage.delete('seat-save-v1', false); }catch(e){}
+          try{ await storageAdapter.delete('seat-save-v1'); }catch(e){}
           location.reload();
         }},
       ]
@@ -2116,24 +2188,33 @@
     };
   }
   let saveTimer = null;
+  let lastSaveTime = 0;
   function scheduleSave(){
-    if(saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(function(){ saveGame(false); }, 1500);
+    const now = Date.now();
+    if(saveTimer) return;
+    const delay = Math.max(1000, 5000 - (now - lastSaveTime));
+    saveTimer = setTimeout(function(){
+      saveTimer = null;
+      lastSaveTime = Date.now();
+      saveGame(false);
+    }, delay);
   }
   async function saveGame(manual){
     try{
-      await window.storage.set('seat-save-v1', JSON.stringify(serializeState()), false);
+      await storageAdapter.set('seat-save-v1', JSON.stringify(serializeState()));
       const stamp = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
-      document.getElementById('save-status').textContent = (manual?'Saved just now — ':'Last saved ') + stamp;
+      const statusEl = document.getElementById('save-status');
+      if(statusEl) statusEl.textContent = (manual?'Saved just now — ':'Last saved ') + stamp;
     }catch(e){
-      document.getElementById('save-status').textContent = 'Save failed — progress is only in this session';
+      const statusEl = document.getElementById('save-status');
+      if(statusEl) statusEl.textContent = 'Save failed — check storage settings';
     }
   }
   async function loadGame(){
     try{
-      const res = await window.storage.get('seat-save-v1', false);
-      if(res && res.value){
-        const d = JSON.parse(res.value);
+      const res = await storageAdapter.get('seat-save-v1');
+      if(res){
+        const d = JSON.parse(res);
         state.cash=d.cash; state.respect=d.respect; state.heat=d.heat;
         state.territoryTier=d.territoryTier; state.negotiateTier=d.negotiateTier;
         state.muscleCount=d.muscleCount; state.ratCount=d.ratCount; state.bribeOn=d.bribeOn;
@@ -2251,6 +2332,7 @@
     state.lastTick = Date.now();
     if(document.visibilityState==='hidden') saveGame(false);
   });
+  window.addEventListener('beforeunload', function(){ saveGame(true); });
 
   // LEGAL: ================= BOOT =================
   (async function boot(){
