@@ -6,8 +6,8 @@
     { id:'backroom_cards', name:"Backroom Card Games", flavor:"High-stakes poker runs after hours. The house takes 5% of every pot.", category:'street', icon:'🃏', baseCost:3500, researchCost:1800, baseIncome:20, heatPerLevel:0.3, unlock:{type:'respect', value:25}, crewBaseCost:840, managerLevelReq:14, managerName:'Dealer Vik' },
     { id:'garage', name:"Ashok's Auto Garage", flavor:"Honest repairs by day. A generous re-painting service by night.", category:'legit', icon:'🔧', baseCost:2500, researchCost:1500, baseIncome:15, unlock:{type:'cash', value:2000}, crewBaseCost:630, managerLevelReq:15, managerName:'Ashok Himself' },
     { id:'cab', name:"Windy City Cab Co.", flavor:"A fleet of gypsy cabs. They know every alley shortcut in the city.", category:'legit', icon:'🚕', baseCost:6000, researchCost:3600, baseIncome:32, unlock:{type:'cash', value:5000}, crewBaseCost:1540, managerLevelReq:15, managerName:'Dispatcher Rosa' },
-    { id:'chop_ring', name:"Stolen Vehicle Export Ring", flavor:"Cars lifted from the Loop, re-VINed at Ashok's, and shipped out on midnight freighters.", category:'street', icon:'🚗', baseCost:24000, researchCost:14000, baseIncome:110, heatPerLevel:0.7, unlock:{type:'respect', value:100}, crewBaseCost:5950, managerLevelReq:16, managerName:'Chop Foreman Deke' },
-    { id:'restaurant', name:"Chicago Chaat House", flavor:"The flagship. A line out the door and a write-up in the Tribune.", category:'legit', icon:'🍛', baseCost:18000, researchCost:11000, baseIncome:85, unlock:{type:'cash', value:15000}, crewBaseCost:4760, managerLevelReq:16, managerName:'Head Chef Meera' },
+    { id:'chop_ring', name:"Stolen Vehicle Export Ring", flavor:"Cars lifted from the Hub, re-VINed at Ashok's, and shipped out on midnight freighters.", category:'street', icon:'🚗', baseCost:24000, researchCost:14000, baseIncome:110, heatPerLevel:0.7, unlock:{type:'respect', value:100}, crewBaseCost:5950, managerLevelReq:16, managerName:'Chop Foreman Deke' },
+    { id:'restaurant', name:"Windhaven Chaat House", flavor:"The flagship. A line out the door and a write-up in the Herald.", category:'legit', icon:'🍛', baseCost:18000, researchCost:11000, baseIncome:85, unlock:{type:'cash', value:15000}, crewBaseCost:4760, managerLevelReq:16, managerName:'Head Chef Meera' },
     { id:'lounge', name:"Marigold Lounge", flavor:"A nightclub named for the flowers Arjun's mother strung on the door in Delhi.", category:'legit', icon:'🥂', baseCost:70000, researchCost:42000, baseIncome:280, unlock:{type:'cash', value:60000}, crewBaseCost:18900, managerLevelReq:17, managerName:'Lena, House Manager' },
     { id:'wire_network', name:"Underground Bookmaking & Wire Ops", flavor:"High-volume sports betting and offshore wire transfers, handled quietly in the Marigold VIP booths.", category:'street', icon:'📞', baseCost:120000, researchCost:75000, baseIncome:450, heatPerLevel:1.2, unlock:{type:'respect', value:300}, crewBaseCost:29400, managerLevelReq:17, managerName:'Bookie Sal' },
     { id:'realestate', name:"West Side Holdings", flavor:"Buildings with Arjun's name on the paperwork and nobody else's.", category:'legit', icon:'🏢', baseCost:260000, researchCost:150000, baseIncome:850, unlock:{type:'cash', value:220000}, crewBaseCost:66500, managerLevelReq:18, managerName:'Counsel Whitfield' },
@@ -16,16 +16,16 @@
   businesses.forEach(b=>{ b.level=0; b.crew=0; b.manager=false; b.researched = b.unlock.type==='start'; b.tempMult=1; b.tempMultExpire=0; });
 
   const ranks = [
-    {respect:0, title:'Unknown'},{respect:5, title:'Devon Street Vendor'},{respect:25, title:'Neighborhood Operator'},
+    {respect:0, title:'Unknown'},{respect:5, title:'Devlin Street Vendor'},{respect:25, title:'Neighborhood Operator'},
     {respect:60, title:'Local Boss'},{respect:150, title:'Connected Figure'},{respect:400, title:'Syndicate Partner'},
-    {respect:900, title:'West Side Kingpin'},{respect:2000, title:'Chicago Power Broker'},{respect:5000, title:"The City's Shadow Boss"},
+    {respect:900, title:'West Side Kingpin'},{respect:2000, title:'Windhaven Power Broker'},{respect:5000, title:"The City's Shadow Boss"},
   ];
 
   const milestones = [
     { id:'first_venture', title:"CHAAT CART TURNS A REAL PROFIT", body:"<p class='flavor'><strong>Two hundred dollars.</strong> He landed at O'Hare with a duffel bag and a cousin's phone number. This is the first cash that is entirely his.</p>" },
-    { id:'local_boss', title:"DEVON STREET TAKES NOTICE", body:"<p class='flavor'>People who ignored him six months ago nod when he walks past. A local merchant offers him a free coffee. He throws it out. Nothing on Devon Street is free.</p>" },
+    { id:'local_boss', title:"DEVON STREET TAKES NOTICE", body:"<p class='flavor'>People who ignored him six months ago nod when he walks past. A local merchant offers him a free coffee. He throws it out. Nothing on Devlin Street is free.</p>" },
     { id:'first_property', title:"A NAME ON THE LEASE", body:"<p class='flavor'>He signs a commercial lease under his own name for the first time. No cousin co-signing, no favor owed. He sits in his car for ten minutes afterward, doors locked, just staring at the keys.</p>" },
-    { id:'chaat_house', title:"THE TRIBUNE WRITES HIM UP", body:"<p class='flavor'>A critic calls the Chaat House the best thing to happen to Devon Street in a decade. His mother has the clipping read to her three times over the phone. He sleeps with a gun under the mattress for a week.</p>" },
+    { id:'chaat_house', title:"THE TRIBUNE WRITES HIM UP", body:"<p class='flavor'>A critic calls the Chaat House the best thing to happen to Devlin Street in a decade. His mother has the clipping read to her three times over the phone. He sleeps with a gun under the mattress for a week.</p>" },
     { id:'kingpin', title:"THEY ASK HIM TO SIT DOWN", body:"<p class='flavor'>The kind of men who used to make people disappear for a living now pull out a chair for him. He used to run from rooms like this. Now, they pour him a drink and ask for his thoughts.</p>" },
     { id:'heist', title:"WEST SIDE, EAST DELHI", body:"<p class='flavor'>His name is on buildings, a restaurant with a two-hour wait, and a ledger only four people have ever seen. The men he ran from in Delhi wouldn't recognize him.</p>" },
     { id:'extortion', title:"THE PRICE OF DOING BUSINESS", body:"<p class='flavor'>He walks into a neighborhood shop and demands a cut of their register. He remembers when men did this to his uncle. The register clicks open anyway. The money feels different this time.</p>" },
@@ -52,7 +52,7 @@
       {label:'Slip an envelope', sub:'-$400 flat', run:function(){ state.cash = Math.max(0, state.cash-400); log('✉️ An envelope changes hands. The clipboard closes.'); } },
       {label:'Do it by the book', sub:'legit income -15% for 45s', run:function(){ applyTempMult('legit', 0.85, 45); log('📋 You do it clean. Business slows while the paperwork clears.'); } },
     ]},
-    { id:'tribune', title:'THE TRIBUNE WANTS AN INTERVIEW', neg:false, body:"<p class='flavor'>A reporter's been asking around Devon Street about the man building an empire out of a folding cart.</p>", choices:[
+    { id:'tribune', title:'THE TRIBUNE WANTS AN INTERVIEW', neg:false, body:"<p class='flavor'>A reporter's been asking around Devlin Street about the man building an empire out of a folding cart.</p>", choices:[
       {label:'Give the interview', sub:'legit income +25% for 60s', run:function(){ applyTempMult('legit', 1.25, 60); log('📰 The story runs. Foot traffic spikes across every storefront.'); } },
       {label:'Stay quiet', sub:'+Respect', run:function(){ state.respect += 10; log('🤐 You decline. Some people respect a man who doesn\'t need the attention.'); } },
     ]},
@@ -87,7 +87,7 @@
   ];
   const properties = [
     { id:'twoflat', name:'Rockwell Two-Flat', icon:'🏠', cost:3000, incomePerSec:4.5 },
-    { id:'retailstrip', name:'Devon Retail Strip', icon:'🏬', cost:22000, incomePerSec:32 },
+    { id:'retailstrip', name:'Devlin Retail Strip', icon:'🏬', cost:22000, incomePerSec:32 },
     { id:'aptbuilding', name:'Uptown Apartments', icon:'🏙️', cost:120000, incomePerSec:165 },
     { id:'loft', name:'Riverside Lofts', icon:'🌆', cost:600000, incomePerSec:800 },
   ];
@@ -95,24 +95,24 @@
   // LEGAL: Independent shops — not yours. You can rob them (one-off, cooldown, risk)
   // LEGAL: or extort them (permanent small income + permanent small heat, reversible).
   const localBusinesses = [
-    { id:'patel', name:'Patel Grocery', icon:'🛒', owner:'Mr. Patel', robBase:900, extortIncome:0.8, extortHeat:0.12, district:'devon', x:260, y:430, extorted:false, nextRobAt:0 },
-    { id:'pawn', name:"Nowak's Pawn Shop", icon:'💍', owner:'Nowak', robBase:1500, extortIncome:1.3, extortHeat:0.18, district:'devon', x:520, y:400, extorted:false, nextRobAt:0 },
-    { id:'herbalist', name:'Golden Lotus Herbalist', icon:'🌿', owner:'Mrs. Lin', robBase:700, extortIncome:0.6, extortHeat:0.10, district:'devon', x:780, y:440, extorted:false, nextRobAt:0 },
-    { id:'bar', name:"O'Malley's Bar", icon:'🍺', owner:"O'Malley", robBase:1700, extortIncome:1.5, extortHeat:0.20, district:'devon', x:1040, y:410, extorted:false, nextRobAt:0 },
+    { id:'patel', name:'Patel Grocery', icon:'🛒', owner:'Mr. Patel', robBase:900, extortIncome:0.8, extortHeat:0.12, district:'devlin', x:260, y:430, extorted:false, nextRobAt:0 },
+    { id:'pawn', name:"Nowak's Pawn Shop", icon:'💍', owner:'Nowak', robBase:1500, extortIncome:1.3, extortHeat:0.18, district:'devlin', x:520, y:400, extorted:false, nextRobAt:0 },
+    { id:'herbalist', name:'Golden Lotus Herbalist', icon:'🌿', owner:'Mrs. Lin', robBase:700, extortIncome:0.6, extortHeat:0.10, district:'devlin', x:780, y:440, extorted:false, nextRobAt:0 },
+    { id:'bar', name:"O'Malley's Bar", icon:'🍺', owner:"O'Malley", robBase:1700, extortIncome:1.5, extortHeat:0.20, district:'devlin', x:1040, y:410, extorted:false, nextRobAt:0 },
     { id:'chopshop', name:'West Side Chop Shop', icon:'🔩', owner:'Deke', robBase:2000, extortIncome:1.8, extortHeat:0.22, district:'westside', x:220, y:560, extorted:false, nextRobAt:0 },
     { id:'liquor', name:'Corner Liquor', icon:'🍾', owner:'Miss Odell', robBase:1100, extortIncome:1.0, extortHeat:0.15, district:'westside', x:920, y:600, extorted:false, nextRobAt:0 },
-    { id:'jewelers', name:'Whitfield & Co. Jewelers', icon:'💎', owner:'Mr. Whitfield', robBase:3500, extortIncome:2.2, extortHeat:0.25, district:'loop', x:320, y:300, extorted:false, nextRobAt:0 },
-    { id:'marlowe', name:'The Marlowe Club', icon:'🎷', owner:'Vivienne', robBase:2600, extortIncome:1.9, extortHeat:0.20, district:'loop', x:900, y:320, extorted:false, nextRobAt:0 },
+    { id:'jewelers', name:'Whitfield & Co. Jewelers', icon:'💎', owner:'Mr. Whitfield', robBase:3500, extortIncome:2.2, extortHeat:0.25, district:'hub', x:320, y:300, extorted:false, nextRobAt:0 },
+    { id:'marlowe', name:'The Marlowe Club', icon:'🎷', owner:'Vivienne', robBase:2600, extortIncome:1.9, extortHeat:0.20, district:'hub', x:900, y:320, extorted:false, nextRobAt:0 },
   ];
 
   // LEGAL: Service buildings — not Ventures (no level/crew), just physical doors into
   // LEGAL: existing tab systems (Bank/Assets/Politics) or a direct dialogue (the heist).
   const serviceBuildings = [
-    { id:'bankHome', kind:'bankHome', name:'West Side Savings & Loan', icon:'🏦', district:'devon', x:1360, y:230 },
-    { id:'cardealer', kind:'garage', name:'Chicago Auto Exchange', icon:'🚗', district:'devon', x:1360, y:430 },
-    { id:'realty', kind:'realty', name:'Whitfield Realty', icon:'🏢', district:'devon', x:1360, y:630 },
-    { id:'cityhall', kind:'cityhall', name:'City Hall Annex', icon:'🏛️', district:'loop', x:1150, y:250 },
-    { id:'heistTarget', kind:'heist', name:'First Chicago Trust', icon:'🕵️', district:'loop', x:280, y:650 },
+    { id:'bankHome', kind:'bankHome', name:'West Side Savings & Loan', icon:'🏦', district:'devlin', x:1360, y:230 },
+    { id:'cardealer', kind:'garage', name:'Windhaven Auto Exchange', icon:'🚗', district:'devlin', x:1360, y:430 },
+    { id:'realty', kind:'realty', name:'Whitfield Realty', icon:'🏢', district:'devlin', x:1360, y:630 },
+    { id:'cityhall', kind:'cityhall', name:'City Hall Annex', icon:'🏛️', district:'hub', x:1150, y:250 },
+    { id:'heistTarget', kind:'heist', name:'First Windhaven Trust', icon:'🕵️', district:'hub', x:280, y:650 },
   ];
 
   // LEGAL: ================= TERRITORY: DISTRICTS =================
@@ -120,19 +120,19 @@
   // LEGAL: (small penalty), in between is contested (neutral). Control drifts based on
   // LEGAL: your presence there (muscle, active corners, ventures) vs. rival pressure.
   const districts = [
-    { id:'devon', name:'Devon Street', homeTurf:true, control:65, pushCount:0, nextPushAt:0 },
+    { id:'devlin', name:'Devlin Street', homeTurf:true, control:65, pushCount:0, nextPushAt:0 },
     { id:'westside', name:'West Side', homeTurf:false, control:15, pushCount:0, nextPushAt:0 },
-    { id:'loop', name:'The Loop', homeTurf:false, control:10, pushCount:0, nextPushAt:0 },
+    { id:'hub', name:'The Hub', homeTurf:false, control:10, pushCount:0, nextPushAt:0 },
   ];
   function districtStatus(id){
     const c = districts.find(d=>d.id===id).control;
     return c>=60 ? 'yours' : (c<=25 ? 'rival' : 'contested');
   }
-  function devonIncomeBonus(){ const s=districtStatus('devon'); return s==='yours'?1.15:(s==='rival'?0.9:1); }
+  function devlinIncomeBonus(){ const s=districtStatus('devlin'); return s==='yours'?1.15:(s==='rival'?0.9:1); }
   function westsideHeatMult(){ const s=districtStatus('westside'); return s==='yours'?0.75:(s==='rival'?1.25:1); }
   function westsideRateBonus(){ const s=districtStatus('westside'); return s==='yours'?1.15:(s==='rival'?0.85:1); }
-  function loopInterestMult(){ return districtStatus('loop')==='yours' ? 1.5 : 1; }
-  function loopHeistBonus(){ return districtStatus('loop')==='yours' ? 0.10 : 0; }
+  function hubInterestMult(){ return districtStatus('hub')==='yours' ? 1.5 : 1; }
+  function hubHeistBonus(){ return districtStatus('hub')==='yours' ? 0.10 : 0; }
   function pushCost(d){ return Math.ceil(20 * Math.pow(1.6, d.pushCount)); }
   function pushDistrict(id){
     const d = districts.find(x=>x.id===id);
@@ -153,7 +153,7 @@
   // LEGAL: across districts. No product in stock means a staffed corner just idles —
   // LEGAL: same production/distribution coupling Dope Slinger runs on, just spatial now.
   const corners = [
-    { id:'devonCorner', name:'Devon & Rockwell', district:'devon', tier:1, rate:3, consumption:1.4, dealerCost:250, x:700, y:800, dealer:false, busted:false, bustCooldownAt:0 },
+    { id:'devlinCorner', name:'Devlin & Rockwell', district:'devlin', tier:1, rate:3, consumption:1.4, dealerCost:250, x:700, y:800, dealer:false, busted:false, bustCooldownAt:0 },
     { id:'ws1', name:'Cicero & 16th', district:'westside', tier:2, rate:9, consumption:4, dealerCost:900, x:320, y:260, dealer:false, busted:false, bustCooldownAt:0 },
     { id:'ws2', name:'Pulaski Underpass', district:'westside', tier:2, rate:11, consumption:5, dealerCost:1200, x:1120, y:280, dealer:false, busted:false, bustCooldownAt:0 },
     { id:'ws3', name:'Roosevelt Yard', district:'westside', tier:3, rate:22, consumption:9, dealerCost:3200, x:500, y:800, dealer:false, busted:false, bustCooldownAt:0 },
@@ -165,7 +165,7 @@
   // LEGAL: (also cash) and each unlock a distinct permanent bonus at favor>=60.
   // LEGAL: Running for office is a one-shot capstone gated behind enough influence.
   const politicians = [
-    { id:'cole', name:'Alderman Cole', role:'Zoning', favor:0, pocketed:false, desc:"Zoning favors: -10% research cost on every venture once he's in your pocket.", flavor:"Cole stops pretending the envelopes are for his re-election fund. \"We understand each other now,\" is all he says." },
+    { id:'cole', name:'City Councilman Cole', role:'Zoning', favor:0, pocketed:false, desc:"Zoning favors: -10% research cost on every venture once he's in your pocket.", flavor:"Cole stops pretending the envelopes are for his re-election fund. \"We understand each other now,\" is all he says." },
     { id:'boyle', name:'Commissioner Boyle', role:'Police', favor:0, pocketed:false, desc:"Fewer patrols where it counts: -20% heat generation once he's in your pocket.", flavor:"Boyle doesn't say yes outright. He just stops assigning patrols to your streets, and that's answer enough." },
     { id:'whitmore', name:'Judge Whitmore', role:'Courts', favor:0, pocketed:false, desc:"A friendlier bench: raids and busts cost 30% less once she's in your pocket.", flavor:"Whitmore never looks at you directly in public. In private, cases involving your name start moving oddly fast, and not against you." },
   ];
@@ -269,7 +269,7 @@
             { label:'Excuse yourself', next:null },
           ]},
         open: { text:"\"Appreciate the directness,\" he says, sliding you a card. \"City hall moves slow on its own. Sometimes it needs a push from outside.\" A conversation for another day, clearly.", choices:[ { label:'Leave', next:null } ] },
-        vague: { text:"He smiles like he expected that. \"Fair enough. Everyone in the Loop learns to talk like that eventually.\"", choices:[ { label:'Leave', next:null } ] },
+        vague: { text:"He smiles like he expected that. \"Fair enough. Everyone in the Hub learns to talk like that eventually.\"", choices:[ { label:'Leave', next:null } ] },
         stage1: { text:"\"You've been busy,\" Reyes says, and this time there's no small talk first. \"There's a seat opening up. The kind of seat a man with your kind of reach could actually hold, if he wanted it.\"",
           choices:[
             { label:'"I might want it."', next:'stage1b', effect:function(){ state.respect += 4; } },
@@ -277,7 +277,7 @@
           ]},
         stage1b: { text:"\"Then build the influence to take it seriously,\" he says. \"I'll be watching either way.\"", choices:[ { label:'Leave', next:null } ] },
         stage1c: { text:"\"Everyone says that,\" he says, \"right up until they don't.\" He doesn't push it further. He doesn't have to.", choices:[ { label:'Leave', next:null } ] },
-        stage2: { text:"Reyes greets you differently now — a hand on the shoulder instead of a handshake. \"Alderman,\" he says, testing how it sounds out loud. \"Suits you better than I expected it to.\"",
+        stage2: { text:"Reyes greets you differently now — a hand on the shoulder instead of a handshake. \"City Councilman,\" he says, testing how it sounds out loud. \"Suits you better than I expected it to.\"",
           choices:[
             { label:'"You knew before I did."', next:'stage2b' },
             { label:'"Don\'t get used to it."', next:'stage2c' },
@@ -289,10 +289,10 @@
     campaign: {
       npcName: 'City Hall',
       nodes: {
-        start: { text:"Running for alderman means a real campaign — money, endorsements, and a night where it's decided one way or the other. You've got the influence downtown to be taken seriously. How do you want to run it?",
+        start: { text:"Running for city councilman means a real campaign — money, endorsements, and three months (three minutes) of vicious media scrutiny. You've got the influence to be taken seriously. How do you want to run it?",
           choices: [
-            { label:'Grassroots — cheap, risky', next:'result', effect:function(){ runCampaign('grassroots'); } },
-            { label:'Full machine — expensive, safer', next:'result', effect:function(){ runCampaign('machine'); } },
+            { label:'Grassroots ($250,000) — risky', next:'result', effect:function(){ runCampaign('grassroots'); } },
+            { label:'Full machine ($1,500,000) — safer', next:'result', effect:function(){ runCampaign('machine'); } },
             { label:'Not yet', next:null },
           ]},
         result: { text:'', choices:[ { label:'Leave', next:null } ] },
@@ -359,7 +359,7 @@
       }
     },
     bankheist: {
-      npcName: 'First Chicago Trust — After Hours',
+      npcName: 'First Windhaven Trust — After Hours',
       nodes: {
         start: { text:"The vault's on a timer, the guard rotates every twenty minutes, and you've realistically got one real shot at this before they upgrade the locks. How do you want to play it?",
           choices: [
@@ -444,8 +444,8 @@
     { symbol: 'BNJ', name: 'BeanJuice', logo: 'beanjuice.png', desc: "Eight dollars for hot bean water.", founded: 1971, fullDesc: "Since 1971, they've convinced the world that burnt espresso is a premium lifestyle product. They operate like a bank that pays no interest, holding billions in unspent gift cards.", basePrice: 18, vol: 0.03 },
     { symbol: 'CLS', name: 'ClipStream', logo: 'ClipStream.png', desc: "Monetizing attention spans by the second.", founded: 2005, fullDesc: "Launched in 2005. They don't make anything; they just host the vanity of millions and sell the resulting behavioral data to the highest bidder. An unstoppable digital tollbooth.", basePrice: 85, vol: 0.07 },
     { symbol: 'PML', name: 'Pomello', logo: 'Pomello.png', desc: "Closed ecosystem, open wallets.", founded: 1976, fullDesc: "Founded in 1976. They design shiny boxes that trap users in a proprietary gilded cage. They have more cash on hand than most sovereign nations, and lawyers to protect every dime.", basePrice: 160, vol: 0.04 },
-    { symbol: 'FCT', name: 'First Chicago Trust', logo: '', icon: '🏛️', desc: "Old money. Doesn't ask questions.", founded: 1883, fullDesc: "Established in 1883. They built this city's skyline by looking the other way when the ledgers didn't add up. Safe, reliable, and deeply embedded in political machinery.", basePrice: 65, vol: 0.02 },
-    { symbol: 'MWG', name: 'Midwest Global', logo: '', icon: '🏦', desc: "Too big to fail, too connected to prosecute.", founded: 1911, fullDesc: "Founded in 1911. They've weathered depressions and scandals by making sure they owe the right people and the right people owe them. A financial fortress.", basePrice: 90, vol: 0.03 },
+    { symbol: 'FCT', name: 'First Windhaven Trust', logo: '', icon: '🏛️', desc: "Old money. Doesn't ask questions.", founded: 1883, fullDesc: "Established in 1883. They built this city's skyline by looking the other way when the ledgers didn't add up. Safe, reliable, and deeply embedded in political machinery.", basePrice: 65, vol: 0.02 },
+    { symbol: 'MWG', name: 'Heartland Global', logo: '', icon: '🏦', desc: "Too big to fail, too connected to prosecute.", founded: 1911, fullDesc: "Founded in 1911. They've weathered depressions and scandals by making sure they owe the right people and the right people owe them. A financial fortress.", basePrice: 90, vol: 0.03 },
   ];
 
   // LEGAL: ================= STATE =================
@@ -459,11 +459,12 @@
     procNpc: generateNPC(),
     bank: 0, nextHeistAt: 0,
     ownedCars: [], equippedCar: null, ownedProperties: [],
-    currentDistrict: 'devon', product: 0, productLevel: 0, currentInterior: null,
+    currentDistrict: 'devlin', product: 0, productLevel: 0, currentInterior: null,
     inVehicle: false,
-    waypoints: { devon:null, westside:null, loop:null },
-    parkedCarPos: { devon:null, westside:null, loop:null },
+    waypoints: { devlin:null, westside:null, hub:null },
+    parkedCarPos: { devlin:null, westside:null, hub:null },
     influence: 0, influenceBuys: 0, electedOffice: false, nextCampaignAt: 0, nextWarAt: 0,
+    campaignActive: false, campaignEndAt: 0, campaignStyle: '',
     portfolio: {}, marketPrices: {}, marketHistory: {}, nextMarketTickAt: 0,
     financeView: 'vault', activeStock: null,
   };
@@ -536,14 +537,14 @@
   function labCost(){ return Math.ceil(400 * Math.pow(1.22, state.productLevel) * discountMult()); }
   function productCap(){ return 200 + state.productLevel*20; }
   function electedOfficeIncome(){ return state.electedOffice ? (5 + state.prestigeCount*2) : 0; }
-  function rawTotalIncome(){ return (businesses.reduce((s,b)=> s+incomeFor(b), 0)*devonIncomeBonus() + propertiesIncome() + localBizIncome() + cornerIncomePerSec() + electedOfficeIncome()) * globalIncomeMult(); }
+  function rawTotalIncome(){ return (businesses.reduce((s,b)=> s+incomeFor(b), 0)*devlinIncomeBonus() + propertiesIncome() + localBizIncome() + cornerIncomePerSec() + electedOfficeIncome()) * globalIncomeMult(); }
   function bribeUpkeep(){ return state.bribeOn ? rawTotalIncome()*0.12 : 0; }
   function netIncome(){ return rawTotalIncome() - bribeUpkeep(); }
   function respectPerSec(){ const car=getEquippedCar(); return (state.muscleCount*0.6 + (car?car.respectPerSec:0)) * (state.prestigeCount>=5?1.25:1); }
   function heatGenPerSec(){
     const streetHeat = businesses.filter(b=>b.category==='street').reduce((s,b)=> s+(b.heatPerLevel||0)*b.level, 0);
     const extortHeat = localBusinesses.filter(b=>b.extorted).reduce((s,b)=> s+b.extortHeat, 0);
-    return (state.muscleCount*0.5 + streetHeat + extortHeat + cornerHeatPerSec()) * heatMult();
+    return (state.muscleCount*0.5 + streetHeat + extortHeat + cornerHeatPerSec()) * heatMult() * (state.campaignActive ? 2.5 : 1);
   }
   function currentRank(){ let r=ranks[0]; for(const rk of ranks){ if(state.respect>=rk.respect) r=rk; } return r.title; }
   function isUnlocked(b){
@@ -589,9 +590,22 @@
     const m = milestones.find(x => x.id === id);
     if(!m) return;
     state.seenMilestones.add(id);
-    showModal({ eyebrow:'Chicago Tribune — West Side Edition', title:m.title, body:m.body, buttons:[{label:'Keep Going'}] });
+    showModal({ eyebrow:'Windhaven Herald — West Side Edition', title:m.title, body:m.body, buttons:[{label:'Keep Going'}] });
     log(`📰 Headline: "${m.title.charAt(0)}${m.title.slice(1).toLowerCase()}"`);
     scheduleSave();
+  }
+
+  function checkMilestones() {
+    if(state.cash >= 200) triggerMilestone('first_venture');
+    if(state.respect >= 60) triggerMilestone('local_boss');
+    if(state.respect >= 900) triggerMilestone('kingpin');
+    if(state.ownedProperties.length >= 1) triggerMilestone('first_property');
+    const r = businesses.find(b => b.id === 'restaurant');
+    if(r && r.level >= 1) triggerMilestone('chaat_house');
+    const d = businesses.find(b => b.id === 'syndicate_logistics');
+    if(d && d.level >= 1) triggerMilestone('docks');
+    if(state.activeCar === 'bentley') triggerMilestone('bentley');
+    if(gangRecruits.some(g => g.inducted)) triggerMilestone('crew_induct');
   }
 
   function maybeTriggerEvent(){
@@ -652,11 +666,11 @@
     const carBonus = car ? car.heistBonus : 0;
     let chance, reward, failLossPct, heatOnAttempt, heatOnFail, respectOnFail;
     if(approach==='smash'){
-      chance = Math.min(0.7, 0.40 + state.ratCount*0.03 + carBonus + loopHeistBonus());
+      chance = Math.min(0.7, 0.40 + state.ratCount*0.03 + carBonus + hubHeistBonus());
       reward = Math.round(Math.max(500, rawTotalIncome()*18) * (0.8+Math.random()*0.5));
       failLossPct = 0.15; heatOnAttempt = 10; heatOnFail = 15; respectOnFail = 3;
     } else {
-      chance = Math.min(0.78, 0.30 + state.muscleCount*0.04 + state.ratCount*0.03 + carBonus + loopHeistBonus());
+      chance = Math.min(0.78, 0.30 + state.muscleCount*0.04 + state.ratCount*0.03 + carBonus + hubHeistBonus());
       reward = Math.round(Math.max(1800, rawTotalIncome()*50) * (0.8+Math.random()*0.5));
       failLossPct = 0.22; heatOnAttempt = 20; heatOnFail = 25; respectOnFail = 10;
     }
@@ -667,14 +681,14 @@
       state.cash += reward;
       state.respect += Math.ceil(reward/400);
       triggerMilestone('heist');
-      log(`💰 The job on First Chicago Trust pays out ${fmt(reward)}.`);
+      log(`💰 The job on First Windhaven Trust pays out ${fmt(reward)}.`);
       dialogues.bankheist.nodes.result.text = `Clean. You're out before the second patrol even swings back. <strong>${fmt(reward)}</strong> heavier, and word will get around.`;
     } else {
       const loss = Math.round(state.cash*failLossPct);
       state.cash = Math.max(0, state.cash-loss);
       state.heat = Math.min(100, state.heat+heatOnFail);
       state.respect = Math.max(0, state.respect-respectOnFail);
-      log(`🚔 The job on First Chicago Trust goes sideways. Down ${fmt(loss)}, heat's up.`);
+      log(`🚔 The job on First Windhaven Trust goes sideways. Down ${fmt(loss)}, heat's up.`);
       dialogues.bankheist.nodes.result.text = `It goes sideways fast. You get out, but not clean — <strong>${fmt(loss)}</strong> lost on the way, and there's heat on you now that wasn't there this morning.`;
     }
     renderAll();
@@ -807,10 +821,10 @@
             </div>
           </div>
           <div class="street-card">
-            <h4>📈 LCN Exchange</h4>
-            <p>The Liberty City National Exchange. Buy, sell, and short your way to the top. Just remember: the house always wins.</p>
+            <h4>📈 RCN Exchange</h4>
+            <p>The Rentport City National Exchange. Buy, sell, and short your way to the top. Just remember: the house always wins.</p>
             <button class="toggle-btn" id="go-lcn">Access Terminal</button>
-            <h4 style="margin-top:20px;">🕵️ First Chicago Trust</h4>
+            <h4 style="margin-top:20px;">🕵️ First Windhaven Trust</h4>
             <p>A rival bank across town. A bigger score, and a bigger risk, than shaking down a corner shop.</p>
             <div class="row"><span>Status</span><span id="heist-status-value">${canHeist ? 'Ready' : `Cooling off (${cooldownLeft}s)`}</span></div>
             <button class="toggle-btn" ${canHeist?'':'disabled'} id="start-heist">Case the Vault</button>
@@ -825,7 +839,7 @@
       });
       wrap.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-          <h3 style="font-size:20px; color:#d4a017;">Liberty City National</h3>
+          <h3 style="font-size:20px; color:#d4a017;">Rentport City National</h3>
           <button class="mini-btn" id="go-vault">Log Out</button>
         </div>
         
@@ -842,11 +856,9 @@
               }).join('') || '<p class="flavor">No active positions.</p>'}
             </div>
           </div>
-          <div class="street-card">
+          <div class="street-card" id="market-news-card">
             <h4>🗞️ Market News</h4>
-            <p class="flavor">"MUDSTER RECALLS 40,000 VEHICLES OVER EXPLODING CUPHOLDERS."</p>
-            <p class="flavor">"MEGASAVER CEO SEEN YACHT-SHOPPING AFTER MASS LAYOFFS."</p>
-            <p class="flavor">"BEANJUICE LAUNCHES $14 'DECONSTRUCTED' AMERICANO."</p>
+            ${(state.currentNews || []).map(n => `<p class="flavor">"${n}"</p>`).join('')}
           </div>
         </div>
         
@@ -861,8 +873,8 @@
             const sign = pct >= 0 ? '+' : '';
             return `<div class="street-card lcn-stock-btn" data-sym="${s.symbol}" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
               <div>
-                <h4 style="margin:0;">${s.logo ? `<img src="/${s.logo}" style="width:20px; height:20px; vertical-align:middle; margin-right:6px; border-radius:4px;">` : (s.icon + ' ')} ${s.symbol}</h4>
-                <div style="font-size:11px; color:#aaa; margin-top:2px;">${s.name}</div>
+                <h4 style="margin:0;">${s.logo ? `<img src="/${s.logo}" style="width:40px; height:40px; vertical-align:middle; margin-right:8px; border-radius:4px;">` : (s.icon + ' ')} ${s.symbol}</h4>
+                <div style="font-size:11px; color:#aaa; margin-top:4px;">${s.name}</div>
               </div>
               <div style="text-align:right;">
                 <div id="lcn-home-price-${s.symbol}">$${price.toFixed(2)}</div>
@@ -884,8 +896,10 @@
       
       wrap.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-          <h3 style="font-size:20px; color:#d4a017; margin:0;">${s.logo ? `<img src="/${s.logo}" style="width:24px; height:24px; vertical-align:middle; margin-right:8px; border-radius:4px;">` : (s.icon + ' ')} ${s.name} (${s.symbol})</h3>
-          <button class="mini-btn" id="go-lcn-home">Back to Exchange</button>
+          <h3 style="font-size:20px; color:#d4a017; margin:0;">
+            <button class="mini-btn" id="go-lcn-home" style="margin-right:10px;" title="Back to Exchange">⬅</button>
+            ${s.logo ? `<img src="/${s.logo}" style="width:40px; height:40px; vertical-align:middle; margin-right:8px; border-radius:4px;">` : (s.icon + ' ')} ${s.name} (${s.symbol})
+          </h3>
         </div>
         <p style="font-size:12px; color:#aaa;">${s.fullDesc}</p>
         <div style="margin:20px 0;">
@@ -955,6 +969,19 @@
     ctx.stroke();
   }
 
+  const rcnNewsPool = [
+    "MUDSTER RECALLS 40,000 VEHICLES OVER EXPLODING CUPHOLDERS.",
+    "MEGASAVER CEO SEEN YACHT-SHOPPING AFTER MASS LAYOFFS.",
+    "BEANJUICE LAUNCHES $14 'DECONSTRUCTED' AMERICANO.",
+    "ELECTRON AUTOPILOT DRIVES SEDAN INTO RENTPORT HARBOR.",
+    "QUICKCART WAREHOUSE WORKERS STRIKE; DRONES DEPLOYED.",
+    "CLIPSTREAM BANS ASMR VIDEOS AFTER PUBLIC OUTCRY.",
+    "POMELLO LOSES PROTOTYPE AT SAN PLASTICA BAR.",
+    "HEARTLAND GLOBAL POSTS RECORD PROFITS AMID RENTPORT EVICTION CRISIS.",
+    "FLAMINGO BAY MAYOR INDICTED ON FRAUD CHARGES.",
+    "TECH STARTUP IN SAN PLASTICA VALUED AT $4 BILLION BEFORE RELEASING PRODUCT."
+  ];
+
   function tickMarket(){
     stockMarket.forEach(s => {
       if(!state.marketPrices[s.symbol]) state.marketPrices[s.symbol] = s.basePrice;
@@ -968,6 +995,23 @@
       state.marketHistory[s.symbol].push(newPrice);
       if(state.marketHistory[s.symbol].length > 30) state.marketHistory[s.symbol].shift();
     });
+    
+    // LEGAL: Dynamic Market News
+    if(!state.currentNews) state.currentNews = [];
+    if(!state.newsQueue) state.newsQueue = [];
+    if(state.playSeconds >= (state.nextNewsAt || 0)) {
+      if(state.newsQueue.length === 0) {
+        state.newsQueue = [...rcnNewsPool].sort(() => Math.random() - 0.5);
+      }
+      state.currentNews.unshift(state.newsQueue.pop());
+      if(state.currentNews.length > 3) state.currentNews.pop();
+      state.nextNewsAt = state.playSeconds + 15;
+      
+      const newsCard = document.getElementById('market-news-card');
+      if(newsCard) {
+        newsCard.innerHTML = `<h4>🗞️ Market News</h4>` + state.currentNews.map(n => `<p class="flavor">"${n}"</p>`).join('');
+      }
+    }
     
     const activeTab = document.querySelector('.tab-btn.active');
     if (activeTab && activeTab.getAttribute('data-tab') === 'bank') {
@@ -1089,28 +1133,17 @@
     renderAll();
   }
   function runCampaign(style){
-    const bonusAvg = (coleActive()?0.03:0) + (boyleActive()?0.03:0) + (whitmoreActive()?0.03:0);
-    let cost, chance;
-    if(style==='grassroots'){ cost = 20000; chance = 0.35 + state.influence*0.002 + bonusAvg; }
-    else { cost = 120000; chance = 0.55 + state.influence*0.002 + bonusAvg; }
+    let cost = style === 'grassroots' ? 250000 : 1500000;
     if(state.cash < cost){
       dialogues.campaign.nodes.result.text = "You can't even front the filing fees on this one. Come back when the cash is there.";
       renderAll(); return;
     }
     state.cash -= cost;
-    chance = Math.min(0.85, chance);
-    state.nextCampaignAt = state.playSeconds + 900;
-    const win = Math.random() < chance;
-    if(win){
-      state.electedOffice = true;
-      state.respect += 200;
-      dialogues.campaign.nodes.result.text = "It's close, but you pull it. <strong>Alderman Malhotra.</strong> The West Side just got a very different kind of representation — and a very different kind of income stream.";
-      log('🗳️ You win the aldermanic race. Alderman Malhotra now, if anyone asks.');
-    } else {
-      state.respect = Math.max(0, state.respect-30);
-      dialogues.campaign.nodes.result.text = "You lose, and lose publicly. It stings, and it costs you some standing before people stop bringing it up.";
-      log('🗳️ You lose the aldermanic race. Publicly. It stings.');
-    }
+    state.campaignActive = true;
+    state.campaignStyle = style;
+    state.campaignEndAt = state.playSeconds + 180;
+    dialogues.campaign.nodes.result.text = "The paperwork is filed. Now you just have to survive the scrutiny for three minutes. Expect your heat generation to more than double as the media digs into your 'business' history.";
+    log('🗳️ The campaign has begun. Heat generation is doubled while the press investigates you.');
     renderAll();
   }
 
@@ -1193,7 +1226,7 @@
   function renderTerritoryPanel(){
     const wrap = document.getElementById('territory-panel');
     if(!wrap) return;
-    const bonusText = { devon:'+15% income to every venture when yours', westside:'-25% corner heat, +15% corner income when yours', loop:'+50% bank interest, +10% heist odds when yours' };
+    const bonusText = { devlin:'+15% income to every venture when yours', westside:'-25% corner heat, +15% corner income when yours', hub:'+50% bank interest, +10% heist odds when yours' };
     wrap.innerHTML = districts.map(d=>{
       const status = districtStatus(d.id);
       const canPush = state.playSeconds>=d.nextPushAt && state.respect>=pushCost(d);
@@ -1210,12 +1243,12 @@
   function renderPoliticsPanel(){
     const wrap = document.getElementById('politics-panel');
     if(!wrap) return;
-    const canOffice = state.influence >= 100;
+    const canOffice = state.influence >= 500;
     const canCampaign = canOffice && state.playSeconds >= state.nextCampaignAt && !state.electedOffice;
     wrap.innerHTML = `
       <div class="street-grid">
         <div class="street-card respect-spend">
-          <h4>🏛️ Influence</h4>
+          <h4>🏛️ Influence <span class="info-icon" title="Influence is bought with cash and opens political doors. Respect is earned on the street and is used for territorial control.">[?]</span></h4>
           <p>Cash spent building pull downtown. Enough of it opens the door to running for office yourself.</p>
           <div class="row"><span>Current</span><span>${Math.round(state.influence)}</span></div>
           <button class="mini-btn" ${state.cash>=influenceCost()?'':'disabled'} id="buy-influence"><span>Fund Campaigns</span><span class="cost">${fmt(influenceCost())}</span></button>
@@ -1229,9 +1262,16 @@
           <button class="mini-btn" ${(state.cash>=favorCost(p) && p.favor<100)?'':'disabled'} data-bribe="${p.id}"><span>Bribe</span><span class="cost">${fmt(favorCost(p))}</span></button>
         </div>`).join('')}
         <div class="street-card ${canOffice?'respect-spend':''}">
-          <h4>🗳️ Run for Alderman</h4>
-          <p>${state.electedOffice ? 'You hold the seat. It comes with its own quiet income now.' : (canOffice ? 'You have the influence to be taken seriously. This is a one-shot swing — win or lose, it costs real money.' : `Needs 100 influence (currently ${Math.round(state.influence)}).`)}</p>
-          <button class="mini-btn" ${canCampaign?'':'disabled'} id="launch-campaign">${state.electedOffice ? '<span>Seat Held</span>' : '<span>Launch Campaign</span>'}</button>
+          <h4>🗳️ Run for City Councilman</h4>
+          ${state.campaignActive ? `
+            <p><strong>Campaign in progress!</strong></p>
+            <p>Heat generation is doubled. Keep your operations quiet or risk a catastrophic raid.</p>
+            <div class="control-track"><div class="control-fill" style="width:${Math.round(100 - (state.campaignEndAt - state.playSeconds)/1.8)}%"></div></div>
+            <div class="row"><span>Time left</span><span>${Math.max(0, Math.ceil(state.campaignEndAt - state.playSeconds))}s</span></div>
+          ` : `
+            <p>${state.electedOffice ? 'You hold the seat. It comes with its own quiet income now.' : (canOffice ? 'You have the influence to be taken seriously. This is a one-shot swing — win or lose, it costs real money.' : `Needs 500 influence (currently ${Math.round(state.influence)}).`)}</p>
+            <button class="mini-btn" ${canCampaign?'':'disabled'} id="launch-campaign">${state.electedOffice ? '<span>Seat Held</span>' : '<span>Launch Campaign</span>'}</button>
+          `}
         </div>
       </div>
     `;
@@ -1487,8 +1527,8 @@
     if(!btn) return;
     if(btn.id === 'buy-influence'){ buyInfluence(); }
     else if(btn.id === 'launch-campaign'){
-      if(state.electedOffice) return;
-      if(!(state.influence >= 100 && state.playSeconds >= state.nextCampaignAt)) return;
+      if(state.electedOffice || state.campaignActive) return;
+      if(!(state.influence >= 500 && state.playSeconds >= state.nextCampaignAt)) return;
       playDialogue('campaign', 'start');
     }
   }
@@ -1608,7 +1648,7 @@
   // LEGAL: EXISTING dom nodes without rebuilding them. renderAll() (above) tears down
   // LEGAL: and rebuilds every card/button, which is only safe to call right after a
   // LEGAL: user action — never on a timer, or a click can land mid-rebuild and get
-  // LEGAL: silently swallowed by the browser. This function is what the game loop
+  // LEGAL: silently swallowed by the browser. This function is what the game hub
   // LEGAL: calls every 250ms instead.
   function refreshHUD(){
     const rank = currentRank();
@@ -1712,7 +1752,7 @@
 
   // LEGAL: ================= TABS =================
   let mapActive = false;
-  let mapLoopRunning = false;
+  let mapHubRunning = false;
   document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.addEventListener('click', function(){ setTab(btn.getAttribute('data-tab')); });
   });
@@ -1720,10 +1760,10 @@
     document.querySelectorAll('.tab-btn').forEach(b=> b.classList.toggle('active', b.getAttribute('data-tab')===tab));
     document.querySelectorAll('.tab-panel').forEach(p=> p.classList.toggle('active', p.getAttribute('data-tab')===tab));
     mapActive = (tab==='map');
-    if(mapActive && !mapLoopRunning){
-      mapLoopRunning = true;
+    if(mapActive && !mapHubRunning){
+      mapHubRunning = true;
       lastFrame2 = Date.now(); // LEGAL: avoid a huge dt spike from time spent on another tab
-      requestAnimationFrame(mapLoop);
+      requestAnimationFrame(mapHub);
     }
   }
 
@@ -1738,19 +1778,19 @@
     const row = i<5 ? 0 : 1;
     const col = i % 5;
     const rowX = [150,420,690,960,1230];
-    return { id:b.id, biz:b, district:'devon', x: rowX[col], y: row===0 ? (200+col%2*40) : (650+col%2*40) };
+    return { id:b.id, biz:b, district:'devlin', x: rowX[col], y: row===0 ? (200+col%2*40) : (650+col%2*40) };
   });
   const mapNpcs = [
-    { id:'sanjay', name:'Sanjay', district:'devon', x:1300, y:820, type:'named' },
-    { id:'stranger', name:'Stranger', district:'devon', x:150, y:820, type:'procedural' },
+    { id:'sanjay', name:'Sanjay', district:'devlin', x:1300, y:820, type:'named' },
+    { id:'stranger', name:'Stranger', district:'devlin', x:150, y:820, type:'procedural' },
     { id:'dice', name:'Dice', district:'westside', x:750, y:300, type:'named' },
-    { id:'reyes', name:'Councilman Reyes', district:'loop', x:600, y:600, type:'named' },
+    { id:'reyes', name:'Councilman Reyes', district:'hub', x:600, y:600, type:'named' },
   ];
-  const spawnPoints = { devon:{x:700,y:460}, westside:{x:700,y:460}, loop:{x:700,y:460} };
+  const spawnPoints = { devlin:{x:700,y:460}, westside:{x:700,y:460}, hub:{x:700,y:460} };
   const districtThemes = {
-    devon: { ground:'#232a26', parkLabel:'INDIAN BOUNDARY PARK', hasRail:false, hasRiver:false },
+    devlin: { ground:'#232a26', parkLabel:'INDIAN BOUNDARY PARK', hasRail:false, hasRiver:false },
     westside: { ground:'#2a2222', parkLabel:'CICERO GREEN', hasRail:true, hasRiver:false },
-    loop: { ground:'#211f16', parkLabel:'MILLENNIUM PARK', hasRail:false, hasRiver:true },
+    hub: { ground:'#211f16', parkLabel:'MILLENNIUM PARK', hasRail:false, hasRiver:true },
   };
 
   function inDistrict(m){ return m.district === state.currentDistrict; }
@@ -1773,7 +1813,7 @@
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
-  const districtSeeds = { devon:1001, westside:2002, loop:3003 };
+  const districtSeeds = { devlin:1001, westside:2002, hub:3003 };
   function occupiedZones(districtId){
     const zones = [];
     const add = (arr,r)=> arr.filter(m=>m.district===districtId).forEach(m=> zones.push({x:m.x,y:m.y,r}));
@@ -1786,8 +1826,8 @@
     const occupied = occupiedZones(districtId);
     const xBands = [[15,235],[305,665],[735,1095],[1165,1485]];
     const yBands = [[15,185],[255,425],[495,695],[765,935]];
-    const parkBand = { xi:0, yi: districtId==='loop' ? 1 : 3 };
-    const lotBand = { xi:3, yi: districtId==='loop' ? 3 : 0 };
+    const parkBand = { xi:0, yi: districtId==='hub' ? 1 : 3 };
+    const lotBand = { xi:3, yi: districtId==='hub' ? 3 : 0 };
     const filler = [];
     for(let xi=0; xi<xBands.length; xi++){
       for(let yi=0; yi<yBands.length; yi++){
@@ -2114,7 +2154,7 @@
           const leaves = new THREE.Mesh(new THREE.ConeGeometry(9,20,7), new THREE.MeshStandardMaterial({color:'#2f5c38'}));
           leaves.position.set(tx,18,ty); leaves.castShadow=true; worldGroup.add(leaves);
         }
-        if(districtId==='loop'){
+        if(districtId==='hub'){
           const bean = new THREE.Mesh(new THREE.SphereGeometry(20,24,18), new THREE.MeshStandardMaterial({color:'#c9c9d4', metalness:1, roughness:0.08}));
           bean.scale.set(1.6,0.85,1); bean.position.set(cx,22,cy); bean.castShadow=true; bean.receiveShadow=true;
           worldGroup.add(bean);
@@ -2332,8 +2372,8 @@
   }
 
   // LEGAL: ================= MAIN LOOP =================
-  function mapLoop(){
-    if(!mapActive){ mapLoopRunning = false; return; }
+  function mapHub(){
+    if(!mapActive){ mapHubRunning = false; return; }
     const now = Date.now();
     const dt = Math.min(0.05, Math.max(0, (now-lastFrame2)/1000));
     lastFrame2 = now;
@@ -2394,7 +2434,7 @@
       hintEl.textContent = state.currentInterior ? ('Inside ' + state.currentInterior.name) : ('Driving around ' + districts.find(function(d){return d.id===state.currentDistrict;}).name);
     }
 
-    requestAnimationFrame(mapLoop);
+    requestAnimationFrame(mapHub);
   }
 
   // LEGAL: ================= SETTINGS =================
@@ -2463,8 +2503,8 @@
             await storageAdapter.set('seat-save-v1', JSON.stringify(parsed));
             showModal({
               eyebrow: 'Save File Loaded', title: 'IMPORT SUCCESSFUL', stamp: 'Restored',
-              body: `<p>Save file <strong>${file.name}</strong> has been successfully verified and stored.</p><p class="flavor">Your Chicago empire will now reload with the imported ledger.</p>`,
-              buttons: [{ label: 'Enter Chicago', onClick: function(){ location.reload(); } }]
+              body: `<p>Save file <strong>${file.name}</strong> has been successfully verified and stored.</p><p class="flavor">Your Windhaven empire will now reload with the imported ledger.</p>`,
+              buttons: [{ label: 'Enter Windhaven', onClick: function(){ location.reload(); } }]
             });
           } else {
             alert('Invalid save file structure.');
@@ -2481,7 +2521,7 @@
   document.getElementById('reset-btn').addEventListener('click', function(){
     showModal({
       eyebrow:'Are You Sure', title:'RESET ALL PROGRESS',
-      body:`<p>This clears everything — cash, ventures, respect, territory — and starts the story over from Devon Street, day one. There's no undoing this.</p>`,
+      body:`<p>This clears everything — cash, ventures, respect, territory — and starts the story over from Devlin Street, day one. There's no undoing this.</p>`,
       buttons:[
         { label:'Cancel', secondary:true },
         { label:'Reset Everything', onClick:async function(){
@@ -2511,12 +2551,14 @@
       districts: districts.map(d=> ({ id:d.id, control:d.control, pushCount:d.pushCount, nextPushAt:d.nextPushAt })),
       corners: corners.map(c=> ({ id:c.id, dealer:c.dealer, busted:c.busted, bustCooldownAt:c.bustCooldownAt })),
       influence: state.influence, influenceBuys: state.influenceBuys, electedOffice: state.electedOffice,
+      campaignActive: state.campaignActive, campaignStyle: state.campaignStyle, campaignEndAt: state.campaignEndAt,
       nextCampaignAt: state.nextCampaignAt, nextWarAt: state.nextWarAt,
       politicians: politicians.map(p=> ({ id:p.id, favor:p.favor, pocketed:p.pocketed })),
       gangRecruits: gangRecruits.map(g=> ({ id:g.id, inducted:g.inducted })),
       inVehicle: state.inVehicle, waypoints: state.waypoints, parkedCarPos: state.parkedCarPos,
       marketPrices: state.marketPrices, portfolio: state.portfolio, marketHistory: state.marketHistory,
       financeView: state.financeView, activeStock: state.activeStock,
+      currentNews: state.currentNews, newsQueue: state.newsQueue, nextNewsAt: state.nextNewsAt
     };
   }
   let saveTimer = null;
@@ -2560,21 +2602,25 @@
         state.bank = d.bank||0; state.nextHeistAt = d.nextHeistAt||0;
         state.ownedCars = d.ownedCars||[]; state.equippedCar = d.equippedCar||null; state.ownedProperties = d.ownedProperties||[];
         (d.localBusinesses||[]).forEach(sb=>{ const b=localBusinesses.find(x=>x.id===sb.id); if(b){ b.extorted=sb.extorted; b.nextRobAt=sb.nextRobAt; } });
-        state.currentDistrict = d.currentDistrict || 'devon'; state.product = d.product||0; state.productLevel = d.productLevel||0;
+        state.currentDistrict = d.currentDistrict || 'devlin'; state.product = d.product||0; state.productLevel = d.productLevel||0;
         (d.districts||[]).forEach(sd=>{ const dist=districts.find(x=>x.id===sd.id); if(dist){ dist.control=sd.control; dist.pushCount=sd.pushCount; dist.nextPushAt=sd.nextPushAt; } });
         (d.corners||[]).forEach(sc=>{ const c=corners.find(x=>x.id===sc.id); if(c){ c.dealer=sc.dealer; c.busted=sc.busted; c.bustCooldownAt=sc.bustCooldownAt; } });
         state.influence=d.influence||0; state.influenceBuys=d.influenceBuys||0; state.electedOffice=d.electedOffice||false;
+        state.campaignActive=d.campaignActive||false; state.campaignStyle=d.campaignStyle||''; state.campaignEndAt=d.campaignEndAt||0;
         state.nextCampaignAt=d.nextCampaignAt||0; state.nextWarAt=d.nextWarAt||0;
         (d.politicians||[]).forEach(sp=>{ const p=politicians.find(x=>x.id===sp.id); if(p){ p.favor=sp.favor; p.pocketed=sp.pocketed||false; } });
         (d.gangRecruits||[]).forEach(sg=>{ const g=gangRecruits.find(x=>x.id===sg.id); if(g) g.inducted=sg.inducted; });
         state.inVehicle = d.inVehicle||false;
-        state.waypoints = Object.assign({devon:null,westside:null,loop:null}, d.waypoints||{});
-        state.parkedCarPos = Object.assign({devon:null,westside:null,loop:null}, d.parkedCarPos||{});
+        state.waypoints = Object.assign({devlin:null,westside:null,hub:null}, d.waypoints||{});
+        state.parkedCarPos = Object.assign({devlin:null,westside:null,hub:null}, d.parkedCarPos||{});
         state.marketPrices = d.marketPrices || {};
         state.portfolio = d.portfolio || {};
         state.marketHistory = d.marketHistory || {};
         state.financeView = d.financeView || 'vault';
         state.activeStock = d.activeStock || null;
+        state.currentNews = d.currentNews || [];
+        state.newsQueue = d.newsQueue || [];
+        state.nextNewsAt = d.nextNewsAt || 0;
         // LEGAL: Initialize any missing stocks in the market
         stockMarket.forEach(s => {
           if(!state.marketPrices[s.symbol]) state.marketPrices[s.symbol] = s.basePrice;
@@ -2598,7 +2644,8 @@
 
     state.cash += netIncome()*dt;
     state.respect += respectPerSec()*dt;
-    state.bank += state.bank * 0.00035 * loopInterestMult() * dt;
+    state.bank += state.bank * 0.00035 * hubInterestMult() * dt;
+    checkMilestones();
 
     if (state.playSeconds > state.nextMarketTickAt) {
       tickMarket();
@@ -2632,7 +2679,7 @@
     // LEGAL: Territory drifts toward whoever's actually maintaining a presence there.
     districts.forEach(d=>{
       const cornerPresence = corners.filter(c=>c.district===d.id && c.dealer && !c.busted).length * 1.2;
-      const venturePresence = d.id==='devon' ? businesses.filter(b=>b.researched && b.level>0).length*0.3 : 0;
+      const venturePresence = d.id==='devlin' ? businesses.filter(b=>b.researched && b.level>0).length*0.3 : 0;
       const presence = state.muscleCount*0.15 + cornerPresence + venturePresence;
       const pressure = d.homeTurf ? 0.15 : 0.35;
       d.control = Math.max(0, Math.min(100, d.control + (presence-pressure)*dt));
@@ -2647,7 +2694,15 @@
       const loss = state.cash * lossPct;
       state.cash -= loss; state.respect = Math.max(0, state.respect-5); state.heat = 30;
       triggerMilestone('raid');
-      log(`🚨 Someone official-looking cleans out ${fmt(loss)} "in fines."`);
+      
+      let campaignNote = '';
+      if(state.campaignActive) {
+        state.campaignActive = false; // LEGAL: Campaign instantly dies if raided
+        state.nextCampaignAt = state.playSeconds + 900;
+        campaignNote = ' The scandal of the raid completely kills your political campaign.';
+      }
+      
+      log(`🚨 Someone official-looking cleans out ${fmt(loss)} "in fines."${campaignNote}`);
       const extortedList = localBusinesses.filter(b=>b.extorted);
       if(extortedList.length && Math.random()<0.4){
         const victim = extortedList[Math.floor(Math.random()*extortedList.length)];
@@ -2712,14 +2767,14 @@
     showModal({
       eyebrow:'Case File — A. Malhotra', title:'FROM DELHI, RUNNING', stamp:'New Arrival',
       body:`
-        <p>Six months ago, <strong>Arjun Malhotra</strong> watched two men burn down his uncle's shop in Karol Bagh over a debt that was never really about money. He left Delhi with a duffel bag, four hundred dollars sewn into a jacket lining, and a phone number for a cousin in Chicago he'd met exactly once, at a wedding, years ago.</p>
-        <p class="flavor">The cousin's couch lasted three weeks. The four hundred dollars lasted six. Now he's got a folding cart, a griddle he doesn't fully own yet, and a corner of Devon Street nobody wanted badly enough to fight him for.</p>
+        <p>Six months ago, <strong>Arjun Malhotra</strong> watched two men burn down his uncle's shop in Karol Bagh over a debt that was never really about money. He left Delhi with a duffel bag, four hundred dollars sewn into a jacket lining, and a phone number for a cousin in Windhaven he'd met exactly once, at a wedding, years ago.</p>
+        <p class="flavor">The cousin's couch lasted three weeks. The four hundred dollars lasted six. Now he's got a folding cart, a griddle he doesn't fully own yet, and a corner of Devlin Street nobody wanted badly enough to fight him for.</p>
         <p><strong>Cash buys property. Crew runs the property. Respect takes territory.</strong> Everything else you'll figure out on the street.</p>
       `,
       buttons:[{label:'Open the Cart', onClick:function(){
         state.started = true; state.lastTick = Date.now(); lastFrame = Date.now();
         renderAll();
-        log('🌭 Day one. Forty-seven dollars and a folding table on Devon Street.');
+        log('🌭 Day one. Forty-seven dollars and a folding table on Devlin Street.');
         scheduleSave();
       }}]
     });
