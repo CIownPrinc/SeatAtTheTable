@@ -779,15 +779,15 @@
       const equipped = state.equippedCar === c.id;
       let btns;
       if(!owned){
-        btns = `<div class="btn-row"><button class="mini-btn" ${state.cash>=c.cost?'':'disabled'} data-car-buy="${c.id}">[ACT: BUY] <span class="cost">${fmt(c.cost)}</span></button></div>`;
+        btns = `<div class="btn-row"><button class="mini-btn" ${state.cash>=c.cost?'':'disabled'} data-car-buy="${c.id}">BUY <span class="cost">${fmt(c.cost)}</span></button></div>`;
       } else {
         btns = `<div class="btn-row">
-          ${equipped ? `<span class="managed-badge" style="flex:1;text-align:center;">[DRIVING]</span>` : `<button class="mini-btn" data-car-equip="${c.id}">[ACT: DRIVE]</button>`}
-          <button class="mini-btn fire" data-car-sell="${c.id}">[ACT: SELL] <span class="cost">${fmt(Math.round(c.cost*0.55))}</span></button>
+          ${equipped ? `<span class="managed-badge" style="flex:1;text-align:center;">[DRIVING]</span>` : `<button class="mini-btn" data-car-equip="${c.id}">DRIVE</button>`}
+          <button class="mini-btn fire" data-car-sell="${c.id}">SELL <span class="cost">${fmt(Math.round(c.cost*0.55))}</span></button>
         </div>`;
       }
       return `<div class="data-row">
-        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+        <div class="data-main">
           <div class="col-id"><span class="tag-id">[AUTO]</span> ${ICONS.car}</div>
           <div class="col-name">${c.name}</div>
           <div class="col-crew">${owned?'OWNED':'LOCKED'}</div>
@@ -805,10 +805,10 @@
     propWrap.innerHTML = properties.map(p=>{
       const owned = state.ownedProperties.includes(p.id);
       const btns = owned
-        ? `<div class="btn-row"><button class="mini-btn fire" data-prop-sell="${p.id}">[ACT: SELL] <span class="cost">${fmt(Math.round(p.cost*0.6))}</span></button></div>`
-        : `<div class="btn-row"><button class="mini-btn" ${state.cash>=p.cost?'':'disabled'} data-prop-buy="${p.id}">[ACT: BUY] <span class="cost">${fmt(p.cost)}</span></button></div>`;
+        ? `<div class="btn-row"><button class="mini-btn fire" data-prop-sell="${p.id}">SELL <span class="cost">${fmt(Math.round(p.cost*0.6))}</span></button></div>`
+        : `<div class="btn-row"><button class="mini-btn" ${state.cash>=p.cost?'':'disabled'} data-prop-buy="${p.id}">BUY <span class="cost">${fmt(p.cost)}</span></button></div>`;
       return `<div class="data-row">
-        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+        <div class="data-main">
           <div class="col-id"><span class="tag-id">[PROP]</span> ${ICONS.bld2}</div>
           <div class="col-name">${p.name}</div>
           <div class="col-crew">${owned?'OWNED':'LOCKED'}</div>
@@ -834,7 +834,7 @@
       const cooldownLeft = Math.max(0, Math.ceil(state.nextHeistAt - state.playSeconds));
       wrap.innerHTML = `
         <div class="data-row">
-          <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+          <div class="data-main">
             <div class="col-id"><i class="ph-duotone ph-bank"></i> ${ICONS.bank}</div>
             <div class="col-name">Vault Balance</div>
             <div class="col-crew" id="bank-banked-value">${fmt(state.bank)}</div>
@@ -849,7 +849,7 @@
                 <label class="bank-form-label">Deposit</label>
                 <div class="bank-input-row">
                   <input type="number" id="deposit-input" class="bank-input" min="0" step="1" placeholder="Amount">
-                  <button class="mini-btn" id="deposit-go">[ACT: DEPOSIT]</button>
+                  <button class="mini-btn" id="deposit-go">DEPOSIT</button>
                 </div>
                 <div class="btn-row">
                   <button class="mini-btn quick" data-deposit-quick="0.25">25%</button>
@@ -861,7 +861,7 @@
                 <label class="bank-form-label">Withdraw</label>
                 <div class="bank-input-row">
                   <input type="number" id="withdraw-input" class="bank-input" min="0" step="1" placeholder="Amount">
-                  <button class="mini-btn fire" id="withdraw-go">[ACT: WITHDRAW]</button>
+                  <button class="mini-btn fire" id="withdraw-go">WITHDRAW</button>
                 </div>
                 <div class="btn-row">
                   <button class="mini-btn quick" data-withdraw-quick="0.25">25%</button>
@@ -873,7 +873,7 @@
           </div>
         </div>
         <div class="data-row">
-          <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+          <div class="data-main">
             <div class="col-id">${ICONS.store}</div>
             <div class="col-name">RCN Exchange</div>
             <div class="col-crew">-</div>
@@ -883,11 +883,11 @@
           </div>
           <div class="data-expanded">
             <div class="flavor-note">The Rentport City National Exchange. Buy, sell, and short your way to the top. Just remember: the house always wins.</div>
-            <div class="btn-row"><button class="mini-btn" id="go-lcn">[ACT: ACCESS TERMINAL]</button></div>
+            <div class="btn-row"><button class="mini-btn" id="go-lcn">ACCESS TERMINAL</button></div>
           </div>
         </div>
         <div class="data-row">
-          <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+          <div class="data-main">
             <div class="col-id">${ICONS.box}</div>
             <div class="col-name">First Windhaven Trust</div>
             <div class="col-crew">-</div>
@@ -897,7 +897,7 @@
           </div>
           <div class="data-expanded">
             <div class="flavor-note">A rival bank across town. A bigger score, and a bigger risk, than shaking down a corner shop.</div>
-            <div class="btn-row"><button class="mini-btn" ${canHeist?'':'disabled'} id="start-heist">[ACT: CASE THE VAULT] ${canHeist?'':`(${cooldownLeft}s)`}</button></div>
+            <div class="btn-row"><button class="mini-btn" ${canHeist?'':'disabled'} id="start-heist">CASE THE VAULT ${canHeist?'':`(${cooldownLeft}s)`}</button></div>
           </div>
         </div>
       `;
@@ -910,7 +910,7 @@
       wrap.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">
           <h3 style="font-size:20px; color:var(--text); margin:0;"><span class="tag-id">[EXCH]</span> RCN TERMINAL</h3>
-          <button class="mini-btn fire" id="go-vault">[ACT: DISCONNECT]</button>
+          <button class="mini-btn fire" id="go-vault">DISCONNECT</button>
         </div>
         
         <div class="data-row">
@@ -1308,7 +1308,7 @@
       const status = districtStatus(d.id);
       const canPush = state.playSeconds>=d.nextPushAt && state.respect>=pushCost(d);
       return `<div class="data-row">
-        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+        <div class="data-main">
           <div class="col-id"><span class="tag-id">[DIST]</span> ${d.homeTurf?ICONS.person:ICONS.badge}</div>
           <div class="col-name">${d.name}</div>
           <div class="col-crew">${Math.round(d.control)}% CTRL</div>
@@ -1319,7 +1319,7 @@
         <div class="data-expanded">
           <div class="flavor-note">${bonusText[d.id]}</div>
           <div class="control-track"><div class="control-fill" data-control-bar="${d.id}" style="width:${Math.round(d.control)}%"></div></div>
-          <div class="btn-row"><button class="mini-btn" ${canPush?'':'disabled'} data-push="${d.id}">[ACT: PUSH] <span class="cost">${pushCost(d)} resp</span></button></div>
+          <div class="btn-row"><button class="mini-btn" ${canPush?'':'disabled'} data-push="${d.id}">PUSH <span class="cost">${pushCost(d)} resp</span></button></div>
         </div>
       </div>`;
     }).join('');
@@ -1332,7 +1332,7 @@
     const canCampaign = canOffice && state.playSeconds >= state.nextCampaignAt && !state.electedOffice;
     wrap.innerHTML = `
       <div class="data-row">
-        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+        <div class="data-main">
           <div class="col-id"><span class="tag-id">[INFL]</span> ${ICONS.gov}</div>
           <div class="col-name">Influence</div>
           <div class="col-crew">${Math.round(state.influence)}</div>
@@ -1342,12 +1342,12 @@
         </div>
         <div class="data-expanded">
           <div class="flavor-note">Cash spent building pull downtown. Enough of it opens the door to running for office yourself.</div>
-          <div class="btn-row"><button class="mini-btn" ${state.cash>=influenceCost()?'':'disabled'} id="buy-influence">[ACT: FUND] <span class="cost">${fmt(influenceCost())}</span></button></div>
+          <div class="btn-row"><button class="mini-btn" ${state.cash>=influenceCost()?'':'disabled'} id="buy-influence">FUND <span class="cost">${fmt(influenceCost())}</span></button></div>
         </div>
       </div>
       ${politicians.map(p=>`
       <div class="data-row">
-        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+        <div class="data-main">
           <div class="col-id"><span class="tag-id">[POLI]</span> ${ICONS.person}</div>
           <div class="col-name">${p.name}</div>
           <div class="col-crew">${p.favor}/100</div>
@@ -1358,11 +1358,11 @@
         <div class="data-expanded">
           <div class="flavor-note">${p.role} · ${p.desc}</div>
           <div class="control-track"><div class="control-fill" style="width:${p.favor}%"></div></div>
-          <div class="btn-row"><button class="mini-btn" ${(state.cash>=favorCost(p) && p.favor<100)?'':'disabled'} data-bribe="${p.id}">[ACT: BRIBE] <span class="cost">${fmt(favorCost(p))}</span></button></div>
+          <div class="btn-row"><button class="mini-btn" ${(state.cash>=favorCost(p) && p.favor<100)?'':'disabled'} data-bribe="${p.id}">BRIBE <span class="cost">${fmt(favorCost(p))}</span></button></div>
         </div>
       </div>`).join('')}
       <div class="data-row">
-        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+        <div class="data-main">
           <div class="col-id"><span class="tag-id">[RACE]</span> ${ICONS.badge}</div>
           <div class="col-name">City Councilman</div>
           <div class="col-crew">-</div>
@@ -1377,7 +1377,7 @@
             <div class="btn-row"><span class="lock-note">${Math.max(0, Math.ceil(state.campaignEndAt - state.playSeconds))}s REMAINING</span></div>
           ` : `
             <div class="flavor-note">${state.electedOffice ? 'You hold the seat. It comes with its own quiet income now.' : (canOffice ? 'You have the influence to be taken seriously. This is a one-shot swing — win or lose, it costs real money.' : `Needs 500 influence (currently ${Math.round(state.influence)}).`)}</div>
-            <div class="btn-row"><button class="mini-btn" ${canCampaign?'':'disabled'} id="launch-campaign">[ACT: ${state.electedOffice ? 'SEAT HELD' : 'LAUNCH CAMPAIGN'}]</button></div>
+            <div class="btn-row"><button class="mini-btn" ${canCampaign?'':'disabled'} id="launch-campaign">${state.electedOffice ? 'SEAT HELD' : 'LAUNCH CAMPAIGN'}</button></div>
           `}
         </div>
       </div>
@@ -1391,7 +1391,7 @@
     const canWar = state.playSeconds >= state.nextWarAt;
     wrap.innerHTML = `
       <div class="data-row">
-        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+        <div class="data-main">
           <div class="col-id"><span class="tag-id">[STAT]</span> ${ICONS.fist}</div>
           <div class="col-name">Gang Strength</div>
           <div class="col-crew">${gs.toFixed(1)} vs ${rs.toFixed(1)}</div>
@@ -1406,7 +1406,7 @@
       ${gangRecruits.map(g=>{
         const eligible = state.respect>=g.reqRespect;
         return `<div class="data-row">
-          <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+          <div class="data-main">
             <div class="col-id"><i class="ph-duotone ph-users-three"></i> ${ICONS.person}</div>
             <div class="col-name">${g.name}</div>
             <div class="col-crew">-</div>
@@ -1418,9 +1418,9 @@
             <div class="flavor-note">${g.trait} · ${g.bonus}</div>
             <div class="btn-row">
               ${g.inducted
-                ? `<button class="mini-btn manager" data-checkin="${g.id}">[ACT: CHECK IN]</button>`
+                ? `<button class="mini-btn manager" data-checkin="${g.id}">CHECK IN</button>`
                 : eligible
-                  ? `<button class="mini-btn" ${state.cash>=g.cost?'':'disabled'} data-initiate="${g.id}">[ACT: INITIATE] <span class="cost">${fmt(g.cost)}</span></button>`
+                  ? `<button class="mini-btn" ${state.cash>=g.cost?'':'disabled'} data-initiate="${g.id}">INITIATE <span class="cost">${fmt(g.cost)}</span></button>`
                   : `<div class="lock-note">Needs ${g.reqRespect} respect (currently ${Math.round(state.respect)})</div>`
               }
             </div>
@@ -1428,7 +1428,7 @@
         </div>`;
       }).join('')}
       <div class="data-row">
-        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+        <div class="data-main">
           <div class="col-id"><i class="ph-duotone ph-swords"></i> ${ICONS.fist}</div>
           <div class="col-name">West Side War</div>
           <div class="col-crew">${Math.round(districts.find(d=>d.id==='westside').control)}% CTRL</div>
@@ -1438,7 +1438,7 @@
         </div>
         <div class="data-expanded">
           <div class="flavor-note">Declare on Dice's people directly — a bigger, faster swing on control than pushing alone, backed by your actual Gang Strength.</div>
-          <div class="btn-row"><button class="mini-btn" ${canWar?'':'disabled'} id="declare-war">[ACT: DECLARE WAR]</button></div>
+          <div class="btn-row"><button class="mini-btn" ${canWar?'':'disabled'} id="declare-war">DECLARE WAR</button></div>
         </div>
       </div>
     `;
@@ -1465,7 +1465,7 @@
       const rc = researchCostFor(b);
       const exp = `<div class="data-expanded">
         <div class="flavor-note">${b.flavor}</div>
-        <div class="btn-row"><button class="mini-btn" ${state.cash>=rc?'':'disabled'} data-action="research" data-id="${b.id}">[ACT: RESEARCH] <span class="cost">${fmt(rc)}</span></button></div>
+        <div class="btn-row"><button class="mini-btn" ${state.cash>=rc?'':'disabled'} data-action="research" data-id="${b.id}">RESEARCH <span class="cost">${fmt(rc)}</span></button></div>
       </div>`;
       el.innerHTML = main + exp;
       return el;
@@ -1493,20 +1493,20 @@
     let exp = `<div class="data-expanded">
       <div class="flavor-note">${b.flavor}</div>
       <div class="btn-row">
-        <button class="mini-btn" ${state.cash>=cost?'':'disabled'} data-action="expand" data-id="${b.id}">[ACT: ${b.level===0?'OPEN':'EXPAND'}] <span class="cost">${fmt(cost)}</span></button>
+        <button class="mini-btn" ${state.cash>=cost?'':'disabled'} data-action="expand" data-id="${b.id}">${b.level===0?'OPEN':'EXPAND'} <span class="cost">${fmt(cost)}</span></button>
       </div>`;
 
     if(b.manager){
       exp += `<div class="lock-note" style="margin-top:6px;">[SYS] Manager ${b.managerName} installed. Operations optimal.</div>`;
     } else {
       exp += `<div class="btn-row" style="margin-top:6px;">
-        <button class="mini-btn" ${canHireCrew?'':'disabled'} data-action="hirecrew" data-id="${b.id}">[ACT: ASGN CREW] <span class="cost">${fmt(crewCost)}</span></button>
-        <button class="mini-btn fire" ${canFireCrew?'':'disabled'} data-action="firecrew" data-id="${b.id}">[ACT: FIRE CREW] <span class="cost">RND 50%</span></button>
+        <button class="mini-btn" ${canHireCrew?'':'disabled'} data-action="hirecrew" data-id="${b.id}">ASGN CREW <span class="cost">${fmt(crewCost)}</span></button>
+        <button class="mini-btn fire" ${canFireCrew?'':'disabled'} data-action="firecrew" data-id="${b.id}">FIRE CREW <span class="cost">RND 50%</span></button>
       </div>`;
       if(b.level >= b.managerLevelReq){
         const mc = managerCostFor(b);
         exp += `<div class="btn-row" style="margin-top:6px;">
-          <button class="mini-btn manager" ${state.cash>=mc?'':'disabled'} data-action="hiremanager" data-id="${b.id}">[ACT: HIRE MGR] <span class="cost">${fmt(mc)}</span></button>
+          <button class="mini-btn manager" ${state.cash>=mc?'':'disabled'} data-action="hiremanager" data-id="${b.id}">HIRE MGR <span class="cost">${fmt(mc)}</span></button>
         </div>`;
       }
     }
@@ -1732,7 +1732,7 @@
     const rcCash = ratsCashCost(), rcResp = ratsRespectCost();
     wrap.innerHTML = `
       <div class="data-row">
-        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+        <div class="data-main">
           <div class="col-id"><span class="tag-id">[STRT]</span> ${ICONS.fist}</div>
           <div class="col-name">Muscle</div>
           <div class="col-crew">${state.muscleCount}</div>
@@ -1742,11 +1742,11 @@
         </div>
         <div class="data-expanded">
           <div class="flavor-note">Earns respect passively. Draws heat while active.</div>
-          <div class="btn-row"><button class="mini-btn" ${state.cash>=mc?'':'disabled'} id="hire-muscle">[ACT: HIRE] <span class="cost">${fmt(mc)}</span></button></div>
+          <div class="btn-row"><button class="mini-btn" ${state.cash>=mc?'':'disabled'} id="hire-muscle">HIRE <span class="cost">${fmt(mc)}</span></button></div>
         </div>
       </div>
       <div class="data-row">
-        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+        <div class="data-main">
           <div class="col-id"><span class="tag-id">[BRBE]</span> ${ICONS.badge}</div>
           <div class="col-name">Bribe the Cops</div>
           <div class="col-crew">-</div>
@@ -1756,11 +1756,11 @@
         </div>
         <div class="data-expanded">
           <div class="flavor-note">Pay 12% of total income continuously to cut heat generation sharply.</div>
-          <div class="btn-row"><button class="mini-btn" id="toggle-bribe">[ACT: ${state.bribeOn?'STOP PAYING':'START PAYING'}]</button></div>
+          <div class="btn-row"><button class="mini-btn" id="toggle-bribe">${state.bribeOn?'STOP PAYING':'START PAYING'}</button></div>
         </div>
       </div>
       <div class="data-row">
-        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+        <div class="data-main">
           <div class="col-id"><span class="tag-id">[RAT]</span> ${ICONS.person}</div>
           <div class="col-name">Informants</div>
           <div class="col-crew">${state.ratCount}</div>
@@ -1770,11 +1770,11 @@
         </div>
         <div class="data-expanded">
           <div class="flavor-note">Cuts the odds of bad news finding you, and softens any raid that does land.</div>
-          <div class="btn-row"><button class="mini-btn" ${(state.cash>=rcCash && state.respect>=rcResp)?'':'disabled'} id="hire-rat">[ACT: HIRE] <span class="cost">${fmt(rcCash)} + ${rcResp} resp</span></button></div>
+          <div class="btn-row"><button class="mini-btn" ${(state.cash>=rcCash && state.respect>=rcResp)?'':'disabled'} id="hire-rat">HIRE <span class="cost">${fmt(rcCash)} + ${rcResp} resp</span></button></div>
         </div>
       </div>
       <div class="data-row">
-        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+        <div class="data-main">
           <div class="col-id"><span class="tag-id">[TRTY]</span> ${ICONS.music}</div>
           <div class="col-name">Expand Territory</div>
           <div class="col-crew">CAP: ${crewCapGlobal()}</div>
@@ -1784,11 +1784,11 @@
         </div>
         <div class="data-expanded">
           <div class="flavor-note">Raises your citywide crew capacity, letting every venture run at full strength.</div>
-          <div class="btn-row"><button class="mini-btn" ${state.respect>=territoryCost()?'':'disabled'} id="buy-territory">[ACT: EXPAND] <span class="cost">${territoryCost()} resp</span></button></div>
+          <div class="btn-row"><button class="mini-btn" ${state.respect>=territoryCost()?'':'disabled'} id="buy-territory">EXPAND <span class="cost">${territoryCost()} resp</span></button></div>
         </div>
       </div>
       <div class="data-row">
-        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+        <div class="data-main">
           <div class="col-id"><span class="tag-id">[NEGO]</span> ${ICONS.person}</div>
           <div class="col-name">Negotiate</div>
           <div class="col-crew">-</div>
@@ -1798,11 +1798,11 @@
         </div>
         <div class="data-expanded">
           <div class="flavor-note">Permanent discount on every venture, crew, and research cost, citywide.</div>
-          <div class="btn-row"><button class="mini-btn" ${state.respect>=negotiateCost()?'':'disabled'} id="buy-negotiate">[ACT: NEGOTIATE] <span class="cost">${negotiateCost()} resp</span></button></div>
+          <div class="btn-row"><button class="mini-btn" ${state.respect>=negotiateCost()?'':'disabled'} id="buy-negotiate">NEGOTIATE <span class="cost">${negotiateCost()} resp</span></button></div>
         </div>
       </div>
       <div class="data-row">
-        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+        <div class="data-main">
           <div class="col-id"><span class="tag-id">[PROD]</span> ${ICONS.box}</div>
           <div class="col-name">The Lab</div>
           <div class="col-crew">LVL ${state.productLevel}</div>
@@ -1812,11 +1812,11 @@
         </div>
         <div class="data-expanded">
           <div class="flavor-note">Produces product for your dealers to sell. No product in stock, corners just idle.</div>
-          <div class="btn-row"><button class="mini-btn" ${state.cash>=labCost()?'':'disabled'} id="upgrade-lab">[ACT: UPGRADE] <span class="cost">${fmt(labCost())}</span></button></div>
+          <div class="btn-row"><button class="mini-btn" ${state.cash>=labCost()?'':'disabled'} id="upgrade-lab">UPGRADE <span class="cost">${fmt(labCost())}</span></button></div>
         </div>
       </div>
       <div class="data-row">
-        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+        <div class="data-main">
           <div class="col-id"><span class="tag-id">[SALE]</span> ${ICONS.diamond}</div>
           <div class="col-name">The Trade</div>
           <div class="col-crew">${activeCorners().length}/${corners.length} CNRS</div>
