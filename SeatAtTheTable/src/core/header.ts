@@ -905,7 +905,7 @@
           <button class="mini-btn fire" id="go-vault">DISCONNECT</button>
         </div>
         
-        <div class="data-table">
+        <div class="data-table" style="grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));">
           <div class="data-row">
             <div class="data-main">
               <div class="col-id">${ICONS.store}</div>
@@ -984,34 +984,59 @@
         <div style="margin:20px 0;">
           <canvas id="stock-chart" width="400" height="150" style="width:100%; max-width:100%; height:150px; background:#07090c; border:1px solid var(--line); box-sizing:border-box; image-rendering:pixelated; border-radius:6px;"></canvas>
         </div>
-        <div class="data-table">
-          <div class="data-row vault-card">
+        <div class="data-table" style="grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));">
+          <!-- Card 1: Position Summary -->
+          <div class="data-row">
+            <div class="data-main">
+              <div class="col-id">${ICONS.person}</div>
+              <div class="col-name">Your Position</div>
+              <div class="col-status">${pos.shares > 0 ? 'HOLDING' : 'EMPTY'}</div>
+            </div>
+            <div class="data-expanded">
+              <div class="flavor-note">Your equity exposure in this security.</div>
+              <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+                <div style="display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:13px; border-bottom:1px solid var(--line); padding-bottom:4px;">
+                  <span style="color:var(--text-faint);">Shares Owned</span>
+                  <span style="color:var(--text); font-weight:700;">${pos.shares}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:13px; border-bottom:1px solid var(--line); padding-bottom:4px;">
+                  <span style="color:var(--text-faint);">Average Cost</span>
+                  <span style="color:var(--text); font-weight:700;">$${pos.avgCost.toFixed(2)}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:13px; border-bottom:1px solid var(--line); padding-bottom:4px;">
+                  <span style="color:var(--text-faint);">Current Value</span>
+                  <span style="color:var(--text); font-weight:700;">${fmt(val)}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:13px; border-bottom:1px solid var(--line); padding-bottom:4px;">
+                  <span style="color:var(--text-faint);">Total Return</span>
+                  <span style="color:${plColor}; font-weight:700;">${pl >= 0 ? '+' : ''}${fmt(pl)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: Market Order -->
+          <div class="data-row">
             <div class="data-main">
               <div class="col-id">${ICONS.store}</div>
-              <div class="col-name">Execute Trade</div>
-              <div class="col-status">ACTIVE</div>
+              <div class="col-name">Market Order</div>
+              <div class="col-status" id="price-${s.symbol}">$${price.toFixed(2)}</div>
             </div>
-            <div class="data-expanded" style="display:block;">
-              <div class="bank-balances-row" style="display:flex; gap:24px; margin-bottom:16px; font-family:var(--font-mono); font-size:13px; flex-wrap:wrap; background:rgba(0,0,0,0.15); padding:12px 16px; border-radius:6px; border:1px solid var(--line);">
-                <div><span style="color:var(--text-faint);">CURRENT PRICE:</span> <strong id="price-${s.symbol}" style="color:var(--text); font-size:14px;">$${price.toFixed(2)}</strong></div>
-                <div><span style="color:var(--text-faint);">SHARES OWNED:</span> <strong style="color:var(--text); font-size:14px;">${pos.shares}</strong></div>
-                <div><span style="color:var(--text-faint);">AVG COST:</span> <strong style="color:var(--text); font-size:14px;">$${pos.avgCost.toFixed(2)}</strong></div>
-                <div><span style="color:var(--text-faint);">VALUE:</span> <strong style="color:var(--text); font-size:14px;">${fmt(val)}</strong></div>
-                <div><span style="color:var(--text-faint);">RETURN:</span> <strong style="color:${plColor}; font-size:14px;">${pl >= 0 ? '+' : ''}${fmt(pl)}</strong></div>
-              </div>
-              <div class="bank-form" style="border-top:none; padding-top:0; margin-top:0;">
-                <div class="btn-row" style="margin-bottom:8px;">
+            <div class="data-expanded">
+              <div class="flavor-note">Execute instant buy or sell trades at current market rate.</div>
+              <div class="bank-form" style="border-top:none; padding-top:0; margin-top:0; gap:8px;">
+                <div class="btn-row">
                   <button class="mini-btn quick" data-trade="buy-10" data-sym="${s.symbol}">BUY 10</button>
                   <button class="mini-btn quick" data-trade="buy-100" data-sym="${s.symbol}">BUY 100</button>
                   <button class="mini-btn quick" data-trade="buy-max" data-sym="${s.symbol}">BUY MAX</button>
                 </div>
-                <div class="btn-row" style="margin-bottom:8px;">
+                <div class="btn-row">
                   <button class="mini-btn quick fire" data-trade="sell-10" data-sym="${s.symbol}">SELL 10</button>
                   <button class="mini-btn quick fire" data-trade="sell-100" data-sym="${s.symbol}">SELL 100</button>
                   <button class="mini-btn quick fire" data-trade="sell-max" data-sym="${s.symbol}">SELL MAX</button>
                 </div>
                 <div class="bank-input-row" style="margin-top:12px;">
-                  <input type="number" id="trade-input-${s.symbol}" class="bank-input" min="1" step="1" placeholder="Enter custom amount">
+                  <input type="number" id="trade-input-${s.symbol}" class="bank-input" min="1" step="1" placeholder="Enter share amount">
                 </div>
               </div>
             </div>
