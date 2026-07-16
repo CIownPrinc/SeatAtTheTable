@@ -487,7 +487,7 @@
     currentDistrict: 'devlin', product: 0, productLevel: 0, currentInterior: null,
     inVehicle: false,
     waypoints: { devlin:null, westside:null, hub:null },
-    parkedCarPos: { devlin:null, westside:null, hub:null },
+    parkedCarPos: { devlin:{x:700,y:660}, westside:{x:2700,y:660}, hub:{x:4700,y:660} },
     influence: 0, influenceBuys: 0, electedOffice: false, nextCampaignAt: 0, nextWarAt: 0,
     campaignActive: false, campaignEndAt: 0, campaignStyle: '',
     portfolio: {}, marketPrices: {}, marketHistory: {}, nextMarketTickAt: 0,
@@ -1849,7 +1849,7 @@
     document.getElementById('hud-cash').textContent = fmt(state.cash);
     document.getElementById('hud-income').textContent = (netIncome()>=0?'+':'') + fmt(netIncome()) + '/s';
     document.getElementById('hud-rank').textContent = currentRank();
-    document.getElementById('hud-**Respect**').textContent = `${fmtR(state.respect)} respect`;
+    document.getElementById('hud-respect').textContent = `${fmtR(state.respect)} respect`;
     document.getElementById('heat-fill').style.width = Math.min(100, state.heat) + '%';
     document.getElementById('hud-crew').textContent = `${crewUsedGlobal()} / ${crewCapGlobal()}`;
 
@@ -1874,7 +1874,7 @@
     document.getElementById('hud-cash').textContent = fmt(state.cash);
     document.getElementById('hud-income').textContent = (netIncome()>=0?'+':'') + fmt(netIncome()) + '/s';
     document.getElementById('hud-rank').textContent = rank;
-    document.getElementById('hud-**Respect**').textContent = `${fmtR(state.respect)} respect`;
+    document.getElementById('hud-respect').textContent = `${fmtR(state.respect)} respect`;
     document.getElementById('heat-fill').style.width = Math.min(100, state.heat) + '%';
     document.getElementById('hud-crew').textContent = `${crewUsedGlobal()} / ${crewCapGlobal()}`;
 
@@ -2033,6 +2033,7 @@
     };
   }
   const districtSeeds = { devlin:1001, westside:2002, hub:3003 };
+  // LEGAL: Filler band X/Y coordinates are relative to a 1500x950 grid; offset applied at render time
   function occupiedZones(districtId){
     const zones = [];
     const add = (arr,r)=> arr.filter(m=>m.district===districtId).forEach(m=> zones.push({x:m.x,y:m.y,r}));
@@ -2173,6 +2174,26 @@
   window.addEventListener('blur', function(){ Object.keys(keys).forEach(k=> keys[k]=false); });
   document.getElementById('btn-interact').addEventListener('click', tryInteract);
 
+  document.getElementById('fullscreen-btn').addEventListener('click', function(){
+    const container = document.getElementById('scene3d-container');
+    const isFs = container.classList.toggle('fullscreen');
+    const btn = document.getElementById('fullscreen-btn');
+    btn.innerHTML = isFs ? '<i class="ph-duotone ph-arrows-in"></i>' : '<i class="ph-duotone ph-arrows-out"></i>';
+    if(renderer){
+      const w = isFs ? window.innerWidth : VIEW_W;
+      const h = isFs ? window.innerHeight : VIEW_H;
+      renderer.setSize(w, h);
+      if(camera3d){ camera3d.aspect = w/h; camera3d.updateProjectionMatrix(); }
+    }
+  });
+  window.addEventListener('resize', function(){
+    const container = document.getElementById('scene3d-container');
+    if(container.classList.contains('fullscreen') && renderer){
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      if(camera3d){ camera3d.aspect = window.innerWidth/window.innerHeight; camera3d.updateProjectionMatrix(); }
+    }
+  });
+
   function nearestMarker(){
     if(state.currentInterior){
       let best=null, bestDist=46;
@@ -2297,7 +2318,206 @@
     return { color: legit ? '#3e6b78' : '#7c3540', h: 24+Math.min(70,b.level*3) };
   }
 
+
+  // LEGAL: ---- procedural building with windows, door, and zone-specific roof ----
+  function buildDetailedBuilding(w, h, d, color, zoneType){
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), new THREE.MeshStandardMaterial({color, roughness:0.85, metalness:0.05}));
+    body.castShadow=true; body.receiveShadow=true; g.add(body);
+    const winMat = new THREE.MeshStandardMaterial({color:'#c8d8ff', emissive:'#5070c0', emissiveIntensity:0.45, roughness:0.2});
+    const winRows = Math.max(1, Math.floor(h/18));
+    const winCols = Math.max(1, Math.floor(w/22));
+    for(let wr=0; wr<winRows; wr++){
+      for(let wc=0; wc<winCols; wc++){
+        const win = new THREE.Mesh(new THREE.PlaneGeometry(7,9), winMat);
+        const wx = -w/2 + 12 + wc*(w/winCols);
+        const wy = -h/2 + 12 + wr*(h/winRows);
+        win.position.set(wx, wy, d/2+0.1); g.add(win);
+        const win2 = new THREE.Mesh(new THREE.PlaneGeometry(7,9), winMat);
+        win2.rotation.y=Math.PI; win2.position.set(wx, wy, -d/2-0.1); g.add(win2);
+      }
+    }
+    const doorMat = new THREE.MeshStandardMaterial({color:'#101216', roughness:0.5});
+    const door = new THREE.Mesh(new THREE.PlaneGeometry(11,16), doorMat);
+    door.position.set(0, -h/2+8, d/2+0.11); g.add(door);
+    if(zoneType==='skyscraper' && h>60){
+      const spire = new THREE.Mesh(new THREE.ConeGeometry(4,h*0.22,6), new THREE.MeshStandardMaterial({color:'#8090b0', metalness:0.8, roughness:0.1}));
+      spire.position.y = h/2 + h*0.11; g.add(spire);
+    } else if(zoneType==='residential'){
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(w*0.58,12,4), new THREE.MeshStandardMaterial({color:'#4a3830', roughness:0.9}));
+      roof.position.y = h/2+6; roof.rotation.y=Math.PI/4; g.add(roof);
+    } else if(zoneType==='industrial'){
+      const vent = new THREE.Mesh(new THREE.CylinderGeometry(4,5,14,8), new THREE.MeshStandardMaterial({color:'#404450', roughness:0.8}));
+      vent.position.set(w*0.25, h/2+7, 0); g.add(vent);
+    }
+    return g;
+  }
+
+
+  // LEGAL: ---- unified city — builds the entire world once; no per-district teardown ----
+  function buildCityScene(){
+    clearGroup(worldGroup);
+
+    // LEGAL: Base ground plane — full city footprint
+    const groundBase = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W,WORLD_H), new THREE.MeshStandardMaterial({color:'#1e2124', roughness:1}));
+    groundBase.rotation.x=-Math.PI/2; groundBase.position.set(WORLD_W/2,0,WORLD_H/2); groundBase.receiveShadow=true; worldGroup.add(groundBase);
+
+    // LEGAL: District ground tints
+    [{x0:0,x1:1500,color:'#232a26'},{x0:2000,x1:3500,color:'#2a2222'},{x0:4000,x1:5500,color:'#211f16'}].forEach(function(dg){
+      const w=dg.x1-dg.x0;
+      const tint = new THREE.Mesh(new THREE.PlaneGeometry(w,WORLD_H), new THREE.MeshStandardMaterial({color:dg.color, roughness:1}));
+      tint.rotation.x=-Math.PI/2; tint.position.set(dg.x0+w/2,0.01,WORLD_H/2); tint.receiveShadow=true; worldGroup.add(tint);
+    });
+
+    // LEGAL: Canal water strips (X:1500-2000 and X:3500-4000)
+    const canalMat = new THREE.MeshStandardMaterial({color:'#1c3a52', roughness:0.2, metalness:0.4});
+    [[1500,500],[3500,500]].forEach(function(pair){
+      const cx=pair[0], cw=pair[1];
+      const canal = new THREE.Mesh(new THREE.PlaneGeometry(cw,WORLD_H), canalMat);
+      canal.rotation.x=-Math.PI/2; canal.position.set(cx+cw/2,0.04,WORLD_H/2); worldGroup.add(canal);
+    });
+
+    // LEGAL: Roads — horizontal roads span full width (also form bridge decks over canals)
+    const roadMat = new THREE.MeshStandardMaterial({color:'#2b2d35', roughness:0.9});
+    roadNetwork.vertical.forEach(function(r){
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(r.w,WORLD_H), roadMat);
+      m.rotation.x=-Math.PI/2; m.position.set(r.x,0.05,WORLD_H/2); m.receiveShadow=true; worldGroup.add(m);
+    });
+    roadNetwork.horizontal.forEach(function(r){
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W,r.w), roadMat);
+      m.rotation.x=-Math.PI/2; m.position.set(WORLD_W/2,0.05,r.y); m.receiveShadow=true; worldGroup.add(m);
+    });
+
+    // LEGAL: Bridge railings over the two canals
+    const deckMat = new THREE.MeshStandardMaterial({color:'#3a3d47', roughness:0.7});
+    const railMat = new THREE.MeshStandardMaterial({color:'#555a68', roughness:0.6});
+    [[1500,500],[3500,500]].forEach(function(pair){
+      const cx=pair[0], cw=pair[1];
+      [300,600,900].forEach(function(ry){
+        const deck = new THREE.Mesh(new THREE.BoxGeometry(cw,4,74), deckMat);
+        deck.position.set(cx+cw/2,2,ry); worldGroup.add(deck);
+        for(let rx=cx+30; rx<cx+cw-20; rx+=60){
+          const p1 = new THREE.Mesh(new THREE.BoxGeometry(4,18,4), railMat);
+          p1.position.set(rx,10,ry-33); worldGroup.add(p1);
+          const p2 = new THREE.Mesh(new THREE.BoxGeometry(4,18,4), railMat);
+          p2.position.set(rx,10,ry+33); worldGroup.add(p2);
+        }
+      });
+    });
+
+    // LEGAL: Venture buildings — all districts
+    mapBuildings.forEach(function(m){
+      const info = buildingColorFor(m.biz);
+      const bw=m.biz.baseCost>=50000?66:(m.biz.baseCost<1000?46:56), bd=bw*0.85;
+      const zoneType = m.biz.category==='legit' ? 'commercial' : 'industrial';
+      const mesh = buildDetailedBuilding(bw, info.h, bd, info.color, zoneType);
+      mesh.position.set(m.x, info.h/2, m.y); worldGroup.add(mesh);
+      addSign(mesh, m.biz.name, 34, 9, info.h/2+10, m.biz.category==='legit'?'#8fd0e0':'#f0a0ae');
+    });
+
+    // LEGAL: Service buildings — all districts
+    const svcPalette = { bankHome:'#7a5f1a', garage:'#3e6b78', realty:'#3e6b78', cityhall:'#7a5f1a', heist:'#5a2a33' };
+    serviceBuildings.forEach(function(m){
+      const mesh = buildDetailedBuilding(58,34,50,svcPalette[m.kind],'service');
+      mesh.position.set(m.x,17,m.y); worldGroup.add(mesh);
+      addSign(mesh, m.name, 40, 9, 26, '#ffe6a0');
+    });
+
+    // LEGAL: Extortable local businesses — all districts
+    localBusinesses.forEach(function(m){
+      const color = m.extorted?'#8a6a1a':'#4a4360';
+      const mesh = buildDetailedBuilding(42,20,36,color,'shop');
+      mesh.position.set(m.x,10,m.y); worldGroup.add(mesh);
+      addSign(mesh, m.name, 32, 8, 18, m.extorted?'#ffd77a':'#b8aee0');
+    });
+
+    // LEGAL: Corners — all districts
+    corners.forEach(function(m){
+      const staffed=m.dealer&&!m.busted;
+      const color=m.busted?'#5f6275':(staffed?'#d4a017':'#a8394a');
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(1.4,1.4,26,6), new THREE.MeshStandardMaterial({color:'#2a2c33'}));
+      pole.position.set(m.x,13,m.y); pole.castShadow=true; worldGroup.add(pole);
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(7,10,10), new THREE.MeshStandardMaterial({color, emissive:color, emissiveIntensity:0.4}));
+      orb.position.set(m.x,28,m.y); worldGroup.add(orb);
+      addSign(pole, m.name, 30, 8, 22, '#f0efe8');
+    });
+
+    // LEGAL: NPCs and gang recruits — all districts
+    function addPerson(m, color){
+      const g = buildPedestrianModel(color);
+      g.position.set(m.x,0,m.y); worldGroup.add(g);
+      addSign(g, m.type==='named'?m.name:(m.name||'?'), 28, 7, 34, '#f0efe8');
+    }
+    mapNpcs.forEach(function(m){ addPerson(m, m.type==='named'?'#d4a017':'#7a6fb0'); });
+    gangRecruits.forEach(function(m){ addPerson(m, m.inducted?'#d4a017':'#5f6275'); });
+
+    // LEGAL: Filler city buildings per district with zoning-aware types
+    ['devlin','westside','hub'].forEach(function(distId){
+      const off = DISTRICT_OFFSETS[distId];
+      fillerFor(distId).forEach(function(f){
+        if(f.kind==='building'){
+          const zoneType = distId==='hub'?'skyscraper':(distId==='westside'?'industrial':'residential');
+          const color = distId==='hub'?(f.hue<0.5?'#2a3040':'#3a3550'):(distId==='westside'?(f.hue<0.5?'#3a3830':'#4a4038'):(f.hue<0.5?'#3a3f4a':'#4a4238'));
+          const mesh = buildDetailedBuilding(f.w,f.h,f.d,color,zoneType);
+          mesh.position.set(f.x+off,f.h/2,f.y); worldGroup.add(mesh);
+        } else if(f.kind==='park'){
+          const cx=(f.x0+f.x1)/2+off, cy=(f.y0+f.y1)/2, w=f.x1-f.x0, d=f.y1-f.y0;
+          const grass = new THREE.Mesh(new THREE.PlaneGeometry(w,d), new THREE.MeshStandardMaterial({color:'#2c4a30', roughness:1}));
+          grass.rotation.x=-Math.PI/2; grass.position.set(cx,0.08,cy); grass.receiveShadow=true; worldGroup.add(grass);
+          const rand = seededRandom(Math.floor(cx*7+cy*13));
+          for(let i=0;i<8;i++){
+            const tx=f.x0+off+20+rand()*(w-40), ty=f.y0+20+rand()*(d-40);
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(2,2.5,10,6), new THREE.MeshStandardMaterial({color:'#4a3624'}));
+            trunk.position.set(tx,5,ty); trunk.castShadow=true; worldGroup.add(trunk);
+            const leaves = new THREE.Mesh(new THREE.ConeGeometry(9,20,7), new THREE.MeshStandardMaterial({color:'#2f5c38'}));
+            leaves.position.set(tx,18,ty); leaves.castShadow=true; worldGroup.add(leaves);
+          }
+          if(distId==='hub'){
+            const bean = new THREE.Mesh(new THREE.SphereGeometry(20,24,18), new THREE.MeshStandardMaterial({color:'#c9c9d4', metalness:1, roughness:0.08}));
+            bean.scale.set(1.6,0.85,1); bean.position.set(cx,22,cy); bean.castShadow=true; bean.receiveShadow=true; worldGroup.add(bean);
+            addSign(bean,'THE BEAN',44,10,34,'#e8e6de');
+          } else {
+            const parkLabel = {devlin:'INDIAN BOUNDARY PARK',westside:'CICERO GREEN',hub:'MILLENNIUM PARK'}[distId];
+            addSign(grass,parkLabel,44,9,4,'#a8d0a8');
+          }
+        } else if(f.kind==='lot'){
+          const cx=(f.x0+f.x1)/2+off, cy=(f.y0+f.y1)/2, w=f.x1-f.x0, d=f.y1-f.y0;
+          const lot = new THREE.Mesh(new THREE.PlaneGeometry(w,d), new THREE.MeshStandardMaterial({color:'#26282e', roughness:1}));
+          lot.rotation.x=-Math.PI/2; lot.position.set(cx,0.08,cy); lot.receiveShadow=true; worldGroup.add(lot);
+          const rand = seededRandom(Math.floor(cx*11+cy*17));
+          const carColors=['#556070','#704040','#405560','#606050'];
+          for(let i=0;i<6;i++){
+            const px=f.x0+off+18+rand()*(w-36), py=f.y0+18+rand()*(d-36);
+            const c=box(20,9,11,carColors[Math.floor(rand()*carColors.length)]);
+            c.position.set(px,4.5,py); c.rotation.y=rand()*Math.PI; worldGroup.add(c);
+          }
+        }
+      });
+    });
+
+    // LEGAL: El-train track — west side east edge
+    const rail = new THREE.Mesh(new THREE.PlaneGeometry(40,WORLD_H), new THREE.MeshStandardMaterial({color:'#2a2a2e', roughness:1}));
+    rail.rotation.x=-Math.PI/2; rail.position.set(3470,0.06,WORLD_H/2); rail.receiveShadow=true; worldGroup.add(rail);
+    for(let ty=20;ty<WORLD_H;ty+=26){ const tie=box(36,2,4,'#3a3530'); tie.position.set(3470,1,ty); worldGroup.add(tie); }
+
+    // LEGAL: Chicago River — hub north edge
+    const river = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W,46), new THREE.MeshStandardMaterial({color:'#1c3a52', roughness:0.3, metalness:0.3}));
+    river.rotation.x=-Math.PI/2; river.position.set(WORLD_W/2,0.06,20); river.receiveShadow=true; worldGroup.add(river);
+
+    currentSolids = buildAllSolids();
+    updateParkedCarMesh();
+    rebuildWaypointBeacon();
+
+    if(sunLight){
+      sunLight.position.set(WORLD_W*0.5,500,WORLD_H*0.3);
+      sunLight.target.position.set(WORLD_W/2,0,WORLD_H/2);
+      sunLight.target.updateMatrixWorld();
+    }
+  }
+
+  // LEGAL: Legacy alias — now delegates to buildCityScene
   function buildDistrictScene(districtId){
+    buildCityScene(); return;
     clearGroup(worldGroup);
     const theme = districtThemes[districtId];
 
@@ -2481,7 +2701,8 @@
   const minimapCanvas = document.getElementById('minimap-canvas');
   const mctx = minimapCanvas.getContext('2d');
   const minimapPan = { x:0, y:0 };
-  const MINIMAP_SCALE = 150/420;
+  // LEGAL: Scale tuned for 5500-wide world so minimap shows local neighbourhood
+  const MINIMAP_SCALE = 150/600;
   let minimapDragging=false, minimapDragStart=null, minimapDragMoved=false;
 
   minimapCanvas.addEventListener('mousedown', function(e){
@@ -2847,7 +3068,7 @@
         (d.gangRecruits||[]).forEach(sg=>{ const g=gangRecruits.find(x=>x.id===sg.id); if(g) g.inducted=sg.inducted; });
         state.inVehicle = d.inVehicle||false;
         state.waypoints = Object.assign({devlin:null,westside:null,hub:null}, d.waypoints||{});
-        state.parkedCarPos = Object.assign({devlin:null,westside:null,hub:null}, d.parkedCarPos||{});
+        state.parkedCarPos = Object.assign({devlin:{x:700,y:660},westside:{x:2700,y:660},hub:{x:4700,y:660}}, d.parkedCarPos||{});
         state.marketPrices = d.marketPrices || {};
         state.portfolio = d.portfolio || {};
         state.marketHistory = d.marketHistory || {};

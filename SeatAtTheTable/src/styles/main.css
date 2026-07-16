@@ -316,3 +316,6 @@ main{max-width:1240px;margin:0 auto;padding:26px 24px 60px;}
 
 @media (max-width:640px){ .hud{padding:14px 16px;} .tab-bar{padding:0 12px;} main{padding:18px 14px 50px;} }
 #scene3d-container.fullscreen { position: fixed !important; inset: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 9999 !important; border-radius: 0 !important; max-width: none !important; }
+#scene3d-container.fullscreen canvas.webgl-canvas { width: 100% !important; height: 100% !important; }
+#scene3d-container.fullscreen #minimap-canvas { position: absolute; bottom: 16px; right: 16px; }
+#scene3d-container.fullscreen #interior-canvas { width: 100% !important; height: 100% !important; }
