@@ -2664,12 +2664,12 @@
   });
   document.getElementById('theme-toggle').addEventListener('change', function(e){
     if(e.target.checked) document.body.classList.remove('theme-delhi');
-    document.body.classList.toggle('light', e.target.checked);
+    document.body.classList.toggle('theme-light', e.target.checked);
     document.getElementById('delhi-theme-toggle').checked = false;
     scheduleSave();
   });
   document.getElementById('delhi-theme-toggle').addEventListener('change', function(e){
-    if(e.target.checked) document.body.classList.remove('light');
+    if(e.target.checked) document.body.classList.remove('theme-light');
     document.body.classList.toggle('theme-delhi', e.target.checked);
     document.getElementById('theme-toggle').checked = false;
     scheduleSave();
@@ -2774,7 +2774,7 @@
       playSeconds: state.playSeconds, investorPenalty: state.investorPenalty,
       started: state.started, procNpc: state.procNpc, lastTick: state.lastTick,
       quiet: document.body.classList.contains('quiet'),
-      light: document.body.classList.contains('light'),
+      light: document.body.classList.contains('theme-light'),
       delhi: document.body.classList.contains('theme-delhi'),
       businesses: businesses.map(b=> ({ id:b.id, level:b.level, crew:b.crew, manager:b.manager, researched:b.researched })),
       bank: state.bank, nextHeistAt: state.nextHeistAt,
@@ -2831,7 +2831,7 @@
         if(d.lastTick) state.lastTick = d.lastTick;
         (d.businesses||[]).forEach(sb=>{ const b=businesses.find(x=>x.id===sb.id); if(b){ b.level=sb.level; b.crew=sb.crew; b.manager=sb.manager; b.researched=sb.researched; } });
         if(d.quiet){ document.body.classList.add('quiet'); document.getElementById('quiet-toggle').checked = true; }
-        if(d.light){ document.body.classList.add('light'); document.getElementById('theme-toggle').checked = true; }
+        if(d.light){ document.body.classList.add('theme-light'); document.getElementById('theme-toggle').checked = true; }
         if(d.delhi){ document.body.classList.add('theme-delhi'); document.getElementById('delhi-theme-toggle').checked = true; }
         if(state.seenMilestones.has('chaat_house')) document.getElementById('delhi-theme-row').style.display = 'flex';
         state.bank = d.bank||0; state.nextHeistAt = d.nextHeistAt||0;
