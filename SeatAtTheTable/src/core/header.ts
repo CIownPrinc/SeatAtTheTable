@@ -1576,7 +1576,8 @@
       <div class="street-card">
         <h4>🥊 Muscle</h4><p>Earns respect passively. Draws heat while active.</p>
         <div class="row"><span>Count</span><span>${state.muscleCount}</span></div>
-        <div class="row"><span>Generating</span><span>+${respectPerSec().toFixed(1)} respect/s</span></div>
+        <div class="row"><span>Generating (Respect)</span><span>+${respectPerSec().toFixed(1)}/s</span></div>
+        <div class="row"><span>Generating (Heat)</span><span style="color:#f44336;">+${(state.muscleCount*0.5).toFixed(1)}/s</span></div>
         <button class="mini-btn" ${state.cash>=mc?'':'disabled'} id="hire-muscle"><span>Hire Muscle</span><span class="cost">${fmt(mc)}</span></button>
       </div>
       <div class="street-card">
@@ -2032,14 +2033,15 @@
     return m;
   }
   function addSign(parent, text, w, h, y, color){
-    const c = document.createElement('canvas'); c.width=512; c.height=64;
+    const c = document.createElement('canvas'); c.width=1024; c.height=128;
     const cctx = c.getContext('2d');
-    cctx.fillStyle='rgba(10,11,16,0.85)'; cctx.fillRect(0,0,512,64);
-    cctx.fillStyle=color; cctx.font='bold 30px sans-serif'; cctx.textAlign='center'; cctx.textBaseline='middle';
-    cctx.fillText(text.slice(0,32), 256, 32);
+    cctx.fillStyle='rgba(10,11,16,0.85)'; cctx.fillRect(0,0,1024,128);
+    cctx.fillStyle=color; cctx.font='bold 60px sans-serif'; cctx.textAlign='center'; cctx.textBaseline='middle';
+    cctx.fillText(text.slice(0,32), 512, 64);
     const tex = new THREE.CanvasTexture(c);
+    tex.minFilter = THREE.LinearMipMapLinearFilter;
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, depthTest:false}));
-    sprite.scale.set(w * 1.5, h, 1); sprite.position.y = y;
+    sprite.scale.set(w * 3, h * 1.5, 1); sprite.position.y = y;
     parent.add(sprite);
   }
   function buildPedestrianModel(color){
