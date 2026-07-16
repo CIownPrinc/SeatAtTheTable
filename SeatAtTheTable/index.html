@@ -105,35 +105,42 @@
 
   <div class="tab-panel" data-tab="settings">
     <div class="section-eyebrow">Configuration</div>
-    <div class="settings-block">
-      <div class="settings-row">
-        <div><div class="label">Quiet mode</div><div class="sub">Hide flavor text, keep just the numbers</div></div>
-        <label class="switch"><input type="checkbox" id="quiet-toggle"><span class="slider-track"></span></label>
-      </div>
-      <div class="settings-row">
-        <div><div class="label">Autosave</div><div class="sub">Saves automatically every few seconds</div></div>
-        <span class="save-status" id="save-status">Not saved yet</span>
-      </div>
-      <div class="settings-row" style="flex-wrap:wrap; gap:8px;">
-        <button class="settings-btn" id="save-now-btn">Save Now</button>
-        <button class="settings-btn" id="export-save-btn">Download Save (.json)</button>
-        <button class="settings-btn" id="import-save-btn">Upload Save</button>
-        <input type="file" id="import-save-input" accept=".json" style="display:none;">
-        <button class="settings-btn danger" id="reset-btn">Reset Progress</button>
-      </div>
-      <div class="settings-row">
-        <button class="settings-btn" id="advanced-config-toggle">[+] Advanced Config</button>
-      </div>
-      <div class="settings-advanced" id="settings-advanced">
+    <div class="settings-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:24px; align-items: start;">
+      
+      <!-- Card 1: System Preferences -->
+      <div class="settings-block" style="max-width:none;">
+        <h4 style="margin-top:0; border-bottom:1px solid var(--line); padding-bottom:10px; font-family:var(--font-display); font-size:16px; color:var(--text);">System Preferences</h4>
         <div class="settings-row">
-          <div><div class="label">Light mode</div><div class="sub">Switch to a blinding white corporate ledger palette</div></div>
+          <div><div class="label">Quiet mode</div><div class="sub">Hide narrative logs and flavor notes, showing only the financial ledgers.</div></div>
+          <label class="switch"><input type="checkbox" id="quiet-toggle"><span class="slider-track"></span></label>
+        </div>
+        <div class="settings-row">
+          <div><div class="label">Light mode</div><div class="sub">Switch to a clean, warm alabaster ledger theme.</div></div>
           <label class="switch"><input type="checkbox" id="theme-toggle"><span class="slider-track"></span></label>
         </div>
         <div class="settings-row" id="delhi-theme-row" style="display:none;">
-          <div><div class="label" style="color:var(--gold);">The Delhi Special</div><div class="sub">Something feels different about Windhaven tonight...</div></div>
+          <div><div class="label" style="color:var(--gold);">The Delhi Special</div><div class="sub">Pick up where you left Karol Bagh behind. Warm terracotta, saffron, and peacock accents.</div></div>
           <label class="switch"><input type="checkbox" id="delhi-theme-toggle"><span class="slider-track"></span></label>
         </div>
       </div>
+
+      <!-- Card 2: Data & Save Files -->
+      <div class="settings-block" style="max-width:none;">
+        <h4 style="margin-top:0; border-bottom:1px solid var(--line); padding-bottom:10px; font-family:var(--font-display); font-size:16px; color:var(--text);">Data & Backups</h4>
+        <div class="settings-row">
+          <div><div class="label">Autosave Status</div><div class="sub" id="save-status">Not saved yet</div></div>
+        </div>
+        <div class="settings-row" style="flex-wrap:wrap; gap:12px; margin-top:10px;">
+          <button class="settings-btn" id="save-now-btn" style="flex:1; min-width:135px;">Save Now</button>
+          <button class="settings-btn" id="export-save-btn" style="flex:1; min-width:135px;">Download Save</button>
+          <button class="settings-btn" id="import-save-btn" style="flex:1; min-width:135px;">Upload Save</button>
+          <input type="file" id="import-save-input" accept=".json" style="display:none;">
+        </div>
+        <div style="border-top:1px dashed var(--line); margin-top:15px; padding-top:15px;">
+          <button class="settings-btn danger" id="reset-btn" style="width:100%;">Reset Progress</button>
+        </div>
+      </div>
+
     </div>
   </div>
 

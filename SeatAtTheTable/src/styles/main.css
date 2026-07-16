@@ -197,26 +197,26 @@ main{max-width:1240px;margin:0 auto;padding:26px 24px 60px;}
 .mini-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.4); }
 .mini-btn:active:not(:disabled) { transform: translateY(1px); box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
 .mini-btn:disabled { opacity:0.4; cursor:not-allowed; box-shadow: none; filter: grayscale(100%); }
-.mini-btn .cost { font-family: var(--font-mono); font-size: 12px; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; color: var(--gold); }
+.mini-btn .cost { font-family: var(--font-mono); font-size: 12px; background: var(--bg-row); border: 1px solid var(--line); padding: 2px 6px; border-radius: 4px; color: var(--gold); }
 
 /* Colorful Actions */
 .mini-btn.action-expand { background: rgba(41, 199, 102, 0.1); border-color: var(--green); color: var(--green); }
-.mini-btn.action-expand:hover:not(:disabled) { background: var(--green); color: #000; }
+.mini-btn.action-expand:hover:not(:disabled) { background: var(--green); color: var(--bg-panel); }
 .mini-btn.action-expand .cost { color: var(--text); }
 
 .mini-btn.action-research { background: rgba(42, 135, 255, 0.1); border-color: var(--blue); color: var(--blue); }
-.mini-btn.action-research:hover:not(:disabled) { background: var(--blue); color: #fff; }
+.mini-btn.action-research:hover:not(:disabled) { background: var(--blue); color: var(--bg-panel); }
 
 .mini-btn.action-hire { background: rgba(163, 133, 255, 0.1); border-color: var(--violet); color: var(--violet); }
-.mini-btn.action-hire:hover:not(:disabled) { background: var(--violet); color: #fff; }
+.mini-btn.action-hire:hover:not(:disabled) { background: var(--violet); color: var(--bg-panel); }
 
 .mini-btn.fire { background: rgba(240, 72, 72, 0.1); border-color: var(--red); color: var(--red); }
-.mini-btn.fire:hover:not(:disabled) { background: var(--red); color: #fff; }
+.mini-btn.fire:hover:not(:disabled) { background: var(--red); color: var(--bg-panel); }
 
 .mini-btn.manager { background: rgba(242, 186, 24, 0.1); border-color: var(--gold); color: var(--gold); }
-.mini-btn.manager:hover:not(:disabled) { background: var(--gold); color: #000; }
+.mini-btn.manager:hover:not(:disabled) { background: var(--gold); color: var(--bg-panel); }
 
-.lock-note{font-size:12px;color:var(--text-faint);font-family:var(--font-mono); background: rgba(0,0,0,0.2); padding: 6px 10px; border-radius: 4px;}
+.lock-note{font-size:12px;color:var(--text-dim);font-family:var(--font-mono); background: var(--bg-row); border: 1px dashed var(--line); padding: 6px 10px; border-radius: 4px;}
 .flavor-note{font-size:13px;color:var(--text-dim);font-family:var(--font-body);line-height:1.5;margin-bottom:auto;padding-bottom:10px;}
 
 /* ---------- TERMINALS (RCN Exchange / Bank) ---------- */
@@ -317,3 +317,10 @@ main{max-width:1240px;margin:0 auto;padding:26px 24px 60px;}
 #scene3d-container.fullscreen canvas.webgl-canvas { width: 100% !important; height: 100% !important; }
 #scene3d-container.fullscreen #minimap-canvas { position: absolute; bottom: 16px; right: 16px; }
 #scene3d-container.fullscreen #interior-canvas { width: 100% !important; height: 100% !important; }
+
+.rcn-stock-row:hover {
+  background: var(--bg-hover) !important;
+  border-color: var(--line-bright) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}

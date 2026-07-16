@@ -900,22 +900,21 @@
         if(pos && pos.shares > 0) totalPortfolio += pos.shares * state.marketPrices[s.symbol];
       });
       wrap.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid var(--line); padding-bottom:10px;">
           <h3 style="font-size:20px; color:var(--text); margin:0;">RCN TERMINAL</h3>
           <button class="mini-btn fire" id="go-vault">DISCONNECT</button>
         </div>
         
         <div class="data-table">
           <div class="data-row">
-            <div class="data-main open">
+            <div class="data-main">
               <div class="col-id">${ICONS.store}</div>
               <div class="col-name">Holdings</div>
-              <div class="col-crew">${fmt(totalPortfolio)} VAL</div>
-              <div class="col-inc">${fmt(state.cash)} LIQ</div>
-              <div class="col-heat">-</div>
+              <div class="col-stat">PORTFOLIO: ${fmt(totalPortfolio)}</div>
+              <div class="col-stat">LIQUID: ${fmt(state.cash)}</div>
               <div class="col-status">ACTIVE</div>
             </div>
-            <div class="data-expanded" style="display:block;">
+            <div class="data-expanded">
               <div class="flavor-note">Active positions in the market.</div>
               ${stockMarket.filter(s => state.portfolio[s.symbol]?.shares > 0).map(s => {
                 const pos = state.portfolio[s.symbol];
@@ -926,37 +925,39 @@
           </div>
           
           <div class="data-row">
-            <div class="data-main open">
+            <div class="data-main">
               <div class="col-id"><i class="ph-duotone ph-newspaper"></i> ${ICONS.music}</div>
               <div class="col-name">Market News</div>
-              <div class="col-crew">-</div>
-              <div class="col-inc">-</div>
-              <div class="col-heat">-</div>
               <div class="col-status">LIVE</div>
             </div>
-            <div class="data-expanded" style="display:block;" id="market-news-card">
+            <div class="data-expanded" id="market-news-card">
               ${(state.currentNews || []).map(n => `<div class="flavor-note" style="margin-top:4px;">>> ${n}</div>`).join('')}
             </div>
           </div>
         </div>
         
-        <h4 style="margin-top:20px; border-bottom:1px solid var(--border); padding-bottom:5px; color:var(--text);">[TRADABLE ASSETS]</h4>
-        <div class="data-table" style="margin-top:10px;">
+        <h4 style="margin-top:20px; border-bottom:1px solid var(--line); padding-bottom:5px; color:var(--text); font-family:var(--font-display); font-size:14px;">[TRADABLE ASSETS]</h4>
+        <div class="rcn-stock-list" style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
           ${stockMarket.map(s => {
             const price = state.marketPrices[s.symbol] || s.basePrice;
             const history = state.marketHistory[s.symbol] || [];
             const prevPrice = history.length > 1 ? history[history.length - 2] : price;
             const pct = prevPrice ? ((price - prevPrice) / prevPrice * 100) : 0;
-            const color = pct >= 0 ? 'var(--green)' : 'var(--accent)';
+            const color = pct >= 0 ? 'var(--green)' : 'var(--red)';
             const sign = pct >= 0 ? '+' : '';
-            return `<div class="data-row lcn-stock-btn" data-sym="${s.symbol}" style="cursor:pointer;">
-              <div class="data-main">
-                <div class="col-id">${s.logo ? `<img src="assets/${s.logo}" style="max-height:24px; max-width:40px;">` : `<span style="font-size:14px;">${s.symbol}</span>`}</div>
-                <div class="col-name">${s.name}</div>
-                <div class="col-crew" id="lcn-home-price-${s.symbol}">$${price.toFixed(2)}</div>
-                <div class="col-inc" id="lcn-home-pct-${s.symbol}" style="color:${color};">${sign}${pct.toFixed(2)}%</div>
-                <div class="col-heat">-</div>
-                <div class="col-status">TRADE</div>
+            return `<div class="rcn-stock-row lcn-stock-btn" data-sym="${s.symbol}" style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px; background:var(--bg-panel); border:1px solid var(--line); border-radius:6px; transition: all 0.15s; cursor:pointer;">
+              <div style="display:flex; align-items:center; gap:16px;">
+                <div style="background:var(--bg-row); color:var(--gold); font-family:var(--font-mono); font-weight:700; width:44px; height:44px; border-radius:6px; display:flex; align-items:center; justify-content:center; border:1px solid var(--line); font-size:16px;">
+                  ${s.symbol.substring(0, 2)}
+                </div>
+                <div>
+                  <div style="font-family:var(--font-display); font-size:15px; font-weight:700; color:var(--text);">${s.symbol}</div>
+                  <div style="font-family:var(--font-body); font-size:12px; color:var(--text-dim);">${s.name}</div>
+                </div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-family:var(--font-mono); font-size:15px; font-weight:700; color:var(--text);" id="lcn-home-price-${s.symbol}">$${price.toFixed(2)}</div>
+                <div style="font-family:var(--font-mono); font-size:12px; font-weight:700; color:${color};" id="lcn-home-pct-${s.symbol}">${sign}${pct.toFixed(2)}%</div>
               </div>
             </div>`;
           }).join('')}
@@ -970,31 +971,35 @@
       const pos = state.portfolio[s.symbol] || { shares: 0, avgCost: 0 };
       const val = pos.shares * price;
       const pl = val - (pos.shares * pos.avgCost);
-      const plColor = pl >= 0 ? 'var(--green)' : 'var(--accent)';
+      const plColor = pl >= 0 ? 'var(--green)' : 'var(--red)';
       
       wrap.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">
-          <h3 style="font-size:20px; color:var(--text); margin:0;">
-            <button class="mini-btn" id="go-lcn-home" style="margin-right:10px;" title="Back to Exchange">[BACK]</button>
-            ${s.name}
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid var(--line); padding-bottom:10px;">
+          <h3 style="font-size:20px; color:var(--text); margin:0; display:flex; align-items:center; gap:12px;">
+            <button class="mini-btn" id="go-lcn-home" style="padding: 6px 12px; font-size:12px;"><i class="ph-duotone ph-arrow-left"></i> BACK</button>
+            <span>${s.symbol} — ${s.name}</span>
           </h3>
         </div>
         <div class="flavor-note" style="margin-bottom:15px;">${s.fullDesc}</div>
         <div style="margin:20px 0;">
-          <canvas id="stock-chart" width="400" height="150" style="width:100%; max-width:100%; height:150px; background:var(--bg-main); border:1px solid var(--border); box-sizing:border-box; image-rendering:pixelated;"></canvas>
+          <canvas id="stock-chart" width="400" height="150" style="width:100%; max-width:100%; height:150px; background:#07090c; border:1px solid var(--line); box-sizing:border-box; image-rendering:pixelated; border-radius:6px;"></canvas>
         </div>
         <div class="data-table">
-          <div class="data-row">
-            <div class="data-main open">
+          <div class="data-row vault-card">
+            <div class="data-main">
               <div class="col-id">${ICONS.store}</div>
               <div class="col-name">Execute Trade</div>
-              <div class="col-crew" id="price-${s.symbol}">$${price.toFixed(2)}</div>
-              <div class="col-inc">-</div>
-              <div class="col-heat">-</div>
-              <div class="col-status">READY</div>
+              <div class="col-status">ACTIVE</div>
             </div>
             <div class="data-expanded" style="display:block;">
-              <div class="bank-form">
+              <div class="bank-balances-row" style="display:flex; gap:24px; margin-bottom:16px; font-family:var(--font-mono); font-size:13px; flex-wrap:wrap; background:rgba(0,0,0,0.15); padding:12px 16px; border-radius:6px; border:1px solid var(--line);">
+                <div><span style="color:var(--text-faint);">CURRENT PRICE:</span> <strong id="price-${s.symbol}" style="color:var(--text); font-size:14px;">$${price.toFixed(2)}</strong></div>
+                <div><span style="color:var(--text-faint);">SHARES OWNED:</span> <strong style="color:var(--text); font-size:14px;">${pos.shares}</strong></div>
+                <div><span style="color:var(--text-faint);">AVG COST:</span> <strong style="color:var(--text); font-size:14px;">$${pos.avgCost.toFixed(2)}</strong></div>
+                <div><span style="color:var(--text-faint);">VALUE:</span> <strong style="color:var(--text); font-size:14px;">${fmt(val)}</strong></div>
+                <div><span style="color:var(--text-faint);">RETURN:</span> <strong style="color:${plColor}; font-size:14px;">${pl >= 0 ? '+' : ''}${fmt(pl)}</strong></div>
+              </div>
+              <div class="bank-form" style="border-top:none; padding-top:0; margin-top:0;">
                 <div class="btn-row" style="margin-bottom:8px;">
                   <button class="mini-btn quick" data-trade="buy-10" data-sym="${s.symbol}">BUY 10</button>
                   <button class="mini-btn quick" data-trade="buy-100" data-sym="${s.symbol}">BUY 100</button>
@@ -1005,8 +1010,8 @@
                   <button class="mini-btn quick fire" data-trade="sell-100" data-sym="${s.symbol}">SELL 100</button>
                   <button class="mini-btn quick fire" data-trade="sell-max" data-sym="${s.symbol}">SELL MAX</button>
                 </div>
-                <div class="bank-input-row" style="margin-top:6px;">
-                  <input type="number" id="trade-input-${s.symbol}" class="bank-input" min="1" step="1" placeholder="Custom Amt">
+                <div class="bank-input-row" style="margin-top:12px;">
+                  <input type="number" id="trade-input-${s.symbol}" class="bank-input" min="1" step="1" placeholder="Enter custom amount">
                 </div>
               </div>
             </div>
@@ -3012,10 +3017,6 @@
     document.body.classList.toggle('theme-delhi', e.target.checked);
     document.getElementById('theme-toggle').checked = false;
     scheduleSave();
-  });
-  document.getElementById('advanced-config-toggle').addEventListener('click', function(){
-    const adv = document.getElementById('settings-advanced');
-    adv.style.display = adv.style.display === 'block' ? 'none' : 'block';
   });
   const storageAdapter = {
     async set(key, value){
