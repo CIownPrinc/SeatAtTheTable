@@ -13,7 +13,7 @@
 <body>
 
 <div class="hud">
-  <div class="hud-title" style="display:flex; align-items:center; gap:12px;"><img src="/gamelogo.png" alt="Logo" style="height:40px; width:auto; border-radius:4px;"> Seat at the <span>Table</span></div>
+  <div class="hud-title" style="display:flex; align-items:center;"><img src="/gamelogo.png" alt="Seat at the Table" style="height:44px; width:auto;"></div>
   <div class="hud-stats">
     <div class="stat"><div class="stat-label">Cash</div><div class="stat-value" id="hud-cash">$47</div><div class="stat-sub" id="hud-income">+$0/s</div></div>
     <div class="stat"><div class="stat-label">Standing<span class="info-icon" data-tooltip="Your street reputation. Higher Standing unlocks better territory, bigger crews, and lowers prices across the board.">?</span></div><div class="stat-value teal" id="hud-rank">Nobody</div><div class="stat-sub" id="hud-respect">0 respect</div></div>
@@ -38,35 +38,15 @@
   <div class="tab-panel active" data-tab="empire">
     <div class="section-eyebrow">Legitimate Ventures — Cash &amp; Fronts</div>
     <p class="pillar-desc">Cash buys properties and pays crew. Research a venture once, then expand it level by level. But remember... a business only earns what its crew can actually do.</p>
-    <div class="data-table">
-      <div class="col-name">NAME</div>
-        <div class="col-lvl">LVL</div>
-        <div class="col-inc">INCOME/S</div>
-        <div class="col-crew">CREW</div>
-        <div class="col-eff">EFFICIENCY</div>
-        <div class="col-status">STATUS</div>
-      </div>
-      <div id="grid-legit"></div>
-    </div>
+    <div id="grid-legit" class="data-table"></div>
 
     <div class="section-eyebrow" style="margin-top:26px;">The Other Ledger — Underground Operations</div>
     <p class="pillar-desc">The hidden side of your empire. Illegal operations generate massive cash yields, but every level and assigned crew member generates continuous police attention.</p>
-    <div class="data-table">
-      <div class="col-name">NAME</div>
-        <div class="col-lvl">LVL</div>
-        <div class="col-inc">INCOME/S</div>
-        <div class="col-crew">CREW</div>
-        <div class="col-heat">HEAT/S</div>
-        <div class="col-status">STATUS</div>
-      </div>
-      <div id="grid-street"></div>
-    </div>
+    <div id="grid-street" class="data-table"></div>
 
     <div class="section-eyebrow" style="margin-top:26px;">Street Operations — Muscle &amp; Respect</div>
     <p class="pillar-desc">Muscle earns <strong>Respect</strong> but draws <strong>Heat</strong>. Bribes and informants manage <strong>Heat</strong>. That <strong>Respect</strong> can be used to buy territory for your crew and even lower prices.</p>
-    <div class="data-table">
-      <div id="street-panel"></div>
-    </div>
+    <div id="street-panel" class="data-table"></div>
   </div>
 
   <div class="tab-panel" data-tab="map">
@@ -92,9 +72,7 @@
 
     <div class="section-eyebrow" style="margin-top:26px;">Territory Control</div>
     <p class="pillar-desc">Control drifts toward whoever maintains a presence — muscle, staffed corners, running ventures. Push it directly with <strong>Respect</strong>.</p>
-    <div class="data-table">
-      <div id="territory-panel"></div>
-    </div>
+    <div id="territory-panel" class="data-table"></div>
   </div>
 
   <div class="tab-panel" data-tab="bank">
@@ -106,31 +84,23 @@
   <div class="tab-panel" data-tab="politics">
     <div class="section-eyebrow">City Hall Influence</div>
     <p class="pillar-desc">Influence opens doors. Favor with specific people opens specific doors. Get enough of both, and you can ask for a seat instead of a favor.</p>
-    <div class="data-table">
-      <div id="politics-panel"></div>
-    </div>
+    <div id="politics-panel" class="data-table"></div>
   </div>
   
   <div class="tab-panel" data-tab="gang">
     <div class="section-eyebrow">Crew Manifest</div>
     <p class="pillar-desc">A crew isn't a headcount, it's specific people who owe you something. Initiate them from here, meet them on the map.</p>
-    <div class="data-table">
-      <div id="gang-panel"></div>
-    </div>
+    <div id="gang-panel" class="data-table"></div>
   </div>
   
   <div class="tab-panel" data-tab="assets">
     <div class="section-eyebrow">Garage Inventory</div>
     <p class="pillar-desc">A better ride moves you faster around the city and makes every job a little easier to walk away from.</p>
-    <div class="data-table">
-      <div id="assets-cars"></div>
-    </div>
+    <div id="assets-cars" class="data-table"></div>
 
     <div class="section-eyebrow" style="margin-top:26px;">Real Estate Portfolio</div>
     <p class="pillar-desc">Buildings you just own. No crew, no research, no expansion. Just a check every second.</p>
-    <div class="data-table">
-      <div id="assets-buildings"></div>
-    </div>
+    <div id="assets-buildings" class="data-table"></div>
   </div>
 
   <div class="tab-panel" data-tab="settings">

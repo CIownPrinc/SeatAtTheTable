@@ -833,71 +833,73 @@
       const canHeist = state.playSeconds >= state.nextHeistAt;
       const cooldownLeft = Math.max(0, Math.ceil(state.nextHeistAt - state.playSeconds));
       wrap.innerHTML = `
-        <div class="data-row">
-          <div class="data-main">
-            <div class="col-id"><i class="ph-duotone ph-bank"></i> ${ICONS.bank}</div>
-            <div class="col-name">Vault Balance</div>
-            <div class="col-crew" id="bank-banked-value">${fmt(state.bank)}</div>
-            <div class="col-inc">-</div>
-            <div class="col-heat">-</div>
-            <div class="col-status">ACTIVE</div>
-          </div>
-          <div class="data-expanded">
-            <div class="flavor-note">Cash in the bank is safe from raids and earns slow interest. Cash on hand is what actually buys things. (On hand: <span id="bank-onhand-value">${fmt(state.cash)}</span>)</div>
-            <div style="display:flex; gap:16px;">
-              <div class="bank-form" style="flex:1;">
-                <label class="bank-form-label">Deposit</label>
-                <div class="bank-input-row">
-                  <input type="number" id="deposit-input" class="bank-input" min="0" step="1" placeholder="Amount">
-                  <button class="mini-btn" id="deposit-go">DEPOSIT</button>
+        <div class="data-table">
+          <div class="data-row">
+            <div class="data-main">
+              <div class="col-id"><i class="ph-duotone ph-bank"></i> ${ICONS.bank}</div>
+              <div class="col-name">Vault Balance</div>
+              <div class="col-crew" id="bank-banked-value">${fmt(state.bank)}</div>
+              <div class="col-inc">-</div>
+              <div class="col-heat">-</div>
+              <div class="col-status">ACTIVE</div>
+            </div>
+            <div class="data-expanded">
+              <div class="flavor-note">Cash in the bank is safe from raids and earns slow interest. Cash on hand is what actually buys things. (On hand: <span id="bank-onhand-value">${fmt(state.cash)}</span>)</div>
+              <div style="display:flex; gap:16px;">
+                <div class="bank-form" style="flex:1;">
+                  <label class="bank-form-label">Deposit</label>
+                  <div class="bank-input-row">
+                    <input type="number" id="deposit-input" class="bank-input" min="0" step="1" placeholder="Amount">
+                    <button class="mini-btn" id="deposit-go">DEPOSIT</button>
+                  </div>
+                  <div class="btn-row">
+                    <button class="mini-btn quick" data-deposit-quick="0.25">25%</button>
+                    <button class="mini-btn quick" data-deposit-quick="0.5">50%</button>
+                    <button class="mini-btn quick" data-deposit-quick="1">MAX</button>
+                  </div>
                 </div>
-                <div class="btn-row">
-                  <button class="mini-btn quick" data-deposit-quick="0.25">25%</button>
-                  <button class="mini-btn quick" data-deposit-quick="0.5">50%</button>
-                  <button class="mini-btn quick" data-deposit-quick="1">MAX</button>
-                </div>
-              </div>
-              <div class="bank-form" style="flex:1;">
-                <label class="bank-form-label">Withdraw</label>
-                <div class="bank-input-row">
-                  <input type="number" id="withdraw-input" class="bank-input" min="0" step="1" placeholder="Amount">
-                  <button class="mini-btn fire" id="withdraw-go">WITHDRAW</button>
-                </div>
-                <div class="btn-row">
-                  <button class="mini-btn quick" data-withdraw-quick="0.25">25%</button>
-                  <button class="mini-btn quick" data-withdraw-quick="0.5">50%</button>
-                  <button class="mini-btn quick" data-withdraw-quick="1">MAX</button>
+                <div class="bank-form" style="flex:1;">
+                  <label class="bank-form-label">Withdraw</label>
+                  <div class="bank-input-row">
+                    <input type="number" id="withdraw-input" class="bank-input" min="0" step="1" placeholder="Amount">
+                    <button class="mini-btn fire" id="withdraw-go">WITHDRAW</button>
+                  </div>
+                  <div class="btn-row">
+                    <button class="mini-btn quick" data-withdraw-quick="0.25">25%</button>
+                    <button class="mini-btn quick" data-withdraw-quick="0.5">50%</button>
+                    <button class="mini-btn quick" data-withdraw-quick="1">MAX</button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-        <div class="data-row">
-          <div class="data-main">
-            <div class="col-id">${ICONS.store}</div>
-            <div class="col-name">RCN Exchange</div>
-            <div class="col-crew">-</div>
-            <div class="col-inc">-</div>
-            <div class="col-heat">-</div>
-            <div class="col-status">TERMINAL</div>
+          <div class="data-row">
+            <div class="data-main">
+              <div class="col-id">${ICONS.store}</div>
+              <div class="col-name">RCN Exchange</div>
+              <div class="col-crew">-</div>
+              <div class="col-inc">-</div>
+              <div class="col-heat">-</div>
+              <div class="col-status">TERMINAL</div>
+            </div>
+            <div class="data-expanded">
+              <div class="flavor-note">The Rentport City National Exchange. Buy, sell, and short your way to the top. Just remember: the house always wins.</div>
+              <div class="btn-row"><button class="mini-btn" id="go-lcn">ACCESS TERMINAL</button></div>
+            </div>
           </div>
-          <div class="data-expanded">
-            <div class="flavor-note">The Rentport City National Exchange. Buy, sell, and short your way to the top. Just remember: the house always wins.</div>
-            <div class="btn-row"><button class="mini-btn" id="go-lcn">ACCESS TERMINAL</button></div>
-          </div>
-        </div>
-        <div class="data-row">
-          <div class="data-main">
-            <div class="col-id">${ICONS.box}</div>
-            <div class="col-name">First Windhaven Trust</div>
-            <div class="col-crew">-</div>
-            <div class="col-inc">-</div>
-            <div class="col-heat">-</div>
-            <div class="col-status" id="heist-status-value">${canHeist ? 'READY' : 'COOLDOWN'}</div>
-          </div>
-          <div class="data-expanded">
-            <div class="flavor-note">A rival bank across town. A bigger score, and a bigger risk, than shaking down a corner shop.</div>
-            <div class="btn-row"><button class="mini-btn" ${canHeist?'':'disabled'} id="start-heist">CASE THE VAULT ${canHeist?'':`(${cooldownLeft}s)`}</button></div>
+          <div class="data-row">
+            <div class="data-main">
+              <div class="col-id">${ICONS.box}</div>
+              <div class="col-name">First Windhaven Trust</div>
+              <div class="col-crew">-</div>
+              <div class="col-inc">-</div>
+              <div class="col-heat">-</div>
+              <div class="col-status" id="heist-status-value">${canHeist ? 'READY' : 'COOLDOWN'}</div>
+            </div>
+            <div class="data-expanded">
+              <div class="flavor-note">A rival bank across town. A bigger score, and a bigger risk, than shaking down a corner shop.</div>
+              <div class="btn-row"><button class="mini-btn" ${canHeist?'':'disabled'} id="start-heist">CASE THE VAULT ${canHeist?'':`(${cooldownLeft}s)`}</button></div>
+            </div>
           </div>
         </div>
       `;
@@ -913,41 +915,43 @@
           <button class="mini-btn fire" id="go-vault">DISCONNECT</button>
         </div>
         
-        <div class="data-row">
-          <div class="data-main open">
-            <div class="col-id">${ICONS.store}</div>
-            <div class="col-name">Holdings</div>
-            <div class="col-crew">${fmt(totalPortfolio)} VAL</div>
-            <div class="col-inc">${fmt(state.cash)} LIQ</div>
-            <div class="col-heat">-</div>
-            <div class="col-status">ACTIVE</div>
+        <div class="data-table">
+          <div class="data-row">
+            <div class="data-main open">
+              <div class="col-id">${ICONS.store}</div>
+              <div class="col-name">Holdings</div>
+              <div class="col-crew">${fmt(totalPortfolio)} VAL</div>
+              <div class="col-inc">${fmt(state.cash)} LIQ</div>
+              <div class="col-heat">-</div>
+              <div class="col-status">ACTIVE</div>
+            </div>
+            <div class="data-expanded" style="display:block;">
+              <div class="flavor-note">Active positions in the market.</div>
+              ${stockMarket.filter(s => state.portfolio[s.symbol]?.shares > 0).map(s => {
+                const pos = state.portfolio[s.symbol];
+                const val = pos.shares * state.marketPrices[s.symbol];
+                return `<div class="row" style="font-family:'Courier New', monospace; font-size:12px; margin-top:4px;"><span>${s.symbol} (${pos.shares} sh)</span><span>${fmt(val)}</span></div>`;
+              }).join('') || '<div class="flavor-note">No active positions.</div>'}
+            </div>
           </div>
-          <div class="data-expanded" style="display:block;">
-            <div class="flavor-note">Active positions in the market.</div>
-            ${stockMarket.filter(s => state.portfolio[s.symbol]?.shares > 0).map(s => {
-              const pos = state.portfolio[s.symbol];
-              const val = pos.shares * state.marketPrices[s.symbol];
-              return `<div class="row" style="font-family:'Courier New', monospace; font-size:12px; margin-top:4px;"><span>${s.symbol} (${pos.shares} sh)</span><span>${fmt(val)}</span></div>`;
-            }).join('') || '<div class="flavor-note">No active positions.</div>'}
-          </div>
-        </div>
-        
-        <div class="data-row">
-          <div class="data-main open">
-            <div class="col-id"><i class="ph-duotone ph-newspaper"></i> ${ICONS.music}</div>
-            <div class="col-name">Market News</div>
-            <div class="col-crew">-</div>
-            <div class="col-inc">-</div>
-            <div class="col-heat">-</div>
-            <div class="col-status">LIVE</div>
-          </div>
-          <div class="data-expanded" style="display:block;" id="market-news-card">
-            ${(state.currentNews || []).map(n => `<div class="flavor-note" style="margin-top:4px;">>> ${n}</div>`).join('')}
+          
+          <div class="data-row">
+            <div class="data-main open">
+              <div class="col-id"><i class="ph-duotone ph-newspaper"></i> ${ICONS.music}</div>
+              <div class="col-name">Market News</div>
+              <div class="col-crew">-</div>
+              <div class="col-inc">-</div>
+              <div class="col-heat">-</div>
+              <div class="col-status">LIVE</div>
+            </div>
+            <div class="data-expanded" style="display:block;" id="market-news-card">
+              ${(state.currentNews || []).map(n => `<div class="flavor-note" style="margin-top:4px;">>> ${n}</div>`).join('')}
+            </div>
           </div>
         </div>
         
         <h4 style="margin-top:20px; border-bottom:1px solid var(--border); padding-bottom:5px; color:var(--text);">[TRADABLE ASSETS]</h4>
-        <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
+        <div class="data-table" style="margin-top:10px;">
           ${stockMarket.map(s => {
             const price = state.marketPrices[s.symbol] || s.basePrice;
             const history = state.marketHistory[s.symbol] || [];
@@ -989,29 +993,32 @@
         <div style="margin:20px 0;">
           <canvas id="stock-chart" width="400" height="150" style="width:100%; max-width:100%; height:150px; background:var(--bg-main); border:1px solid var(--border); box-sizing:border-box; image-rendering:pixelated;"></canvas>
         </div>
-        <div class="data-row">
-          <div class="data-main open">
-            <div class="col-id">${ICONS.store}</div>
-            <div class="col-name">Execute Trade</div>
-            <div class="col-crew" id="price-${s.symbol}">$${price.toFixed(2)}</div>
-            <div class="col-inc">-</div>
-            <div class="col-heat">-</div>
-            <div class="col-status">READY</div>
-          </div>
-          <div class="data-expanded" style="display:block;">
-            <div class="bank-form">
-              <div class="btn-row" style="margin-bottom:8px;">
-                <button class="mini-btn quick" data-trade="buy-10" data-sym="${s.symbol}">BUY 10</button>
-                <button class="mini-btn quick" data-trade="buy-100" data-sym="${s.symbol}">BUY 100</button>
-                <button class="mini-btn quick" data-trade="buy-max" data-sym="${s.symbol}">BUY MAX</button>
+        <div class="data-table">
+          <div class="data-row">
+            <div class="data-main open">
+              <div class="col-id">${ICONS.store}</div>
+              <div class="col-name">Execute Trade</div>
+              <div class="col-crew" id="price-${s.symbol}">$${price.toFixed(2)}</div>
+              <div class="col-inc">-</div>
+              <div class="col-heat">-</div>
+              <div class="col-status">READY</div>
+            </div>
+            <div class="data-expanded" style="display:block;">
+              <div class="bank-form">
+                <div class="btn-row" style="margin-bottom:8px;">
+                  <button class="mini-btn quick" data-trade="buy-10" data-sym="${s.symbol}">BUY 10</button>
+                  <button class="mini-btn quick" data-trade="buy-100" data-sym="${s.symbol}">BUY 100</button>
+                  <button class="mini-btn quick" data-trade="buy-max" data-sym="${s.symbol}">BUY MAX</button>
+                </div>
+                <div class="btn-row" style="margin-bottom:8px;">
+                  <button class="mini-btn quick fire" data-trade="sell-10" data-sym="${s.symbol}">SELL 10</button>
+                  <button class="mini-btn quick fire" data-trade="sell-100" data-sym="${s.symbol}">SELL 100</button>
+                  <button class="mini-btn quick fire" data-trade="sell-max" data-sym="${s.symbol}">SELL MAX</button>
+                </div>
+                <div class="bank-input-row" style="margin-top:6px;">
+                  <input type="number" id="trade-input-${s.symbol}" class="bank-input" min="1" step="1" placeholder="Custom Amt">
+                </div>
               </div>
-              <div class="btn-row" style="margin-bottom:8px;">
-                <button class="mini-btn quick fire" data-trade="sell-10" data-sym="${s.symbol}">SELL 10</button>
-                <button class="mini-btn quick fire" data-trade="sell-100" data-sym="${s.symbol}">SELL 100</button>
-                <button class="mini-btn quick fire" data-trade="sell-max" data-sym="${s.symbol}">SELL MAX</button>
-              </div>
-              <div class="bank-input-row" style="margin-top:6px;">
-                <input type="number" id="trade-input-${s.symbol}" class="bank-input" min="1" step="1" placeholder="Custom Amt">
             </div>
           </div>
         </div>
