@@ -600,7 +600,7 @@
     (buttons || [{label:"Continue"}]).forEach((btnDef, idx)=>{
       const btn = document.createElement('button');
       btn.className = 'modal-btn' + (btnDef.secondary ? ' secondary' : '');
-      btn.innerHTML = `<span class="tag-id">[${String.fromCharCode(65 + idx)}]</span> ` + btnDef.label;
+      btn.innerHTML = `` + btnDef.label;
       btn.onclick = function(){
         document.getElementById('modal-overlay').classList.add('hidden');
         if(btnDef.onClick) btnDef.onClick();
@@ -788,7 +788,7 @@
       }
       return `<div class="data-row">
         <div class="data-main">
-          <div class="col-id"><span class="tag-id">[AUTO]</span> ${ICONS.car}</div>
+          <div class="col-id">${ICONS.car}</div>
           <div class="col-name">${c.name}</div>
           <div class="col-crew">${owned?'OWNED':'LOCKED'}</div>
           <div class="col-inc">-</div>
@@ -809,7 +809,7 @@
         : `<div class="btn-row"><button class="mini-btn" ${state.cash>=p.cost?'':'disabled'} data-prop-buy="${p.id}">BUY <span class="cost">${fmt(p.cost)}</span></button></div>`;
       return `<div class="data-row">
         <div class="data-main">
-          <div class="col-id"><span class="tag-id">[PROP]</span> ${ICONS.bld2}</div>
+          <div class="col-id">${ICONS.bld2}</div>
           <div class="col-name">${p.name}</div>
           <div class="col-crew">${owned?'OWNED':'LOCKED'}</div>
           <div class="col-inc">+${p.incomePerSec}/s</div>
@@ -909,13 +909,13 @@
       });
       wrap.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">
-          <h3 style="font-size:20px; color:var(--text); margin:0;"><span class="tag-id">[EXCH]</span> RCN TERMINAL</h3>
+          <h3 style="font-size:20px; color:var(--text); margin:0;">RCN TERMINAL</h3>
           <button class="mini-btn fire" id="go-vault">DISCONNECT</button>
         </div>
         
         <div class="data-row">
           <div class="data-main open">
-            <div class="col-id"><span class="tag-id">[PORT]</span> ${ICONS.store}</div>
+            <div class="col-id">${ICONS.store}</div>
             <div class="col-name">Holdings</div>
             <div class="col-crew">${fmt(totalPortfolio)} VAL</div>
             <div class="col-inc">${fmt(state.cash)} LIQ</div>
@@ -982,7 +982,7 @@
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">
           <h3 style="font-size:20px; color:var(--text); margin:0;">
             <button class="mini-btn" id="go-lcn-home" style="margin-right:10px;" title="Back to Exchange">[BACK]</button>
-            <span class="tag-id">[${s.symbol}]</span> ${s.name}
+            ${s.name}
           </h3>
         </div>
         <div class="flavor-note" style="margin-bottom:15px;">${s.fullDesc}</div>
@@ -991,7 +991,7 @@
         </div>
         <div class="data-row">
           <div class="data-main open">
-            <div class="col-id"><span class="tag-id">[TRAD]</span> ${ICONS.store}</div>
+            <div class="col-id">${ICONS.store}</div>
             <div class="col-name">Execute Trade</div>
             <div class="col-crew" id="price-${s.symbol}">$${price.toFixed(2)}</div>
             <div class="col-inc">-</div>
@@ -1309,7 +1309,7 @@
       const canPush = state.playSeconds>=d.nextPushAt && state.respect>=pushCost(d);
       return `<div class="data-row">
         <div class="data-main">
-          <div class="col-id"><span class="tag-id">[DIST]</span> ${d.homeTurf?ICONS.person:ICONS.badge}</div>
+          <div class="col-id">${d.homeTurf?ICONS.person:ICONS.badge}</div>
           <div class="col-name">${d.name}</div>
           <div class="col-crew">${Math.round(d.control)}% CTRL</div>
           <div class="col-inc">-</div>
@@ -1333,7 +1333,7 @@
     wrap.innerHTML = `
       <div class="data-row">
         <div class="data-main">
-          <div class="col-id"><span class="tag-id">[INFL]</span> ${ICONS.gov}</div>
+          <div class="col-id">${ICONS.gov}</div>
           <div class="col-name">Influence</div>
           <div class="col-crew">${Math.round(state.influence)}</div>
           <div class="col-inc">-</div>
@@ -1348,7 +1348,7 @@
       ${politicians.map(p=>`
       <div class="data-row">
         <div class="data-main">
-          <div class="col-id"><span class="tag-id">[POLI]</span> ${ICONS.person}</div>
+          <div class="col-id">${ICONS.person}</div>
           <div class="col-name">${p.name}</div>
           <div class="col-crew">${p.favor}/100</div>
           <div class="col-inc">-</div>
@@ -1363,7 +1363,7 @@
       </div>`).join('')}
       <div class="data-row">
         <div class="data-main">
-          <div class="col-id"><span class="tag-id">[RACE]</span> ${ICONS.badge}</div>
+          <div class="col-id">${ICONS.badge}</div>
           <div class="col-name">City Councilman</div>
           <div class="col-crew">-</div>
           <div class="col-inc">-</div>
@@ -1392,7 +1392,7 @@
     wrap.innerHTML = `
       <div class="data-row">
         <div class="data-main">
-          <div class="col-id"><span class="tag-id">[STAT]</span> ${ICONS.fist}</div>
+          <div class="col-id">${ICONS.fist}</div>
           <div class="col-name">Gang Strength</div>
           <div class="col-crew">${gs.toFixed(1)} vs ${rs.toFixed(1)}</div>
           <div class="col-inc">-</div>
@@ -1497,7 +1497,7 @@
       </div>`;
 
     if(b.manager){
-      exp += `<div class="lock-note" style="margin-top:6px;">[SYS] Manager ${b.managerName} installed. Operations optimal.</div>`;
+      exp += `<div class="lock-note" style="margin-top:6px;">Manager ${b.managerName} installed. Operations optimal.</div>`;
     } else {
       exp += `<div class="btn-row" style="margin-top:6px;">
         <button class="mini-btn" ${canHireCrew?'':'disabled'} data-action="hirecrew" data-id="${b.id}">ASGN CREW <span class="cost">${fmt(crewCost)}</span></button>
@@ -1733,7 +1733,7 @@
     wrap.innerHTML = `
       <div class="data-row">
         <div class="data-main">
-          <div class="col-id"><span class="tag-id">[STRT]</span> ${ICONS.fist}</div>
+          <div class="col-id">${ICONS.fist}</div>
           <div class="col-name">Muscle</div>
           <div class="col-crew">${state.muscleCount}</div>
           <div class="col-inc" style="color:var(--text);">+${respectPerSec().toFixed(1)} RESP/s</div>
@@ -1747,7 +1747,7 @@
       </div>
       <div class="data-row">
         <div class="data-main">
-          <div class="col-id"><span class="tag-id">[BRBE]</span> ${ICONS.badge}</div>
+          <div class="col-id">${ICONS.badge}</div>
           <div class="col-name">Bribe the Cops</div>
           <div class="col-crew">-</div>
           <div class="col-inc">-</div>
@@ -1761,7 +1761,7 @@
       </div>
       <div class="data-row">
         <div class="data-main">
-          <div class="col-id"><span class="tag-id">[RAT]</span> ${ICONS.person}</div>
+          <div class="col-id">${ICONS.person}</div>
           <div class="col-name">Informants</div>
           <div class="col-crew">${state.ratCount}</div>
           <div class="col-inc">-</div>
@@ -1775,7 +1775,7 @@
       </div>
       <div class="data-row">
         <div class="data-main">
-          <div class="col-id"><span class="tag-id">[TRTY]</span> ${ICONS.music}</div>
+          <div class="col-id">${ICONS.music}</div>
           <div class="col-name">Expand Territory</div>
           <div class="col-crew">CAP: ${crewCapGlobal()}</div>
           <div class="col-inc">-</div>
@@ -1789,7 +1789,7 @@
       </div>
       <div class="data-row">
         <div class="data-main">
-          <div class="col-id"><span class="tag-id">[NEGO]</span> ${ICONS.person}</div>
+          <div class="col-id">${ICONS.person}</div>
           <div class="col-name">Negotiate</div>
           <div class="col-crew">-</div>
           <div class="col-inc" style="color:var(--green);">DISC: ${Math.round((1-discountMult())*100)}%</div>
@@ -1803,7 +1803,7 @@
       </div>
       <div class="data-row">
         <div class="data-main">
-          <div class="col-id"><span class="tag-id">[PROD]</span> ${ICONS.box}</div>
+          <div class="col-id">${ICONS.box}</div>
           <div class="col-name">The Lab</div>
           <div class="col-crew">LVL ${state.productLevel}</div>
           <div class="col-inc" style="color:var(--text);">${state.product.toFixed(0)}/${productCap()} STOCK</div>
@@ -1817,7 +1817,7 @@
       </div>
       <div class="data-row">
         <div class="data-main">
-          <div class="col-id"><span class="tag-id">[SALE]</span> ${ICONS.diamond}</div>
+          <div class="col-id">${ICONS.diamond}</div>
           <div class="col-name">The Trade</div>
           <div class="col-crew">${activeCorners().length}/${corners.length} CNRS</div>
           <div class="col-inc">+${cornerIncomePerSec().toFixed(1)}/s</div>
@@ -2137,7 +2137,7 @@
     if(!getEquippedCar()) return;
     state.inVehicle = true;
     refreshPlayerModel(); updateParkedCarMesh();
-    log('<span class="tag-id">[DRIVE]</span> You get in.');
+    log('You get in.');
     renderAll();
   }
   function exitVehicle(){
@@ -2145,7 +2145,7 @@
     state.inVehicle = false;
     state.parkedCarPos[state.currentDistrict] = { x:player.x, y:player.y };
     refreshPlayerModel(); updateParkedCarMesh();
-    log('<span class="tag-id">[WALK]</span> You park up and get out.');
+    log('You park up and get out.');
     renderAll();
   }
 
@@ -2715,7 +2715,7 @@
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    log('<span class="tag-id">[SYSTEM]</span> Game save exported to JSON file.');
+    log('Game save exported to JSON file.');
   });
   const importSaveInput = document.getElementById('import-save-input');
   document.getElementById('import-save-btn').addEventListener('click', function(){
@@ -2996,7 +2996,7 @@
       buildDistrictScene(state.currentDistrict);
       refreshPlayerModel();
       renderAll();
-      log('<span class="tag-id">[SYSTEM]</span> Picked up right where you left off.');
+      log('Picked up right where you left off.');
       return;
     }
     showModal({
@@ -3009,7 +3009,7 @@
       buttons:[{label:'Open the Cart', onClick:function(){
         state.started = true; state.lastTick = Date.now(); lastFrame = Date.now();
         renderAll();
-        log('<span class="tag-id">[SYSTEM]</span> Day one. Forty-seven dollars and a folding table on Devlin Street.');
+        log('Day one. Forty-seven dollars and a folding table on Devlin Street.');
         scheduleSave();
       }}]
     });
