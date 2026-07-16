@@ -162,14 +162,6 @@
 </div>
 
 <div id="global-tooltip"></div>
-
-<script>
-  document.getElementById('advanced-config-toggle').addEventListener('click', (e) => {
-    const p = document.getElementById('settings-advanced');
-    p.classList.toggle('open');
-    e.target.textContent = p.classList.contains('open') ? '[-] Advanced Config' : '[+] Advanced Config';
-  });
-</script>
 <script type="module" src="./src/main.ts"></script>
 </body>
 </html>
