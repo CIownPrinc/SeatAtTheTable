@@ -811,9 +811,7 @@
         <div class="data-main">
           <div class="col-id">${ICONS.bld2}</div>
           <div class="col-name">${p.name}</div>
-          <div class="col-crew">${owned?'OWNED':'LOCKED'}</div>
           <div class="col-inc">+${p.incomePerSec}/s</div>
-          <div class="col-heat">-</div>
           <div class="col-status">${owned?'ACTIVE':'SALE'}</div>
         </div>
         <div class="data-expanded">
@@ -1342,9 +1340,7 @@
         <div class="data-main">
           <div class="col-id">${ICONS.gov}</div>
           <div class="col-name">Influence</div>
-          <div class="col-crew">${Math.round(state.influence)}</div>
-          <div class="col-inc">-</div>
-          <div class="col-heat">-</div>
+          <div class="col-crew">${Math.round(state.influence)} INFLUENCE</div>
           <div class="col-status">ACTIVE</div>
         </div>
         <div class="data-expanded">
@@ -1414,11 +1410,8 @@
         const eligible = state.respect>=g.reqRespect;
         return `<div class="data-row">
           <div class="data-main">
-            <div class="col-id"><i class="ph-duotone ph-users-three"></i> ${ICONS.person}</div>
+            <div class="col-id">${ICONS.person}</div>
             <div class="col-name">${g.name}</div>
-            <div class="col-crew">-</div>
-            <div class="col-inc">-</div>
-            <div class="col-heat">-</div>
             <div class="col-status">${g.inducted?'INDUCTED':(eligible?'READY':'LOCKED')}</div>
           </div>
           <div class="data-expanded">
@@ -1507,7 +1500,7 @@
       exp += `<div class="lock-note" style="margin-top:6px;">Manager ${b.managerName} installed. Operations optimal.</div>`;
     } else {
       exp += `<div class="btn-row" style="margin-top:6px;">
-        <button class="mini-btn" ${canHireCrew?'':'disabled'} data-action="hirecrew" data-id="${b.id}">ASGN CREW <span class="cost">${fmt(crewCost)}</span></button>
+        <button class="mini-btn" ${canHireCrew?'':'disabled'} data-action="hirecrew" data-id="${b.id}">ASSIGN CREW <span class="cost">${fmt(crewCost)}</span></button>
         <button class="mini-btn fire" ${canFireCrew?'':'disabled'} data-action="firecrew" data-id="${b.id}">FIRE CREW <span class="cost">RND 50%</span></button>
       </div>`;
       if(b.level >= b.managerLevelReq){

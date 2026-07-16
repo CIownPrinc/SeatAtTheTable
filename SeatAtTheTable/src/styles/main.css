@@ -171,10 +171,10 @@ main{max-width:1240px;margin:0 auto;padding:26px 24px 60px;}
 .data-row:hover { border-color: var(--line-bright); box-shadow: 0 8px 16px rgba(0,0,0,0.4); }
 .data-row.locked { opacity: 0.5; pointer-events: none; filter: grayscale(100%); }
 
-.data-main { display: block; padding: 10px 14px; position: relative; background: linear-gradient(180deg, var(--bg-panel) 0%, var(--bg-row) 100%); }
+.data-main { display: block; padding: 12px 14px; position: relative; background: transparent; }
 
 /* The old data-expanded is now just structurally part of the card if it exists */
-.data-expanded { display: flex; padding: 10px 14px 14px; flex-direction: column; gap: 10px; background: var(--bg-row); border-top: 1px dashed var(--line); }
+.data-expanded { display: flex; padding: 0 14px 12px; flex-direction: column; gap: 8px; background: transparent; border-top: none; }
 
 .col-id { position: absolute; right: 14px; top: 10px; font-size: 22px; color: var(--gold); border: none; box-shadow: none; background: transparent; display: flex; align-items: center; justify-content: center; }
 .col-name { font-family: var(--font-display); font-size: 15px; font-weight: 700; border-bottom: 1px solid var(--line); padding-bottom: 4px; margin-bottom: 6px; width: calc(100% - 30px); color: var(--text); }
