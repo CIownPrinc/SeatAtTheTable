@@ -1,17 +1,42 @@
-// LEGAL: ================= VENTURE DATA =================
+// LEGAL: ================= TACTICAL WIREFRAME ICONS =================
+  const ICONS = {
+    cart: '<svg class="icon-svg" viewBox="0 0 16 16"><rect x="2" y="8" width="12" height="6"/><circle cx="4" cy="14" r="1"/><circle cx="12" cy="14" r="1"/><path d="M2 8L4 4H12L14 8"/></svg>',
+    store: '<svg class="icon-svg" viewBox="0 0 16 16"><rect x="2" y="4" width="12" height="12"/><rect x="6" y="8" width="4" height="8"/><path d="M2 4L8 1L14 4"/></svg>',
+    laundry: '<svg class="icon-svg" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12"/><circle cx="8" cy="9" r="3"/><circle cx="8" cy="9" r="1"/></svg>',
+    cards: '<svg class="icon-svg" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12"/><path d="M6 6L8 4L10 6L8 8Z"/></svg>',
+    garage: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M2 14V6L8 2L14 6V14"/><rect x="5" y="8" width="6" height="6"/></svg>',
+    cab: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M3 10L4 6H12L13 10"/><rect x="2" y="10" width="12" height="3"/><circle cx="4" cy="13" r="1"/><circle cx="12" cy="13" r="1"/><path d="M6 6V4H10V6"/></svg>',
+    car: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M2 11L4 6H12L14 11"/><rect x="1" y="11" width="14" height="3"/><circle cx="4" cy="14" r="1"/><circle cx="12" cy="14" r="1"/></svg>',
+    food: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M2 10C2 6 6 4 8 4C10 4 14 6 14 10"/><rect x="1" y="10" width="14" height="2"/></svg>',
+    lounge: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M4 14L6 8M12 14L10 8"/><path d="M4 4L8 8L12 4"/><path d="M4 4C6 2 10 2 12 4"/></svg>',
+    phone: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M4 4V12H12V4H4ZM6 6H10M6 8H10M6 10H8"/></svg>',
+    bld1: '<svg class="icon-svg" viewBox="0 0 16 16"><rect x="2" y="6" width="12" height="10"/><rect x="6" y="12" width="4" height="4"/><path d="M4 9H5M11 9H12"/></svg>',
+    bld2: '<svg class="icon-svg" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="14"/><rect x="7" y="12" width="2" height="4"/><path d="M5 5H6M9 5H10M5 8H6M9 8H10"/></svg>',
+    bld3: '<svg class="icon-svg" viewBox="0 0 16 16"><rect x="4" y="0" width="8" height="16"/><rect x="7" y="14" width="2" height="2"/><path d="M6 3H7M6 6H7M6 9H7M6 12H7"/></svg>',
+    box: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M8 2L14 5V11L8 14L2 11V5L8 2Z"/><path d="M2 5L8 8L14 5M8 8V14"/></svg>',
+    fist: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M4 7V12C4 13 5 14 6 14H10C11 14 12 13 12 12V6C12 5 11 4 10 4H9V3C9 2 8 2 7 3V4H6C5 4 4 5 4 7Z"/></svg>',
+    badge: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M8 1L12 3V8C12 11 8 15 8 15C8 15 4 11 4 8V3L8 1Z"/></svg>',
+    bank: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M2 6L8 2L14 6"/><rect x="4" y="6" width="2" height="6"/><rect x="10" y="6" width="2" height="6"/><rect x="2" y="12" width="12" height="2"/></svg>',
+    gov: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M1 5L8 1L15 5"/><rect x="3" y="5" width="2" height="8"/><rect x="7" y="5" width="2" height="8"/><rect x="11" y="5" width="2" height="8"/><rect x="1" y="13" width="14" height="2"/></svg>',
+    person: '<svg class="icon-svg" viewBox="0 0 16 16"><circle cx="8" cy="5" r="3"/><path d="M3 14C3 11 5 9 8 9C11 9 13 11 13 14"/></svg>',
+    diamond: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M3 6L8 2L13 6L8 14Z"/></svg>',
+    music: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M5 12C5 13.1 4.1 14 3 14C1.9 14 1 13.1 1 12C1 10.9 1.9 10 3 10V2L13 0V8C13 9.1 12.1 10 11 10C9.9 10 9 9.1 9 8C9 6.9 9.9 6 11 6V2L5 3.2V12Z"/></svg>'
+  };
+
+  // LEGAL: ================= VENTURE DATA =================
   const businesses = [
-    { id:'cart', name:"Kailash's Cart", flavor:"Chaat masala on a cheap bun. The regulars start lining up before sunrise.", category:'legit', icon:'🌭', baseCost:10, researchCost:0, baseIncome:0.25, unlock:{type:'start'}, crewBaseCost:6, managerLevelReq:12, managerName:'Nikhil, the Cart Foreman' },
-    { id:'store', name:"Corner Store", flavor:"Cigarettes, scratch tickets, and a register that never balances.", category:'legit', icon:'🏪', baseCost:150, researchCost:90, baseIncome:1.5, unlock:{type:'cash', value:120}, crewBaseCost:42, managerLevelReq:12, managerName:'Priya, Store Manager' },
-    { id:'laundromat', name:"Sudsy Laundromat", flavor:"Quarters in, cash out. Nobody asks questions about the back room.", category:'legit', icon:'🧺', baseCost:600, researchCost:350, baseIncome:5, unlock:{type:'cash', value:500}, crewBaseCost:154, managerLevelReq:14, managerName:'Big Tomasz' },
-    { id:'backroom_cards', name:"Backroom Card Games", flavor:"High-stakes poker runs after hours. The house takes 5% of every pot.", category:'street', icon:'🃏', baseCost:3500, researchCost:1800, baseIncome:20, heatPerLevel:0.3, unlock:{type:'respect', value:25}, crewBaseCost:840, managerLevelReq:14, managerName:'Dealer Vik' },
-    { id:'garage', name:"Ashok's Auto Garage", flavor:"Honest repairs by day. A generous re-painting service by night.", category:'legit', icon:'🔧', baseCost:2500, researchCost:1500, baseIncome:15, unlock:{type:'cash', value:2000}, crewBaseCost:630, managerLevelReq:15, managerName:'Ashok Himself' },
-    { id:'cab', name:"Windy City Cab Co.", flavor:"A fleet of gypsy cabs. They know every alley shortcut in the city.", category:'legit', icon:'🚕', baseCost:6000, researchCost:3600, baseIncome:32, unlock:{type:'cash', value:5000}, crewBaseCost:1540, managerLevelReq:15, managerName:'Dispatcher Rosa' },
-    { id:'chop_ring', name:"Stolen Vehicle Export Ring", flavor:"Cars lifted from the Hub, re-VINed at Ashok's, and shipped out on midnight freighters.", category:'street', icon:'🚗', baseCost:24000, researchCost:14000, baseIncome:110, heatPerLevel:0.7, unlock:{type:'respect', value:100}, crewBaseCost:5950, managerLevelReq:16, managerName:'Chop Foreman Deke' },
-    { id:'restaurant', name:"Windhaven Chaat House", flavor:"The flagship. A line out the door and a write-up in the Herald.", category:'legit', icon:'🍛', baseCost:18000, researchCost:11000, baseIncome:85, unlock:{type:'cash', value:15000}, crewBaseCost:4760, managerLevelReq:16, managerName:'Head Chef Meera' },
-    { id:'lounge', name:"Marigold Lounge", flavor:"A nightclub named for the flowers Arjun's mother strung on the door in Delhi.", category:'legit', icon:'🥂', baseCost:70000, researchCost:42000, baseIncome:280, unlock:{type:'cash', value:60000}, crewBaseCost:18900, managerLevelReq:17, managerName:'Lena, House Manager' },
-    { id:'wire_network', name:"Underground Bookmaking & Wire Ops", flavor:"High-volume sports betting and offshore wire transfers, handled quietly in the Marigold VIP booths.", category:'street', icon:'📞', baseCost:120000, researchCost:75000, baseIncome:450, heatPerLevel:1.2, unlock:{type:'respect', value:300}, crewBaseCost:29400, managerLevelReq:17, managerName:'Bookie Sal' },
-    { id:'realestate', name:"West Side Holdings", flavor:"Buildings with Arjun's name on the paperwork and nobody else's.", category:'legit', icon:'🏢', baseCost:260000, researchCost:150000, baseIncome:850, unlock:{type:'cash', value:220000}, crewBaseCost:66500, managerLevelReq:18, managerName:'Counsel Whitfield' },
-    { id:'syndicate_logistics', name:"Syndicate Freight & Contraband", flavor:"Controlling the docks. Everything that moves through the West Side pays a tariff before hitting the street.", category:'street', icon:'📦', baseCost:550000, researchCost:320000, baseIncome:1600, heatPerLevel:2.0, unlock:{type:'respect', value:800}, crewBaseCost:126000, managerLevelReq:18, managerName:'Dockmaster Chen' },
+    { id:'cart', name:"Kailash's Cart", flavor:"Chaat masala on a cheap bun. The regulars start lining up before sunrise.", category:'legit', icon:ICONS.cart, baseCost:10, researchCost:0, baseIncome:0.25, unlock:{type:'start'}, crewBaseCost:6, managerLevelReq:12, managerName:'Nikhil, the Cart Foreman' },
+    { id:'store', name:"Corner Store", flavor:"Cigarettes, scratch tickets, and a register that never balances.", category:'legit', icon:ICONS.store, baseCost:150, researchCost:90, baseIncome:1.5, unlock:{type:'cash', value:120}, crewBaseCost:42, managerLevelReq:12, managerName:'Priya, Store Manager' },
+    { id:'laundromat', name:"Sudsy Laundromat", flavor:"Quarters in, cash out. Nobody asks questions about the back room.", category:'legit', icon:ICONS.laundry, baseCost:600, researchCost:350, baseIncome:5, unlock:{type:'cash', value:500}, crewBaseCost:154, managerLevelReq:14, managerName:'Big Tomasz' },
+    { id:'backroom_cards', name:"Backroom Card Games", flavor:"High-stakes poker runs after hours. The house takes 5% of every pot.", category:'street', icon:ICONS.cards, baseCost:3500, researchCost:1800, baseIncome:20, heatPerLevel:0.3, unlock:{type:'respect', value:25}, crewBaseCost:840, managerLevelReq:14, managerName:'Dealer Vik' },
+    { id:'garage', name:"Ashok's Auto Garage", flavor:"Honest repairs by day. A generous re-painting service by night.", category:'legit', icon:ICONS.garage, baseCost:2500, researchCost:1500, baseIncome:15, unlock:{type:'cash', value:2000}, crewBaseCost:630, managerLevelReq:15, managerName:'Ashok Himself' },
+    { id:'cab', name:"Windy City Cab Co.", flavor:"A fleet of gypsy cabs. They know every alley shortcut in the city.", category:'legit', icon:ICONS.cab, baseCost:6000, researchCost:3600, baseIncome:32, unlock:{type:'cash', value:5000}, crewBaseCost:1540, managerLevelReq:15, managerName:'Dispatcher Rosa' },
+    { id:'chop_ring', name:"Stolen Vehicle Export Ring", flavor:"Cars lifted from the Hub, re-VINed at Ashok's, and shipped out on midnight freighters.", category:'street', icon:ICONS.car, baseCost:24000, researchCost:14000, baseIncome:110, heatPerLevel:0.7, unlock:{type:'respect', value:100}, crewBaseCost:5950, managerLevelReq:16, managerName:'Chop Foreman Deke' },
+    { id:'restaurant', name:"Windhaven Chaat House", flavor:"The flagship. A line out the door and a write-up in the Herald.", category:'legit', icon:ICONS.food, baseCost:18000, researchCost:11000, baseIncome:85, unlock:{type:'cash', value:15000}, crewBaseCost:4760, managerLevelReq:16, managerName:'Head Chef Meera' },
+    { id:'lounge', name:"Marigold Lounge", flavor:"A nightclub named for the flowers Arjun's mother strung on the door in Delhi.", category:'legit', icon:ICONS.lounge, baseCost:70000, researchCost:42000, baseIncome:280, unlock:{type:'cash', value:60000}, crewBaseCost:18900, managerLevelReq:17, managerName:'Lena, House Manager' },
+    { id:'wire_network', name:"Underground Bookmaking & Wire Ops", flavor:"High-volume sports betting and offshore wire transfers, handled quietly in the Marigold VIP booths.", category:'street', icon:ICONS.phone, baseCost:120000, researchCost:75000, baseIncome:450, heatPerLevel:1.2, unlock:{type:'respect', value:300}, crewBaseCost:29400, managerLevelReq:17, managerName:'Bookie Sal' },
+    { id:'realestate', name:"West Side Holdings", flavor:"Buildings with Arjun's name on the paperwork and nobody else's.", category:'legit', icon:ICONS.bld2, baseCost:260000, researchCost:150000, baseIncome:850, unlock:{type:'cash', value:220000}, crewBaseCost:66500, managerLevelReq:18, managerName:'Counsel Whitfield' },
+    { id:'syndicate_logistics', name:"Syndicate Freight & Contraband", flavor:"Controlling the docks. Everything that moves through the West Side pays a tariff before hitting the street.", category:'street', icon:ICONS.box, baseCost:550000, researchCost:320000, baseIncome:1600, heatPerLevel:2.0, unlock:{type:'respect', value:800}, crewBaseCost:126000, managerLevelReq:18, managerName:'Dockmaster Chen' },
   ];
   businesses.forEach(b=>{ b.level=0; b.crew=0; b.manager=false; b.researched = b.unlock.type==='start'; b.tempMult=1; b.tempMultExpire=0; });
 
@@ -45,74 +70,74 @@
 
   const eventPool = [
     { id:'rival', title:'A RIVAL CREW EYES YOUR CORNER', neg:true, body:"<p class='flavor'>Word is a West Side crew thinks your runners are working streets that belong to them.</p>", choices:[
-      {label:'Pay them off', sub:'-8% cash', run:function(){ state.cash *= 0.92; log('💸 You paid the rival crew to walk away quietly.'); } },
-      {label:'Stand your ground', sub:'+Respect, +Heat', run:function(){ state.respect += 15; state.heat = Math.min(100, state.heat+18); log('👊 You held the corner. Word travels — Respect earned, Heat too.'); } },
+      {label:'Pay them off', sub:'-8% cash', run:function(){ state.cash *= 0.92; log('<span class="tag-id">[BRIBE]</span> You paid the rival crew to walk away quietly.'); } },
+      {label:'Stand your ground', sub:'+Respect, +Heat', run:function(){ state.respect += 15; state.heat = Math.min(100, state.heat+18); log('<span class="tag-id">[RESPECT]</span> You held the corner. Word travels — Respect earned, Heat too.'); } },
     ]},
     { id:'inspector', title:'A HEALTH INSPECTOR VISITS', neg:true, body:"<p class='flavor'>He's got a clipboard and a look that says he already knows the price of looking away.</p>", choices:[
-      {label:'Slip an envelope', sub:'-$400 flat', run:function(){ state.cash = Math.max(0, state.cash-400); log('✉️ An envelope changes hands. The clipboard closes.'); } },
-      {label:'Do it by the book', sub:'legit income -15% for 45s', run:function(){ applyTempMult('legit', 0.85, 45); log('📋 You do it clean. Business slows while the paperwork clears.'); } },
+      {label:'Slip an envelope', sub:'-$400 flat', run:function(){ state.cash = Math.max(0, state.cash-400); log('<span class="tag-id">[BRIBE]</span> An envelope changes hands. The clipboard closes.'); } },
+      {label:'Do it by the book', sub:'legit income -15% for 45s', run:function(){ applyTempMult('legit', 0.85, 45); log('<span class="tag-id">[LAW]</span> You do it clean. Business slows while the paperwork clears.'); } },
     ]},
     { id:'tribune', title:'THE TRIBUNE WANTS AN INTERVIEW', neg:false, body:"<p class='flavor'>A reporter's been asking around Devlin Street about the man building an empire out of a folding cart.</p>", choices:[
-      {label:'Give the interview', sub:'legit income +25% for 60s', run:function(){ applyTempMult('legit', 1.25, 60); log('📰 The story runs. Foot traffic spikes across every storefront.'); } },
-      {label:'Stay quiet', sub:'+Respect', run:function(){ state.respect += 10; log('🤐 You decline. Some people respect a man who doesn\'t need the attention.'); } },
+      {label:'Give the interview', sub:'legit income +25% for 60s', run:function(){ applyTempMult('legit', 1.25, 60); log('<span class="tag-id">[PRESS]</span> The story runs. Foot traffic spikes across every storefront.'); } },
+      {label:'Stay quiet', sub:'+Respect', run:function(){ state.respect += 10; log('<span class="tag-id">[RESPECT]</span> You decline. Some people respect a man who doesn\'t need the attention.'); } },
     ]},
     { id:'cousin', title:'A COUSIN FROM DELHI CALLS', neg:false, body:"<p class='flavor'>He needs help. It's the kind of call you don't get to think about for very long.</p>", choices:[
-      {label:'Send the money', sub:'-$600 flat', run:function(){ state.cash = Math.max(0, state.cash-600); log('📞 You wire the money home. Family first.'); } },
-      {label:"Can't spare it", sub:'-5 Respect', run:function(){ state.respect = Math.max(0, state.respect-5); log('📞 You explain you can\'t, not right now. It sits with you.'); } },
+      {label:'Send the money', sub:'-$600 flat', run:function(){ state.cash = Math.max(0, state.cash-600); log('<span class="tag-id">[FAMILY]</span> You wire the money home. Family first.'); } },
+      {label:"Can't spare it", sub:'-5 Respect', run:function(){ state.respect = Math.max(0, state.respect-5); log('<span class="tag-id">[FAMILY]</span> You explain you can\'t, not right now. It sits with you.'); } },
     ]},
     { id:'cops', title:'COPS ARE ASKING QUESTIONS', neg:true, body:"<p class='flavor'>Nothing official yet. Just questions, in the way that always precedes something official.</p>", choices:[
-      {label:'Have your network handle it', sub:'-$900, -30 Heat', run:function(){ state.cash=Math.max(0,state.cash-900); state.heat=Math.max(0,state.heat-30); log('🕶️ Your underground network pulls strings. The questions stop.'); } },
-      {label:'Lay low', sub:'all income -20% for 40s', run:function(){ applyTempMult('all', 0.8, 40); log('🙇 You lay low for a while. Everything slows down.'); } },
+      {label:'Have your network handle it', sub:'-$900, -30 Heat', run:function(){ state.cash=Math.max(0,state.cash-900); state.heat=Math.max(0,state.heat-30); log('<span class="tag-id">[HEAT]</span> Your underground network pulls strings. The questions stop.'); } },
+      {label:'Lay low', sub:'all income -20% for 40s', run:function(){ applyTempMult('all', 0.8, 40); log('<span class="tag-id">[HEAT]</span> You lay low for a while. Everything slows down.'); } },
     ]},
     { id:'hustler', title:'A TALENTED HUSTLER WANTS IN', neg:false, body:"<p class='flavor'>Sharp, hungry, reminds you a little of yourself six months ago.</p>", choices:[
       {label:'Hire them on', sub:'free crew member, random venture', run:function(){ hireFreeCrew(); } },
-      {label:"Not worth the risk", sub:'+$500 flat', run:function(){ state.cash += 500; log('🤝 You pass, but they leave you something for your trouble.'); } },
+      {label:"Not worth the risk", sub:'+$500 flat', run:function(){ state.cash += 500; log('<span class="tag-id">[CREW]</span> You pass, but they leave you something for your trouble.'); } },
     ]},
     { id:'investor', title:'A SILENT INVESTOR MAKES AN OFFER', neg:false, body:"<p class='flavor'>Cash up front, no questions, in exchange for a slice of everything going forward.</p>", choices:[
-      {label:'Take the deal', sub:'+$3000, income -5% forever', run:function(){ state.cash += 3000; state.investorPenalty = Math.min(0.5, (state.investorPenalty||0) + 0.05); log('💼 Cash in hand. A little less of everything is yours now.'); } },
-      {label:'Stay independent', sub:'+Respect', run:function(){ state.respect += 8; log('🚪 You show him the door. Independence has its own price.'); } },
+      {label:'Take the deal', sub:'+$3000, income -5% forever', run:function(){ state.cash += 3000; state.investorPenalty = Math.min(0.5, (state.investorPenalty||0) + 0.05); log('<span class="tag-id">[INVEST]</span> Cash in hand. A little less of everything is yours now.'); } },
+      {label:'Stay independent', sub:'+Respect', run:function(){ state.respect += 8; log('<span class="tag-id">[RESPECT]</span> You show him the door. Independence has its own price.'); } },
     ]},
     { id:'fire', title:'A GREASE FIRE AT THE CART', neg:true, body:"<p class='flavor'>Where it all started nearly goes up in smoke.</p>", choices:[
-      {label:'Pay for a fast fix', sub:'-$250 flat', run:function(){ state.cash=Math.max(0,state.cash-250); log('🔥 A quick repair keeps the cart running.'); } },
-      {label:'Rebuild slowly', sub:'legit income -30% for 30s', run:function(){ applyTempMult('legit', 0.7, 30); log('🔥 No cash lost, but business limps for a while.'); } },
+      {label:'Pay for a fast fix', sub:'-$250 flat', run:function(){ state.cash=Math.max(0,state.cash-250); log('<span class="tag-id">[ALERT]</span> A quick repair keeps the cart running.'); } },
+      {label:'Rebuild slowly', sub:'legit income -30% for 30s', run:function(){ applyTempMult('legit', 0.7, 30); log('<span class="tag-id">[ALERT]</span> No cash lost, but business limps for a while.'); } },
     ]},
   ];
 
   // LEGAL: ================= ASSETS: CARS & PROPERTIES =================
   const cars = [
-    { id:'sedan', name:'Used Sedan', icon:'🚗', cost:800, speedMult:1.10, heistBonus:0.02, respectPerSec:0, color:'#7d8a99', len:26, wid:14 },
-    { id:'impala', name:"Impala '19", icon:'🚙', cost:5000, speedMult:1.25, heistBonus:0.05, respectPerSec:0, color:'#3e6b8a', len:29, wid:15 },
-    { id:'escalade', name:'Cadillac Escalade', icon:'🚘', cost:35000, speedMult:1.40, heistBonus:0.08, respectPerSec:0.15, color:'#20242c', len:32, wid:17 },
-    { id:'bentley', name:'Vintage Bentley', icon:'🏎️', cost:150000, speedMult:1.55, heistBonus:0.12, respectPerSec:0.4, color:'#c9a227', len:31, wid:16 },
+    { id:'sedan', name:'Used Sedan', icon:ICONS.car, cost:800, speedMult:1.10, heistBonus:0.02, respectPerSec:0, color:'#7d8a99', len:26, wid:14 },
+    { id:'impala', name:"Impala '19", icon:ICONS.car, cost:5000, speedMult:1.25, heistBonus:0.05, respectPerSec:0, color:'#3e6b8a', len:29, wid:15 },
+    { id:'escalade', name:'Cadillac Escalade', icon:ICONS.car, cost:35000, speedMult:1.40, heistBonus:0.08, respectPerSec:0.15, color:'#20242c', len:32, wid:17 },
+    { id:'bentley', name:'Vintage Bentley', icon:ICONS.car, cost:150000, speedMult:1.55, heistBonus:0.12, respectPerSec:0.4, color:'#c9a227', len:31, wid:16 },
   ];
   const properties = [
-    { id:'twoflat', name:'Rockwell Two-Flat', icon:'🏠', cost:3000, incomePerSec:4.5 },
-    { id:'retailstrip', name:'Devlin Retail Strip', icon:'🏬', cost:22000, incomePerSec:32 },
-    { id:'aptbuilding', name:'Uptown Apartments', icon:'🏙️', cost:120000, incomePerSec:165 },
-    { id:'loft', name:'Riverside Lofts', icon:'🌆', cost:600000, incomePerSec:800 },
+    { id:'twoflat', name:'Rockwell Two-Flat', icon:ICONS.bld1, cost:3000, incomePerSec:4.5 },
+    { id:'retailstrip', name:'Devlin Retail Strip', icon:ICONS.bld1, cost:22000, incomePerSec:32 },
+    { id:'aptbuilding', name:'Uptown Apartments', icon:ICONS.bld2, cost:120000, incomePerSec:165 },
+    { id:'loft', name:'Riverside Lofts', icon:ICONS.bld3, cost:600000, incomePerSec:800 },
   ];
 
   // LEGAL: Independent shops — not yours. You can rob them (one-off, cooldown, risk)
   // LEGAL: or extort them (permanent small income + permanent small heat, reversible).
   const localBusinesses = [
-    { id:'patel', name:'Patel Grocery', icon:'🛒', owner:'Mr. Patel', robBase:900, extortIncome:0.8, extortHeat:0.12, district:'devlin', x:260, y:430, extorted:false, nextRobAt:0 },
-    { id:'pawn', name:"Nowak's Pawn Shop", icon:'💍', owner:'Nowak', robBase:1500, extortIncome:1.3, extortHeat:0.18, district:'devlin', x:520, y:400, extorted:false, nextRobAt:0 },
-    { id:'herbalist', name:'Golden Lotus Herbalist', icon:'🌿', owner:'Mrs. Lin', robBase:700, extortIncome:0.6, extortHeat:0.10, district:'devlin', x:780, y:440, extorted:false, nextRobAt:0 },
-    { id:'bar', name:"O'Malley's Bar", icon:'🍺', owner:"O'Malley", robBase:1700, extortIncome:1.5, extortHeat:0.20, district:'devlin', x:1040, y:410, extorted:false, nextRobAt:0 },
-    { id:'chopshop', name:'West Side Chop Shop', icon:'🔩', owner:'Deke', robBase:2000, extortIncome:1.8, extortHeat:0.22, district:'westside', x:220, y:560, extorted:false, nextRobAt:0 },
-    { id:'liquor', name:'Corner Liquor', icon:'🍾', owner:'Miss Odell', robBase:1100, extortIncome:1.0, extortHeat:0.15, district:'westside', x:920, y:600, extorted:false, nextRobAt:0 },
-    { id:'jewelers', name:'Whitfield & Co. Jewelers', icon:'💎', owner:'Mr. Whitfield', robBase:3500, extortIncome:2.2, extortHeat:0.25, district:'hub', x:320, y:300, extorted:false, nextRobAt:0 },
-    { id:'marlowe', name:'The Marlowe Club', icon:'🎷', owner:'Vivienne', robBase:2600, extortIncome:1.9, extortHeat:0.20, district:'hub', x:900, y:320, extorted:false, nextRobAt:0 },
+    { id:'patel', name:'Patel Grocery', icon:ICONS.store, owner:'Mr. Patel', robBase:900, extortIncome:0.8, extortHeat:0.12, district:'devlin', x:260, y:430, extorted:false, nextRobAt:0 },
+    { id:'pawn', name:"Nowak's Pawn Shop", icon:ICONS.store, owner:'Nowak', robBase:1500, extortIncome:1.3, extortHeat:0.18, district:'devlin', x:520, y:400, extorted:false, nextRobAt:0 },
+    { id:'herbalist', name:'Golden Lotus Herbalist', icon:ICONS.store, owner:'Mrs. Lin', robBase:700, extortIncome:0.6, extortHeat:0.10, district:'devlin', x:780, y:440, extorted:false, nextRobAt:0 },
+    { id:'bar', name:"O'Malley's Bar", icon:ICONS.lounge, owner:"O'Malley", robBase:1700, extortIncome:1.5, extortHeat:0.20, district:'devlin', x:1040, y:410, extorted:false, nextRobAt:0 },
+    { id:'chopshop', name:'West Side Chop Shop', icon:ICONS.garage, owner:'Deke', robBase:2000, extortIncome:1.8, extortHeat:0.22, district:'westside', x:220, y:560, extorted:false, nextRobAt:0 },
+    { id:'liquor', name:'Corner Liquor', icon:ICONS.store, owner:'Miss Odell', robBase:1100, extortIncome:1.0, extortHeat:0.15, district:'westside', x:920, y:600, extorted:false, nextRobAt:0 },
+    { id:'jewelers', name:'Whitfield & Co. Jewelers', icon:ICONS.diamond, owner:'Mr. Whitfield', robBase:3500, extortIncome:2.2, extortHeat:0.25, district:'hub', x:320, y:300, extorted:false, nextRobAt:0 },
+    { id:'marlowe', name:'The Marlowe Club', icon:ICONS.music, owner:'Vivienne', robBase:2600, extortIncome:1.9, extortHeat:0.20, district:'hub', x:900, y:320, extorted:false, nextRobAt:0 },
   ];
 
   // LEGAL: Service buildings — not Ventures (no level/crew), just physical doors into
   // LEGAL: existing tab systems (Bank/Assets/Politics) or a direct dialogue (the heist).
   const serviceBuildings = [
-    { id:'bankHome', kind:'bankHome', name:'West Side Savings & Loan', icon:'🏦', district:'devlin', x:1360, y:230 },
-    { id:'cardealer', kind:'garage', name:'Windhaven Auto Exchange', icon:'🚗', district:'devlin', x:1360, y:430 },
-    { id:'realty', kind:'realty', name:'Whitfield Realty', icon:'🏢', district:'devlin', x:1360, y:630 },
-    { id:'cityhall', kind:'cityhall', name:'City Hall Annex', icon:'🏛️', district:'hub', x:1150, y:250 },
-    { id:'heistTarget', kind:'heist', name:'First Windhaven Trust', icon:'🕵️', district:'hub', x:280, y:650 },
+    { id:'bankHome', kind:'bankHome', name:'West Side Savings & Loan', icon:ICONS.bank, district:'devlin', x:1360, y:230 },
+    { id:'cardealer', kind:'garage', name:'Windhaven Auto Exchange', icon:ICONS.garage, district:'devlin', x:1360, y:430 },
+    { id:'realty', kind:'realty', name:'Whitfield Realty', icon:ICONS.bld3, district:'devlin', x:1360, y:630 },
+    { id:'cityhall', kind:'cityhall', name:'City Hall Annex', icon:ICONS.gov, district:'hub', x:1150, y:250 },
+    { id:'heistTarget', kind:'heist', name:'First Windhaven Trust', icon:ICONS.bank, district:'hub', x:280, y:650 },
   ];
 
   // LEGAL: ================= TERRITORY: DISTRICTS =================
@@ -143,7 +168,7 @@
     d.control = Math.min(100, d.control + 12);
     d.pushCount += 1;
     d.nextPushAt = state.playSeconds + 90;
-    log(`🗺️ You put weight behind your claim on ${d.name}. Control now ${Math.round(d.control)}%.`);
+    log(`<span class="tag-id">[MAP]</span> You put weight behind your claim on ${d.name}. Control now ${Math.round(d.control)}%.`);
     renderAll();
   }
 
@@ -426,8 +451,8 @@
       body:`<p>${npc.disposition} energy. Could be nothing, could be something.</p><p class="flavor">(New faces will show up as your territory grows — this one's just passing through for now.)</p>`,
       buttons:[
         { label:'Make conversation', onClick:function(){
-          if(Math.random()<0.5){ state.respect += 3; log(`🗣️ ${npc.name} respects the hustle. +3 respect.`); }
-          else { const tip = Math.ceil(20+Math.random()*60); state.cash += tip; log(`🗣️ Small talk with ${npc.name} turns into a $${tip} tip.`); }
+          if(Math.random()<0.5){ state.respect += 3; log(`<span class="tag-id">[INTEL]</span> ${npc.name} respects the hustle. +3 respect.`); }
+          else { const tip = Math.ceil(20+Math.random()*60); state.cash += tip; log(`<span class="tag-id">[INTEL]</span> Small talk with ${npc.name} turns into a $${tip} tip.`); }
           renderAll();
         }},
         { label:'Walk away', onClick:function(){} },
@@ -444,8 +469,8 @@
     { symbol: 'BNJ', name: 'BeanJuice', logo: 'beanjuice.png', desc: "Eight dollars for hot bean water.", founded: 1971, fullDesc: "Since 1971, they've convinced the world that burnt espresso is a premium lifestyle product. They operate like a bank that pays no interest, holding billions in unspent gift cards.", basePrice: 18, vol: 0.03 },
     { symbol: 'CLS', name: 'ClipStream', logo: 'ClipStream.png', desc: "Monetizing attention spans by the second.", founded: 2005, fullDesc: "Launched in 2005. They don't make anything; they just host the vanity of millions and sell the resulting behavioral data to the highest bidder. An unstoppable digital tollbooth.", basePrice: 85, vol: 0.07 },
     { symbol: 'PML', name: 'Pomello', logo: 'Pomello.png', desc: "Closed ecosystem, open wallets.", founded: 1976, fullDesc: "Founded in 1976. They design shiny boxes that trap users in a proprietary gilded cage. They have more cash on hand than most sovereign nations, and lawyers to protect every dime.", basePrice: 160, vol: 0.04 },
-    { symbol: 'FWT', name: 'First Windhaven Trust', logo: '', icon: '🏛️', desc: "Old money. Doesn't ask questions.", founded: 1883, fullDesc: "Established in 1883. They built this city's skyline by looking the other way when the ledgers didn't add up. Safe, reliable, and deeply embedded in political machinery.", basePrice: 65, vol: 0.02 },
-    { symbol: 'HLG', name: 'Heartland Global', logo: '', icon: '🏦', desc: "Too big to fail, too connected to prosecute.", founded: 1911, fullDesc: "Founded in 1911. They've weathered depressions and scandals by making sure they owe the right people and the right people owe them. A financial fortress.", basePrice: 90, vol: 0.03 },
+    { symbol: 'FWT', name: 'First Windhaven Trust', logo: '', icon: ICONS.box, desc: "Old money. Doesn't ask questions.", founded: 1883, fullDesc: "Established in 1883. They built this city's skyline by looking the other way when the ledgers didn't add up. Safe, reliable, and deeply embedded in political machinery.", basePrice: 65, vol: 0.02 },
+    { symbol: 'HLG', name: 'Heartland Global', logo: '', icon: ICONS.bank, desc: "Too big to fail, too connected to prosecute.", founded: 1911, fullDesc: "Founded in 1911. They've weathered depressions and scandals by making sure they owe the right people and the right people owe them. A financial fortress.", basePrice: 90, vol: 0.03 },
   ];
 
   // LEGAL: ================= STATE =================
@@ -509,10 +534,10 @@
   }
   function hireFreeCrew(){
     const eligible = businesses.filter(b=> b.researched && !b.manager && b.level>0 && b.crew < crewNeeded(b)+2 && crewUsedGlobal() < crewCapGlobal());
-    if(eligible.length===0){ state.cash += 400; log('🤝 No open spot for them — they take a cash finder\'s fee instead.'); return; }
+    if(eligible.length===0){ state.cash += 400; log(`<span class="tag-id">[NEG]</span> No open spot for them — they take a cash finder\'s fee instead.`); return; }
     const b = eligible[Math.floor(Math.random()*eligible.length)];
     b.crew += 1;
-    log(`🤝 They join the crew at ${b.name}, no questions asked.`);
+    log(`<span class="tag-id">[NEG]</span> They join the crew at ${b.name}, no questions asked.`);
   }
   function incomeFor(b){ return b.level * b.baseIncome * efficiency(b) * tempMultActive(b); }
   function getEquippedCar(){ return cars.find(c=>c.id===state.equippedCar) || null; }
@@ -572,10 +597,10 @@
     if(stamp){ stampEl.style.display='block'; stampEl.textContent = stamp; } else { stampEl.style.display='none'; }
     const footer = document.getElementById('modal-footer');
     footer.innerHTML = '';
-    (buttons || [{label:'Continue'}]).forEach(btnDef=>{
+    (buttons || [{label:"Continue"}]).forEach((btnDef, idx)=>{
       const btn = document.createElement('button');
       btn.className = 'modal-btn' + (btnDef.secondary ? ' secondary' : '');
-      btn.textContent = btnDef.label;
+      btn.innerHTML = `<span class="tag-id">[${String.fromCharCode(65 + idx)}]</span> ` + btnDef.label;
       btn.onclick = function(){
         document.getElementById('modal-overlay').classList.add('hidden');
         if(btnDef.onClick) btnDef.onClick();
@@ -591,7 +616,8 @@
     if(!m) return;
     state.seenMilestones.add(id);
     showModal({ eyebrow:'Windhaven Herald — West Side Edition', title:m.title, body:m.body, buttons:[{label:'Keep Going'}] });
-    log(`📰 Headline: "${m.title.charAt(0)}${m.title.slice(1).toLowerCase()}"`);
+    log(`<span class="tag-id">[NEWS]</span> Headline: "${m.title.charAt(0)}${m.title.slice(1).toLowerCase()}"`);
+    if(id === 'chaat_house') document.getElementById('delhi-theme-row').style.display = 'flex';
     scheduleSave();
   }
 
@@ -630,7 +656,7 @@
       bodyHtml += `<p class="flavor">${b.unlock.type==='cash' ? ('Unlocks at '+fmt(b.unlock.value)+' cash') : ('Unlocks at '+b.unlock.value+' respect')}</p>`;
     } else if(!b.researched){
       const rc = researchCostFor(b);
-      buttons.push({ label:`Research (${fmt(rc)})`, onClick:function(){ if(state.cash>=rc){ state.cash-=rc; b.researched=true; log(`🔬 You research ${b.name}.`);} renderAll(); }});
+      buttons.push({ label:`Research (${fmt(rc)})`, onClick:function(){ if(state.cash>=rc){ state.cash-=rc; b.researched=true; log(`<span class="tag-id">[RES]</span> You research ${b.name}.`);} renderAll(); }});
     } else {
       bodyHtml += `<p class="flavor">Level ${b.level} · ${incomeFor(b).toFixed(1)}/s · Efficiency ${Math.round(efficiency(b)*100)}%</p>`;
       const cost = costForLevel(b);
@@ -647,18 +673,18 @@
   // LEGAL: ================= BANK =================
   function depositAmount(rawAmt){
     const amt = Math.floor(Number(rawAmt));
-    if(!isFinite(amt) || amt<=0){ log('🏦 Enter a valid amount to deposit.'); return; }
-    if(amt > state.cash){ log(`🏦 You don't have ${fmt(amt)} on hand to deposit.`); return; }
+    if(!isFinite(amt) || amt<=0){ log('<span class="tag-id">[BANK]</span> Enter a valid amount to deposit.'); return; }
+    if(amt > state.cash){ log(`<span class="tag-id">[VAULT]</span> You don't have ${fmt(amt)} on hand to deposit.`); return; }
     state.cash -= amt; state.bank += amt;
-    log(`🏦 You deposit ${fmt(amt)}. Safe from raids in there.`);
+    log(`<span class="tag-id">[VAULT]</span> You deposit ${fmt(amt)}. Safe from raids in there.`);
     renderAll();
   }
   function withdrawAmount(rawAmt){
     const amt = Math.floor(Number(rawAmt));
-    if(!isFinite(amt) || amt<=0){ log('🏦 Enter a valid amount to withdraw.'); return; }
-    if(amt > state.bank){ log(`🏦 There's only ${fmt(state.bank)} banked.`); return; }
+    if(!isFinite(amt) || amt<=0){ log('<span class="tag-id">[BANK]</span> Enter a valid amount to withdraw.'); return; }
+    if(amt > state.bank){ log(`<span class="tag-id">[VAULT]</span> There's only ${fmt(state.bank)} banked.`); return; }
     state.bank -= amt; state.cash += amt;
-    log(`🏦 You withdraw ${fmt(amt)}.`);
+    log(`<span class="tag-id">[VAULT]</span> You withdraw ${fmt(amt)}.`);
     renderAll();
   }
   function resolveHeist(approach){
@@ -681,14 +707,14 @@
       state.cash += reward;
       state.respect += Math.ceil(reward/400);
       triggerMilestone('heist');
-      log(`💰 The job on First Windhaven Trust pays out ${fmt(reward)}.`);
+      log(`<span class="tag-id">[SCORE]</span> The job on First Windhaven Trust pays out ${fmt(reward)}.`);
       dialogues.bankheist.nodes.result.text = `Clean. You're out before the second patrol even swings back. <strong>${fmt(reward)}</strong> heavier, and word will get around.`;
     } else {
       const loss = Math.round(state.cash*failLossPct);
       state.cash = Math.max(0, state.cash-loss);
       state.heat = Math.min(100, state.heat+heatOnFail);
       state.respect = Math.max(0, state.respect-respectOnFail);
-      log(`🚔 The job on First Windhaven Trust goes sideways. Down ${fmt(loss)}, heat's up.`);
+      log(`<span class="tag-id">[BUST]</span> The job on First Windhaven Trust goes sideways. Down ${fmt(loss)}, heat's up.`);
       dialogues.bankheist.nodes.result.text = `It goes sideways fast. You get out, but not clean — <strong>${fmt(loss)}</strong> lost on the way, and there's heat on you now that wasn't there this morning.`;
     }
     renderAll();
@@ -704,11 +730,11 @@
     if(Math.random() < chance){
       const reward = Math.round(biz.robBase * (0.8+Math.random()*0.6));
       state.cash += reward; state.respect += 2; state.heat = Math.min(100, state.heat+8);
-      log(`💵 You hit the till at ${biz.name} for ${fmt(reward)}.`);
+      log(`<span class="tag-id">[EXTORT]</span> You hit the till at ${biz.name} for ${fmt(reward)}.`);
     } else {
       const loss = Math.round(biz.robBase * 0.3);
       state.cash = Math.max(0, state.cash-loss); state.respect = Math.max(0, state.respect-3); state.heat = Math.min(100, state.heat+15);
-      log(`🚨 ${biz.owner} isn't an easy mark. You're out ${fmt(loss)} and it's hotter out there now.`);
+      log(`<span class="tag-id">[HEAT]</span> ${biz.owner} isn't an easy mark. You're out ${fmt(loss)} and it's hotter out there now.`);
     }
     renderAll();
   }
@@ -729,14 +755,14 @@
     const buttons = [];
     if(!biz.extorted){
       buttons.push({ label:'Extort (needs 30 respect)', onClick:function(){
-        if(state.respect<30){ log(`🙅 ${biz.owner} laughs you off. You don't have the reputation for this yet.`); renderAll(); return; }
+        if(state.respect<30){ log(`<span class="tag-id">[FAIL]</span> ${biz.owner} laughs you off. You don't have the reputation for this yet.`); renderAll(); return; }
         biz.extorted = true;
         triggerMilestone('extortion');
-        log(`🕶️ ${biz.owner} agrees to pay, one way or another.`);
+        log(`<span class="tag-id">[NEG]</span> ${biz.owner} agrees to pay, one way or another.`);
         renderAll();
       }});
     } else {
-      buttons.push({ label:'Let it go', onClick:function(){ biz.extorted=false; log(`🤝 You cut ${biz.owner} loose.`); renderAll(); } });
+      buttons.push({ label:'Let it go', onClick:function(){ biz.extorted=false; log(`<span class="tag-id">[NEG]</span> You cut ${biz.owner} loose.`); renderAll(); } });
     }
     buttons.push({ label:'Walk away', secondary:true });
     showModal({ eyebrow:'Business Owner', title:biz.owner, body, buttons });
@@ -753,29 +779,47 @@
       const equipped = state.equippedCar === c.id;
       let btns;
       if(!owned){
-        btns = `<div class="btn-row"><button class="mini-btn" ${state.cash>=c.cost?'':'disabled'} data-car-buy="${c.id}"><span>Buy</span><span class="cost">${fmt(c.cost)}</span></button></div>`;
+        btns = `<div class="btn-row"><button class="mini-btn" ${state.cash>=c.cost?'':'disabled'} data-car-buy="${c.id}">[ACT: BUY] <span class="cost">${fmt(c.cost)}</span></button></div>`;
       } else {
         btns = `<div class="btn-row">
-          ${equipped ? `<span class="managed-badge" style="flex:1;text-align:center;">Currently Driving</span>` : `<button class="mini-btn" data-car-equip="${c.id}"><span>Drive This</span></button>`}
-          <button class="mini-btn fire" data-car-sell="${c.id}"><span>Sell</span><span class="cost">${fmt(Math.round(c.cost*0.55))}</span></button>
+          ${equipped ? `<span class="managed-badge" style="flex:1;text-align:center;">[DRIVING]</span>` : `<button class="mini-btn" data-car-equip="${c.id}">[ACT: DRIVE]</button>`}
+          <button class="mini-btn fire" data-car-sell="${c.id}">[ACT: SELL] <span class="cost">${fmt(Math.round(c.cost*0.55))}</span></button>
         </div>`;
       }
-      return `<div class="street-card">
-        <h4>${c.icon} ${c.name}</h4>
-        <p>+${Math.round((c.speedMult-1)*100)}% map speed · +${Math.round(c.heistBonus*100)}% heist odds${c.respectPerSec?` · +${c.respectPerSec}/s respect`:''}</p>
-        ${btns}
+      return `<div class="data-row">
+        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+          <div class="col-id"><span class="tag-id">[AUTO]</span> ${ICONS.car}</div>
+          <div class="col-name">${c.name}</div>
+          <div class="col-crew">${owned?'OWNED':'LOCKED'}</div>
+          <div class="col-inc">-</div>
+          <div class="col-heat">-</div>
+          <div class="col-status">${equipped?'EQUIPPED':(owned?'GARAGED':'SHOP')}</div>
+        </div>
+        <div class="data-expanded">
+          <div class="flavor-note">+${Math.round((c.speedMult-1)*100)}% map speed · +${Math.round(c.heistBonus*100)}% heist odds${c.respectPerSec?` · +${c.respectPerSec}/s respect`:''}</div>
+          ${btns}
+        </div>
       </div>`;
     }).join('');
 
     propWrap.innerHTML = properties.map(p=>{
       const owned = state.ownedProperties.includes(p.id);
       const btns = owned
-        ? `<div class="btn-row"><button class="mini-btn fire" data-prop-sell="${p.id}"><span>Sell</span><span class="cost">${fmt(Math.round(p.cost*0.6))}</span></button></div>`
-        : `<div class="btn-row"><button class="mini-btn" ${state.cash>=p.cost?'':'disabled'} data-prop-buy="${p.id}"><span>Buy</span><span class="cost">${fmt(p.cost)}</span></button></div>`;
-      return `<div class="street-card respect-spend">
-        <h4>${p.icon} ${p.name}</h4>
-        <p>${owned ? `Owned — earning ${p.incomePerSec}/s, no crew needed` : `Passive rental income: ${p.incomePerSec}/s, no crew needed`}</p>
-        ${btns}
+        ? `<div class="btn-row"><button class="mini-btn fire" data-prop-sell="${p.id}">[ACT: SELL] <span class="cost">${fmt(Math.round(p.cost*0.6))}</span></button></div>`
+        : `<div class="btn-row"><button class="mini-btn" ${state.cash>=p.cost?'':'disabled'} data-prop-buy="${p.id}">[ACT: BUY] <span class="cost">${fmt(p.cost)}</span></button></div>`;
+      return `<div class="data-row">
+        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+          <div class="col-id"><span class="tag-id">[PROP]</span> ${ICONS.bld2}</div>
+          <div class="col-name">${p.name}</div>
+          <div class="col-crew">${owned?'OWNED':'LOCKED'}</div>
+          <div class="col-inc">+${p.incomePerSec}/s</div>
+          <div class="col-heat">-</div>
+          <div class="col-status">${owned?'ACTIVE':'SALE'}</div>
+        </div>
+        <div class="data-expanded">
+          <div class="flavor-note">${owned ? `Owned — earning ${p.incomePerSec}/s, no crew needed` : `Passive rental income: ${p.incomePerSec}/s, no crew needed`}</div>
+          ${btns}
+        </div>
       </div>`;
     }).join('');
 
@@ -789,45 +833,71 @@
       const canHeist = state.playSeconds >= state.nextHeistAt;
       const cooldownLeft = Math.max(0, Math.ceil(state.nextHeistAt - state.playSeconds));
       wrap.innerHTML = `
-        <div class="street-grid">
-          <div class="street-card respect-spend">
-            <h4>🏦 Vault Balance</h4>
-            <p>Cash in the bank is safe from raids and earns slow interest. Cash on hand is what actually buys things.</p>
-            <div class="row"><span>Banked</span><span id="bank-banked-value">${fmt(state.bank)}</span></div>
-            <div class="row"><span>On hand</span><span id="bank-onhand-value">${fmt(state.cash)}</span></div>
-            <div class="bank-form">
-              <label class="bank-form-label">Deposit</label>
-              <div class="bank-input-row">
-                <input type="number" id="deposit-input" class="bank-input" min="0" step="1" placeholder="Amount">
-                <button class="mini-btn" id="deposit-go"><span>Deposit</span></button>
+        <div class="data-row">
+          <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+            <div class="col-id"><span class="tag-id">[BANK]</span> ${ICONS.bank}</div>
+            <div class="col-name">Vault Balance</div>
+            <div class="col-crew" id="bank-banked-value">${fmt(state.bank)}</div>
+            <div class="col-inc">-</div>
+            <div class="col-heat">-</div>
+            <div class="col-status">ACTIVE</div>
+          </div>
+          <div class="data-expanded">
+            <div class="flavor-note">Cash in the bank is safe from raids and earns slow interest. Cash on hand is what actually buys things. (On hand: <span id="bank-onhand-value">${fmt(state.cash)}</span>)</div>
+            <div style="display:flex; gap:16px;">
+              <div class="bank-form" style="flex:1;">
+                <label class="bank-form-label">Deposit</label>
+                <div class="bank-input-row">
+                  <input type="number" id="deposit-input" class="bank-input" min="0" step="1" placeholder="Amount">
+                  <button class="mini-btn" id="deposit-go">[ACT: DEPOSIT]</button>
+                </div>
+                <div class="btn-row">
+                  <button class="mini-btn quick" data-deposit-quick="0.25">25%</button>
+                  <button class="mini-btn quick" data-deposit-quick="0.5">50%</button>
+                  <button class="mini-btn quick" data-deposit-quick="1">MAX</button>
+                </div>
               </div>
-              <div class="btn-row">
-                <button class="mini-btn quick" data-deposit-quick="0.25"><span>25%</span></button>
-                <button class="mini-btn quick" data-deposit-quick="0.5"><span>50%</span></button>
-                <button class="mini-btn quick" data-deposit-quick="1"><span>Max</span></button>
-              </div>
-            </div>
-            <div class="bank-form">
-              <label class="bank-form-label">Withdraw</label>
-              <div class="bank-input-row">
-                <input type="number" id="withdraw-input" class="bank-input" min="0" step="1" placeholder="Amount">
-                <button class="mini-btn fire" id="withdraw-go"><span>Withdraw</span></button>
-              </div>
-              <div class="btn-row">
-                <button class="mini-btn quick" data-withdraw-quick="0.25"><span>25%</span></button>
-                <button class="mini-btn quick" data-withdraw-quick="0.5"><span>50%</span></button>
-                <button class="mini-btn quick" data-withdraw-quick="1"><span>Max</span></button>
+              <div class="bank-form" style="flex:1;">
+                <label class="bank-form-label">Withdraw</label>
+                <div class="bank-input-row">
+                  <input type="number" id="withdraw-input" class="bank-input" min="0" step="1" placeholder="Amount">
+                  <button class="mini-btn fire" id="withdraw-go">[ACT: WITHDRAW]</button>
+                </div>
+                <div class="btn-row">
+                  <button class="mini-btn quick" data-withdraw-quick="0.25">25%</button>
+                  <button class="mini-btn quick" data-withdraw-quick="0.5">50%</button>
+                  <button class="mini-btn quick" data-withdraw-quick="1">MAX</button>
+                </div>
               </div>
             </div>
           </div>
-          <div class="street-card">
-            <h4>📈 RCN Exchange</h4>
-            <p>The Rentport City National Exchange. Buy, sell, and short your way to the top. Just remember: the house always wins.</p>
-            <button class="toggle-btn" id="go-lcn">Access Terminal</button>
-            <h4 style="margin-top:20px;">🕵️ First Windhaven Trust</h4>
-            <p>A rival bank across town. A bigger score, and a bigger risk, than shaking down a corner shop.</p>
-            <div class="row"><span>Status</span><span id="heist-status-value">${canHeist ? 'Ready' : `Cooling off (${cooldownLeft}s)`}</span></div>
-            <button class="toggle-btn" ${canHeist?'':'disabled'} id="start-heist">Case the Vault</button>
+        </div>
+        <div class="data-row">
+          <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+            <div class="col-id"><span class="tag-id">[EXCH]</span> ${ICONS.store}</div>
+            <div class="col-name">RCN Exchange</div>
+            <div class="col-crew">-</div>
+            <div class="col-inc">-</div>
+            <div class="col-heat">-</div>
+            <div class="col-status">TERMINAL</div>
+          </div>
+          <div class="data-expanded">
+            <div class="flavor-note">The Rentport City National Exchange. Buy, sell, and short your way to the top. Just remember: the house always wins.</div>
+            <div class="btn-row"><button class="mini-btn" id="go-lcn">[ACT: ACCESS TERMINAL]</button></div>
+          </div>
+        </div>
+        <div class="data-row">
+          <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+            <div class="col-id"><span class="tag-id">[HSTE]</span> ${ICONS.box}</div>
+            <div class="col-name">First Windhaven Trust</div>
+            <div class="col-crew">-</div>
+            <div class="col-inc">-</div>
+            <div class="col-heat">-</div>
+            <div class="col-status" id="heist-status-value">${canHeist ? 'READY' : 'COOLDOWN'}</div>
+          </div>
+          <div class="data-expanded">
+            <div class="flavor-note">A rival bank across town. A bigger score, and a bigger risk, than shaking down a corner shop.</div>
+            <div class="btn-row"><button class="mini-btn" ${canHeist?'':'disabled'} id="start-heist">[ACT: CASE THE VAULT] ${canHeist?'':`(${cooldownLeft}s)`}</button></div>
           </div>
         </div>
       `;
@@ -838,47 +908,61 @@
         if(pos && pos.shares > 0) totalPortfolio += pos.shares * state.marketPrices[s.symbol];
       });
       wrap.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-          <h3 style="font-size:20px; color:#d4a017;">Rentport City National</h3>
-          <button class="mini-btn" id="go-vault">Log Out</button>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">
+          <h3 style="font-size:20px; color:var(--text); margin:0;"><span class="tag-id">[EXCH]</span> RCN TERMINAL</h3>
+          <button class="mini-btn fire" id="go-vault">[ACT: DISCONNECT]</button>
         </div>
         
-        <div class="street-grid">
-          <div class="street-card respect-spend">
-            <h4>📊 Your Holdings</h4>
-            <div class="row"><span>Portfolio Value</span><span>${fmt(totalPortfolio)}</span></div>
-            <div class="row"><span>Cash Available</span><span>${fmt(state.cash)}</span></div>
-            <div style="margin-top:10px;">
-              ${stockMarket.filter(s => state.portfolio[s.symbol]?.shares > 0).map(s => {
-                const pos = state.portfolio[s.symbol];
-                const val = pos.shares * state.marketPrices[s.symbol];
-                return `<div class="row" style="font-size:12px;"><span>${s.symbol} (${pos.shares} sh)</span><span>${fmt(val)}</span></div>`;
-              }).join('') || '<p class="flavor">No active positions.</p>'}
-            </div>
+        <div class="data-row">
+          <div class="data-main open">
+            <div class="col-id"><span class="tag-id">[PORT]</span> ${ICONS.store}</div>
+            <div class="col-name">Holdings</div>
+            <div class="col-crew">${fmt(totalPortfolio)} VAL</div>
+            <div class="col-inc">${fmt(state.cash)} LIQ</div>
+            <div class="col-heat">-</div>
+            <div class="col-status">ACTIVE</div>
           </div>
-          <div class="street-card" id="market-news-card">
-            <h4>🗞️ Market News</h4>
-            ${(state.currentNews || []).map(n => `<p class="flavor">"${n}"</p>`).join('')}
+          <div class="data-expanded" style="display:block;">
+            <div class="flavor-note">Active positions in the market.</div>
+            ${stockMarket.filter(s => state.portfolio[s.symbol]?.shares > 0).map(s => {
+              const pos = state.portfolio[s.symbol];
+              const val = pos.shares * state.marketPrices[s.symbol];
+              return `<div class="row" style="font-family:'Courier New', monospace; font-size:12px; margin-top:4px;"><span>${s.symbol} (${pos.shares} sh)</span><span>${fmt(val)}</span></div>`;
+            }).join('') || '<div class="flavor-note">No active positions.</div>'}
           </div>
         </div>
         
-        <h4 style="margin-top:20px; border-bottom:1px solid #444; padding-bottom:5px;">Tradable Assets</h4>
-        <div class="street-grid" style="margin-top:10px;">
+        <div class="data-row">
+          <div class="data-main open">
+            <div class="col-id"><span class="tag-id">[NEWS]</span> ${ICONS.music}</div>
+            <div class="col-name">Market News</div>
+            <div class="col-crew">-</div>
+            <div class="col-inc">-</div>
+            <div class="col-heat">-</div>
+            <div class="col-status">LIVE</div>
+          </div>
+          <div class="data-expanded" style="display:block;" id="market-news-card">
+            ${(state.currentNews || []).map(n => `<div class="flavor-note" style="margin-top:4px;">>> ${n}</div>`).join('')}
+          </div>
+        </div>
+        
+        <h4 style="margin-top:20px; border-bottom:1px solid var(--border); padding-bottom:5px; color:var(--text);">[TRADABLE ASSETS]</h4>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
           ${stockMarket.map(s => {
             const price = state.marketPrices[s.symbol] || s.basePrice;
             const history = state.marketHistory[s.symbol] || [];
             const prevPrice = history.length > 1 ? history[history.length - 2] : price;
             const pct = prevPrice ? ((price - prevPrice) / prevPrice * 100) : 0;
-            const color = pct >= 0 ? '#4caf50' : '#f44336';
+            const color = pct >= 0 ? 'var(--green)' : 'var(--accent)';
             const sign = pct >= 0 ? '+' : '';
-            return `<div class="street-card lcn-stock-btn" data-sym="${s.symbol}" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
-              <div>
-                <h4 style="margin:0;">${s.logo ? `<img src="/${s.logo}" style="width:40px; height:40px; vertical-align:middle; margin-right:8px; border-radius:4px;">` : (s.icon + ' ')} ${s.symbol}</h4>
-                <div style="font-size:11px; color:#aaa; margin-top:4px;">${s.name}</div>
-              </div>
-              <div style="text-align:right;">
-                <div id="lcn-home-price-${s.symbol}">$${price.toFixed(2)}</div>
-                <div id="lcn-home-pct-${s.symbol}" style="font-size:11px; color:${color};">${sign}${pct.toFixed(2)}%</div>
+            return `<div class="data-row lcn-stock-btn" data-sym="${s.symbol}" style="cursor:pointer;">
+              <div class="data-main">
+                <div class="col-id"><span class="tag-id">[TICK]</span> ${s.symbol}</div>
+                <div class="col-name">${s.name}</div>
+                <div class="col-crew" id="lcn-home-price-${s.symbol}">$${price.toFixed(2)}</div>
+                <div class="col-inc" id="lcn-home-pct-${s.symbol}" style="color:${color};">${sign}${pct.toFixed(2)}%</div>
+                <div class="col-heat">-</div>
+                <div class="col-status">TRADE</div>
               </div>
             </div>`;
           }).join('')}
@@ -892,49 +976,42 @@
       const pos = state.portfolio[s.symbol] || { shares: 0, avgCost: 0 };
       const val = pos.shares * price;
       const pl = val - (pos.shares * pos.avgCost);
-      const plColor = pl >= 0 ? '#4caf50' : '#f44336';
+      const plColor = pl >= 0 ? 'var(--green)' : 'var(--accent)';
       
       wrap.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-          <h3 style="font-size:20px; color:#d4a017; margin:0;">
-            <button class="mini-btn" id="go-lcn-home" style="margin-right:10px;" title="Back to Exchange">⬅</button>
-            ${s.logo ? `<img src="/${s.logo}" style="width:40px; height:40px; vertical-align:middle; margin-right:8px; border-radius:4px;">` : (s.icon + ' ')} ${s.name} (${s.symbol})
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">
+          <h3 style="font-size:20px; color:var(--text); margin:0;">
+            <button class="mini-btn" id="go-lcn-home" style="margin-right:10px;" title="Back to Exchange">[BACK]</button>
+            <span class="tag-id">[${s.symbol}]</span> ${s.name}
           </h3>
         </div>
-        <p style="font-size:12px; color:#aaa;">${s.fullDesc}</p>
+        <div class="flavor-note" style="margin-bottom:15px;">${s.fullDesc}</div>
         <div style="margin:20px 0;">
-          <canvas id="stock-chart" width="400" height="150" style="width:100%; max-width:100%; height:150px; background:#1a1a1a; border:1px solid #333; border-radius:4px;"></canvas>
+          <canvas id="stock-chart" width="400" height="150" style="width:100%; max-width:100%; height:150px; background:var(--bg-main); border:1px solid var(--border); box-sizing:border-box; image-rendering:pixelated;"></canvas>
         </div>
-        <div class="street-grid">
-          <div class="street-card respect-spend">
-            <h4>Trade ${s.symbol}</h4>
-            <div class="row" style="font-size:16px; margin-bottom:15px;"><span>Current Price</span><strong id="price-${s.symbol}">$${price.toFixed(2)}</strong></div>
+        <div class="data-row">
+          <div class="data-main open">
+            <div class="col-id"><span class="tag-id">[TRAD]</span> ${ICONS.store}</div>
+            <div class="col-name">Execute Trade</div>
+            <div class="col-crew" id="price-${s.symbol}">$${price.toFixed(2)}</div>
+            <div class="col-inc">-</div>
+            <div class="col-heat">-</div>
+            <div class="col-status">READY</div>
+          </div>
+          <div class="data-expanded" style="display:block;">
             <div class="bank-form">
-              <div class="btn-row">
-                <button class="mini-btn quick" data-trade="buy-10" data-sym="${s.symbol}"><span>Buy 10</span></button>
-                <button class="mini-btn quick" data-trade="buy-100" data-sym="${s.symbol}"><span>Buy 100</span></button>
-                <button class="mini-btn quick" data-trade="buy-max" data-sym="${s.symbol}"><span>Buy Max</span></button>
+              <div class="btn-row" style="margin-bottom:8px;">
+                <button class="mini-btn quick" data-trade="buy-10" data-sym="${s.symbol}">BUY 10</button>
+                <button class="mini-btn quick" data-trade="buy-100" data-sym="${s.symbol}">BUY 100</button>
+                <button class="mini-btn quick" data-trade="buy-max" data-sym="${s.symbol}">BUY MAX</button>
               </div>
-              <div class="btn-row">
-                <button class="mini-btn quick fire" data-trade="sell-10" data-sym="${s.symbol}"><span>Sell 10</span></button>
-                <button class="mini-btn quick fire" data-trade="sell-100" data-sym="${s.symbol}"><span>Sell 100</span></button>
-                <button class="mini-btn quick fire" data-trade="sell-max" data-sym="${s.symbol}"><span>Sell Max</span></button>
+              <div class="btn-row" style="margin-bottom:8px;">
+                <button class="mini-btn quick fire" data-trade="sell-10" data-sym="${s.symbol}">SELL 10</button>
+                <button class="mini-btn quick fire" data-trade="sell-100" data-sym="${s.symbol}">SELL 100</button>
+                <button class="mini-btn quick fire" data-trade="sell-max" data-sym="${s.symbol}">SELL MAX</button>
               </div>
               <div class="bank-input-row" style="margin-top:6px;">
                 <input type="number" id="trade-input-${s.symbol}" class="bank-input" min="1" step="1" placeholder="Custom Amt">
-                <button class="mini-btn" data-trade="buy-custom" data-sym="${s.symbol}"><span>Buy</span></button>
-                <button class="mini-btn fire" data-trade="sell-custom" data-sym="${s.symbol}"><span>Sell</span></button>
-              </div>
-            </div>
-          </div>
-          <div class="street-card">
-            <h4>Your Position</h4>
-            <div class="row"><span>Shares Owned</span><span>${pos.shares}</span></div>
-            <div class="row"><span>Avg Cost</span><span>$${pos.avgCost.toFixed(2)}</span></div>
-            <div class="row"><span>Total Value</span><span>$${val.toFixed(2)}</span></div>
-            <div class="row"><span>Profit/Loss</span><span style="color:${plColor};">$${pl.toFixed(2)}</span></div>
-            <div class="row" style="margin-top:10px; padding-top:10px; border-top:1px solid #333;">
-              <span>Cash Available</span><span>${fmt(state.cash)}</span>
             </div>
           </div>
         </div>
@@ -1005,11 +1082,11 @@
       }
       state.currentNews.unshift(state.newsQueue.pop());
       if(state.currentNews.length > 3) state.currentNews.pop();
-      state.nextNewsAt = state.playSeconds + 45;
+      state.nextNewsAt = state.playSeconds + 120;
       
       const newsCard = document.getElementById('market-news-card');
       if(newsCard) {
-        newsCard.innerHTML = `<h4>🗞️ Market News</h4>` + state.currentNews.map(n => `<p class="flavor">"${n}"</p>`).join('');
+        newsCard.innerHTML = state.currentNews.map(n => `<div class="flavor-note" style="margin-top:4px;">>> ${n}</div>`).join('');
       }
     }
     
@@ -1071,20 +1148,20 @@
     const cost = labCost();
     if(state.cash < cost) return;
     state.cash -= cost; state.productLevel += 1;
-    log(`🏭 The Lab steps up to level ${state.productLevel}. More product, more room to store it.`);
+    log(`<span class="tag-id">[OP]</span> The Lab steps up to level ${state.productLevel}. More product, more room to store it.`);
     renderAll();
   }
   function assignDealer(corner){
     if(corner.dealer || corner.busted) return;
     if(state.cash < corner.dealerCost) return;
     state.cash -= corner.dealerCost; corner.dealer = true;
-    log(`💼 A dealer's posted at ${corner.name}.`);
+    log(`<span class="tag-id">[OP]</span> A dealer's posted at ${corner.name}.`);
     renderAll();
   }
   function fireDealer(corner){
     if(!corner.dealer) return;
     corner.dealer = false;
-    log(`💼 You pull the dealer off ${corner.name}.`);
+    log(`<span class="tag-id">[OP]</span> You pull the dealer off ${corner.name}.`);
     renderAll();
   }
   function openCornerPanel(corner){
@@ -1112,7 +1189,7 @@
     const cost = influenceCost();
     if(state.cash < cost) return;
     state.cash -= cost; state.influence += 8; state.influenceBuys += 1;
-    log(`🏛️ Another envelope, another favor owed. Influence is at ${state.influence}.`);
+    log(`<span class="tag-id">[HALL]</span> Another envelope, another favor owed. Influence is at ${state.influence}.`);
     renderAll();
   }
   function favorCost(p){ return Math.ceil(200 * Math.pow(1.25, Math.floor(p.favor/15))); }
@@ -1121,7 +1198,7 @@
     const cost = favorCost(p);
     if(state.cash < cost || p.favor>=100) return;
     state.cash -= cost; p.favor = Math.min(100, p.favor+15);
-    log(`✉️ ${p.name} takes the envelope without much of a fight. Favor: ${p.favor}.`);
+    log(`<span class="tag-id">[BRIBE]</span> ${p.name} takes the envelope without much of a fight. Favor: ${p.favor}.`);
     if(p.favor>=60 && !p.pocketed){
       p.pocketed = true;
       showModal({
@@ -1143,7 +1220,7 @@
     state.campaignStyle = style;
     state.campaignEndAt = state.playSeconds + 180;
     dialogues.campaign.nodes.result.text = "The paperwork is filed. Now you just have to survive the scrutiny for three minutes. Expect your heat generation to more than double as the media digs into your 'business' history.";
-    log('🗳️ The campaign has begun. Heat generation is doubled while the press investigates you.');
+    log('<span class="tag-id">[POLITICS]</span> The campaign has begun. Heat generation is doubled while the press investigates you.');
     renderAll();
   }
 
@@ -1168,7 +1245,7 @@
       state.respect += 4;
     }
     dialogues[g.dialogueKey].nodes.result.text = `${g.name} is in. ${g.bonus}${extra}`;
-    log(`🤝 ${g.name} joins the crew for real. ${g.bonus}`);
+    log(`<span class="tag-id">[NEG]</span> ${g.name} joins the crew for real. ${g.bonus}`);
     renderAll();
   }
   function resolveWar(style){
@@ -1190,12 +1267,12 @@
       ws.control = Math.min(100, ws.control + swing);
       state.respect += style==='assault' ? 40 : 20;
       dialogues.gangwar.nodes.result.text = `It goes your way. West Side control climbs to ${Math.round(ws.control)}%. Dice's people fall back — for now.`;
-      log(`⚔️ You push West Side control to ${Math.round(ws.control)}% after tonight.`);
+      log(`<span class="tag-id">[WAR]</span> You push West Side control to ${Math.round(ws.control)}% after tonight.`);
     } else {
       ws.control = Math.max(0, ws.control - Math.round(swing/2));
       state.respect = Math.max(0, state.respect - 15);
       dialogues.gangwar.nodes.result.text = `It doesn't go your way. You pull back before it gets worse — West Side control drops to ${Math.round(ws.control)}%.`;
-      log(`⚔️ The push on West Side fails. Control slips to ${Math.round(ws.control)}%.`);
+      log(`<span class="tag-id">[WAR]</span> The push on West Side fails. Control slips to ${Math.round(ws.control)}%.`);
     }
     renderAll();
   }
@@ -1230,12 +1307,20 @@
     wrap.innerHTML = districts.map(d=>{
       const status = districtStatus(d.id);
       const canPush = state.playSeconds>=d.nextPushAt && state.respect>=pushCost(d);
-      return `<div class="street-card ${status==='yours'?'respect-spend':''}">
-        <h4>${d.homeTurf?'🏠':'🗺️'} ${d.name}</h4>
-        <p>${bonusText[d.id]}</p>
-        <div class="control-track"><div class="control-fill" data-control-bar="${d.id}" style="width:${Math.round(d.control)}%"></div></div>
-        <div class="row"><span data-control-label="${d.id}">${Math.round(d.control)}% — ${status==='yours'?'Yours':(status==='rival'?'Rival Controlled':'Contested')}</span></div>
-        <button class="mini-btn" ${canPush?'':'disabled'} data-push="${d.id}"><span>Push</span><span class="cost">${pushCost(d)} resp</span></button>
+      return `<div class="data-row">
+        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+          <div class="col-id"><span class="tag-id">[DIST]</span> ${d.homeTurf?ICONS.person:ICONS.badge}</div>
+          <div class="col-name">${d.name}</div>
+          <div class="col-crew">${Math.round(d.control)}% CTRL</div>
+          <div class="col-inc">-</div>
+          <div class="col-heat">-</div>
+          <div class="col-status">${status==='yours'?'YOURS':(status==='rival'?'RIVAL':'CONTESTED')}</div>
+        </div>
+        <div class="data-expanded">
+          <div class="flavor-note">${bonusText[d.id]}</div>
+          <div class="control-track"><div class="control-fill" data-control-bar="${d.id}" style="width:${Math.round(d.control)}%"></div></div>
+          <div class="btn-row"><button class="mini-btn" ${canPush?'':'disabled'} data-push="${d.id}">[ACT: PUSH] <span class="cost">${pushCost(d)} resp</span></button></div>
+        </div>
       </div>`;
     }).join('');
   }
@@ -1246,31 +1331,53 @@
     const canOffice = state.influence >= 500;
     const canCampaign = canOffice && state.playSeconds >= state.nextCampaignAt && !state.electedOffice;
     wrap.innerHTML = `
-      <div class="street-grid">
-        <div class="street-card respect-spend">
-          <h4>🏛️ Influence <span class="info-icon" title="Influence is bought with cash and opens political doors. Respect is earned on the street and is used for territorial control.">[?]</span></h4>
-          <p>Cash spent building pull downtown. Enough of it opens the door to running for office yourself.</p>
-          <div class="row"><span>Current</span><span>${Math.round(state.influence)}</span></div>
-          <button class="mini-btn" ${state.cash>=influenceCost()?'':'disabled'} id="buy-influence"><span>Fund Campaigns</span><span class="cost">${fmt(influenceCost())}</span></button>
+      <div class="data-row">
+        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+          <div class="col-id"><span class="tag-id">[INFL]</span> ${ICONS.gov}</div>
+          <div class="col-name">Influence</div>
+          <div class="col-crew">${Math.round(state.influence)}</div>
+          <div class="col-inc">-</div>
+          <div class="col-heat">-</div>
+          <div class="col-status">ACTIVE</div>
         </div>
-        ${politicians.map(p=>`
-        <div class="street-card">
-          <h4>${p.favor>=60?'✅':'✉️'} ${p.name}</h4>
-          <p>${p.role} · ${p.desc}</p>
+        <div class="data-expanded">
+          <div class="flavor-note">Cash spent building pull downtown. Enough of it opens the door to running for office yourself.</div>
+          <div class="btn-row"><button class="mini-btn" ${state.cash>=influenceCost()?'':'disabled'} id="buy-influence">[ACT: FUND] <span class="cost">${fmt(influenceCost())}</span></button></div>
+        </div>
+      </div>
+      ${politicians.map(p=>`
+      <div class="data-row">
+        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+          <div class="col-id"><span class="tag-id">[POLI]</span> ${ICONS.person}</div>
+          <div class="col-name">${p.name}</div>
+          <div class="col-crew">${p.favor}/100</div>
+          <div class="col-inc">-</div>
+          <div class="col-heat">-</div>
+          <div class="col-status">${p.favor>=60?'IN POCKET':'NEUTRAL'}</div>
+        </div>
+        <div class="data-expanded">
+          <div class="flavor-note">${p.role} · ${p.desc}</div>
           <div class="control-track"><div class="control-fill" style="width:${p.favor}%"></div></div>
-          <div class="row"><span>Favor</span><span>${p.favor}/100 ${p.favor>=60?'— In your pocket':''}</span></div>
-          <button class="mini-btn" ${(state.cash>=favorCost(p) && p.favor<100)?'':'disabled'} data-bribe="${p.id}"><span>Bribe</span><span class="cost">${fmt(favorCost(p))}</span></button>
-        </div>`).join('')}
-        <div class="street-card ${canOffice?'respect-spend':''}">
-          <h4>🗳️ Run for City Councilman</h4>
+          <div class="btn-row"><button class="mini-btn" ${(state.cash>=favorCost(p) && p.favor<100)?'':'disabled'} data-bribe="${p.id}">[ACT: BRIBE] <span class="cost">${fmt(favorCost(p))}</span></button></div>
+        </div>
+      </div>`).join('')}
+      <div class="data-row">
+        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+          <div class="col-id"><span class="tag-id">[RACE]</span> ${ICONS.badge}</div>
+          <div class="col-name">City Councilman</div>
+          <div class="col-crew">-</div>
+          <div class="col-inc">-</div>
+          <div class="col-heat">-</div>
+          <div class="col-status">${state.electedOffice?'HELD':(state.campaignActive?'RUNNING':(canOffice?'READY':'LOCKED'))}</div>
+        </div>
+        <div class="data-expanded">
           ${state.campaignActive ? `
-            <p><strong>Campaign in progress!</strong></p>
-            <p>Heat generation is doubled. Keep your operations quiet or risk a catastrophic raid.</p>
+            <div class="flavor-note" style="color:var(--text)">[WARNING] Campaign in progress. Heat generation is doubled. Keep operations quiet.</div>
             <div class="control-track"><div class="control-fill" style="width:${Math.round(100 - (state.campaignEndAt - state.playSeconds)/1.8)}%"></div></div>
-            <div class="row"><span>Time left</span><span>${Math.max(0, Math.ceil(state.campaignEndAt - state.playSeconds))}s</span></div>
+            <div class="btn-row"><span class="lock-note">${Math.max(0, Math.ceil(state.campaignEndAt - state.playSeconds))}s REMAINING</span></div>
           ` : `
-            <p>${state.electedOffice ? 'You hold the seat. It comes with its own quiet income now.' : (canOffice ? 'You have the influence to be taken seriously. This is a one-shot swing — win or lose, it costs real money.' : `Needs 500 influence (currently ${Math.round(state.influence)}).`)}</p>
-            <button class="mini-btn" ${canCampaign?'':'disabled'} id="launch-campaign">${state.electedOffice ? '<span>Seat Held</span>' : '<span>Launch Campaign</span>'}</button>
+            <div class="flavor-note">${state.electedOffice ? 'You hold the seat. It comes with its own quiet income now.' : (canOffice ? 'You have the influence to be taken seriously. This is a one-shot swing — win or lose, it costs real money.' : `Needs 500 influence (currently ${Math.round(state.influence)}).`)}</div>
+            <div class="btn-row"><button class="mini-btn" ${canCampaign?'':'disabled'} id="launch-campaign">[ACT: ${state.electedOffice ? 'SEAT HELD' : 'LAUNCH CAMPAIGN'}]</button></div>
           `}
         </div>
       </div>
@@ -1283,31 +1390,55 @@
     const gs = gangStrength(), rs = rivalStrength();
     const canWar = state.playSeconds >= state.nextWarAt;
     wrap.innerHTML = `
-      <div class="street-grid">
-        <div class="street-card">
-          <h4>💪 Gang Strength</h4>
-          <p>Muscle headcount plus every inducted member, weighed against West Side's defense.</p>
-          <div class="row"><span>Yours</span><span>${gs.toFixed(1)}</span></div>
-          <div class="row"><span>Rival (West Side)</span><span>${rs.toFixed(1)}</span></div>
+      <div class="data-row">
+        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+          <div class="col-id"><span class="tag-id">[STAT]</span> ${ICONS.fist}</div>
+          <div class="col-name">Gang Strength</div>
+          <div class="col-crew">${gs.toFixed(1)} vs ${rs.toFixed(1)}</div>
+          <div class="col-inc">-</div>
+          <div class="col-heat">-</div>
+          <div class="col-status">INFO</div>
         </div>
-        ${gangRecruits.map(g=>{
-          const eligible = state.respect>=g.reqRespect;
-          return `<div class="street-card">
-            <h4>${g.inducted?'✅':'🕶️'} ${g.name}</h4>
-            <p>${g.trait} · ${g.bonus}</p>
-            ${g.inducted
-              ? `<button class="mini-btn manager" data-checkin="${g.id}"><span>Check In</span></button>`
-              : eligible
-                ? `<button class="mini-btn" ${state.cash>=g.cost?'':'disabled'} data-initiate="${g.id}"><span>Initiate</span><span class="cost">${fmt(g.cost)}</span></button>`
-                : `<div class="lock-note">Needs ${g.reqRespect} respect (currently ${Math.round(state.respect)})</div>`
-            }
-          </div>`;
-        }).join('')}
-        <div class="street-card">
-          <h4>⚔️ West Side War</h4>
-          <p>Declare on Dice's people directly — a bigger, faster swing on control than pushing alone, backed by your actual Gang Strength.</p>
-          <div class="row"><span>West Side Control</span><span>${Math.round(districts.find(d=>d.id==='westside').control)}%</span></div>
-          <button class="toggle-btn" ${canWar?'':'disabled'} id="declare-war">Declare War</button>
+        <div class="data-expanded">
+          <div class="flavor-note">Muscle headcount plus every inducted member, weighed against West Side's defense.</div>
+        </div>
+      </div>
+      ${gangRecruits.map(g=>{
+        const eligible = state.respect>=g.reqRespect;
+        return `<div class="data-row">
+          <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+            <div class="col-id"><span class="tag-id">[CREW]</span> ${ICONS.person}</div>
+            <div class="col-name">${g.name}</div>
+            <div class="col-crew">-</div>
+            <div class="col-inc">-</div>
+            <div class="col-heat">-</div>
+            <div class="col-status">${g.inducted?'INDUCTED':(eligible?'READY':'LOCKED')}</div>
+          </div>
+          <div class="data-expanded">
+            <div class="flavor-note">${g.trait} · ${g.bonus}</div>
+            <div class="btn-row">
+              ${g.inducted
+                ? `<button class="mini-btn manager" data-checkin="${g.id}">[ACT: CHECK IN]</button>`
+                : eligible
+                  ? `<button class="mini-btn" ${state.cash>=g.cost?'':'disabled'} data-initiate="${g.id}">[ACT: INITIATE] <span class="cost">${fmt(g.cost)}</span></button>`
+                  : `<div class="lock-note">Needs ${g.reqRespect} respect (currently ${Math.round(state.respect)})</div>`
+              }
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+      <div class="data-row">
+        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+          <div class="col-id"><span class="tag-id">[WAR]</span> ${ICONS.fist}</div>
+          <div class="col-name">West Side War</div>
+          <div class="col-crew">${Math.round(districts.find(d=>d.id==='westside').control)}% CTRL</div>
+          <div class="col-inc">-</div>
+          <div class="col-heat">-</div>
+          <div class="col-status">ACTIVE</div>
+        </div>
+        <div class="data-expanded">
+          <div class="flavor-note">Declare on Dice's people directly — a bigger, faster swing on control than pushing alone, backed by your actual Gang Strength.</div>
+          <div class="btn-row"><button class="mini-btn" ${canWar?'':'disabled'} id="declare-war">[ACT: DECLARE WAR]</button></div>
         </div>
       </div>
     `;
@@ -1317,43 +1448,73 @@
   function renderCard(b){
     const unlocked = isUnlocked(b);
     const el = document.createElement('div');
-    el.className = `card ${b.category} ${unlocked ? '' : 'locked'}`;
-    let inner = `<div class="card-top"><div class="card-icon">${b.icon}</div><div><div class="card-name">${b.name}</div><div class="card-flavor">${b.flavor}</div></div></div>`;
-
+    el.className = `data-row ${unlocked ? '' : 'locked'}`;
+    const tag = b.category === 'legit' ? '[CORP]' : '[CRIM]';
+    
+    let main = `<div class="data-main" onclick="if(${unlocked}) this.parentElement.classList.toggle('open')">
+      <div class="col-id"><span class="tag-id">${tag}</span> ${b.icon}</div>
+      <div class="col-name">${b.name}</div>`;
+      
     if(!unlocked){
       let note = b.unlock.type==='cash' ? `Unlocks at ${fmt(b.unlock.value)} cash` : `Unlocks at ${b.unlock.value} respect`;
-      inner += `<div class="lock-note">${note}</div>`;
-    } else if(!b.researched){
+      main += `<div class="col-lvl">-</div><div class="col-inc">-</div><div class="col-crew">-</div><div class="col-status">${note}</div></div>`;
+      el.innerHTML = main;
+      return el;
+    }
+
+    if(!b.researched){
+      main += `<div class="col-lvl">-</div><div class="col-inc">-</div><div class="col-crew">-</div><div class="col-status">UNRESEARCHED</div></div>`;
       const rc = researchCostFor(b);
-      inner += `<div class="lock-note">Not yet researched.</div>
-      <div class="btn-row"><button class="mini-btn" ${state.cash>=rc?'':'disabled'} data-action="research" data-id="${b.id}"><span>Research</span><span class="cost">${fmt(rc)}</span></button></div>`;
+      const exp = `<div class="data-expanded">
+        <div class="flavor-note">${b.flavor}</div>
+        <div class="btn-row"><button class="mini-btn" ${state.cash>=rc?'':'disabled'} data-action="research" data-id="${b.id}">[ACT: RESEARCH] <span class="cost">${fmt(rc)}</span></button></div>
+      </div>`;
+      el.innerHTML = main + exp;
+      return el;
+    }
+
+    const cost = costForLevel(b);
+    const eff = efficiency(b);
+    const need = crewNeeded(b);
+    const crewCost = crewCostFor(b);
+    const crewFull = b.crew >= need+2;
+    const globalFull = crewUsedGlobal() >= crewCapGlobal();
+    const canHireCrew = !b.manager && !crewFull && !globalFull && state.cash >= crewCost;
+    const canFireCrew = !b.manager && b.crew>0;
+
+    let heatStr = b.heatPerLevel ? `<div class="col-heat">+${(b.heatPerLevel*heatMult()).toFixed(2)} HEAT</div>` : `<div class="col-eff ${eff<0.7 && !b.manager?'eff-low':''}">EFF: ${Math.round(eff*100)}%</div>`;
+    
+    main += `
+      <div class="col-lvl">${b.level}</div>
+      <div class="col-inc">${incomeFor(b).toFixed(1)}/s</div>
+      <div class="col-crew">${b.crew}/${need+2}</div>
+      ${heatStr}
+      <div class="col-status">${b.manager ? 'MANAGED' : (b.level===0 ? 'CLOSED' : 'ACTIVE')}</div>
+    </div>`;
+
+    let exp = `<div class="data-expanded">
+      <div class="flavor-note">${b.flavor}</div>
+      <div class="btn-row">
+        <button class="mini-btn" ${state.cash>=cost?'':'disabled'} data-action="expand" data-id="${b.id}">[ACT: ${b.level===0?'OPEN':'EXPAND'}] <span class="cost">${fmt(cost)}</span></button>
+      </div>`;
+
+    if(b.manager){
+      exp += `<div class="lock-note" style="margin-top:6px;">[SYS] Manager ${b.managerName} installed. Operations optimal.</div>`;
     } else {
-      const cost = costForLevel(b);
-      const eff = efficiency(b);
-      const need = crewNeeded(b);
-      const crewCost = crewCostFor(b);
-      const crewFull = b.crew >= need+2;
-      const globalFull = crewUsedGlobal() >= crewCapGlobal();
-      const canHireCrew = !b.manager && !crewFull && !globalFull && state.cash >= crewCost;
-      const canFireCrew = !b.manager && b.crew>0;
-
-      inner += `<div class="card-stats"><span>Lvl <b>${b.level}</b></span><span>${incomeFor(b).toFixed(1)}/s</span><span class="${eff<0.7 && !b.manager?'eff-low':''}">Eff <b>${Math.round(eff*100)}%</b></span>${b.heatPerLevel ? `<span>+${(b.heatPerLevel*heatMult()).toFixed(2)} heat/s</span>` : ''}</div>`;
-      inner += `<div class="btn-row"><button class="mini-btn" ${state.cash>=cost?'':'disabled'} data-action="expand" data-id="${b.id}"><span>${b.level===0?'Open':'Expand'}</span><span class="cost">${fmt(cost)}</span></button></div>`;
-
-      if(b.manager){
-        inner += `<div class="managed-badge">Managed by ${b.managerName} — always at 100%</div>`;
-      } else {
-        inner += `<div class="btn-row">
-          <button class="mini-btn" ${canHireCrew?'':'disabled'} data-action="hirecrew" data-id="${b.id}"><span>+ Crew (${b.crew}/${need+2})</span><span class="cost">${fmt(crewCost)}</span></button>
-          <button class="mini-btn fire" ${canFireCrew?'':'disabled'} data-action="firecrew" data-id="${b.id}"><span>− Crew</span><span class="cost">refund 50%</span></button>
+      exp += `<div class="btn-row" style="margin-top:6px;">
+        <button class="mini-btn" ${canHireCrew?'':'disabled'} data-action="hirecrew" data-id="${b.id}">[ACT: ASGN CREW] <span class="cost">${fmt(crewCost)}</span></button>
+        <button class="mini-btn fire" ${canFireCrew?'':'disabled'} data-action="firecrew" data-id="${b.id}">[ACT: FIRE CREW] <span class="cost">RND 50%</span></button>
+      </div>`;
+      if(b.level >= b.managerLevelReq){
+        const mc = managerCostFor(b);
+        exp += `<div class="btn-row" style="margin-top:6px;">
+          <button class="mini-btn manager" ${state.cash>=mc?'':'disabled'} data-action="hiremanager" data-id="${b.id}">[ACT: HIRE MGR] <span class="cost">${fmt(mc)}</span></button>
         </div>`;
-        if(b.level >= b.managerLevelReq){
-          const mc = managerCostFor(b);
-          inner += `<div class="btn-row"><button class="mini-btn manager" ${state.cash>=mc?'':'disabled'} data-action="hiremanager" data-id="${b.id}"><span>Hire Manager: ${b.managerName.split(',')[0]}</span><span class="cost">${fmt(mc)}</span></button></div>`;
-        }
       }
     }
-    el.innerHTML = inner;
+    exp += `</div>`;
+    
+    el.innerHTML = main + exp;
     return el;
   }
 
@@ -1368,14 +1529,14 @@
       const rc = researchCostFor(b);
       if(state.cash<rc) return;
       state.cash -= rc; b.researched = true;
-      log(`🔬 You research ${b.name}. It's ready to open.`);
+      log(`<span class="tag-id">[RES]</span> You research ${b.name}. It's ready to open.`);
     } else if(action==='expand'){
       const cost = costForLevel(b);
       if(state.cash<cost) return;
       state.cash -= cost; b.level += 1;
       if(b.category==='street') state.respect += 1;
       if(b.level===1) {
-        log(`${b.icon} ${b.name} opens its doors.`);
+        log(`<span class="tag-id">[OP]</span> ${b.name} opens its doors.`);
         triggerMilestone('first_venture');
         if(b.id==='restaurant') triggerMilestone('chaat_house');
         if(b.id==='syndicate_logistics') triggerMilestone('docks');
@@ -1392,7 +1553,7 @@
       const mc = managerCostFor(b);
       if(state.cash<mc) return;
       state.cash -= mc; b.manager = true; b.crew = 0;
-      log(`👔 ${b.managerName} now runs ${b.name} full-time.`);
+      log(`<span class="tag-id">[MGR]</span> ${b.managerName} now runs ${b.name} full-time.`);
     }
     renderAll();
   }
@@ -1406,7 +1567,7 @@
       state.cash -= c.cost; state.ownedCars.push(id);
       if(!state.equippedCar) state.equippedCar = id;
       if(id === 'bentley') triggerMilestone('bentley');
-      log(`🚗 You pick up a ${c.name}.`); updateParkedCarMesh(); refreshPlayerModel(); renderAll();
+      log(`<span class="tag-id">[MOVE]</span> You pick up a ${c.name}.`); updateParkedCarMesh(); refreshPlayerModel(); renderAll();
     } else if(btn.hasAttribute('data-car-equip')){
       state.equippedCar = btn.getAttribute('data-car-equip'); updateParkedCarMesh(); refreshPlayerModel(); renderAll();
     } else if(btn.hasAttribute('data-car-sell')){
@@ -1414,7 +1575,7 @@
       state.ownedCars = state.ownedCars.filter(x=>x!==id);
       if(state.equippedCar===id) state.equippedCar = state.ownedCars[0] || null;
       state.cash += Math.round(c.cost*0.55);
-      log(`🚗 You sell the ${c.name}.`); updateParkedCarMesh(); refreshPlayerModel(); renderAll();
+      log(`<span class="tag-id">[MOVE]</span> You sell the ${c.name}.`); updateParkedCarMesh(); refreshPlayerModel(); renderAll();
     } else if(btn.hasAttribute('data-prop-buy')){
       const id = btn.getAttribute('data-prop-buy'); const p = properties.find(x=>x.id===id);
       if(state.cash<p.cost) return;
@@ -1437,7 +1598,7 @@
     else if(btn.id === 'toggle-bribe'){ state.bribeOn = !state.bribeOn; log(state.bribeOn ? '👮 You put the beat cops on the payroll.' : '👮 You cut the cops off. Heat will build faster.'); renderAll(); }
     else if(btn.id === 'hire-rat'){ if(state.cash<ratsCashCost() || state.respect<ratsRespectCost()) return; state.cash -= ratsCashCost(); state.respect -= ratsRespectCost(); state.ratCount += 1; renderAll(); }
     else if(btn.id === 'buy-territory'){ if(state.respect<territoryCost()) return; state.respect -= territoryCost(); state.territoryTier += 1; log(`🗺️ New blocks fall under your control. Crew capacity is now ${crewCapGlobal()}.`); renderAll(); }
-    else if(btn.id === 'buy-negotiate'){ if(state.respect<negotiateCost()) return; state.respect -= negotiateCost(); state.negotiateTier += 1; log(`🤝 You've got leverage now. Everyone's prices just got friendlier.`); renderAll(); }
+    else if(btn.id === 'buy-negotiate'){ if(state.respect<negotiateCost()) return; state.respect -= negotiateCost(); state.negotiateTier += 1; log(`<span class="tag-id">[NEG]</span> You've got leverage now. Everyone's prices just got friendlier.`); renderAll(); }
   }
 
   function handleBankAction(e){
@@ -1568,47 +1729,106 @@
 
   // LEGAL: ================= RENDER: STREET PANEL =================
   function renderStreetPanel(){
-
     const wrap = document.getElementById('street-panel');
     const mc = muscleCost();
     const rcCash = ratsCashCost(), rcResp = ratsRespectCost();
     wrap.innerHTML = `
-      <div class="street-card">
-        <h4>🥊 Muscle</h4><p>Earns respect passively. Draws heat while active.</p>
-        <div class="row"><span>Count</span><span>${state.muscleCount}</span></div>
-        <div class="row"><span>Generating (Respect)</span><span>+${respectPerSec().toFixed(1)}/s</span></div>
-        <div class="row"><span>Generating (Heat)</span><span style="color:#f44336;">+${(state.muscleCount*0.5).toFixed(1)}/s</span></div>
-        <button class="mini-btn" ${state.cash>=mc?'':'disabled'} id="hire-muscle"><span>Hire Muscle</span><span class="cost">${fmt(mc)}</span></button>
+      <div class="data-row">
+        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+          <div class="col-id"><span class="tag-id">[STRT]</span> ${ICONS.fist}</div>
+          <div class="col-name">Muscle</div>
+          <div class="col-crew">${state.muscleCount}</div>
+          <div class="col-inc" style="color:var(--text);">+${respectPerSec().toFixed(1)} RESP/s</div>
+          <div class="col-heat">+${(state.muscleCount*0.5*heatMult()).toFixed(1)} HEAT/s</div>
+          <div class="col-status">ACTIVE</div>
+        </div>
+        <div class="data-expanded">
+          <div class="flavor-note">Earns respect passively. Draws heat while active.</div>
+          <div class="btn-row"><button class="mini-btn" ${state.cash>=mc?'':'disabled'} id="hire-muscle">[ACT: HIRE] <span class="cost">${fmt(mc)}</span></button></div>
+        </div>
       </div>
-      <div class="street-card">
-        <h4>👮 Bribe the Cops</h4><p>Pay 12% of total income continuously to cut heat generation sharply.</p>
-        <div class="row"><span>Status</span><span>${state.bribeOn?'Paying':'Not paying'}</span></div>
-        <button class="toggle-btn ${state.bribeOn?'active':''}" id="toggle-bribe">${state.bribeOn?'Stop Paying':'Start Paying'}</button>
+      <div class="data-row">
+        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+          <div class="col-id"><span class="tag-id">[BRBE]</span> ${ICONS.badge}</div>
+          <div class="col-name">Bribe the Cops</div>
+          <div class="col-crew">-</div>
+          <div class="col-inc">-</div>
+          <div class="col-heat" style="color:var(--green);">-HEAT</div>
+          <div class="col-status">${state.bribeOn?'PAYING':'IDLE'}</div>
+        </div>
+        <div class="data-expanded">
+          <div class="flavor-note">Pay 12% of total income continuously to cut heat generation sharply.</div>
+          <div class="btn-row"><button class="mini-btn" id="toggle-bribe">[ACT: ${state.bribeOn?'STOP PAYING':'START PAYING'}]</button></div>
+        </div>
       </div>
-      <div class="street-card">
-        <h4>🐀 Informants</h4><p>Cuts the odds of bad news finding you, and softens any raid that does land.</p>
-        <div class="row"><span>Count</span><span>${state.ratCount}</span></div>
-        <button class="mini-btn" ${(state.cash>=rcCash && state.respect>=rcResp)?'':'disabled'} id="hire-rat"><span>Hire Informant</span><span class="cost">${fmt(rcCash)} + ${rcResp} resp</span></button>
+      <div class="data-row">
+        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+          <div class="col-id"><span class="tag-id">[RAT]</span> ${ICONS.person}</div>
+          <div class="col-name">Informants</div>
+          <div class="col-crew">${state.ratCount}</div>
+          <div class="col-inc">-</div>
+          <div class="col-heat" style="color:var(--green);">-RISK</div>
+          <div class="col-status">ACTIVE</div>
+        </div>
+        <div class="data-expanded">
+          <div class="flavor-note">Cuts the odds of bad news finding you, and softens any raid that does land.</div>
+          <div class="btn-row"><button class="mini-btn" ${(state.cash>=rcCash && state.respect>=rcResp)?'':'disabled'} id="hire-rat">[ACT: HIRE] <span class="cost">${fmt(rcCash)} + ${rcResp} resp</span></button></div>
+        </div>
       </div>
-      <div class="street-card respect-spend">
-        <h4>🗺️ Expand Territory</h4><p>Raises your citywide crew capacity, letting every venture run at full strength.</p>
-        <div class="row"><span>Crew Cap</span><span>${crewCapGlobal()}</span></div>
-        <button class="mini-btn" ${state.respect>=territoryCost()?'':'disabled'} id="buy-territory"><span>Expand</span><span class="cost">${territoryCost()} resp</span></button>
+      <div class="data-row">
+        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+          <div class="col-id"><span class="tag-id">[TRTY]</span> ${ICONS.music}</div>
+          <div class="col-name">Expand Territory</div>
+          <div class="col-crew">CAP: ${crewCapGlobal()}</div>
+          <div class="col-inc">-</div>
+          <div class="col-heat">-</div>
+          <div class="col-status">UPGRADE</div>
+        </div>
+        <div class="data-expanded">
+          <div class="flavor-note">Raises your citywide crew capacity, letting every venture run at full strength.</div>
+          <div class="btn-row"><button class="mini-btn" ${state.respect>=territoryCost()?'':'disabled'} id="buy-territory">[ACT: EXPAND] <span class="cost">${territoryCost()} resp</span></button></div>
+        </div>
       </div>
-      <div class="street-card respect-spend">
-        <h4>🤝 Negotiate</h4><p>Permanent discount on every venture, crew, and research cost, citywide.</p>
-        <div class="row"><span>Current discount</span><span>${Math.round((1-discountMult())*100)}%</span></div>
-        <button class="mini-btn" ${state.respect>=negotiateCost()?'':'disabled'} id="buy-negotiate"><span>Negotiate</span><span class="cost">${negotiateCost()} resp</span></button>
+      <div class="data-row">
+        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+          <div class="col-id"><span class="tag-id">[NEGO]</span> ${ICONS.person}</div>
+          <div class="col-name">Negotiate</div>
+          <div class="col-crew">-</div>
+          <div class="col-inc" style="color:var(--green);">DISC: ${Math.round((1-discountMult())*100)}%</div>
+          <div class="col-heat">-</div>
+          <div class="col-status">UPGRADE</div>
+        </div>
+        <div class="data-expanded">
+          <div class="flavor-note">Permanent discount on every venture, crew, and research cost, citywide.</div>
+          <div class="btn-row"><button class="mini-btn" ${state.respect>=negotiateCost()?'':'disabled'} id="buy-negotiate">[ACT: NEGOTIATE] <span class="cost">${negotiateCost()} resp</span></button></div>
+        </div>
       </div>
-      <div class="street-card">
-        <h4>🏭 The Lab</h4><p>Produces product for your dealers to sell. No product in stock, corners just idle.</p>
-        <div class="row"><span>Stock</span><span>${state.product.toFixed(0)} / ${productCap()}</span></div>
-        <div class="row"><span>Level</span><span>${state.productLevel}</span></div>
-        <button class="mini-btn" ${state.cash>=labCost()?'':'disabled'} id="upgrade-lab"><span>Upgrade</span><span class="cost">${fmt(labCost())}</span></button>
+      <div class="data-row">
+        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+          <div class="col-id"><span class="tag-id">[PROD]</span> ${ICONS.box}</div>
+          <div class="col-name">The Lab</div>
+          <div class="col-crew">LVL ${state.productLevel}</div>
+          <div class="col-inc" style="color:var(--text);">${state.product.toFixed(0)}/${productCap()} STOCK</div>
+          <div class="col-heat">-</div>
+          <div class="col-status">ACTIVE</div>
+        </div>
+        <div class="data-expanded">
+          <div class="flavor-note">Produces product for your dealers to sell. No product in stock, corners just idle.</div>
+          <div class="btn-row"><button class="mini-btn" ${state.cash>=labCost()?'':'disabled'} id="upgrade-lab">[ACT: UPGRADE] <span class="cost">${fmt(labCost())}</span></button></div>
+        </div>
       </div>
-      <div class="street-card">
-        <h4>💼 The Trade</h4><p>Dealers are managed from the map — walk up to a corner and press E. This is just the read-out.</p>
-        <div class="row"><span id="trade-summary">${state.product.toFixed(0)}/${productCap()} product · ${activeCorners().length}/${corners.length} corners staffed · ${cornerIncomePerSec().toFixed(1)}/s</span></div>
+      <div class="data-row">
+        <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
+          <div class="col-id"><span class="tag-id">[SALE]</span> ${ICONS.diamond}</div>
+          <div class="col-name">The Trade</div>
+          <div class="col-crew">${activeCorners().length}/${corners.length} CNRS</div>
+          <div class="col-inc">+${cornerIncomePerSec().toFixed(1)}/s</div>
+          <div class="col-heat">-</div>
+          <div class="col-status">ACTIVE</div>
+        </div>
+        <div class="data-expanded">
+          <div class="flavor-note">Dealers are managed from the map — walk up to a corner and press E. This is just the read-out.</div>
+        </div>
       </div>
     `;
   }
@@ -1919,7 +2139,7 @@
     if(!getEquippedCar()) return;
     state.inVehicle = true;
     refreshPlayerModel(); updateParkedCarMesh();
-    log('🚗 You get in.');
+    log('<span class="tag-id">[DRIVE]</span> You get in.');
     renderAll();
   }
   function exitVehicle(){
@@ -1927,7 +2147,7 @@
     state.inVehicle = false;
     state.parkedCarPos[state.currentDistrict] = { x:player.x, y:player.y };
     refreshPlayerModel(); updateParkedCarMesh();
-    log('🚶 You park up and get out.');
+    log('<span class="tag-id">[WALK]</span> You park up and get out.');
     renderAll();
   }
 
@@ -1942,7 +2162,7 @@
     buildDistrictScene(id);
     refreshPlayerModel();
     const d = districts.find(x=>x.id===id);
-    log(`🚗 You drive over to ${d.name}.`);
+    log(`<span class="tag-id">[MOVE]</span> You drive over to ${d.name}.`);
     renderAll();
   }
 
@@ -2033,15 +2253,15 @@
     return m;
   }
   function addSign(parent, text, w, h, y, color){
-    const c = document.createElement('canvas'); c.width=1024; c.height=128;
+    const c = document.createElement('canvas'); c.width=2048; c.height=256;
     const cctx = c.getContext('2d');
-    cctx.fillStyle='rgba(10,11,16,0.85)'; cctx.fillRect(0,0,1024,128);
-    cctx.fillStyle=color; cctx.font='bold 60px sans-serif'; cctx.textAlign='center'; cctx.textBaseline='middle';
-    cctx.fillText(text.slice(0,32), 512, 64);
+    cctx.fillStyle='rgba(10,11,16,0.85)'; cctx.fillRect(0,0,2048,256);
+    cctx.fillStyle=color; cctx.font='bold 120px sans-serif'; cctx.textAlign='center'; cctx.textBaseline='middle';
+    cctx.fillText(text.slice(0,32), 1024, 128);
     const tex = new THREE.CanvasTexture(c);
     tex.minFilter = THREE.LinearMipMapLinearFilter;
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, depthTest:false}));
-    sprite.scale.set(w * 3, h * 1.5, 1); sprite.position.y = y;
+    sprite.scale.set(w * 4, h * 2, 1); sprite.position.y = y;
     parent.add(sprite);
   }
   function buildPedestrianModel(color){
@@ -2110,7 +2330,7 @@
       const palette = { bankHome:'#7a5f1a', garage:'#3e6b78', realty:'#3e6b78', cityhall:'#7a5f1a', heist:'#5a2a33' };
       const mesh = box(58,34,50, palette[m.kind]);
       mesh.position.set(m.x,17,m.y); worldGroup.add(mesh);
-      addSign(mesh, m.name.split(' ').slice(0,2).join(' '), 40, 9, 26, '#ffe6a0');
+      addSign(mesh, m.name, 40, 9, 26, '#ffe6a0');
     });
 
     localBusinesses.filter(function(m){return m.district===districtId;}).forEach(function(m){
@@ -2445,8 +2665,20 @@
     scheduleSave();
   });
   document.getElementById('theme-toggle').addEventListener('change', function(e){
+    if(e.target.checked) document.body.classList.remove('theme-delhi');
     document.body.classList.toggle('light', e.target.checked);
+    document.getElementById('delhi-theme-toggle').checked = false;
     scheduleSave();
+  });
+  document.getElementById('delhi-theme-toggle').addEventListener('change', function(e){
+    if(e.target.checked) document.body.classList.remove('light');
+    document.body.classList.toggle('theme-delhi', e.target.checked);
+    document.getElementById('theme-toggle').checked = false;
+    scheduleSave();
+  });
+  document.getElementById('advanced-config-toggle').addEventListener('click', function(){
+    const adv = document.getElementById('settings-advanced');
+    adv.style.display = adv.style.display === 'block' ? 'none' : 'block';
   });
   const storageAdapter = {
     async set(key, value){
@@ -2485,7 +2717,7 @@
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    log('💾 Game save exported to JSON file.');
+    log('<span class="tag-id">[SYSTEM]</span> Game save exported to JSON file.');
   });
   const importSaveInput = document.getElementById('import-save-input');
   document.getElementById('import-save-btn').addEventListener('click', function(){
@@ -2545,6 +2777,7 @@
       started: state.started, procNpc: state.procNpc, lastTick: state.lastTick,
       quiet: document.body.classList.contains('quiet'),
       light: document.body.classList.contains('light'),
+      delhi: document.body.classList.contains('theme-delhi'),
       businesses: businesses.map(b=> ({ id:b.id, level:b.level, crew:b.crew, manager:b.manager, researched:b.researched })),
       bank: state.bank, nextHeistAt: state.nextHeistAt,
       ownedCars: state.ownedCars, equippedCar: state.equippedCar, ownedProperties: state.ownedProperties,
@@ -2601,6 +2834,8 @@
         (d.businesses||[]).forEach(sb=>{ const b=businesses.find(x=>x.id===sb.id); if(b){ b.level=sb.level; b.crew=sb.crew; b.manager=sb.manager; b.researched=sb.researched; } });
         if(d.quiet){ document.body.classList.add('quiet'); document.getElementById('quiet-toggle').checked = true; }
         if(d.light){ document.body.classList.add('light'); document.getElementById('theme-toggle').checked = true; }
+        if(d.delhi){ document.body.classList.add('theme-delhi'); document.getElementById('delhi-theme-toggle').checked = true; }
+        if(state.seenMilestones.has('chaat_house')) document.getElementById('delhi-theme-row').style.display = 'flex';
         state.bank = d.bank||0; state.nextHeistAt = d.nextHeistAt||0;
         state.ownedCars = d.ownedCars||[]; state.equippedCar = d.equippedCar||null; state.ownedProperties = d.ownedProperties||[];
         (d.localBusinesses||[]).forEach(sb=>{ const b=localBusinesses.find(x=>x.id===sb.id); if(b){ b.extorted=sb.extorted; b.nextRobAt=sb.nextRobAt; } });
@@ -2672,7 +2907,7 @@
           c.busted = true; c.dealer = false; c.bustCooldownAt = state.playSeconds + 180;
           state.product = Math.max(0, state.product - state.product*0.3*whitmoreMult());
           state.cash = Math.max(0, state.cash - 200*c.tier*whitmoreMult());
-          log(`🚔 ${c.name} gets hit. Dealer's gone, some product's gone with it.`);
+          log(`<span class="tag-id">[BUST]</span> ${c.name} gets hit. Dealer's gone, some product's gone with it.`);
         }
       });
     }
@@ -2704,7 +2939,7 @@
         campaignNote = ' The scandal of the raid completely kills your political campaign.';
       }
       
-      log(`🚨 Someone official-looking cleans out ${fmt(loss)} "in fines."${campaignNote}`);
+      log(`<span class="tag-id">[HEAT]</span> Someone official-looking cleans out ${fmt(loss)} "in fines."${campaignNote}`);
       const extortedList = localBusinesses.filter(b=>b.extorted);
       if(extortedList.length && Math.random()<0.4){
         const victim = extortedList[Math.floor(Math.random()*extortedList.length)];
@@ -2763,7 +2998,7 @@
       buildDistrictScene(state.currentDistrict);
       refreshPlayerModel();
       renderAll();
-      log('📓 Picked up right where you left off.');
+      log('<span class="tag-id">[SYSTEM]</span> Picked up right where you left off.');
       return;
     }
     showModal({
@@ -2776,7 +3011,7 @@
       buttons:[{label:'Open the Cart', onClick:function(){
         state.started = true; state.lastTick = Date.now(); lastFrame = Date.now();
         renderAll();
-        log('🌭 Day one. Forty-seven dollars and a folding table on Devlin Street.');
+        log('<span class="tag-id">[SYSTEM]</span> Day one. Forty-seven dollars and a folding table on Devlin Street.');
         scheduleSave();
       }}]
     });

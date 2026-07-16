@@ -17,7 +17,7 @@
     <div class="stat"><div class="stat-label">Cash</div><div class="stat-value" id="hud-cash">$47</div><div class="stat-sub" id="hud-income">+$0/s</div></div>
     <div class="stat"><div class="stat-label">Standing<span class="info-icon" data-tooltip="Your street reputation. Higher Standing unlocks better territory, bigger crews, and lowers prices across the board.">?</span></div><div class="stat-value teal" id="hud-rank">Nobody</div><div class="stat-sub" id="hud-respect">0 respect</div></div>
     <div class="stat"><div class="stat-label">Heat<span class="info-icon" data-tooltip="Police attention. Fills as you run illegal operations. At 100%, you get raided, losing a massive cut of cash and Respect.">?</span></div><div class="heat-bar"><div class="heat-fill" id="heat-fill"></div></div></div>
-    <div class="stat"><div class="stat-label">Crew<span class="info-icon" data-tooltip="Your available manpower. Buy territory to increase maximum crew size. Crew can be assigned to run your legitimate fronts or illicit street operations.">?</span></div><div class="stat-value violet" id="hud-crew" style="font-size:15px;">0 / 6</div></div>
+    <div class="stat" style="border-right:none;"><div class="stat-label">Crew<span class="info-icon" data-tooltip="Your available manpower. Buy territory to increase maximum crew size. Crew can be assigned to run your legitimate fronts or illicit street operations.">?</span></div><div class="stat-value violet" id="hud-crew" style="font-size:15px;">0 / 6</div></div>
     <button class="prestige-btn" id="prestige-btn" style="display:none;"></button>
   </div>
 </div>
@@ -37,22 +37,46 @@
   <div class="tab-panel active" data-tab="empire">
     <div class="section-eyebrow">Legitimate Ventures — Cash &amp; Fronts</div>
     <p class="pillar-desc">Cash buys properties and pays crew. Research a venture once, then expand it level by level. But remember... a business only earns what its crew can actually do.</p>
-    <div class="grid" id="grid-legit"></div>
+    <div class="data-table">
+      <div class="data-header">
+        <div class="col-id">ID</div>
+        <div class="col-name">NAME</div>
+        <div class="col-lvl">LVL</div>
+        <div class="col-inc">INCOME/S</div>
+        <div class="col-crew">CREW</div>
+        <div class="col-eff">EFFICIENCY</div>
+        <div class="col-status">STATUS</div>
+      </div>
+      <div id="grid-legit"></div>
+    </div>
 
     <div class="section-eyebrow" style="margin-top:26px;">The Other Ledger — Underground Operations</div>
     <p class="pillar-desc">The hidden side of your empire. Illegal operations generate massive cash yields, but every level and assigned crew member generates continuous police attention.</p>
-    <div class="grid" id="grid-street"></div>
+    <div class="data-table">
+      <div class="data-header">
+        <div class="col-id">ID</div>
+        <div class="col-name">NAME</div>
+        <div class="col-lvl">LVL</div>
+        <div class="col-inc">INCOME/S</div>
+        <div class="col-crew">CREW</div>
+        <div class="col-heat">HEAT/S</div>
+        <div class="col-status">STATUS</div>
+      </div>
+      <div id="grid-street"></div>
+    </div>
 
-    <div class="section-eyebrow">The Street — Muscle &amp; Respect</div>
+    <div class="section-eyebrow" style="margin-top:26px;">Street Operations — Muscle &amp; Respect</div>
     <p class="pillar-desc">Muscle earns <strong>Respect</strong> but draws <strong>Heat</strong>. Bribes and informants manage <strong>Heat</strong>. That <strong>Respect</strong> can be used to buy territory for your crew and even lower prices.</p>
-    <div class="street-grid" id="street-panel"></div>
+    <div class="data-table">
+      <div id="street-panel"></div>
+    </div>
   </div>
 
   <div class="tab-panel" data-tab="map">
-    <div class="section-eyebrow">The City</div>
+    <div class="section-eyebrow">The Tac-Map</div>
     <p class="pillar-desc"><strong>WASD or arrow keys</strong> to walk or drive, <strong>E</strong> to interact (enter buildings, get in/out of your car). Drag the minimap to look around, click it to drop a GPS waypoint.</p>
     <div class="district-bar-wrap">
-      <div class="district-bar-label">Travel</div>
+      <div class="district-bar-label">Travel Nodes</div>
       <div class="district-bar" id="district-bar"></div>
     </div>
     <div class="map-wrap">
@@ -70,41 +94,50 @@
 
     <div class="section-eyebrow" style="margin-top:26px;">Territory Control</div>
     <p class="pillar-desc">Control drifts toward whoever maintains a presence — muscle, staffed corners, running ventures. Push it directly with <strong>Respect</strong>.</p>
-    <div class="street-grid" id="territory-panel"></div>
+    <div class="data-table">
+      <div id="territory-panel"></div>
+    </div>
   </div>
 
   <div class="tab-panel" data-tab="bank">
-    <div class="section-eyebrow">First Chicago Trust &amp; Yours</div>
-    <p class="pillar-desc">Bank what you don't need on hand. It's slow money, but it's safe money — <strong>Heat</strong> can't touch it.</p>
+    <div class="section-eyebrow">Finance Operations</div>
+    <p class="pillar-desc">Manage bank funds safely away from raids, or risk it all in the Rentport City National Exchange.</p>
     <div id="bank-panel"></div>
   </div>
+  
   <div class="tab-panel" data-tab="politics">
-    <div class="section-eyebrow">City Hall</div>
+    <div class="section-eyebrow">City Hall Influence</div>
     <p class="pillar-desc">Influence opens doors. Favor with specific people opens specific doors. Get enough of both, and you can ask for a seat instead of a favor.</p>
-    <div id="politics-panel"></div>
+    <div class="data-table">
+      <div id="politics-panel"></div>
+    </div>
   </div>
+  
   <div class="tab-panel" data-tab="gang">
-    <div class="section-eyebrow">Your People</div>
+    <div class="section-eyebrow">Crew Manifest</div>
     <p class="pillar-desc">A crew isn't a headcount, it's specific people who owe you something. Initiate them from here, meet them on the map.</p>
-    <div id="gang-panel"></div>
+    <div class="data-table">
+      <div id="gang-panel"></div>
+    </div>
   </div>
+  
   <div class="tab-panel" data-tab="assets">
-    <div class="section-eyebrow">Garage</div>
+    <div class="section-eyebrow">Garage Inventory</div>
     <p class="pillar-desc">A better ride moves you faster around the city and makes every job a little easier to walk away from.</p>
-    <div class="street-grid" id="assets-cars"></div>
+    <div class="data-table">
+      <div id="assets-cars"></div>
+    </div>
 
-    <div class="section-eyebrow" style="margin-top:26px;">Property</div>
+    <div class="section-eyebrow" style="margin-top:26px;">Real Estate Portfolio</div>
     <p class="pillar-desc">Buildings you just own. No crew, no research, no expansion. Just a check every second.</p>
-    <div class="street-grid" id="assets-buildings"></div>
+    <div class="data-table">
+      <div id="assets-buildings"></div>
+    </div>
   </div>
 
   <div class="tab-panel" data-tab="settings">
-    <div class="section-eyebrow">Settings</div>
+    <div class="section-eyebrow">Configuration</div>
     <div class="settings-block">
-      <div class="settings-row">
-        <div><div class="label">Light mode</div><div class="sub">Switch from the dark noir theme to a lighter palette</div></div>
-        <label class="switch"><input type="checkbox" id="theme-toggle"><span class="slider-track"></span></label>
-      </div>
       <div class="settings-row">
         <div><div class="label">Quiet mode</div><div class="sub">Hide flavor text, keep just the numbers</div></div>
         <label class="switch"><input type="checkbox" id="quiet-toggle"><span class="slider-track"></span></label>
@@ -119,6 +152,19 @@
         <button class="settings-btn" id="import-save-btn">Upload Save</button>
         <input type="file" id="import-save-input" accept=".json" style="display:none;">
         <button class="settings-btn danger" id="reset-btn">Reset Progress</button>
+      </div>
+      <div class="settings-row">
+        <button class="settings-btn" id="advanced-config-toggle">[+] Advanced Config</button>
+      </div>
+      <div class="settings-advanced" id="settings-advanced">
+        <div class="settings-row">
+          <div><div class="label">Light mode</div><div class="sub">Switch to a blinding white corporate ledger palette</div></div>
+          <label class="switch"><input type="checkbox" id="theme-toggle"><span class="slider-track"></span></label>
+        </div>
+        <div class="settings-row" id="delhi-theme-row" style="display:none;">
+          <div><div class="label" style="color:var(--gold);">The Delhi Special</div><div class="sub">Something feels different about Windhaven tonight...</div></div>
+          <label class="switch"><input type="checkbox" id="delhi-theme-toggle"><span class="slider-track"></span></label>
+        </div>
       </div>
     </div>
   </div>
@@ -142,6 +188,13 @@
 
 <div id="global-tooltip"></div>
 
+<script>
+  document.getElementById('advanced-config-toggle').addEventListener('click', (e) => {
+    const p = document.getElementById('settings-advanced');
+    p.classList.toggle('open');
+    e.target.textContent = p.classList.contains('open') ? '[-] Advanced Config' : '[+] Advanced Config';
+  });
+</script>
 <script type="module" src="./src/main.ts"></script>
 </body>
 </html>
