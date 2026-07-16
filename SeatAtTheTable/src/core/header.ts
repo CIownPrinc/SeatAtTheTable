@@ -1988,36 +1988,79 @@
 
   // LEGAL: ================= MAP: 3D WORLD + MINIMAP + INTERIORS =================
   const VIEW_W = 760, VIEW_H = 440;
-  const WORLD_W = 1500, WORLD_H = 950;
-  const player = { x:700, y:460, facing:Math.PI/2 };
+  // LEGAL: Unified city — 3 districts side by side, canals between them
+  const WORLD_W = 5500, WORLD_H = 1200;
+  const DISTRICT_OFFSETS = { devlin:0, westside:2000, hub:4000 };
+  const player = { x:700, y:600, facing:Math.PI/2 };
   const keys = {};
   let lastFrame2 = Date.now();
 
+  // LEGAL: Apply district offsets to all relative coordinates dynamically
+  localBusinesses.forEach(b => {
+    if (b.x < 1500 && DISTRICT_OFFSETS[b.district]) {
+      b.x += DISTRICT_OFFSETS[b.district];
+    }
+  });
+  serviceBuildings.forEach(b => {
+    if (b.x < 1500 && DISTRICT_OFFSETS[b.district]) {
+      b.x += DISTRICT_OFFSETS[b.district];
+    }
+  });
+  corners.forEach(b => {
+    if (b.x < 1500 && DISTRICT_OFFSETS[b.district]) {
+      b.x += DISTRICT_OFFSETS[b.district];
+    }
+  });
+  gangRecruits.forEach(b => {
+    if (b.x < 1500 && DISTRICT_OFFSETS[b.district]) {
+      b.x += DISTRICT_OFFSETS[b.district];
+    }
+  });
+
+  // LEGAL: Businesses spread proportionally across all 3 districts
+  const bizDistricts = ['devlin','devlin','devlin','devlin','devlin','westside','westside','westside','westside','hub','hub','hub'];
   const mapBuildings = businesses.map((b,i)=>{
-    const row = i<5 ? 0 : 1;
-    const col = i % 5;
-    const rowX = [150,420,690,960,1230];
-    return { id:b.id, biz:b, district:'devlin', x: rowX[col], y: row===0 ? (200+col%2*40) : (650+col%2*40) };
+    const dist = bizDistricts[i] || 'hub';
+    const col = i % 4;
+    const row = Math.floor(i / 4);
+    const relX = [180, 480, 780, 1100][col];
+    const relY = row===0 ? 260 : (row===1 ? 620 : 960);
+    return { id:b.id, biz:b, district:dist, x: relX + DISTRICT_OFFSETS[dist], y: relY };
   });
   const mapNpcs = [
-    { id:'sanjay', name:'Sanjay', district:'devlin', x:1300, y:820, type:'named' },
-    { id:'stranger', name:'Stranger', district:'devlin', x:150, y:820, type:'procedural' },
-    { id:'dice', name:'Dice', district:'westside', x:750, y:300, type:'named' },
-    { id:'reyes', name:'Councilman Reyes', district:'hub', x:600, y:600, type:'named' },
+    { id:'sanjay', name:'Sanjay', district:'devlin', x:1300, y:960, type:'named' },
+    { id:'stranger', name:'Stranger', district:'devlin', x:150, y:960, type:'procedural' },
+    { id:'dice', name:'Dice', district:'westside', x:2750, y:400, type:'named' },
+    { id:'reyes', name:'Councilman Reyes', district:'hub', x:4600, y:720, type:'named' },
   ];
-  const spawnPoints = { devlin:{x:700,y:460}, westside:{x:700,y:460}, hub:{x:700,y:460} };
+  const spawnPoints = { devlin:{x:700,y:600}, westside:{x:2700,y:600}, hub:{x:4700,y:600} };
   const districtThemes = {
     devlin: { ground:'#232a26', parkLabel:'INDIAN BOUNDARY PARK', hasRail:false, hasRiver:false },
     westside: { ground:'#2a2222', parkLabel:'CICERO GREEN', hasRail:true, hasRiver:false },
     hub: { ground:'#211f16', parkLabel:'MILLENNIUM PARK', hasRail:false, hasRiver:true },
   };
 
-  function inDistrict(m){ return m.district === state.currentDistrict; }
+  // LEGAL: Returns which district the player is in based on X position
+  function playerDistrict(){
+    if(player.x < 1500) return 'devlin';
+    if(player.x < 2000) return null;
+    if(player.x < 3500) return 'westside';
+    if(player.x < 4000) return null;
+    return 'hub';
+  }
+  // LEGAL: Unified world — all markers always in scene
+  function inDistrict(){ return true; }
 
-  // LEGAL: ---- road network: same rectangles drive BOTH the visual roads and vehicle collision ----
+  // LEGAL: ---- road network: full unified grid spanning all 5500 units ----
   const roadNetwork = {
-    vertical: [{x:270,w:74},{x:700,w:74},{x:1130,w:74}],
-    horizontal: [{y:220,w:74},{y:460,w:74},{y:730,w:74}],
+    // LEGAL: Vertical arteries per district
+    vertical: [
+      {x:270,w:74},{x:700,w:74},{x:1130,w:74},
+      {x:2270,w:74},{x:2700,w:74},{x:3130,w:74},
+      {x:4270,w:74},{x:4700,w:74},{x:5130,w:74}
+    ],
+    // LEGAL: Horizontal roads span full width — they form bridge decks over canals
+    horizontal: [{y:300,w:74},{y:600,w:74},{y:900,w:74}],
   };
   function isOnRoad(x,y){
     return roadNetwork.vertical.some(r=> Math.abs(x-r.x)<=r.w/2) || roadNetwork.horizontal.some(r=> Math.abs(y-r.y)<=r.w/2);
@@ -2072,16 +2115,22 @@
     if(!fillerCache[districtId]) fillerCache[districtId] = generateFillerLayout(districtId);
     return fillerCache[districtId];
   }
-  function buildingSolids(districtId){
+    function buildAllSolids(){
     const list = [];
-    mapBuildings.filter(m=>m.district===districtId).forEach(m=>{
+    mapBuildings.forEach(m=>{
       const w = m.biz.baseCost>=50000?66:(m.biz.baseCost<1000?46:56);
       list.push({x:m.x,y:m.y,hw:w/2+6,hd:(w*0.85)/2+6});
     });
-    serviceBuildings.filter(m=>m.district===districtId).forEach(m=> list.push({x:m.x,y:m.y,hw:35,hd:31}));
-    localBusinesses.filter(m=>m.district===districtId).forEach(m=> list.push({x:m.x,y:m.y,hw:27,hd:24}));
-    fillerFor(districtId).filter(f=>f.kind==='building').forEach(f=> list.push({x:f.x,y:f.y,hw:f.w/2+4,hd:f.d/2+4}));
+    serviceBuildings.forEach(m=> list.push({x:m.x,y:m.y,hw:35,hd:31}));
+    localBusinesses.forEach(m=> list.push({x:m.x,y:m.y,hw:27,hd:24}));
+    ['devlin','westside','hub'].forEach(function(distId){
+      const off = DISTRICT_OFFSETS[distId];
+      fillerFor(distId).filter(f=>f.kind==='building').forEach(f=> list.push({x:f.x+off,y:f.y,hw:f.w/2+4,hd:f.d/2+4}));
+    });
     return list;
+  }
+  function buildingSolids(districtId){
+    return buildAllSolids();
   }
   function collidesBuilding(x,y,solids){ return solids.some(s=> Math.abs(x-s.x)<s.hw && Math.abs(y-s.y)<s.hd); }
   let currentSolids = [];
@@ -2154,14 +2203,16 @@
     if(state.currentDistrict === id) return;
     state.currentInterior = null;
     state.currentDistrict = id;
-    const spawn = spawnPoints[id] || {x:700,y:460};
+    const spawn = spawnPoints[id] || {x:700,y:600};
     player.x = spawn.x; player.y = spawn.y; player.facing = Math.PI/2;
     Object.keys(keys).forEach(k=> keys[k]=false);
     lastFrame2 = Date.now();
-    buildDistrictScene(id);
+    // LEGAL: City is built once — travelTo just repositions the player
+    updateParkedCarMesh();
+    rebuildWaypointBeacon();
     refreshPlayerModel();
     const d = districts.find(x=>x.id===id);
-    log(`<i class="ph-duotone ph-car"></i> You drive over to ${d.name}.`);
+    log(`<i class="ph-duotone ph-car"></i> You head over to ${d.name}.`);
     renderAll();
   }
 
@@ -2173,6 +2224,26 @@
   window.addEventListener('keyup', function(e){ keys[e.key.toLowerCase()] = false; });
   window.addEventListener('blur', function(){ Object.keys(keys).forEach(k=> keys[k]=false); });
   document.getElementById('btn-interact').addEventListener('click', tryInteract);
+
+  document.getElementById('fullscreen-btn').addEventListener('click', function(){
+    const container = document.getElementById('scene3d-container');
+    const isFs = container.classList.toggle('fullscreen');
+    const btn = document.getElementById('fullscreen-btn');
+    btn.innerHTML = isFs ? '<i class="ph-duotone ph-arrows-in"></i>' : '<i class="ph-duotone ph-arrows-out"></i>';
+    if(renderer){
+      const w = isFs ? window.innerWidth : VIEW_W;
+      const h = isFs ? window.innerHeight : VIEW_H;
+      renderer.setSize(w, h);
+      if(camera3d){ camera3d.aspect = w/h; camera3d.updateProjectionMatrix(); }
+    }
+  });
+  window.addEventListener('resize', function(){
+    const container = document.getElementById('scene3d-container');
+    if(container.classList.contains('fullscreen') && renderer){
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      if(camera3d){ camera3d.aspect = window.innerWidth/window.innerHeight; camera3d.updateProjectionMatrix(); }
+    }
+  });
 
   document.getElementById('fullscreen-btn').addEventListener('click', function(){
     const container = document.getElementById('scene3d-container');
@@ -2249,6 +2320,15 @@
   }
   function tryMove(nx, ny, solids){
     if(nx<16||nx>WORLD_W-16||ny<16||ny>WORLD_H-16) return false;
+    // LEGAL: Block movement in canals except on bridge horizontal roads
+    if(!state.inVehicle){
+      const inCanal1 = nx > 1530 && nx < 1970;
+      const inCanal2 = nx > 3530 && nx < 3970;
+      if(inCanal1 || inCanal2){
+        const onBridge = roadNetwork.horizontal.some(r => Math.abs(ny - r.y) <= r.w/2);
+        if(!onBridge) return false;
+      }
+    }
     if(collidesBuilding(nx,ny,solids)) return false;
     if(state.inVehicle && !isOnRoad(nx,ny)) return false;
     return true;
@@ -2295,19 +2375,47 @@
   }
   function buildCarModel(car){
     const g = new THREE.Group();
-    const body = box(car.len, 14, car.wid, car.color);
-    body.position.y = 9; g.add(body);
-    const cabin = box(car.len*0.45, 10, car.wid*0.85, '#1c1e24');
-    cabin.position.set(car.len*0.05, 18, 0); g.add(cabin);
+    const bodyH = car.id==='escalade'?18:(car.id==='bentley'?16:14);
+    const body = box(car.len, bodyH, car.wid, car.color);
+    body.position.y = bodyH/2+1; g.add(body);
+    const cabinW = car.id==='escalade'?car.len*0.55:car.len*0.42;
+    const cabin = box(cabinW, 10, car.wid*0.82, '#1c1e24');
+    cabin.position.set(car.len*0.04, bodyH+6, 0); g.add(cabin);
     const wheelMat = new THREE.MeshStandardMaterial({color:'#151515'});
-    [[car.len*0.32,car.wid/2],[car.len*0.32,-car.wid/2],[-car.len*0.32,car.wid/2],[-car.len*0.32,-car.wid/2]].forEach(function(pair){
+    const rimColor = car.id==='bentley'?'#c9a227':'#888888';
+    const wheelR = (car.id==='escalade'||car.id==='bentley')?7:5;
+    [[car.len*0.34,car.wid/2+1],[car.len*0.34,-car.wid/2-1],[-car.len*0.34,car.wid/2+1],[-car.len*0.34,-car.wid/2-1]].forEach(function(pair){
       const wx=pair[0], wz=pair[1];
-      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(5,5,4,10), wheelMat);
-      wheel.rotation.x = Math.PI/2; wheel.position.set(wx,5,wz); wheel.castShadow=true; g.add(wheel);
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(wheelR,wheelR,5,12), wheelMat);
+      wheel.rotation.x=Math.PI/2; wheel.position.set(wx,wheelR,wz); wheel.castShadow=true; g.add(wheel);
+      const rim = new THREE.Mesh(new THREE.CylinderGeometry(wheelR*0.5,wheelR*0.5,5.2,8), new THREE.MeshStandardMaterial({color:rimColor, metalness:0.9, roughness:0.1}));
+      rim.rotation.x=Math.PI/2; rim.position.set(wx,wheelR,wz); g.add(rim);
     });
-    const beam = new THREE.Mesh(new THREE.ConeGeometry(9,40,10,1,true), new THREE.MeshBasicMaterial({color:'#fff6d8', transparent:true, opacity:0.16, side:THREE.DoubleSide}));
-    beam.rotation.x = -Math.PI/2; beam.position.set(car.len/2+18, 9, 0);
-    g.add(beam);
+    const headlightMat = new THREE.MeshStandardMaterial({color:'#fffbcc', emissive:'#fffbcc', emissiveIntensity:0.8});
+    [-car.wid*0.3,car.wid*0.3].forEach(function(wz){
+      const hl = new THREE.Mesh(new THREE.PlaneGeometry(6,4), headlightMat);
+      hl.position.set(car.len/2+0.1, bodyH/2+1, wz); hl.rotation.y=Math.PI/2; g.add(hl);
+    });
+    const taillightMat = new THREE.MeshStandardMaterial({color:'#cc2200', emissive:'#cc2200', emissiveIntensity:0.6});
+    [-car.wid*0.3,car.wid*0.3].forEach(function(wz){
+      const tl = new THREE.Mesh(new THREE.PlaneGeometry(5,3), taillightMat);
+      tl.position.set(-car.len/2-0.1, bodyH/2+1, wz); tl.rotation.y=-Math.PI/2; g.add(tl);
+    });
+    if(car.id==='bentley'){
+      const grille = new THREE.Mesh(new THREE.BoxGeometry(4,10,car.wid*0.6), new THREE.MeshStandardMaterial({color:'#c9a227', metalness:1, roughness:0.1}));
+      grille.position.set(car.len/2+2, bodyH/2+1, 0); g.add(grille);
+    }
+    if(car.id==='impala'){
+      const spoiler = new THREE.Mesh(new THREE.BoxGeometry(5,5,car.wid), new THREE.MeshStandardMaterial({color:'#282c38', roughness:0.6}));
+      spoiler.position.set(-car.len/2+2, bodyH+8, 0); g.add(spoiler);
+    }
+    if(car.id==='escalade'){
+      const rack = new THREE.Mesh(new THREE.BoxGeometry(car.len*0.7,2,car.wid*0.8), new THREE.MeshStandardMaterial({color:'#555555', metalness:0.7}));
+      rack.position.set(0, bodyH+11, 0); g.add(rack);
+    }
+    const beam = new THREE.Mesh(new THREE.ConeGeometry(9,40,10,1,true), new THREE.MeshBasicMaterial({color:'#fff6d8', transparent:true, opacity:0.12, side:THREE.DoubleSide}));
+    beam.rotation.x=-Math.PI/2; beam.position.set(car.len/2+18, bodyH/2+1, 0); g.add(beam);
+    g.castShadow=true;
     return g;
   }
   function buildingColorFor(b){
@@ -2653,17 +2761,44 @@
       worldGroup.add(parkedCarMesh);
     }
   }
+  function computeRoadGuide(px, py, wx, wy){
+    // LEGAL: Simple road-snapped guide: approach nearest horizontal road, traverse to WP X, then descend to WP
+    const nearestRoad = roadNetwork.horizontal.reduce(function(best,r){ return Math.abs(r.y-py)<Math.abs(best.y-py)?r:best; }, roadNetwork.horizontal[0]);
+    const ry = nearestRoad.y;
+    const step = 55;
+    const dots = [];
+    const signY = ry>py?1:-1;
+    for(let y=py+signY*step; signY*(y-ry)<0; y+=signY*step) dots.push({x:px,y});
+    dots.push({x:px,y:ry});
+    const signX = wx>px?1:-1;
+    for(let x=px+signX*step; signX*(x-wx)<0; x+=signX*step) dots.push({x,y:ry});
+    dots.push({x:wx,y:ry});
+    const signY2 = wy>ry?1:-1;
+    for(let y=ry+signY2*step; signY2*(y-wy)<0; y+=signY2*step) dots.push({x:wx,y});
+    return dots.slice(0,40);
+  }
   function rebuildWaypointBeacon(){
     if(waypointBeacon){ worldGroup.remove(waypointBeacon); waypointBeacon.traverse(disposeObj); waypointBeacon=null; }
     const wp = state.waypoints[state.currentDistrict];
     if(!wp) return;
     const g = new THREE.Group();
-    const beam = new THREE.Mesh(new THREE.CylinderGeometry(2,2,140,8), new THREE.MeshStandardMaterial({color:'#d4a017', emissive:'#d4a017', emissiveIntensity:0.6, transparent:true, opacity:0.5}));
-    beam.position.y = 70; g.add(beam);
-    const cone = new THREE.Mesh(new THREE.ConeGeometry(10,18,8), new THREE.MeshStandardMaterial({color:'#d4a017', emissive:'#d4a017', emissiveIntensity:0.8}));
-    cone.position.y = 148; g.add(cone);
+    // LEGAL: Flat cross marker on the ground — no floating tower
+    const markerMat = new THREE.MeshStandardMaterial({color:'#d4a017', emissive:'#d4a017', emissiveIntensity:0.7});
+    const arm1 = new THREE.Mesh(new THREE.PlaneGeometry(30,6), markerMat);
+    arm1.rotation.x=-Math.PI/2; arm1.position.set(0,0.2,0); g.add(arm1);
+    const arm2 = new THREE.Mesh(new THREE.PlaneGeometry(6,30), markerMat);
+    arm2.rotation.x=-Math.PI/2; arm2.position.set(0,0.2,0); g.add(arm2);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(18,22,20), new THREE.MeshBasicMaterial({color:'#d4a017', transparent:true, opacity:0.38, side:THREE.DoubleSide}));
+    ring.rotation.x=-Math.PI/2; ring.position.y=0.3; g.add(ring);
+    // LEGAL: Flat road-guide dots from player position to waypoint
+    const dots = computeRoadGuide(player.x, player.y, wp.x, wp.y);
+    const dotMat = new THREE.MeshBasicMaterial({color:'#d4a017'});
+    dots.forEach(function(pt){
+      const dot = new THREE.Mesh(new THREE.CircleGeometry(4,8), dotMat);
+      dot.rotation.x=-Math.PI/2; dot.position.set(pt.x-wp.x,0.15,pt.y-wp.y); g.add(dot);
+    });
     g.position.set(wp.x,0,wp.y);
-    worldGroup.add(g); waypointBeacon = g;
+    worldGroup.add(g); waypointBeacon=g;
   }
 
   function initScene(){
@@ -2692,7 +2827,7 @@
     worldGroup = new THREE.Group(); scene.add(worldGroup);
     playerGroup = new THREE.Group(); scene.add(playerGroup);
 
-    buildDistrictScene(state.currentDistrict);
+    buildCityScene();
     refreshPlayerModel();
   }
   initScene();
@@ -2837,6 +2972,14 @@
         if(tryMove(tryX,tryY,currentSolids)){ player.x=tryX; player.y=tryY; }
         else if(tryMove(tryX,player.y,currentSolids)){ player.x=tryX; }
         else if(tryMove(player.x,tryY,currentSolids)){ player.y=tryY; }
+      }
+    }
+    // LEGAL: Seamless district detection — update HUD when crossing a bridge
+    if(!state.currentInterior){
+      const detectedDist = playerDistrict();
+      if(detectedDist && detectedDist !== state.currentDistrict){
+        state.currentDistrict = detectedDist;
+        renderAll();
       }
     }
 
