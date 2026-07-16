@@ -1,26 +1,26 @@
 // LEGAL: ================= TACTICAL WIREFRAME ICONS =================
   const ICONS = {
-    cart: '<svg class="icon-svg" viewBox="0 0 16 16"><rect x="2" y="8" width="12" height="6"/><circle cx="4" cy="14" r="1"/><circle cx="12" cy="14" r="1"/><path d="M2 8L4 4H12L14 8"/></svg>',
-    store: '<svg class="icon-svg" viewBox="0 0 16 16"><rect x="2" y="4" width="12" height="12"/><rect x="6" y="8" width="4" height="8"/><path d="M2 4L8 1L14 4"/></svg>',
-    laundry: '<svg class="icon-svg" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12"/><circle cx="8" cy="9" r="3"/><circle cx="8" cy="9" r="1"/></svg>',
-    cards: '<svg class="icon-svg" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12"/><path d="M6 6L8 4L10 6L8 8Z"/></svg>',
-    garage: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M2 14V6L8 2L14 6V14"/><rect x="5" y="8" width="6" height="6"/></svg>',
-    cab: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M3 10L4 6H12L13 10"/><rect x="2" y="10" width="12" height="3"/><circle cx="4" cy="13" r="1"/><circle cx="12" cy="13" r="1"/><path d="M6 6V4H10V6"/></svg>',
-    car: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M2 11L4 6H12L14 11"/><rect x="1" y="11" width="14" height="3"/><circle cx="4" cy="14" r="1"/><circle cx="12" cy="14" r="1"/></svg>',
-    food: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M2 10C2 6 6 4 8 4C10 4 14 6 14 10"/><rect x="1" y="10" width="14" height="2"/></svg>',
-    lounge: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M4 14L6 8M12 14L10 8"/><path d="M4 4L8 8L12 4"/><path d="M4 4C6 2 10 2 12 4"/></svg>',
-    phone: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M4 4V12H12V4H4ZM6 6H10M6 8H10M6 10H8"/></svg>',
-    bld1: '<svg class="icon-svg" viewBox="0 0 16 16"><rect x="2" y="6" width="12" height="10"/><rect x="6" y="12" width="4" height="4"/><path d="M4 9H5M11 9H12"/></svg>',
-    bld2: '<svg class="icon-svg" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="14"/><rect x="7" y="12" width="2" height="4"/><path d="M5 5H6M9 5H10M5 8H6M9 8H10"/></svg>',
-    bld3: '<svg class="icon-svg" viewBox="0 0 16 16"><rect x="4" y="0" width="8" height="16"/><rect x="7" y="14" width="2" height="2"/><path d="M6 3H7M6 6H7M6 9H7M6 12H7"/></svg>',
-    box: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M8 2L14 5V11L8 14L2 11V5L8 2Z"/><path d="M2 5L8 8L14 5M8 8V14"/></svg>',
-    fist: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M4 7V12C4 13 5 14 6 14H10C11 14 12 13 12 12V6C12 5 11 4 10 4H9V3C9 2 8 2 7 3V4H6C5 4 4 5 4 7Z"/></svg>',
-    badge: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M8 1L12 3V8C12 11 8 15 8 15C8 15 4 11 4 8V3L8 1Z"/></svg>',
-    bank: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M2 6L8 2L14 6"/><rect x="4" y="6" width="2" height="6"/><rect x="10" y="6" width="2" height="6"/><rect x="2" y="12" width="12" height="2"/></svg>',
-    gov: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M1 5L8 1L15 5"/><rect x="3" y="5" width="2" height="8"/><rect x="7" y="5" width="2" height="8"/><rect x="11" y="5" width="2" height="8"/><rect x="1" y="13" width="14" height="2"/></svg>',
-    person: '<svg class="icon-svg" viewBox="0 0 16 16"><circle cx="8" cy="5" r="3"/><path d="M3 14C3 11 5 9 8 9C11 9 13 11 13 14"/></svg>',
-    diamond: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M3 6L8 2L13 6L8 14Z"/></svg>',
-    music: '<svg class="icon-svg" viewBox="0 0 16 16"><path d="M5 12C5 13.1 4.1 14 3 14C1.9 14 1 13.1 1 12C1 10.9 1.9 10 3 10V2L13 0V8C13 9.1 12.1 10 11 10C9.9 10 9 9.1 9 8C9 6.9 9.9 6 11 6V2L5 3.2V12Z"/></svg>'
+    cart: '<i class="ph-duotone ph-shopping-cart"></i>',
+    store: '<i class="ph-duotone ph-storefront"></i>',
+    laundry: '<i class="ph-duotone ph-t-shirt"></i>',
+    cards: '<i class="ph-duotone ph-spades"></i>',
+    garage: '<i class="ph-duotone ph-garage"></i>',
+    cab: '<i class="ph-duotone ph-taxi"></i>',
+    car: '<i class="ph-duotone ph-car-profile"></i>',
+    food: '<i class="ph-duotone ph-hamburger"></i>',
+    lounge: '<i class="ph-duotone ph-martini"></i>',
+    phone: '<i class="ph-duotone ph-phone"></i>',
+    bld1: '<i class="ph-duotone ph-buildings"></i>',
+    bld2: '<i class="ph-duotone ph-buildings"></i>',
+    bld3: '<i class="ph-duotone ph-buildings"></i>',
+    box: '<i class="ph-duotone ph-package"></i>',
+    fist: '<i class="ph-duotone ph-hand-fist"></i>',
+    badge: '<i class="ph-duotone ph-shield-star"></i>',
+    bank: '<i class="ph-duotone ph-bank"></i>',
+    gov: '<i class="ph-duotone ph-courthouse"></i>',
+    person: '<i class="ph-duotone ph-user"></i>',
+    diamond: '<i class="ph-duotone ph-diamond"></i>',
+    music: '<i class="ph-duotone ph-music-note"></i>'
   };
 
   // LEGAL: ================= VENTURE DATA =================
@@ -70,36 +70,36 @@
 
   const eventPool = [
     { id:'rival', title:'A RIVAL CREW EYES YOUR CORNER', neg:true, body:"<p class='flavor'>Word is a West Side crew thinks your runners are working streets that belong to them.</p>", choices:[
-      {label:'Pay them off', sub:'-8% cash', run:function(){ state.cash *= 0.92; log('<span class="tag-id">[BRIBE]</span> You paid the rival crew to walk away quietly.'); } },
-      {label:'Stand your ground', sub:'+Respect, +Heat', run:function(){ state.respect += 15; state.heat = Math.min(100, state.heat+18); log('<span class="tag-id">[RESPECT]</span> You held the corner. Word travels — Respect earned, Heat too.'); } },
+      {label:'Pay them off', sub:'-8% cash', run:function(){ state.cash *= 0.92; log('<i class="ph-duotone ph-envelope-simple"></i> You paid the rival crew to walk away quietly.'); } },
+      {label:'Stand your ground', sub:'+Respect, +Heat', run:function(){ state.respect += 15; state.heat = Math.min(100, state.heat+18); log('<i class="ph-duotone ph-star"></i> You held the corner. Word travels — Respect earned, Heat too.'); } },
     ]},
     { id:'inspector', title:'A HEALTH INSPECTOR VISITS', neg:true, body:"<p class='flavor'>He's got a clipboard and a look that says he already knows the price of looking away.</p>", choices:[
-      {label:'Slip an envelope', sub:'-$400 flat', run:function(){ state.cash = Math.max(0, state.cash-400); log('<span class="tag-id">[BRIBE]</span> An envelope changes hands. The clipboard closes.'); } },
-      {label:'Do it by the book', sub:'legit income -15% for 45s', run:function(){ applyTempMult('legit', 0.85, 45); log('<span class="tag-id">[LAW]</span> You do it clean. Business slows while the paperwork clears.'); } },
+      {label:'Slip an envelope', sub:'-$400 flat', run:function(){ state.cash = Math.max(0, state.cash-400); log('<i class="ph-duotone ph-envelope-simple"></i> An envelope changes hands. The clipboard closes.'); } },
+      {label:'Do it by the book', sub:'legit income -15% for 45s', run:function(){ applyTempMult('legit', 0.85, 45); log('<i class="ph-duotone ph-scales"></i> You do it clean. Business slows while the paperwork clears.'); } },
     ]},
     { id:'tribune', title:'THE TRIBUNE WANTS AN INTERVIEW', neg:false, body:"<p class='flavor'>A reporter's been asking around Devlin Street about the man building an empire out of a folding cart.</p>", choices:[
-      {label:'Give the interview', sub:'legit income +25% for 60s', run:function(){ applyTempMult('legit', 1.25, 60); log('<span class="tag-id">[PRESS]</span> The story runs. Foot traffic spikes across every storefront.'); } },
-      {label:'Stay quiet', sub:'+Respect', run:function(){ state.respect += 10; log('<span class="tag-id">[RESPECT]</span> You decline. Some people respect a man who doesn\'t need the attention.'); } },
+      {label:'Give the interview', sub:'legit income +25% for 60s', run:function(){ applyTempMult('legit', 1.25, 60); log('<i class="ph-duotone ph-microphone-stage"></i> The story runs. Foot traffic spikes across every storefront.'); } },
+      {label:'Stay quiet', sub:'+Respect', run:function(){ state.respect += 10; log('<i class="ph-duotone ph-star"></i> You decline. Some people respect a man who doesn\'t need the attention.'); } },
     ]},
     { id:'cousin', title:'A COUSIN FROM DELHI CALLS', neg:false, body:"<p class='flavor'>He needs help. It's the kind of call you don't get to think about for very long.</p>", choices:[
-      {label:'Send the money', sub:'-$600 flat', run:function(){ state.cash = Math.max(0, state.cash-600); log('<span class="tag-id">[FAMILY]</span> You wire the money home. Family first.'); } },
-      {label:"Can't spare it", sub:'-5 Respect', run:function(){ state.respect = Math.max(0, state.respect-5); log('<span class="tag-id">[FAMILY]</span> You explain you can\'t, not right now. It sits with you.'); } },
+      {label:'Send the money', sub:'-$600 flat', run:function(){ state.cash = Math.max(0, state.cash-600); log('<i class="ph-duotone ph-users"></i> You wire the money home. Family first.'); } },
+      {label:"Can't spare it", sub:'-5 Respect', run:function(){ state.respect = Math.max(0, state.respect-5); log('<i class="ph-duotone ph-users"></i> You explain you can\'t, not right now. It sits with you.'); } },
     ]},
     { id:'cops', title:'COPS ARE ASKING QUESTIONS', neg:true, body:"<p class='flavor'>Nothing official yet. Just questions, in the way that always precedes something official.</p>", choices:[
-      {label:'Have your network handle it', sub:'-$900, -30 Heat', run:function(){ state.cash=Math.max(0,state.cash-900); state.heat=Math.max(0,state.heat-30); log('<span class="tag-id">[HEAT]</span> Your underground network pulls strings. The questions stop.'); } },
-      {label:'Lay low', sub:'all income -20% for 40s', run:function(){ applyTempMult('all', 0.8, 40); log('<span class="tag-id">[HEAT]</span> You lay low for a while. Everything slows down.'); } },
+      {label:'Have your network handle it', sub:'-$900, -30 Heat', run:function(){ state.cash=Math.max(0,state.cash-900); state.heat=Math.max(0,state.heat-30); log('<i class="ph-duotone ph-warning"></i> Your underground network pulls strings. The questions stop.'); } },
+      {label:'Lay low', sub:'all income -20% for 40s', run:function(){ applyTempMult('all', 0.8, 40); log('<i class="ph-duotone ph-warning"></i> You lay low for a while. Everything slows down.'); } },
     ]},
     { id:'hustler', title:'A TALENTED HUSTLER WANTS IN', neg:false, body:"<p class='flavor'>Sharp, hungry, reminds you a little of yourself six months ago.</p>", choices:[
       {label:'Hire them on', sub:'free crew member, random venture', run:function(){ hireFreeCrew(); } },
-      {label:"Not worth the risk", sub:'+$500 flat', run:function(){ state.cash += 500; log('<span class="tag-id">[CREW]</span> You pass, but they leave you something for your trouble.'); } },
+      {label:"Not worth the risk", sub:'+$500 flat', run:function(){ state.cash += 500; log('<i class="ph-duotone ph-users-three"></i> You pass, but they leave you something for your trouble.'); } },
     ]},
     { id:'investor', title:'A SILENT INVESTOR MAKES AN OFFER', neg:false, body:"<p class='flavor'>Cash up front, no questions, in exchange for a slice of everything going forward.</p>", choices:[
-      {label:'Take the deal', sub:'+$3000, income -5% forever', run:function(){ state.cash += 3000; state.investorPenalty = Math.min(0.5, (state.investorPenalty||0) + 0.05); log('<span class="tag-id">[INVEST]</span> Cash in hand. A little less of everything is yours now.'); } },
-      {label:'Stay independent', sub:'+Respect', run:function(){ state.respect += 8; log('<span class="tag-id">[RESPECT]</span> You show him the door. Independence has its own price.'); } },
+      {label:'Take the deal', sub:'+$3000, income -5% forever', run:function(){ state.cash += 3000; state.investorPenalty = Math.min(0.5, (state.investorPenalty||0) + 0.05); log('<i class="ph-duotone ph-chart-line-up"></i> Cash in hand. A little less of everything is yours now.'); } },
+      {label:'Stay independent', sub:'+Respect', run:function(){ state.respect += 8; log('<i class="ph-duotone ph-star"></i> You show him the door. Independence has its own price.'); } },
     ]},
     { id:'fire', title:'A GREASE FIRE AT THE CART', neg:true, body:"<p class='flavor'>Where it all started nearly goes up in smoke.</p>", choices:[
-      {label:'Pay for a fast fix', sub:'-$250 flat', run:function(){ state.cash=Math.max(0,state.cash-250); log('<span class="tag-id">[ALERT]</span> A quick repair keeps the cart running.'); } },
-      {label:'Rebuild slowly', sub:'legit income -30% for 30s', run:function(){ applyTempMult('legit', 0.7, 30); log('<span class="tag-id">[ALERT]</span> No cash lost, but business limps for a while.'); } },
+      {label:'Pay for a fast fix', sub:'-$250 flat', run:function(){ state.cash=Math.max(0,state.cash-250); log('<i class="ph-duotone ph-warning-circle"></i> A quick repair keeps the cart running.'); } },
+      {label:'Rebuild slowly', sub:'legit income -30% for 30s', run:function(){ applyTempMult('legit', 0.7, 30); log('<i class="ph-duotone ph-warning-circle"></i> No cash lost, but business limps for a while.'); } },
     ]},
   ];
 
@@ -168,7 +168,7 @@
     d.control = Math.min(100, d.control + 12);
     d.pushCount += 1;
     d.nextPushAt = state.playSeconds + 90;
-    log(`<span class="tag-id">[MAP]</span> You put weight behind your claim on ${d.name}. Control now ${Math.round(d.control)}%.`);
+    log(`<i class="ph-duotone ph-map-pin"></i> You put weight behind your claim on ${d.name}. Control now ${Math.round(d.control)}%.`);
     renderAll();
   }
 
@@ -451,8 +451,8 @@
       body:`<p>${npc.disposition} energy. Could be nothing, could be something.</p><p class="flavor">(New faces will show up as your territory grows — this one's just passing through for now.)</p>`,
       buttons:[
         { label:'Make conversation', onClick:function(){
-          if(Math.random()<0.5){ state.respect += 3; log(`<span class="tag-id">[INTEL]</span> ${npc.name} respects the hustle. +3 respect.`); }
-          else { const tip = Math.ceil(20+Math.random()*60); state.cash += tip; log(`<span class="tag-id">[INTEL]</span> Small talk with ${npc.name} turns into a $${tip} tip.`); }
+          if(Math.random()<0.5){ state.respect += 3; log(`<i class="ph-duotone ph-info"></i> ${npc.name} respects the hustle. +3 respect.`); }
+          else { const tip = Math.ceil(20+Math.random()*60); state.cash += tip; log(`<i class="ph-duotone ph-info"></i> Small talk with ${npc.name} turns into a $${tip} tip.`); }
           renderAll();
         }},
         { label:'Walk away', onClick:function(){} },
@@ -469,8 +469,8 @@
     { symbol: 'BNJ', name: 'BeanJuice', logo: 'beanjuice.png', desc: "Eight dollars for hot bean water.", founded: 1971, fullDesc: "Since 1971, they've convinced the world that burnt espresso is a premium lifestyle product. They operate like a bank that pays no interest, holding billions in unspent gift cards.", basePrice: 18, vol: 0.03 },
     { symbol: 'CLS', name: 'ClipStream', logo: 'ClipStream.png', desc: "Monetizing attention spans by the second.", founded: 2005, fullDesc: "Launched in 2005. They don't make anything; they just host the vanity of millions and sell the resulting behavioral data to the highest bidder. An unstoppable digital tollbooth.", basePrice: 85, vol: 0.07 },
     { symbol: 'PML', name: 'Pomello', logo: 'Pomello.png', desc: "Closed ecosystem, open wallets.", founded: 1976, fullDesc: "Founded in 1976. They design shiny boxes that trap users in a proprietary gilded cage. They have more cash on hand than most sovereign nations, and lawyers to protect every dime.", basePrice: 160, vol: 0.04 },
-    { symbol: 'FWT', name: 'First Windhaven Trust', logo: '', icon: ICONS.box, desc: "Old money. Doesn't ask questions.", founded: 1883, fullDesc: "Established in 1883. They built this city's skyline by looking the other way when the ledgers didn't add up. Safe, reliable, and deeply embedded in political machinery.", basePrice: 65, vol: 0.02 },
-    { symbol: 'HLG', name: 'Heartland Global', logo: '', icon: ICONS.bank, desc: "Too big to fail, too connected to prosecute.", founded: 1911, fullDesc: "Founded in 1911. They've weathered depressions and scandals by making sure they owe the right people and the right people owe them. A financial fortress.", basePrice: 90, vol: 0.03 },
+    { symbol: 'FWT', name: 'First Windhaven Trust', logo: 'fwt.png', desc: "Old money. Doesn't ask questions.", founded: 1883, fullDesc: "Established in 1883. They built this city's skyline by looking the other way when the ledgers didn't add up. Safe, reliable, and deeply embedded in political machinery.", basePrice: 65, vol: 0.02 },
+    { symbol: 'HLG', name: 'Heartland Global', logo: 'hlg.png', desc: "Too big to fail, too connected to prosecute.", founded: 1911, fullDesc: "Founded in 1911. They've weathered depressions and scandals by making sure they owe the right people and the right people owe them. A financial fortress.", basePrice: 90, vol: 0.03 },
   ];
 
   // LEGAL: ================= STATE =================
@@ -534,10 +534,10 @@
   }
   function hireFreeCrew(){
     const eligible = businesses.filter(b=> b.researched && !b.manager && b.level>0 && b.crew < crewNeeded(b)+2 && crewUsedGlobal() < crewCapGlobal());
-    if(eligible.length===0){ state.cash += 400; log(`<span class="tag-id">[NEG]</span> No open spot for them — they take a cash finder\'s fee instead.`); return; }
+    if(eligible.length===0){ state.cash += 400; log(`<i class="ph-duotone ph-handshake"></i> No open spot for them — they take a cash finder\'s fee instead.`); return; }
     const b = eligible[Math.floor(Math.random()*eligible.length)];
     b.crew += 1;
-    log(`<span class="tag-id">[NEG]</span> They join the crew at ${b.name}, no questions asked.`);
+    log(`<i class="ph-duotone ph-handshake"></i> They join the crew at ${b.name}, no questions asked.`);
   }
   function incomeFor(b){ return b.level * b.baseIncome * efficiency(b) * tempMultActive(b); }
   function getEquippedCar(){ return cars.find(c=>c.id===state.equippedCar) || null; }
@@ -616,7 +616,7 @@
     if(!m) return;
     state.seenMilestones.add(id);
     showModal({ eyebrow:'Windhaven Herald — West Side Edition', title:m.title, body:m.body, buttons:[{label:'Keep Going'}] });
-    log(`<span class="tag-id">[NEWS]</span> Headline: "${m.title.charAt(0)}${m.title.slice(1).toLowerCase()}"`);
+    log(`<i class="ph-duotone ph-newspaper"></i> Headline: "${m.title.charAt(0)}${m.title.slice(1).toLowerCase()}"`);
     if(id === 'chaat_house') document.getElementById('delhi-theme-row').style.display = 'flex';
     scheduleSave();
   }
@@ -656,7 +656,7 @@
       bodyHtml += `<p class="flavor">${b.unlock.type==='cash' ? ('Unlocks at '+fmt(b.unlock.value)+' cash') : ('Unlocks at '+b.unlock.value+' respect')}</p>`;
     } else if(!b.researched){
       const rc = researchCostFor(b);
-      buttons.push({ label:`Research (${fmt(rc)})`, onClick:function(){ if(state.cash>=rc){ state.cash-=rc; b.researched=true; log(`<span class="tag-id">[RES]</span> You research ${b.name}.`);} renderAll(); }});
+      buttons.push({ label:`Research (${fmt(rc)})`, onClick:function(){ if(state.cash>=rc){ state.cash-=rc; b.researched=true; log(`<i class="ph-duotone ph-flask"></i> You research ${b.name}.`);} renderAll(); }});
     } else {
       bodyHtml += `<p class="flavor">Level ${b.level} · ${incomeFor(b).toFixed(1)}/s · Efficiency ${Math.round(efficiency(b)*100)}%</p>`;
       const cost = costForLevel(b);
@@ -673,18 +673,18 @@
   // LEGAL: ================= BANK =================
   function depositAmount(rawAmt){
     const amt = Math.floor(Number(rawAmt));
-    if(!isFinite(amt) || amt<=0){ log('<span class="tag-id">[BANK]</span> Enter a valid amount to deposit.'); return; }
-    if(amt > state.cash){ log(`<span class="tag-id">[VAULT]</span> You don't have ${fmt(amt)} on hand to deposit.`); return; }
+    if(!isFinite(amt) || amt<=0){ log('<i class="ph-duotone ph-bank"></i> Enter a valid amount to deposit.'); return; }
+    if(amt > state.cash){ log(`<i class="ph-duotone ph-vault"></i> You don't have ${fmt(amt)} on hand to deposit.`); return; }
     state.cash -= amt; state.bank += amt;
-    log(`<span class="tag-id">[VAULT]</span> You deposit ${fmt(amt)}. Safe from raids in there.`);
+    log(`<i class="ph-duotone ph-vault"></i> You deposit ${fmt(amt)}. Safe from raids in there.`);
     renderAll();
   }
   function withdrawAmount(rawAmt){
     const amt = Math.floor(Number(rawAmt));
-    if(!isFinite(amt) || amt<=0){ log('<span class="tag-id">[BANK]</span> Enter a valid amount to withdraw.'); return; }
-    if(amt > state.bank){ log(`<span class="tag-id">[VAULT]</span> There's only ${fmt(state.bank)} banked.`); return; }
+    if(!isFinite(amt) || amt<=0){ log('<i class="ph-duotone ph-bank"></i> Enter a valid amount to withdraw.'); return; }
+    if(amt > state.bank){ log(`<i class="ph-duotone ph-vault"></i> There's only ${fmt(state.bank)} banked.`); return; }
     state.bank -= amt; state.cash += amt;
-    log(`<span class="tag-id">[VAULT]</span> You withdraw ${fmt(amt)}.`);
+    log(`<i class="ph-duotone ph-vault"></i> You withdraw ${fmt(amt)}.`);
     renderAll();
   }
   function resolveHeist(approach){
@@ -707,14 +707,14 @@
       state.cash += reward;
       state.respect += Math.ceil(reward/400);
       triggerMilestone('heist');
-      log(`<span class="tag-id">[SCORE]</span> The job on First Windhaven Trust pays out ${fmt(reward)}.`);
+      log(`<i class="ph-duotone ph-money"></i> The job on First Windhaven Trust pays out ${fmt(reward)}.`);
       dialogues.bankheist.nodes.result.text = `Clean. You're out before the second patrol even swings back. <strong>${fmt(reward)}</strong> heavier, and word will get around.`;
     } else {
       const loss = Math.round(state.cash*failLossPct);
       state.cash = Math.max(0, state.cash-loss);
       state.heat = Math.min(100, state.heat+heatOnFail);
       state.respect = Math.max(0, state.respect-respectOnFail);
-      log(`<span class="tag-id">[BUST]</span> The job on First Windhaven Trust goes sideways. Down ${fmt(loss)}, heat's up.`);
+      log(`<i class="ph-duotone ph-siren"></i> The job on First Windhaven Trust goes sideways. Down ${fmt(loss)}, heat's up.`);
       dialogues.bankheist.nodes.result.text = `It goes sideways fast. You get out, but not clean — <strong>${fmt(loss)}</strong> lost on the way, and there's heat on you now that wasn't there this morning.`;
     }
     renderAll();
@@ -730,11 +730,11 @@
     if(Math.random() < chance){
       const reward = Math.round(biz.robBase * (0.8+Math.random()*0.6));
       state.cash += reward; state.respect += 2; state.heat = Math.min(100, state.heat+8);
-      log(`<span class="tag-id">[EXTORT]</span> You hit the till at ${biz.name} for ${fmt(reward)}.`);
+      log(`<i class="ph-duotone ph-currency-dollar"></i> You hit the till at ${biz.name} for ${fmt(reward)}.`);
     } else {
       const loss = Math.round(biz.robBase * 0.3);
       state.cash = Math.max(0, state.cash-loss); state.respect = Math.max(0, state.respect-3); state.heat = Math.min(100, state.heat+15);
-      log(`<span class="tag-id">[HEAT]</span> ${biz.owner} isn't an easy mark. You're out ${fmt(loss)} and it's hotter out there now.`);
+      log(`<i class="ph-duotone ph-warning"></i> ${biz.owner} isn't an easy mark. You're out ${fmt(loss)} and it's hotter out there now.`);
     }
     renderAll();
   }
@@ -755,14 +755,14 @@
     const buttons = [];
     if(!biz.extorted){
       buttons.push({ label:'Extort (needs 30 respect)', onClick:function(){
-        if(state.respect<30){ log(`<span class="tag-id">[FAIL]</span> ${biz.owner} laughs you off. You don't have the reputation for this yet.`); renderAll(); return; }
+        if(state.respect<30){ log(`<i class="ph-duotone ph-x-circle"></i> ${biz.owner} laughs you off. You don't have the reputation for this yet.`); renderAll(); return; }
         biz.extorted = true;
         triggerMilestone('extortion');
-        log(`<span class="tag-id">[NEG]</span> ${biz.owner} agrees to pay, one way or another.`);
+        log(`<i class="ph-duotone ph-handshake"></i> ${biz.owner} agrees to pay, one way or another.`);
         renderAll();
       }});
     } else {
-      buttons.push({ label:'Let it go', onClick:function(){ biz.extorted=false; log(`<span class="tag-id">[NEG]</span> You cut ${biz.owner} loose.`); renderAll(); } });
+      buttons.push({ label:'Let it go', onClick:function(){ biz.extorted=false; log(`<i class="ph-duotone ph-handshake"></i> You cut ${biz.owner} loose.`); renderAll(); } });
     }
     buttons.push({ label:'Walk away', secondary:true });
     showModal({ eyebrow:'Business Owner', title:biz.owner, body, buttons });
@@ -835,7 +835,7 @@
       wrap.innerHTML = `
         <div class="data-row">
           <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
-            <div class="col-id"><span class="tag-id">[BANK]</span> ${ICONS.bank}</div>
+            <div class="col-id"><i class="ph-duotone ph-bank"></i> ${ICONS.bank}</div>
             <div class="col-name">Vault Balance</div>
             <div class="col-crew" id="bank-banked-value">${fmt(state.bank)}</div>
             <div class="col-inc">-</div>
@@ -874,7 +874,7 @@
         </div>
         <div class="data-row">
           <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
-            <div class="col-id"><span class="tag-id">[EXCH]</span> ${ICONS.store}</div>
+            <div class="col-id">${ICONS.store}</div>
             <div class="col-name">RCN Exchange</div>
             <div class="col-crew">-</div>
             <div class="col-inc">-</div>
@@ -888,7 +888,7 @@
         </div>
         <div class="data-row">
           <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
-            <div class="col-id"><span class="tag-id">[HSTE]</span> ${ICONS.box}</div>
+            <div class="col-id">${ICONS.box}</div>
             <div class="col-name">First Windhaven Trust</div>
             <div class="col-crew">-</div>
             <div class="col-inc">-</div>
@@ -934,7 +934,7 @@
         
         <div class="data-row">
           <div class="data-main open">
-            <div class="col-id"><span class="tag-id">[NEWS]</span> ${ICONS.music}</div>
+            <div class="col-id"><i class="ph-duotone ph-newspaper"></i> ${ICONS.music}</div>
             <div class="col-name">Market News</div>
             <div class="col-crew">-</div>
             <div class="col-inc">-</div>
@@ -957,7 +957,7 @@
             const sign = pct >= 0 ? '+' : '';
             return `<div class="data-row lcn-stock-btn" data-sym="${s.symbol}" style="cursor:pointer;">
               <div class="data-main">
-                <div class="col-id"><span class="tag-id">[TICK]</span> ${s.symbol}</div>
+                <div class="col-id">${s.logo ? `<img src="assets/${s.logo}" style="max-height:24px; max-width:40px;">` : `<span style="font-size:14px;">${s.symbol}</span>`}</div>
                 <div class="col-name">${s.name}</div>
                 <div class="col-crew" id="lcn-home-price-${s.symbol}">$${price.toFixed(2)}</div>
                 <div class="col-inc" id="lcn-home-pct-${s.symbol}" style="color:${color};">${sign}${pct.toFixed(2)}%</div>
@@ -1148,20 +1148,20 @@
     const cost = labCost();
     if(state.cash < cost) return;
     state.cash -= cost; state.productLevel += 1;
-    log(`<span class="tag-id">[OP]</span> The Lab steps up to level ${state.productLevel}. More product, more room to store it.`);
+    log(`<i class="ph-duotone ph-briefcase"></i> The Lab steps up to level ${state.productLevel}. More product, more room to store it.`);
     renderAll();
   }
   function assignDealer(corner){
     if(corner.dealer || corner.busted) return;
     if(state.cash < corner.dealerCost) return;
     state.cash -= corner.dealerCost; corner.dealer = true;
-    log(`<span class="tag-id">[OP]</span> A dealer's posted at ${corner.name}.`);
+    log(`<i class="ph-duotone ph-briefcase"></i> A dealer's posted at ${corner.name}.`);
     renderAll();
   }
   function fireDealer(corner){
     if(!corner.dealer) return;
     corner.dealer = false;
-    log(`<span class="tag-id">[OP]</span> You pull the dealer off ${corner.name}.`);
+    log(`<i class="ph-duotone ph-briefcase"></i> You pull the dealer off ${corner.name}.`);
     renderAll();
   }
   function openCornerPanel(corner){
@@ -1189,7 +1189,7 @@
     const cost = influenceCost();
     if(state.cash < cost) return;
     state.cash -= cost; state.influence += 8; state.influenceBuys += 1;
-    log(`<span class="tag-id">[HALL]</span> Another envelope, another favor owed. Influence is at ${state.influence}.`);
+    log(`<i class="ph-duotone ph-bank"></i> Another envelope, another favor owed. Influence is at ${state.influence}.`);
     renderAll();
   }
   function favorCost(p){ return Math.ceil(200 * Math.pow(1.25, Math.floor(p.favor/15))); }
@@ -1198,7 +1198,7 @@
     const cost = favorCost(p);
     if(state.cash < cost || p.favor>=100) return;
     state.cash -= cost; p.favor = Math.min(100, p.favor+15);
-    log(`<span class="tag-id">[BRIBE]</span> ${p.name} takes the envelope without much of a fight. Favor: ${p.favor}.`);
+    log(`<i class="ph-duotone ph-envelope-simple"></i> ${p.name} takes the envelope without much of a fight. Favor: ${p.favor}.`);
     if(p.favor>=60 && !p.pocketed){
       p.pocketed = true;
       showModal({
@@ -1220,7 +1220,7 @@
     state.campaignStyle = style;
     state.campaignEndAt = state.playSeconds + 180;
     dialogues.campaign.nodes.result.text = "The paperwork is filed. Now you just have to survive the scrutiny for three minutes. Expect your heat generation to more than double as the media digs into your 'business' history.";
-    log('<span class="tag-id">[POLITICS]</span> The campaign has begun. Heat generation is doubled while the press investigates you.');
+    log('<i class="ph-duotone ph-megaphone"></i> The campaign has begun. Heat generation is doubled while the press investigates you.');
     renderAll();
   }
 
@@ -1245,7 +1245,7 @@
       state.respect += 4;
     }
     dialogues[g.dialogueKey].nodes.result.text = `${g.name} is in. ${g.bonus}${extra}`;
-    log(`<span class="tag-id">[NEG]</span> ${g.name} joins the crew for real. ${g.bonus}`);
+    log(`<i class="ph-duotone ph-handshake"></i> ${g.name} joins the crew for real. ${g.bonus}`);
     renderAll();
   }
   function resolveWar(style){
@@ -1267,12 +1267,12 @@
       ws.control = Math.min(100, ws.control + swing);
       state.respect += style==='assault' ? 40 : 20;
       dialogues.gangwar.nodes.result.text = `It goes your way. West Side control climbs to ${Math.round(ws.control)}%. Dice's people fall back — for now.`;
-      log(`<span class="tag-id">[WAR]</span> You push West Side control to ${Math.round(ws.control)}% after tonight.`);
+      log(`<i class="ph-duotone ph-swords"></i> You push West Side control to ${Math.round(ws.control)}% after tonight.`);
     } else {
       ws.control = Math.max(0, ws.control - Math.round(swing/2));
       state.respect = Math.max(0, state.respect - 15);
       dialogues.gangwar.nodes.result.text = `It doesn't go your way. You pull back before it gets worse — West Side control drops to ${Math.round(ws.control)}%.`;
-      log(`<span class="tag-id">[WAR]</span> The push on West Side fails. Control slips to ${Math.round(ws.control)}%.`);
+      log(`<i class="ph-duotone ph-swords"></i> The push on West Side fails. Control slips to ${Math.round(ws.control)}%.`);
     }
     renderAll();
   }
@@ -1407,7 +1407,7 @@
         const eligible = state.respect>=g.reqRespect;
         return `<div class="data-row">
           <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
-            <div class="col-id"><span class="tag-id">[CREW]</span> ${ICONS.person}</div>
+            <div class="col-id"><i class="ph-duotone ph-users-three"></i> ${ICONS.person}</div>
             <div class="col-name">${g.name}</div>
             <div class="col-crew">-</div>
             <div class="col-inc">-</div>
@@ -1429,7 +1429,7 @@
       }).join('')}
       <div class="data-row">
         <div class="data-main" onclick="this.parentElement.classList.toggle('open')">
-          <div class="col-id"><span class="tag-id">[WAR]</span> ${ICONS.fist}</div>
+          <div class="col-id"><i class="ph-duotone ph-swords"></i> ${ICONS.fist}</div>
           <div class="col-name">West Side War</div>
           <div class="col-crew">${Math.round(districts.find(d=>d.id==='westside').control)}% CTRL</div>
           <div class="col-inc">-</div>
@@ -1449,11 +1449,9 @@
     const unlocked = isUnlocked(b);
     const el = document.createElement('div');
     el.className = `data-row ${unlocked ? '' : 'locked'}`;
-    const tag = b.category === 'legit' ? '[CORP]' : '[CRIM]';
-    
     let main = `<div class="data-main" onclick="if(${unlocked}) this.parentElement.classList.toggle('open')">
-      <div class="col-id"><span class="tag-id">${tag}</span> ${b.icon}</div>
-      <div class="col-name">${b.name}</div>`;
+      <div class="col-id">${b.icon}</div>
+      <div class="col-name">${b.name}<div class="col-name-sub">${b.category==='legit'?'Corporate Front':'Illicit Operation'}</div></div>`;
       
     if(!unlocked){
       let note = b.unlock.type==='cash' ? `Unlocks at ${fmt(b.unlock.value)} cash` : `Unlocks at ${b.unlock.value} respect`;
@@ -1529,14 +1527,14 @@
       const rc = researchCostFor(b);
       if(state.cash<rc) return;
       state.cash -= rc; b.researched = true;
-      log(`<span class="tag-id">[RES]</span> You research ${b.name}. It's ready to open.`);
+      log(`<i class="ph-duotone ph-flask"></i> You research ${b.name}. It's ready to open.`);
     } else if(action==='expand'){
       const cost = costForLevel(b);
       if(state.cash<cost) return;
       state.cash -= cost; b.level += 1;
       if(b.category==='street') state.respect += 1;
       if(b.level===1) {
-        log(`<span class="tag-id">[OP]</span> ${b.name} opens its doors.`);
+        log(`<i class="ph-duotone ph-briefcase"></i> ${b.name} opens its doors.`);
         triggerMilestone('first_venture');
         if(b.id==='restaurant') triggerMilestone('chaat_house');
         if(b.id==='syndicate_logistics') triggerMilestone('docks');
@@ -1553,7 +1551,7 @@
       const mc = managerCostFor(b);
       if(state.cash<mc) return;
       state.cash -= mc; b.manager = true; b.crew = 0;
-      log(`<span class="tag-id">[MGR]</span> ${b.managerName} now runs ${b.name} full-time.`);
+      log(`<i class="ph-duotone ph-user-tie"></i> ${b.managerName} now runs ${b.name} full-time.`);
     }
     renderAll();
   }
@@ -1567,7 +1565,7 @@
       state.cash -= c.cost; state.ownedCars.push(id);
       if(!state.equippedCar) state.equippedCar = id;
       if(id === 'bentley') triggerMilestone('bentley');
-      log(`<span class="tag-id">[MOVE]</span> You pick up a ${c.name}.`); updateParkedCarMesh(); refreshPlayerModel(); renderAll();
+      log(`<i class="ph-duotone ph-car"></i> You pick up a ${c.name}.`); updateParkedCarMesh(); refreshPlayerModel(); renderAll();
     } else if(btn.hasAttribute('data-car-equip')){
       state.equippedCar = btn.getAttribute('data-car-equip'); updateParkedCarMesh(); refreshPlayerModel(); renderAll();
     } else if(btn.hasAttribute('data-car-sell')){
@@ -1575,7 +1573,7 @@
       state.ownedCars = state.ownedCars.filter(x=>x!==id);
       if(state.equippedCar===id) state.equippedCar = state.ownedCars[0] || null;
       state.cash += Math.round(c.cost*0.55);
-      log(`<span class="tag-id">[MOVE]</span> You sell the ${c.name}.`); updateParkedCarMesh(); refreshPlayerModel(); renderAll();
+      log(`<i class="ph-duotone ph-car"></i> You sell the ${c.name}.`); updateParkedCarMesh(); refreshPlayerModel(); renderAll();
     } else if(btn.hasAttribute('data-prop-buy')){
       const id = btn.getAttribute('data-prop-buy'); const p = properties.find(x=>x.id===id);
       if(state.cash<p.cost) return;
@@ -1598,7 +1596,7 @@
     else if(btn.id === 'toggle-bribe'){ state.bribeOn = !state.bribeOn; log(state.bribeOn ? '👮 You put the beat cops on the payroll.' : '👮 You cut the cops off. Heat will build faster.'); renderAll(); }
     else if(btn.id === 'hire-rat'){ if(state.cash<ratsCashCost() || state.respect<ratsRespectCost()) return; state.cash -= ratsCashCost(); state.respect -= ratsRespectCost(); state.ratCount += 1; renderAll(); }
     else if(btn.id === 'buy-territory'){ if(state.respect<territoryCost()) return; state.respect -= territoryCost(); state.territoryTier += 1; log(`🗺️ New blocks fall under your control. Crew capacity is now ${crewCapGlobal()}.`); renderAll(); }
-    else if(btn.id === 'buy-negotiate'){ if(state.respect<negotiateCost()) return; state.respect -= negotiateCost(); state.negotiateTier += 1; log(`<span class="tag-id">[NEG]</span> You've got leverage now. Everyone's prices just got friendlier.`); renderAll(); }
+    else if(btn.id === 'buy-negotiate'){ if(state.respect<negotiateCost()) return; state.respect -= negotiateCost(); state.negotiateTier += 1; log(`<i class="ph-duotone ph-handshake"></i> You've got leverage now. Everyone's prices just got friendlier.`); renderAll(); }
   }
 
   function handleBankAction(e){
@@ -2162,7 +2160,7 @@
     buildDistrictScene(id);
     refreshPlayerModel();
     const d = districts.find(x=>x.id===id);
-    log(`<span class="tag-id">[MOVE]</span> You drive over to ${d.name}.`);
+    log(`<i class="ph-duotone ph-car"></i> You drive over to ${d.name}.`);
     renderAll();
   }
 
@@ -2907,7 +2905,7 @@
           c.busted = true; c.dealer = false; c.bustCooldownAt = state.playSeconds + 180;
           state.product = Math.max(0, state.product - state.product*0.3*whitmoreMult());
           state.cash = Math.max(0, state.cash - 200*c.tier*whitmoreMult());
-          log(`<span class="tag-id">[BUST]</span> ${c.name} gets hit. Dealer's gone, some product's gone with it.`);
+          log(`<i class="ph-duotone ph-siren"></i> ${c.name} gets hit. Dealer's gone, some product's gone with it.`);
         }
       });
     }
@@ -2939,7 +2937,7 @@
         campaignNote = ' The scandal of the raid completely kills your political campaign.';
       }
       
-      log(`<span class="tag-id">[HEAT]</span> Someone official-looking cleans out ${fmt(loss)} "in fines."${campaignNote}`);
+      log(`<i class="ph-duotone ph-warning"></i> Someone official-looking cleans out ${fmt(loss)} "in fines."${campaignNote}`);
       const extortedList = localBusinesses.filter(b=>b.extorted);
       if(extortedList.length && Math.random()<0.4){
         const victim = extortedList[Math.floor(Math.random()*extortedList.length)];
