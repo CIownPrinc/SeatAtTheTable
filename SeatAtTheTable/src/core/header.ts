@@ -62,16 +62,16 @@
 
   const familyTiers = [
     { name:'Brother Ravi', desc:'Permanent +50% income, every venture.' },
-    { name:'Mother Kavita', desc:'Permanent -35% Heat generation, everywhere.' },
+    { name:'Mother Kavita', desc:'Permanent -35% **Heat** generation, everywhere.' },
     { name:"Sister's family", desc:'+6 permanent crew capacity. Crew costs -20% forever.' },
     { name:'Deepak, childhood friend', desc:'Managed ventures now auto-reinvest 10% of their income into leveling themselves.' },
-    { name:'Grandmother', desc:'Unlocks a capstone venture, and +25% Respect gain forever.' },
+    { name:'Grandmother', desc:'Unlocks a capstone venture, and +25% **Respect** gain forever.' },
   ];
 
   const eventPool = [
     { id:'rival', title:'A RIVAL CREW EYES YOUR CORNER', neg:true, body:"<p class='flavor'>Word is a West Side crew thinks your runners are working streets that belong to them.</p>", choices:[
       {label:'Pay them off', sub:'-8% cash', run:function(){ state.cash *= 0.92; log('<i class="ph-duotone ph-envelope-simple"></i> You paid the rival crew to walk away quietly.'); } },
-      {label:'Stand your ground', sub:'+Respect, +Heat', run:function(){ state.respect += 15; state.heat = Math.min(100, state.heat+18); log('<i class="ph-duotone ph-star"></i> You held the corner. Word travels — Respect earned, Heat too.'); } },
+      {label:'Stand your ground', sub:'+**Respect**, +**Heat**', run:function(){ state.respect += 15; state.heat = Math.min(100, state.heat+18); log('<i class="ph-duotone ph-star"></i> You held the corner. Word travels — **Respect** earned, **Heat** too.'); } },
     ]},
     { id:'inspector', title:'A HEALTH INSPECTOR VISITS', neg:true, body:"<p class='flavor'>He's got a clipboard and a look that says he already knows the price of looking away.</p>", choices:[
       {label:'Slip an envelope', sub:'-$400 flat', run:function(){ state.cash = Math.max(0, state.cash-400); log('<i class="ph-duotone ph-envelope-simple"></i> An envelope changes hands. The clipboard closes.'); } },
@@ -168,7 +168,7 @@
     d.control = Math.min(100, d.control + 12);
     d.pushCount += 1;
     d.nextPushAt = state.playSeconds + 90;
-    log(`<i class="ph-duotone ph-map-pin"></i> You put weight behind your claim on ${d.name}. Control now ${Math.round(d.control)}%.`);
+    log(`<i class="ph-duotone ph-map-pin"></i> You put weight behind your claim on ${d.name}. Turf control now ${Math.round(d.control)}%.`);
     renderAll();
   }
 
@@ -204,8 +204,8 @@
   // LEGAL: permanent bonus once inducted, plus counts toward Gang Strength for wars.
   const gangRecruits = [
     { id:'chino', name:'Chino', trait:'Fast and reckless', reqRespect:100, cost:1500, bonus:"Corners are 15% less likely to get busted.", inducted:false, dialogueKey:'initChino', district:'westside', x:250, y:480 },
-    { id:'nadia', name:'Nadia Volkov', trait:'Knows every cop by name', reqRespect:150, cost:3000, bonus:'-10% heat generation, citywide.', inducted:false, dialogueKey:'initNadia', district:'westside', x:900, y:460 },
-    { id:'bird', name:'Bird', trait:'Watches the corners', reqRespect:200, cost:4500, bonus:'+15% income from every corner.', inducted:false, dialogueKey:'initBird', district:'westside', x:1300, y:520 },
+    { id:'nadia', name:'Nadia Volkov', trait:'Knows every cop by name', reqRespect:150, cost:3000, bonus:'-10% **Heat** generation, citywide.', inducted:false, dialogueKey:'initNadia', district:'westside', x:900, y:460 },
+    { id:'bird', name:'Bird', trait:'Watches the corners', reqRespect:200, cost:4500, bonus:'+15% **Income** from every corner.', inducted:false, dialogueKey:'initBird', district:'westside', x:1300, y:520 },
     { id:'les', name:'Les "Lockjaw" Tavares', trait:"Doesn't talk, doesn't run", reqRespect:300, cost:8000, bonus:'+8% Gang Strength in territory wars.', inducted:false, dialogueKey:'initLes', district:'westside', x:650, y:850 },
   ];
   function gangStrength(){
@@ -1461,7 +1461,7 @@
       <div class="col-name">${b.name}<div class="col-name-sub">${b.category==='legit'?'Corporate Front':'Illicit Operation'}</div></div>`;
       
     if(!unlocked){
-      let note = b.unlock.type==='cash' ? `Unlocks at ${fmt(b.unlock.value)} cash` : `Unlocks at ${b.unlock.value} respect`;
+      let note = b.unlock.type==='cash' ? `Requires ${fmt(b.unlock.value)} cash` : `Requires ${b.unlock.value} **Respect**`;
       main += `<div class="col-lvl">-</div><div class="col-inc">-</div><div class="col-crew">-</div><div class="col-status">${note}</div></div>`;
       el.innerHTML = main;
       return el;
@@ -1856,7 +1856,7 @@
     document.getElementById('hud-cash').textContent = fmt(state.cash);
     document.getElementById('hud-income').textContent = (netIncome()>=0?'+':'') + fmt(netIncome()) + '/s';
     document.getElementById('hud-rank').textContent = currentRank();
-    document.getElementById('hud-respect').textContent = `${fmtR(state.respect)} respect`;
+    document.getElementById('hud-**Respect**').textContent = `${fmtR(state.respect)} respect`;
     document.getElementById('heat-fill').style.width = Math.min(100, state.heat) + '%';
     document.getElementById('hud-crew').textContent = `${crewUsedGlobal()} / ${crewCapGlobal()}`;
 
@@ -1866,7 +1866,7 @@
     if(state.cash >= threshold*0.2 || state.prestigeCount>0){
       prestigeBtn.style.display = 'inline-block';
       prestigeBtn.disabled = state.cash < threshold;
-      prestigeBtn.textContent = state.cash >= threshold ? `Send for Family (${nextFamily.name})` : `Send for Family — ${fmt(threshold)}`;
+      prestigeBtn.textContent = state.cash >= threshold ? `Call In Family (${nextFamily.name})` : `Call In Family (Requires ${fmt(threshold)})`;
     }
   }
 
@@ -1881,7 +1881,7 @@
     document.getElementById('hud-cash').textContent = fmt(state.cash);
     document.getElementById('hud-income').textContent = (netIncome()>=0?'+':'') + fmt(netIncome()) + '/s';
     document.getElementById('hud-rank').textContent = rank;
-    document.getElementById('hud-respect').textContent = `${fmtR(state.respect)} respect`;
+    document.getElementById('hud-**Respect**').textContent = `${fmtR(state.respect)} respect`;
     document.getElementById('heat-fill').style.width = Math.min(100, state.heat) + '%';
     document.getElementById('hud-crew').textContent = `${crewUsedGlobal()} / ${crewCapGlobal()}`;
 
@@ -1894,7 +1894,7 @@
     if(state.cash >= threshold*0.2 || state.prestigeCount>0){
       prestigeBtn.style.display = 'inline-block';
       prestigeBtn.disabled = state.cash < threshold;
-      prestigeBtn.textContent = state.cash >= threshold ? `Send for Family (${nextFamily.name})` : `Send for Family — ${fmt(threshold)}`;
+      prestigeBtn.textContent = state.cash >= threshold ? `Call In Family (${nextFamily.name})` : `Call In Family (Requires ${fmt(threshold)})`;
     }
   }
   function refreshAffordability(){
@@ -1964,9 +1964,9 @@
     if(state.cash < threshold) return;
     const tier = familyTiers[Math.min(state.prestigeCount, familyTiers.length-1)];
     showModal({
-      eyebrow:"O'Hare International — Arrivals", title:'SOMEONE LANDS', stamp:'Arrived',
+      eyebrow:"O'Hare International — Arrivals", title:"CONTACT INBOUND", stamp:'Arrived',
       body:`<p><strong>${tier.name}</strong> lands at O'Hare. ${tier.desc}</p><p class="flavor">It costs nearly everything in every till. Ventures you've researched and any manager you've hired stay with you. Crew, muscle, and informants have to be rebuilt.</p>`,
-      buttons:[{label:'Start Rebuilding', onClick:function(){
+      buttons:[{label:"Establish Operation", onClick:function(){
         state.cash = 47; state.heat = 0; state.muscleCount = 0; state.ratCount = 0;
         businesses.forEach(b=>{ b.level=0; b.crew=0; });
         state.prestigeCount += 1;
