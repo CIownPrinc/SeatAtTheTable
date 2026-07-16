@@ -20,39 +20,39 @@
 }
 
 body.theme-light{
-  --bg: #f4f6f8;
+  --bg: #f6f5f0;
   --bg-panel: #ffffff;
-  --bg-row: #e9ecef;
-  --bg-hover: #dee2e6;
-  --line: #ced4da;
-  --line-bright: #adb5bd;
-  --text: #212529;
-  --text-dim: #495057;
-  --text-faint: #6c757d;
-  --gold: #d49500;
-  --green: #159b43;
-  --red: #d32f2f;
-  --red-hot: #f44336;
-  --blue: #1976d2;
-  --violet: #673ab7;
+  --bg-row: #eceae1;
+  --bg-hover: #e0ddd2;
+  --line: #dbd8cb;
+  --line-bright: #b8b39c;
+  --text: #202224;
+  --text-dim: #505458;
+  --text-faint: #80868c;
+  --gold: #b38000;
+  --green: #1e7a46;
+  --red: #b83232;
+  --red-hot: #d32f2f;
+  --blue: #286090;
+  --violet: #5c3599;
 }
 
 body.theme-delhi{
-  --bg: #1a1208;
-  --bg-panel: #261910;
-  --bg-row: #302113;
-  --bg-hover: #3d2a17;
-  --line: #52371d;
-  --line-bright: #965f21;
-  --text: #f5e6c8;
-  --text-dim: #d1b178;
-  --text-faint: #85663b;
-  --gold: #f5a623;
-  --green: #379e49;
-  --red: #d14234;
-  --red-hot: #eb4d3d;
-  --blue: #2275ab;
-  --violet: #9b5bb0;
+  --bg: #1f150e;
+  --bg-panel: #2a1c13;
+  --bg-row: #352418;
+  --bg-hover: #422d1e;
+  --line: #543b27;
+  --line-bright: #966133;
+  --text: #f6e7ce;
+  --text-dim: #d3b485;
+  --text-faint: #8f714e;
+  --gold: #e68a22;
+  --green: #269642;
+  --red: #c2382a;
+  --red-hot: #e34b3b;
+  --blue: #2a7ab0;
+  --violet: #8c4fa0;
 }
 
 body.theme-kingpin {
@@ -166,7 +166,7 @@ main{max-width:1240px;margin:0 auto;padding:26px 24px 60px;}
 .pillar-desc{font-size:13px;color:var(--text-dim);margin:4px 0 0;max-width:680px;line-height:1.5;background:var(--bg-row);padding:12px 16px;border-left:4px solid var(--blue);border-radius:0 6px 6px 0;}
 
 /* ---------- COLORFUL DATA CARDS (No Accordion) ---------- */
-.data-table { width: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; font-family: var(--font-mono); font-size: 13px; align-items: start; }
+.data-table { width: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 24px; font-family: var(--font-mono); font-size: 13px; align-items: start; }
 .data-row { display: flex; flex-direction: column; min-height: 100%; background: var(--bg-panel); border: 1px solid var(--line); box-shadow: 0 4px 12px rgba(0,0,0,0.25); transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s; border-radius: 8px; overflow: hidden; }
 .data-row:hover { border-color: var(--line-bright); box-shadow: 0 8px 16px rgba(0,0,0,0.4); }
 .data-row.locked { opacity: 0.5; pointer-events: none; filter: grayscale(100%); }
@@ -174,22 +174,20 @@ main{max-width:1240px;margin:0 auto;padding:26px 24px 60px;}
 .data-main { display: block; padding: 12px 14px; position: relative; background: transparent; }
 
 /* The old data-expanded is now just structurally part of the card if it exists */
-.data-expanded { display: flex; padding: 0 14px 12px; flex-direction: column; gap: 8px; background: transparent; border-top: none; }
+.data-expanded { display: flex; padding: 0 14px 12px; flex-direction: column; gap: 8px; background: transparent; border-top: none; flex: 1; }
+.vault-card { grid-column: 1 / -1; }
 
 .col-id { position: absolute; right: 14px; top: 10px; font-size: 22px; color: var(--gold); border: none; box-shadow: none; background: transparent; display: flex; align-items: center; justify-content: center; }
 .col-name { font-family: var(--font-display); font-size: 15px; font-weight: 700; border-bottom: 1px solid var(--line); padding-bottom: 4px; margin-bottom: 6px; width: calc(100% - 30px); color: var(--text); }
 .col-name-sub { font-family: var(--font-body); font-size: 11px; color: var(--text-dim); letter-spacing: 0; margin-top: 2px; font-weight: 400; }
-.col-lvl, .col-inc, .col-crew, .col-heat, .col-eff, .col-status { text-align: left; width: auto; font-size: 12px; display: inline-block; margin-right: 12px; margin-top: 4px; background: none; padding: 0; color: var(--text-dim); }
+.col-lvl, .col-inc, .col-crew, .col-heat, .col-eff, .col-status, .col-stat { text-align: left; width: auto; font-size: 12px; display: inline-block; margin-right: 12px; margin-top: 4px; background: none; padding: 0; color: var(--text-dim); }
 .col-lvl::before { content: "LEVEL: "; color: var(--text-faint); font-family: var(--font-display); font-weight: 700; }
 .col-inc::before { content: "INCOME/s: "; color: var(--text-faint); font-family: var(--font-display); font-weight: 700; }
 .col-crew::before { content: "CREW: "; color: var(--text-faint); font-family: var(--font-display); font-weight: 700; }
 .col-heat::before { content: "HEAT/s: "; color: var(--text-faint); font-family: var(--font-display); font-weight: 700; }
 .col-eff::before { content: "EFFICIENCY: "; color: var(--text-faint); font-family: var(--font-display); font-weight: 700; }
-.col-status { float: right; font-size: 11px; font-weight: 700; color: var(--green); margin-right: 0; }
-.col-status::before { content: "STATUS: "; color: var(--text-faint); font-family: var(--font-display); font-weight: 700; }
-.col-status::after { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--green); margin-left: 6px; vertical-align: middle; box-shadow: 0 0 6px var(--green); }
+.col-status { float: right; font-size: 11px; font-weight: 700; color: var(--green); margin-right: 0; text-transform: uppercase; }
 .data-row.locked .col-status { color: var(--red); }
-.data-row.locked .col-status::after { background: var(--red); box-shadow: none; }
 
 .col-actions { display: flex; gap: 8px; align-items: center; width: 100%; margin-top: 10px; padding-top: 12px; border-top: 1px dashed var(--line); flex-wrap: wrap;}
 
@@ -219,7 +217,7 @@ main{max-width:1240px;margin:0 auto;padding:26px 24px 60px;}
 .mini-btn.manager:hover:not(:disabled) { background: var(--gold); color: #000; }
 
 .lock-note{font-size:12px;color:var(--text-faint);font-family:var(--font-mono); background: rgba(0,0,0,0.2); padding: 6px 10px; border-radius: 4px;}
-.flavor-note{font-size:13px;color:var(--text-dim);font-family:var(--font-body);line-height:1.5;margin-bottom:6px;}
+.flavor-note{font-size:13px;color:var(--text-dim);font-family:var(--font-body);line-height:1.5;margin-bottom:auto;padding-bottom:10px;}
 
 /* ---------- TERMINALS (RCN Exchange / Bank) ---------- */
 .terminal-view .data-row { border-radius: 8px; border: 2px solid var(--line); background: #07090c; color: var(--green); box-shadow: inset 0 0 20px rgba(41,199,102,0.05), 0 4px 12px rgba(0,0,0,0.3); font-family: var(--font-mono); }

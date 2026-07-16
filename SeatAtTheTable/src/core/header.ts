@@ -790,9 +790,6 @@
         <div class="data-main">
           <div class="col-id">${ICONS.car}</div>
           <div class="col-name">${c.name}</div>
-          <div class="col-crew">${owned?'OWNED':'LOCKED'}</div>
-          <div class="col-inc">-</div>
-          <div class="col-heat">-</div>
           <div class="col-status">${equipped?'EQUIPPED':(owned?'GARAGED':'SHOP')}</div>
         </div>
         <div class="data-expanded">
@@ -832,19 +829,20 @@
       const cooldownLeft = Math.max(0, Math.ceil(state.nextHeistAt - state.playSeconds));
       wrap.innerHTML = `
         <div class="data-table">
-          <div class="data-row">
+          <div class="data-row vault-card">
             <div class="data-main">
               <div class="col-id"><i class="ph-duotone ph-bank"></i> ${ICONS.bank}</div>
               <div class="col-name">Vault Balance</div>
-              <div class="col-crew" id="bank-banked-value">${fmt(state.bank)}</div>
-              <div class="col-inc">-</div>
-              <div class="col-heat">-</div>
               <div class="col-status">ACTIVE</div>
             </div>
             <div class="data-expanded">
-              <div class="flavor-note">Cash in the bank is safe from raids and earns slow interest. Cash on hand is what actually buys things. (On hand: <span id="bank-onhand-value">${fmt(state.cash)}</span>)</div>
-              <div style="display:flex; gap:16px;">
-                <div class="bank-form" style="flex:1;">
+              <div class="flavor-note">Cash in the bank is safe from raids and earns slow interest. Cash on hand is what actually buys things.</div>
+              <div class="bank-balances-row" style="display:flex; gap:24px; margin-bottom:12px; font-family:var(--font-mono); font-size:14px; flex-wrap:wrap;">
+                <div><span style="color:var(--text-faint);">BANKED:</span> <strong id="bank-banked-value" style="color:var(--green); font-size:16px;">${fmt(state.bank)}</strong></div>
+                <div><span style="color:var(--text-faint);">ON HAND:</span> <strong id="bank-onhand-value" style="color:var(--text); font-size:16px;">${fmt(state.cash)}</strong></div>
+              </div>
+              <div style="display:flex; gap:24px; flex-wrap:wrap; border-top:1px dashed var(--line); padding-top:14px;">
+                <div class="bank-form" style="flex:1; min-width:200px; border-top:none; padding-top:0; margin-top:0;">
                   <label class="bank-form-label">Deposit</label>
                   <div class="bank-input-row">
                     <input type="number" id="deposit-input" class="bank-input" min="0" step="1" placeholder="Amount">
@@ -856,7 +854,7 @@
                     <button class="mini-btn quick" data-deposit-quick="1">MAX</button>
                   </div>
                 </div>
-                <div class="bank-form" style="flex:1;">
+                <div class="bank-form" style="flex:1; min-width:200px; border-top:none; padding-top:0; margin-top:0;">
                   <label class="bank-form-label">Withdraw</label>
                   <div class="bank-input-row">
                     <input type="number" id="withdraw-input" class="bank-input" min="0" step="1" placeholder="Amount">
@@ -875,9 +873,6 @@
             <div class="data-main">
               <div class="col-id">${ICONS.store}</div>
               <div class="col-name">RCN Exchange</div>
-              <div class="col-crew">-</div>
-              <div class="col-inc">-</div>
-              <div class="col-heat">-</div>
               <div class="col-status">TERMINAL</div>
             </div>
             <div class="data-expanded">
@@ -889,9 +884,6 @@
             <div class="data-main">
               <div class="col-id">${ICONS.box}</div>
               <div class="col-name">First Windhaven Trust</div>
-              <div class="col-crew">-</div>
-              <div class="col-inc">-</div>
-              <div class="col-heat">-</div>
               <div class="col-status" id="heist-status-value">${canHeist ? 'READY' : 'COOLDOWN'}</div>
             </div>
             <div class="data-expanded">
@@ -1316,10 +1308,7 @@
         <div class="data-main">
           <div class="col-id">${d.homeTurf?ICONS.person:ICONS.badge}</div>
           <div class="col-name">${d.name}</div>
-          <div class="col-crew">${Math.round(d.control)}% CTRL</div>
-          <div class="col-inc">-</div>
-          <div class="col-heat">-</div>
-          <div class="col-status">${status==='yours'?'YOURS':(status==='rival'?'RIVAL':'CONTESTED')}</div>
+          <div class="col-status" data-control-label="${d.id}">${Math.round(d.control)}% — ${status==='yours'?'YOURS':(status==='rival'?'RIVAL':'CONTESTED')}</div>
         </div>
         <div class="data-expanded">
           <div class="flavor-note">${bonusText[d.id]}</div>
@@ -1340,7 +1329,7 @@
         <div class="data-main">
           <div class="col-id">${ICONS.gov}</div>
           <div class="col-name">Influence</div>
-          <div class="col-crew">${Math.round(state.influence)} INFLUENCE</div>
+          <div class="col-stat">INFLUENCE: ${Math.round(state.influence)}</div>
           <div class="col-status">ACTIVE</div>
         </div>
         <div class="data-expanded">
@@ -1353,9 +1342,7 @@
         <div class="data-main">
           <div class="col-id">${ICONS.person}</div>
           <div class="col-name">${p.name}</div>
-          <div class="col-crew">${p.favor}/100</div>
-          <div class="col-inc">-</div>
-          <div class="col-heat">-</div>
+          <div class="col-stat">FAVOR: ${p.favor}/100</div>
           <div class="col-status">${p.favor>=60?'IN POCKET':'NEUTRAL'}</div>
         </div>
         <div class="data-expanded">
@@ -1368,9 +1355,6 @@
         <div class="data-main">
           <div class="col-id">${ICONS.badge}</div>
           <div class="col-name">City Councilman</div>
-          <div class="col-crew">-</div>
-          <div class="col-inc">-</div>
-          <div class="col-heat">-</div>
           <div class="col-status">${state.electedOffice?'HELD':(state.campaignActive?'RUNNING':(canOffice?'READY':'LOCKED'))}</div>
         </div>
         <div class="data-expanded">
@@ -1397,9 +1381,8 @@
         <div class="data-main">
           <div class="col-id">${ICONS.fist}</div>
           <div class="col-name">Gang Strength</div>
-          <div class="col-crew">${gs.toFixed(1)} vs ${rs.toFixed(1)}</div>
-          <div class="col-inc">-</div>
-          <div class="col-heat">-</div>
+          <div class="col-stat">YOURS: ${gs.toFixed(1)}</div>
+          <div class="col-stat">RIVAL: ${rs.toFixed(1)}</div>
           <div class="col-status">INFO</div>
         </div>
         <div class="data-expanded">
@@ -1431,9 +1414,7 @@
         <div class="data-main">
           <div class="col-id"><i class="ph-duotone ph-swords"></i> ${ICONS.fist}</div>
           <div class="col-name">West Side War</div>
-          <div class="col-crew">${Math.round(districts.find(d=>d.id==='westside').control)}% CTRL</div>
-          <div class="col-inc">-</div>
-          <div class="col-heat">-</div>
+          <div class="col-stat">CONTROL: ${Math.round(districts.find(d=>d.id==='westside').control)}%</div>
           <div class="col-status">ACTIVE</div>
         </div>
         <div class="data-expanded">
@@ -1735,9 +1716,9 @@
         <div class="data-main">
           <div class="col-id">${ICONS.fist}</div>
           <div class="col-name">Muscle</div>
-          <div class="col-crew">${state.muscleCount}</div>
-          <div class="col-inc" style="color:var(--text);">+${respectPerSec().toFixed(1)} RESP/s</div>
-          <div class="col-heat">+${(state.muscleCount*0.5*heatMult()).toFixed(1)} HEAT/s</div>
+          <div class="col-stat">Muscle: ${state.muscleCount}</div>
+          <div class="col-stat">Respect: +${respectPerSec().toFixed(1)}/s</div>
+          <div class="col-stat">Heat: +${(state.muscleCount*0.5*heatMult()).toFixed(1)}/s</div>
           <div class="col-status">ACTIVE</div>
         </div>
         <div class="data-expanded">
@@ -1749,9 +1730,7 @@
         <div class="data-main">
           <div class="col-id">${ICONS.badge}</div>
           <div class="col-name">Bribe the Cops</div>
-          <div class="col-crew">-</div>
-          <div class="col-inc">-</div>
-          <div class="col-heat" style="color:var(--green);">-HEAT</div>
+          <div class="col-stat" style="color:var(--green);">-HEAT</div>
           <div class="col-status">${state.bribeOn?'PAYING':'IDLE'}</div>
         </div>
         <div class="data-expanded">
@@ -1763,9 +1742,8 @@
         <div class="data-main">
           <div class="col-id">${ICONS.person}</div>
           <div class="col-name">Informants</div>
-          <div class="col-crew">${state.ratCount}</div>
-          <div class="col-inc">-</div>
-          <div class="col-heat" style="color:var(--green);">-RISK</div>
+          <div class="col-stat">Informants: ${state.ratCount}</div>
+          <div class="col-stat" style="color:var(--green);">-RISK</div>
           <div class="col-status">ACTIVE</div>
         </div>
         <div class="data-expanded">
@@ -1777,9 +1755,7 @@
         <div class="data-main">
           <div class="col-id">${ICONS.music}</div>
           <div class="col-name">Expand Territory</div>
-          <div class="col-crew">CAP: ${crewCapGlobal()}</div>
-          <div class="col-inc">-</div>
-          <div class="col-heat">-</div>
+          <div class="col-stat">CAPACITY: ${crewCapGlobal()}</div>
           <div class="col-status">UPGRADE</div>
         </div>
         <div class="data-expanded">
@@ -1791,9 +1767,7 @@
         <div class="data-main">
           <div class="col-id">${ICONS.person}</div>
           <div class="col-name">Negotiate</div>
-          <div class="col-crew">-</div>
-          <div class="col-inc" style="color:var(--green);">DISC: ${Math.round((1-discountMult())*100)}%</div>
-          <div class="col-heat">-</div>
+          <div class="col-stat" style="color:var(--green);">DISCOUNT: ${Math.round((1-discountMult())*100)}%</div>
           <div class="col-status">UPGRADE</div>
         </div>
         <div class="data-expanded">
@@ -1805,9 +1779,8 @@
         <div class="data-main">
           <div class="col-id">${ICONS.box}</div>
           <div class="col-name">The Lab</div>
-          <div class="col-crew">LVL ${state.productLevel}</div>
-          <div class="col-inc" style="color:var(--text);">${state.product.toFixed(0)}/${productCap()} STOCK</div>
-          <div class="col-heat">-</div>
+          <div class="col-stat">LEVEL ${state.productLevel}</div>
+          <div class="col-stat">STOCK: ${state.product.toFixed(0)}/${productCap()}</div>
           <div class="col-status">ACTIVE</div>
         </div>
         <div class="data-expanded">
@@ -1819,9 +1792,8 @@
         <div class="data-main">
           <div class="col-id">${ICONS.diamond}</div>
           <div class="col-name">The Trade</div>
-          <div class="col-crew">${activeCorners().length}/${corners.length} CNRS</div>
-          <div class="col-inc">+${cornerIncomePerSec().toFixed(1)}/s</div>
-          <div class="col-heat">-</div>
+          <div class="col-stat">DEALERS: ${activeCorners().length}/${corners.length}</div>
+          <div class="col-stat">INCOME: +${cornerIncomePerSec().toFixed(1)}/s</div>
           <div class="col-status">ACTIVE</div>
         </div>
         <div class="data-expanded">
@@ -1859,7 +1831,7 @@
     if(state.cash >= threshold*0.2 || state.prestigeCount>0){
       prestigeBtn.style.display = 'inline-block';
       prestigeBtn.disabled = state.cash < threshold;
-      prestigeBtn.textContent = state.cash >= threshold ? `Call In Family (${nextFamily.name})` : `Call In Family (Requires ${fmt(threshold)})`;
+      prestigeBtn.textContent = state.cash >= threshold ? `Bring in ${nextFamily.name}` : `Bring in ${nextFamily.name} (Requires ${fmt(threshold)})`;
     }
   }
 
@@ -1887,7 +1859,7 @@
     if(state.cash >= threshold*0.2 || state.prestigeCount>0){
       prestigeBtn.style.display = 'inline-block';
       prestigeBtn.disabled = state.cash < threshold;
-      prestigeBtn.textContent = state.cash >= threshold ? `Call In Family (${nextFamily.name})` : `Call In Family (Requires ${fmt(threshold)})`;
+      prestigeBtn.textContent = state.cash >= threshold ? `Bring in ${nextFamily.name}` : `Bring in ${nextFamily.name} (Requires ${fmt(threshold)})`;
     }
   }
   function refreshAffordability(){
@@ -1957,15 +1929,18 @@
     if(state.cash < threshold) return;
     const tier = familyTiers[Math.min(state.prestigeCount, familyTiers.length-1)];
     showModal({
-      eyebrow:"O'Hare International — Arrivals", title:"CONTACT INBOUND", stamp:'Arrived',
-      body:`<p><strong>${tier.name}</strong> lands at O'Hare. ${tier.desc}</p><p class="flavor">It costs nearly everything in every till. Ventures you've researched and any manager you've hired stay with you. Crew, muscle, and informants have to be rebuilt.</p>`,
-      buttons:[{label:"Establish Operation", onClick:function(){
-        state.cash = 47; state.heat = 0; state.muscleCount = 0; state.ratCount = 0;
-        businesses.forEach(b=>{ b.level=0; b.crew=0; });
-        state.prestigeCount += 1;
-        log(`✈️ ${tier.name} lands at O'Hare. ${tier.desc}`);
-        renderAll(); scheduleSave();
-      }}]
+      eyebrow:"O'Hare Terminal 5", title:"FAMILY INBOUND", stamp:'Arrived',
+      body:`<p><strong>${tier.name}</strong> is cleared at customs. ${tier.desc}</p><p class="flavor">Setting them up in Chicago requires transferring almost every dollar on hand to clear their debts and secure their paper trail. Your active fronts will close down temporarily, and muscle on the street will scatter until the dust settles. Hired managers and research dossiers remain yours.</p>`,
+      buttons:[
+        {label:"Make the transfer", onClick:function(){
+          state.cash = 47; state.heat = 0; state.muscleCount = 0; state.ratCount = 0;
+          businesses.forEach(b=>{ b.level=0; b.crew=0; });
+          state.prestigeCount += 1;
+          log(`✈️ ${tier.name} lands in Chicago. ${tier.desc}`);
+          renderAll(); scheduleSave();
+        }},
+        {label:"Go back", secondary:true}
+      ]
     });
   });
 
