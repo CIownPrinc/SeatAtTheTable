@@ -3,11 +3,13 @@ import type { Point } from '../config/types';
 export interface VerticalRoad {
   x: number;
   w: number;
+  name: string;
 }
 
 export interface HorizontalRoad {
   y: number;
   w: number;
+  name: string;
 }
 
 export interface Landmark {
@@ -16,6 +18,14 @@ export interface Landmark {
   district: string;
   x: number;
   y: number;
+}
+
+export type BandIndex = number | 'south';
+
+export interface DistrictParkSlot {
+  xi: number;
+  yi: BandIndex;
+  name: string;
 }
 
 export const VIEW_W = 760;
@@ -71,21 +81,41 @@ export const landmarks: Landmark[] = [
   { id: 'ciceroWorks', name: 'CICERO WORKS', district: 'westside', x: 2125, y: 850 },
 ];
 
+export const districtParkSlots: Record<string, DistrictParkSlot[]> = {
+  devlin: [
+    { xi: 0, yi: 'south', name: 'INDIAN BOUNDARY PARK' },
+    { xi: 2, yi: 'south', name: 'ROCKWELL GREEN' },
+    { xi: 3, yi: 'south', name: 'DEVLIN PLAYLOT' },
+  ],
+  westside: [
+    { xi: 0, yi: 'south', name: 'CICERO GREEN' },
+    { xi: 1, yi: 2, name: 'PULASKI COMMONS' },
+    { xi: 2, yi: 'south', name: 'CANAL YARD PARK' },
+    { xi: 3, yi: 2, name: 'CERMAK POCKET PARK' },
+  ],
+  hub: [
+    { xi: 0, yi: 1, name: 'MILLENNIUM PARK' },
+    { xi: 1, yi: 'south', name: 'WABASH PLAZA' },
+    { xi: 2, yi: 'south', name: 'RIVERWALK LAWN' },
+    { xi: 3, yi: 'south', name: 'LAKEFRONT SQUARE' },
+  ],
+};
+
 export const roadNetwork: { vertical: VerticalRoad[]; horizontal: HorizontalRoad[] } = {
   vertical: [
-    { x: 270, w: 74 },
-    { x: 700, w: 74 },
-    { x: 1130, w: 74 },
-    { x: 2270, w: 74 },
-    { x: 2700, w: 74 },
-    { x: 3130, w: 74 },
-    { x: 4270, w: 74 },
-    { x: 4700, w: 74 },
-    { x: 5130, w: 74 },
+    { x: 270, w: 74, name: 'Rockwell Avenue' },
+    { x: 700, w: 74, name: 'Devlin Street' },
+    { x: 1130, w: 74, name: 'Ashland Row' },
+    { x: 2270, w: 74, name: 'Cicero Avenue' },
+    { x: 2700, w: 74, name: 'Pulaski Road' },
+    { x: 3130, w: 74, name: 'Canal Yard Drive' },
+    { x: 4270, w: 74, name: 'LaSalle Street' },
+    { x: 4700, w: 74, name: 'Wabash Avenue' },
+    { x: 5130, w: 74, name: 'Lakefront Drive' },
   ],
   horizontal: [
-    { y: 300, w: 74 },
-    { y: 600, w: 74 },
-    { y: 900, w: 74 },
+    { y: 300, w: 74, name: 'Grand Avenue' },
+    { y: 600, w: 74, name: 'Roosevelt Road' },
+    { y: 900, w: 74, name: 'Cermak Road' },
   ],
 };

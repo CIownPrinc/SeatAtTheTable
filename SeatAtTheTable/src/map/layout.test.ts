@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { businesses } from '../config/ventures';
 import { buildableBands, localXForDistrict, rectsOverlap, rotatedHalfExtents } from './layout';
 import { createMapBuildings } from './markers';
-import { namedBuildingLots, roadNetwork, ventureDistricts, ventureLots } from './world';
+import { actorRadius, canMoveTo, isWaterBlocked } from './movement';
+import { districtParkSlots, namedBuildingLots, roadNetwork, ventureDistricts, ventureLots } from './world';
 
 describe('map layout helpers', function () {
   it('converts world x positions into district-local x positions', function () {
@@ -84,5 +85,34 @@ describe('map layout helpers', function () {
       expect(roadNetwork.vertical.some(r=>Math.abs(marker.x - r.x) < 77)).toBe(false);
       expect(roadNetwork.horizontal.some(r=>Math.abs(marker.y - r.y) < 71)).toBe(false);
     });
+  });
+
+  it('keeps multiple named park slots for each district', function () {
+    Object.values(districtParkSlots).forEach(function(slots){
+      const seen = new Set<string>();
+
+      expect(slots.length).toBeGreaterThanOrEqual(3);
+      slots.forEach(function(slot){
+        const key = `${slot.xi}:${slot.yi}`;
+        expect(seen.has(key)).toBe(false);
+        expect(slot.name.length).toBeGreaterThan(0);
+        seen.add(key);
+      });
+    });
+  });
+
+  it('blocks cars from water while allowing bridge crossings', function () {
+    const carRadius = actorRadius(true);
+
+    expect(isWaterBlocked(1700, 450, carRadius)).toBe(true);
+    expect(isWaterBlocked(1700, 600, carRadius)).toBe(false);
+  });
+
+  it('uses vehicle radius for world bounds and solid collision', function () {
+    const solids = [{ x: 200, y: 200, hw: 20, hd: 20 }];
+
+    expect(canMoveTo(18, 600, [], true)).toBe(false);
+    expect(canMoveTo(245, 200, solids, true)).toBe(true);
+    expect(canMoveTo(243, 200, solids, true)).toBe(false);
   });
 });
