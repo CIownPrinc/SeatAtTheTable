@@ -98,6 +98,20 @@ describe('map layout helpers', function () {
     expect(zoneForDistrictBlock('hub', 2, 2)).toBe('entertainment');
   });
 
+  it('keeps land-use zoning mixed inside each district', function () {
+    ['devlin', 'westside', 'hub'].forEach(function(districtId){
+      const zones = new Set<string>();
+
+      for(let xi=0; xi<4; xi++){
+        for(let yi=0; yi<4; yi++){
+          zones.add(zoneForDistrictBlock(districtId, xi, yi));
+        }
+      }
+
+      expect(zones.size).toBeGreaterThanOrEqual(2);
+    });
+  });
+
   it('creates non-overlapping venture markers from the venture list', function () {
     const markers = createMapBuildings(businesses);
     const seen = new Set<string>();

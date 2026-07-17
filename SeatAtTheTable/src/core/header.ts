@@ -2227,6 +2227,8 @@ import type * as ThreeNamespace from 'three';
   let streetLights: ThreeNamespace.PointLight[] = [];
   let weatherPoints: ThreeNamespace.Points | null = null;
   let activeWeather: 'clear' | 'rain' | 'snow' = 'clear';
+  const MAP_DAY_SECONDS = 240;
+  const MAP_START_HOUR = 10;
 
   function disposeObj(o: ThreeNamespace.Object3D){
     const mesh = o as ThreeNamespace.Mesh;
@@ -2318,30 +2320,29 @@ import type * as ThreeNamespace from 'three';
   }
   function updateDayNightLighting(){
     if(!scene || !sunLight || !moonLight || !ambientLight) return;
-    const cycleSeconds = 240;
-    const phase = ((state.playSeconds % cycleSeconds) / cycleSeconds) * Math.PI * 2;
+    const dayFraction = ((state.playSeconds / MAP_DAY_SECONDS) + MAP_START_HOUR / 24) % 1;
+    const phase = dayFraction * Math.PI * 2;
     const sun = Math.max(0, Math.sin(phase - Math.PI / 2));
     const dusk = Math.max(0, 1 - Math.abs(sun * 2 - 1));
     const night = 1 - sun;
-    ambientLight.intensity = 0.28 + sun * 0.48 + dusk * 0.08;
-    sunLight.intensity = 0.15 + sun * 0.95;
+    ambientLight.intensity = 0.5 + sun * 0.5 + dusk * 0.1;
+    sunLight.intensity = 0.25 + sun * 1.15;
     sunLight.color.set(sun < 0.18 ? '#9fb4ff' : (dusk > 0.45 ? '#ffc37a' : '#fff2d0'));
     sunLight.position.set(WORLD_W*0.5 + Math.cos(phase) * 900, 130 + sun * 520, WORLD_H*0.35 + Math.sin(phase) * 260);
     sunLight.target.position.set(WORLD_W/2,0,WORLD_H/2);
     sunLight.target.updateMatrixWorld();
-    moonLight.intensity = Math.max(0, night - 0.18) * 0.42;
+    moonLight.intensity = Math.max(0, night - 0.18) * 0.5;
     moonLight.position.set(WORLD_W*0.5 - Math.cos(phase) * 700, 430, WORLD_H*0.55 - Math.sin(phase) * 220);
     moonLight.target.position.set(WORLD_W/2,0,WORLD_H/2);
     moonLight.target.updateMatrixWorld();
-    scene.background = new THREE.Color(sun < 0.18 ? '#070914' : (dusk > 0.45 ? '#241b20' : '#0a0b10'));
-    scene.fog = new THREE.Fog(sun < 0.18 ? 0x070914 : 0x0a0b10, 420 + night * 80, 1050 + sun * 150);
+    scene.background = new THREE.Color(sun < 0.18 ? '#111827' : (dusk > 0.45 ? '#241b20' : '#0a0b10'));
+    scene.fog = new THREE.Fog(sun < 0.18 ? 0x111827 : 0x0a0b10, 520 + night * 80, 1150 + sun * 180);
     streetLights.forEach(function(light){
-      light.intensity = Math.max(0, night - 0.2) * 1.75;
+      light.intensity = Math.max(0, night - 0.2) * 2.35;
     });
   }
   function mapClockLabel(): string {
-    const cycleSeconds = 240;
-    const totalMinutes = Math.floor(((state.playSeconds % cycleSeconds) / cycleSeconds) * 24 * 60);
+    const totalMinutes = Math.floor((((state.playSeconds / MAP_DAY_SECONDS) + MAP_START_HOUR / 24) % 1) * 24 * 60);
     const hours24 = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
     const suffix = hours24 >= 12 ? 'PM' : 'AM';
@@ -2462,10 +2463,6 @@ import type * as ThreeNamespace from 'three';
     const bulb = new THREE.Mesh(new THREE.SphereGeometry(3.2,10,8), bulbMat);
     bulb.position.set(13,32,0); group.add(bulb);
     const light = new THREE.PointLight(0xffcc7a, 0, 230, 1.65);
-    light.castShadow = true;
-    light.shadow.mapSize.set(256,256);
-    light.shadow.camera.near = 2;
-    light.shadow.camera.far = 240;
     light.position.set(13,32,0); group.add(light);
     group.position.set(x,0,z);
     worldGroup.add(group);
@@ -2586,11 +2583,11 @@ import type * as ThreeNamespace from 'three';
     streetLights = [];
 
     // LEGAL: Base ground plane — full city footprint
-    const groundBase = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W,WORLD_H), new THREE.MeshStandardMaterial({color:'#1e2124', roughness:1}));
+    const groundBase = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W,WORLD_H), new THREE.MeshStandardMaterial({color:'#303438', roughness:1}));
     groundBase.rotation.x=-Math.PI/2; groundBase.position.set(WORLD_W/2,0,WORLD_H/2); groundBase.receiveShadow=true; worldGroup.add(groundBase);
 
     // LEGAL: District ground tints
-    [{x0:0,x1:1500,color:'#232a26'},{x0:2000,x1:3500,color:'#2a2222'},{x0:4000,x1:5500,color:'#211f16'}].forEach(function(dg){
+    [{x0:0,x1:1500,color:'#39453d'},{x0:2000,x1:3500,color:'#443838'},{x0:4000,x1:5500,color:'#403c2c'}].forEach(function(dg){
       const w=dg.x1-dg.x0;
       const tint = new THREE.Mesh(new THREE.PlaneGeometry(w,WORLD_H), new THREE.MeshStandardMaterial({color:dg.color, roughness:1}));
       tint.rotation.x=-Math.PI/2; tint.position.set(dg.x0+w/2,0.01,WORLD_H/2); tint.receiveShadow=true; worldGroup.add(tint);
@@ -2610,7 +2607,7 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: waypoint router) is unchanged — this only affects how roads are drawn,
     // LEGAL: giving the grid a legible main-road / side-street read instead of a
     // LEGAL: uniform lattice.
-    const roadMat = new THREE.MeshStandardMaterial({color:'#2b2d35', roughness:0.9});
+    const roadMat = new THREE.MeshStandardMaterial({color:'#454a54', roughness:0.9});
     const laneMat = new THREE.MeshStandardMaterial({color:'#c9b45a', roughness:0.6, emissive:'#4a4020', emissiveIntensity:0.15});
     roadNetwork.vertical.forEach(function(r){
       const m = new THREE.Mesh(new THREE.PlaneGeometry(62,WORLD_H), roadMat);
