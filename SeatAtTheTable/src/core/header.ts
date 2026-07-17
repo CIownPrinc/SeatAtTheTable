@@ -10,7 +10,7 @@ import { politicians } from '../config/politics';
 import { gangRecruits } from '../config/gang';
 import { npcFirstNames, npcLastNames, npcDispositions } from '../config/npcs';
 import { stockMarket } from '../config/stockMarket';
-import type { GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState, Point, ServiceBuilding, GangRecruit } from '../config/types';
+import type { GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState, Point, ServiceBuilding, GangRecruit, Car, FillerItem } from '../config/types';
 
   const eventPool = [
     { id:'rival', title:'A RIVAL CREW EYES YOUR CORNER', neg:true, body:"<p class='flavor'>Word is a West Side crew thinks your runners are working streets that belong to them.</p>", choices:[
@@ -1365,7 +1365,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
       <div class="col-name">${b.name}<div class="col-name-sub">${b.category==='legit'?'Corporate Front':'Illicit Operation'}</div></div>`;
       
     if(!unlocked){
-      let note = b.unlock.type==='cash' ? `Requires ${fmt(b.unlock.value)} cash` : `Requires ${b.unlock.value} **Respect**`;
+      let note = b.unlock.type==='cash' ? `Requires ${fmt(b.unlock.value)} cash` : ('value' in b.unlock ? `Requires ${b.unlock.value} **Respect**` : '');
       main += `<div class="col-lvl">-</div><div class="col-inc">-</div><div class="col-crew">-</div><div class="col-status">${note}</div></div>`;
       el.innerHTML = main;
       return el;
@@ -1972,12 +1972,12 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     // LEGAL: Horizontal roads span full width — they form bridge decks over canals
     horizontal: [{y:300,w:74},{y:600,w:74},{y:900,w:74}],
   };
-  function isOnRoad(x,y){
+  function isOnRoad(x: number, y: number){
     return roadNetwork.vertical.some(r=> Math.abs(x-r.x)<=r.w/2) || roadNetwork.horizontal.some(r=> Math.abs(y-r.y)<=r.w/2);
   }
 
   // LEGAL: ---- deterministic filler city: same layout every time, not regenerated per load ----
-  function seededRandom(seed){
+  function seededRandom(seed: number){
     return function(){
       seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
       let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
@@ -1994,14 +1994,14 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     add(corners,50); add(mapNpcs,50); add(gangRecruits,50);
     return zones;
   }
-  function generateFillerLayout(districtId){
+  function generateFillerLayout(districtId: string){
     const rand = seededRandom(districtSeeds[districtId]);
     const occupied = occupiedZones(districtId);
     const xBands = [[15,235],[305,665],[735,1095],[1165,1485]];
     const yBands = [[15,185],[255,425],[495,695],[765,935]];
     const parkBand = { xi:0, yi: districtId==='hub' ? 1 : 3 };
     const lotBand = { xi:3, yi: districtId==='hub' ? 3 : 0 };
-    const filler = [];
+    const filler: FillerItem[] = [];
     for(let xi=0; xi<xBands.length; xi++){
       for(let yi=0; yi<yBands.length; yi++){
         const x0=xBands[xi][0], x1=xBands[xi][1], y0=yBands[yi][0], y1=yBands[yi][1];
@@ -2020,7 +2020,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     }
     return filler;
   }
-  const fillerCache = {};
+  const fillerCache: Record<string, FillerItem[]> = {};
   function fillerFor(districtId: string){
     if(!fillerCache[districtId]) fillerCache[districtId] = generateFillerLayout(districtId);
     return fillerCache[districtId];
@@ -2035,7 +2035,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     localBusinesses.forEach(m=> list.push({x:m.x,y:m.y,hw:27,hd:24}));
     ['devlin','westside','hub'].forEach(function(distId){
       const off = DISTRICT_OFFSETS[distId];
-      fillerFor(distId).filter(f=>f.kind==='building').forEach(f=> list.push({x:f.x+off,y:f.y,hw:f.w/2+4,hd:f.d/2+4}));
+      fillerFor(distId).filter((f): f is Extract<FillerItem, {kind:'building'}> => f.kind==='building').forEach(f=> list.push({x:f.x+off,y:f.y,hw:f.w/2+4,hd:f.d/2+4}));
     });
     return list;
   }
@@ -2240,7 +2240,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     if(state.inVehicle){ const car=getEquippedCar(); return 210*(car?car.speedMult:1); }
     return 150;
   }
-  function tryMove(nx, ny, solids){
+  function tryMove(nx: number, ny: number, solids: Solid[]){
     if(nx<16||nx>WORLD_W-16||ny<16||ny>WORLD_H-16) return false;
     // LEGAL: Block movement in canals except on bridge horizontal roads
     if(!state.inVehicle){
@@ -2261,23 +2261,23 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
   // LEGAL: render-system handles are explicitly any rather than falsely precise.
   let scene: any, camera3d: any, renderer: any, worldGroup: any, playerGroup: any, sunLight: any, waypointBeacon: any, parkedCarMesh: any;
 
-  function disposeObj(o){
+  function disposeObj(o: any){
     if(o.geometry) o.geometry.dispose();
     if(o.material){
       const mats = Array.isArray(o.material) ? o.material : [o.material];
-      mats.forEach(m=>{ if(m.map) m.map.dispose(); m.dispose(); });
+      mats.forEach((m: any)=>{ if(m.map) m.map.dispose(); m.dispose(); });
     }
   }
-  function clearGroup(g){ while(g.children.length){ const c=g.children.pop(); c.traverse(disposeObj); } }
+  function clearGroup(g: any){ while(g.children.length){ const c=g.children.pop(); c.traverse(disposeObj); } }
 
-  function box(w,h,d,color){
+  function box(w: number, h: number, d: number, color: number | string){
     const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), new THREE.MeshStandardMaterial({color, roughness:0.85, metalness:0.05}));
     m.castShadow = true; m.receiveShadow = true;
     return m;
   }
-  function addSign(parent, text, w, h, y, color){
+  function addSign(parent: any, text: string, w: number, h: number, y: number, color: string){
     const c = document.createElement('canvas'); c.width=2048; c.height=256;
-    const cctx = c.getContext('2d');
+    const cctx = c.getContext('2d')!;
     cctx.fillStyle='rgba(10,11,16,0.85)'; cctx.fillRect(0,0,2048,256);
     cctx.fillStyle=color; cctx.font='bold 120px sans-serif'; cctx.textAlign='center'; cctx.textBaseline='middle';
     cctx.fillText(text.slice(0,32), 1024, 128);
@@ -2287,7 +2287,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     sprite.scale.set(w * 4, h * 2, 1); sprite.position.y = y;
     parent.add(sprite);
   }
-  function buildPedestrianModel(color){
+  function buildPedestrianModel(color: number | string){
     const g = new THREE.Group();
     const body = new THREE.Mesh(new THREE.CylinderGeometry(6,7,20,8), new THREE.MeshStandardMaterial({color: color||'#e8e6de'}));
     body.position.y = 14; body.castShadow=true; g.add(body);
@@ -2297,7 +2297,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     nose.rotation.x = Math.PI/2; nose.position.set(0,14,8); g.add(nose);
     return g;
   }
-  function buildCarModel(car){
+  function buildCarModel(car: Car){
     const g = new THREE.Group();
     const bodyH = car.id==='escalade'?18:(car.id==='bentley'?16:14);
     const body = box(car.len, bodyH, car.wid, car.color);
@@ -2342,7 +2342,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     g.castShadow=true;
     return g;
   }
-  function buildingColorFor(b){
+  function buildingColorFor(b: Business){
     const unlocked = isUnlocked(b);
     const opened = unlocked && b.researched && b.level>0;
     const legit = b.category==='legit';
@@ -2352,7 +2352,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
 
 
   // LEGAL: ---- procedural building with windows, door, and zone-specific roof ----
-  function buildDetailedBuilding(w, h, d, color, zoneType){
+  function buildDetailedBuilding(w: number, h: number, d: number, color: number | string, zoneType: string){
     const g = new THREE.Group();
     const body = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), new THREE.MeshStandardMaterial({color, roughness:0.85, metalness:0.05}));
     body.castShadow=true; body.receiveShadow=true; g.add(body);
@@ -2475,7 +2475,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     });
 
     // LEGAL: NPCs and gang recruits — all districts
-    function addPerson(m, color){
+    function addPerson(m: any, color: number | string){
       const g = buildPedestrianModel(color);
       g.position.set(m.x,0,m.y); worldGroup.add(g);
       addSign(g, m.type==='named'?m.name:(m.name||'?'), 28, 7, 34, '#f0efe8');
@@ -2509,7 +2509,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
             bean.scale.set(1.6,0.85,1); bean.position.set(cx,22,cy); bean.castShadow=true; bean.receiveShadow=true; worldGroup.add(bean);
             addSign(bean,'THE BEAN',44,10,34,'#e8e6de');
           } else {
-            const parkLabel = {devlin:'INDIAN BOUNDARY PARK',westside:'CICERO GREEN',hub:'MILLENNIUM PARK'}[distId];
+            const parkLabel = ({devlin:'INDIAN BOUNDARY PARK',westside:'CICERO GREEN',hub:'MILLENNIUM PARK'} as Record<string,string>)[distId] ?? '';
             addSign(grass,parkLabel,44,9,4,'#a8d0a8');
           }
         } else if(f.kind==='lot'){
@@ -2548,7 +2548,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
   }
 
   // LEGAL: Legacy alias — now delegates to buildCityScene
-  function buildDistrictScene(districtId){
+  function buildDistrictScene(districtId: string){
     buildCityScene(); return;
     clearGroup(worldGroup);
     const theme = districtThemes[districtId];
@@ -2600,7 +2600,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
       addSign(pole, m.name, 30, 8, 22, '#f0efe8');
     });
 
-    function addPerson(m, color){
+    function addPerson(m: any, color: number | string){
       const g = buildPedestrianModel(color);
       g.position.set(m.x,0,m.y); worldGroup.add(g);
       addSign(g, m.type==='named' ? m.name : (m.name||'?'), 28, 7, 34, '#f0efe8');
@@ -2685,7 +2685,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
       worldGroup.add(parkedCarMesh);
     }
   }
-  function computeRoadGuide(px, py, wx, wy){
+  function computeRoadGuide(px: number, py: number, wx: number, wy: number){
     // LEGAL: Simple road-snapped guide: approach nearest horizontal road, traverse to WP X, then descend to WP
     const nearestRoad = roadNetwork.horizontal.reduce(function(best,r){ return Math.abs(r.y-py)<Math.abs(best.y-py)?r:best; }, roadNetwork.horizontal[0]);
     const ry = nearestRoad.y;
@@ -2805,11 +2805,11 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
       return;
     }
     const centerX = player.x + minimapPan.x, centerY = player.y + minimapPan.y;
-    const proj = function(wx,wy){ return { x:75+(wx-centerX)*MINIMAP_SCALE, y:75+(wy-centerY)*MINIMAP_SCALE }; };
+    const proj = function(wx: number, wy: number){ return { x:75+(wx-centerX)*MINIMAP_SCALE, y:75+(wy-centerY)*MINIMAP_SCALE }; };
     mctx.strokeStyle='rgba(120,120,135,0.4)'; mctx.lineWidth=3;
     roadNetwork.vertical.forEach(function(r){ const p1=proj(r.x,0), p2=proj(r.x,WORLD_H); mctx.beginPath(); mctx.moveTo(p1.x,p1.y); mctx.lineTo(p2.x,p2.y); mctx.stroke(); });
     roadNetwork.horizontal.forEach(function(r){ const p1=proj(0,r.y), p2=proj(WORLD_W,r.y); mctx.beginPath(); mctx.moveTo(p1.x,p1.y); mctx.lineTo(p2.x,p2.y); mctx.stroke(); });
-    const dot = function(wx,wy,color,size){ const p=proj(wx,wy); if(p.x<-6||p.x>156||p.y<-6||p.y>156) return; mctx.beginPath(); mctx.arc(p.x,p.y,size,0,Math.PI*2); mctx.fillStyle=color; mctx.fill(); };
+    const dot = function(wx: number, wy: number, color: string, size: number){ const p=proj(wx,wy); if(p.x<-6||p.x>156||p.y<-6||p.y>156) return; mctx.beginPath(); mctx.arc(p.x,p.y,size,0,Math.PI*2); mctx.fillStyle=color; mctx.fill(); };
     mapBuildings.filter(inDistrict).forEach(function(m){ dot(m.x,m.y, m.biz.category==='legit'?'#3e7c8c':'#a8394a', 3); });
     serviceBuildings.filter(inDistrict).forEach(function(m){ dot(m.x,m.y,'#d4a017',3); });
     localBusinesses.filter(inDistrict).forEach(function(m){ dot(m.x,m.y,'#7a6fb0',2.5); });
@@ -2833,12 +2833,12 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
   // LEGAL: ================= INTERIOR (lightweight 2D scene) =================
   const interiorCanvas = byId<HTMLCanvasElement>('interior-canvas');
   const ictx = interiorCanvas.getContext('2d')!;
-  function iRoundRect(x,y,w,h,r){
+  function iRoundRect(x: number, y: number, w: number, h: number, r: number){
     ictx.beginPath(); ictx.moveTo(x+r,y);
     ictx.arcTo(x+w,y,x+w,y+h,r); ictx.arcTo(x+w,y+h,x,y+h,r);
     ictx.arcTo(x,y+h,x,y,r); ictx.arcTo(x,y,x+w,y,r); ictx.closePath();
   }
-  function iLabelChip(text,x,y){
+  function iLabelChip(text: string, x: number, y: number){
     ictx.font='9px IBM Plex Mono, monospace';
     const w = ictx.measureText(text).width+8;
     ictx.fillStyle='rgba(10,11,16,0.6)'; iRoundRect(x-w/2,y-8,w,14,4); ictx.fill();
@@ -2966,13 +2966,13 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     scheduleSave();
   });
   const storageAdapter = {
-    async set(key, value){
+    async set(key: string, value: string){
       if(window.storage && typeof window.storage.set === 'function'){
         try { await window.storage.set(key, value, false); return; } catch(e){}
       }
       try { window.localStorage.setItem(key, value); } catch(e){}
     },
-    async get(key){
+    async get(key: string){
       if(window.storage && typeof window.storage.get === 'function'){
         try {
           const res = await window.storage.get(key, false);
@@ -2981,7 +2981,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
       }
       try { return window.localStorage.getItem(key); } catch(e){ return null; }
     },
-    async delete(key){
+    async delete(key: string){
       if(window.storage && typeof window.storage.delete === 'function'){
         try { await window.storage.delete(key, false); return; } catch(e){}
       }
@@ -3094,7 +3094,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
       saveGame(false);
     }, delay);
   }
-  async function saveGame(manual){
+  async function saveGame(manual: boolean){
     try{
       await storageAdapter.set('seat-save-v1', JSON.stringify(serializeState()));
       const stamp = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});

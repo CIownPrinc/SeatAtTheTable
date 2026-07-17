@@ -166,6 +166,13 @@ export interface Solid {
   hd: number;
 }
 
+// LEGAL: Procedurally-placed decorative map fill: green space, empty lot, or
+// LEGAL: a generic building. Discriminated on kind.
+export type FillerItem =
+  | { kind: 'park'; x0: number; y0: number; x1: number; y1: number }
+  | { kind: 'lot'; x0: number; y0: number; x1: number; y1: number }
+  | { kind: 'building'; x: number; y: number; w: number; d: number; h: number; hue: number };
+
 export interface ProceduralNPC {
   name: string;
   disposition: string;
