@@ -10,7 +10,7 @@ import { politicians } from '../config/politics';
 import { gangRecruits } from '../config/gang';
 import { npcFirstNames, npcLastNames, npcDispositions } from '../config/npcs';
 import { stockMarket } from '../config/stockMarket';
-import type { GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState } from '../config/types';
+import type { GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState, Point, ServiceBuilding, GangRecruit } from '../config/types';
 
   const eventPool = [
     { id:'rival', title:'A RIVAL CREW EYES YOUR CORNER', neg:true, body:"<p class='flavor'>Word is a West Side crew thinks your runners are working streets that belong to them.</p>", choices:[
@@ -2177,9 +2177,19 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     }
   });
 
-  function nearestMarker(){
+  type MapMarker =
+    | { type: 'door'; ref: { label: string } }
+    | { type: 'hotspot'; ref: ReturnType<typeof hotspotsFor>[number] }
+    | { type: 'car'; ref: Point }
+    | { type: 'building'; ref: typeof mapBuildings[number] }
+    | { type: 'service'; ref: ServiceBuilding }
+    | { type: 'npc'; ref: typeof mapNpcs[number] }
+    | { type: 'gangnpc'; ref: GangRecruit }
+    | { type: 'local'; ref: LocalBusiness }
+    | { type: 'corner'; ref: Corner };
+  function nearestMarker(): MapMarker | null {
     if(state.currentInterior){
-      let best=null, bestDist=46;
+      let best: MapMarker | null = null, bestDist=46;
       const dDoor = Math.hypot(player.x-DOOR_LOCAL.x, player.y-DOOR_LOCAL.y);
       if(dDoor<bestDist){ bestDist=dDoor; best={type:'door', ref:{label:'Exit'}}; }
       hotspotsFor(state.currentInterior).forEach(h=>{
@@ -2189,7 +2199,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
       return best;
     }
     if(state.inVehicle) return null;
-    let best=null, bestDist=46;
+    let best: MapMarker | null = null, bestDist=46;
     const car = getEquippedCar();
     const parked = state.parkedCarPos[state.currentDistrict];
     if(car && parked){
@@ -2221,7 +2231,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     else if(m.type==='local') enterBuilding('local', m.ref.id, m.ref.name);
     else if(m.type==='corner') openCornerPanel(m.ref);
     else if(m.type==='gangnpc') playDialogue(m.ref.dialogueKey, m.ref.inducted ? 'checkin' : 'start');
-    else if(m.ref.type==='named') playDialogue(m.ref.id, npcOpeningNode(m.ref.id));
+    else if(m.type==='npc' && m.ref.type==='named') playDialogue(m.ref.id, npcOpeningNode(m.ref.id));
     else proceduralInteract();
   }
 
