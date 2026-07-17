@@ -1,10 +1,11 @@
-import type { Business } from '../config/types';
-import { namedBuildingLots, ventureDistricts, ventureLots } from './world';
+import type { Business, MapZoneType } from '../config/types';
+import { namedBuildingLots, ventureDistricts, ventureLots, ventureMapLots } from './world';
 
 export interface MapBuilding {
   id: string;
   biz: Business;
   district: string;
+  zone: MapZoneType;
   x: number;
   y: number;
 }
@@ -31,11 +32,13 @@ export function createMapBuildings(businesses: Business[]): MapBuilding[] {
   const districtCounts: Record<string, number> = {};
 
   return businesses.map(function(business, index){
+    const mappedLot = ventureMapLots[business.id];
+    if(mappedLot) return { id:business.id, biz:business, district:mappedLot.district, zone:mappedLot.zone, x:mappedLot.x, y:mappedLot.y };
     const district = ventureDistricts[index] || 'hub';
     const districtIndex = districtCounts[district] || 0;
     districtCounts[district] = districtIndex + 1;
     const lot = ventureLots[district][districtIndex] || ventureLots.hub[ventureLots.hub.length - 1];
-    return { id:business.id, biz:business, district, x:lot.x, y:lot.y };
+    return { id:business.id, biz:business, district, zone:business.category === 'street' ? 'street' : 'smallBusiness', x:lot.x, y:lot.y };
   });
 }
 

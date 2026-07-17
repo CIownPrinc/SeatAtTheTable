@@ -1,4 +1,4 @@
-import type { Point } from '../config/types';
+import type { MapZoneType, Point } from '../config/types';
 
 export interface VerticalRoad {
   x: number;
@@ -18,6 +18,11 @@ export interface Landmark {
   district: string;
   x: number;
   y: number;
+}
+
+export interface VentureMapLot extends Point {
+  district: string;
+  zone: MapZoneType;
 }
 
 export type BandIndex = number | 'south';
@@ -58,6 +63,22 @@ export const ventureLots: Record<string, Point[]> = {
   devlin: [{ x: 120, y: 130 }, { x: 485, y: 130 }, { x: 915, y: 130 }, { x: 1330, y: 130 }, { x: 120, y: 450 }],
   westside: [{ x: 2120, y: 130 }, { x: 2485, y: 130 }, { x: 2915, y: 130 }, { x: 3330, y: 130 }],
   hub: [{ x: 4120, y: 130 }, { x: 4485, y: 130 }, { x: 4915, y: 130 }, { x: 5330, y: 130 }],
+};
+
+export const ventureMapLots: Record<string, VentureMapLot> = {
+  cart: { district: 'devlin', x: 120, y: 130, zone: 'smallBusiness' },
+  store: { district: 'devlin', x: 485, y: 130, zone: 'smallBusiness' },
+  laundromat: { district: 'devlin', x: 915, y: 130, zone: 'smallBusiness' },
+  backroom_cards: { district: 'devlin', x: 1330, y: 130, zone: 'street' },
+  garage: { district: 'westside', x: 2120, y: 130, zone: 'industrial' },
+  cab: { district: 'westside', x: 2485, y: 130, zone: 'logistics' },
+  chop_ring: { district: 'westside', x: 2915, y: 130, zone: 'street' },
+  restaurant: { district: 'devlin', x: 120, y: 450, zone: 'smallBusiness' },
+  lounge: { district: 'hub', x: 4485, y: 450, zone: 'entertainment' },
+  wire_network: { district: 'hub', x: 4915, y: 450, zone: 'street' },
+  realestate: { district: 'hub', x: 5330, y: 450, zone: 'corporate' },
+  syndicate_logistics: { district: 'westside', x: 3330, y: 130, zone: 'logistics' },
+  family_office: { district: 'hub', x: 4120, y: 750, zone: 'corporate' },
 };
 
 export const namedBuildingLots: Record<string, Point> = {
