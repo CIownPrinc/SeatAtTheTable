@@ -1,72 +1,16 @@
-// LEGAL: ================= TACTICAL WIREFRAME ICONS =================
-  const ICONS = {
-    cart: '<i class="ph-duotone ph-shopping-cart"></i>',
-    store: '<i class="ph-duotone ph-storefront"></i>',
-    laundry: '<i class="ph-duotone ph-t-shirt"></i>',
-    cards: '<i class="ph-duotone ph-spades"></i>',
-    garage: '<i class="ph-duotone ph-garage"></i>',
-    cab: '<i class="ph-duotone ph-taxi"></i>',
-    car: '<i class="ph-duotone ph-car-profile"></i>',
-    food: '<i class="ph-duotone ph-hamburger"></i>',
-    lounge: '<i class="ph-duotone ph-martini"></i>',
-    phone: '<i class="ph-duotone ph-phone"></i>',
-    bld1: '<i class="ph-duotone ph-buildings"></i>',
-    bld2: '<i class="ph-duotone ph-buildings"></i>',
-    bld3: '<i class="ph-duotone ph-buildings"></i>',
-    box: '<i class="ph-duotone ph-package"></i>',
-    fist: '<i class="ph-duotone ph-hand-fist"></i>',
-    badge: '<i class="ph-duotone ph-shield-star"></i>',
-    bank: '<i class="ph-duotone ph-bank"></i>',
-    gov: '<i class="ph-duotone ph-courthouse"></i>',
-    person: '<i class="ph-duotone ph-user"></i>',
-    diamond: '<i class="ph-duotone ph-diamond"></i>',
-    music: '<i class="ph-duotone ph-music-note"></i>'
-  };
+import { ICONS } from '../config/icons';
+import { businesses, ranks } from '../config/ventures';
+import { milestones, familyTiers } from '../config/milestones';
+import { cars, properties } from '../config/assets';
+import { localBusinesses } from '../config/localBusinesses';
+import { serviceBuildings } from '../config/serviceBuildings';
+import { districts } from '../config/districts';
+import { corners } from '../config/trade';
+import { politicians } from '../config/politics';
+import { gangRecruits } from '../config/gang';
+import { npcFirstNames, npcLastNames, npcDispositions } from '../config/npcs';
+import { stockMarket } from '../config/stockMarket';
 
-  // LEGAL: ================= VENTURE DATA =================
-  const businesses = [
-    { id:'cart', name:"Kailash's Cart", flavor:"Chaat masala on a cheap bun. The regulars start lining up before sunrise.", category:'legit', icon:ICONS.cart, baseCost:10, researchCost:0, baseIncome:0.25, unlock:{type:'start'}, crewBaseCost:6, managerLevelReq:12, managerName:'Nikhil, the Cart Foreman' },
-    { id:'store', name:"Corner Store", flavor:"Cigarettes, scratch tickets, and a register that never balances.", category:'legit', icon:ICONS.store, baseCost:150, researchCost:90, baseIncome:1.5, unlock:{type:'cash', value:120}, crewBaseCost:42, managerLevelReq:12, managerName:'Priya, Store Manager' },
-    { id:'laundromat', name:"Sudsy Laundromat", flavor:"Quarters in, cash out. Nobody asks questions about the back room.", category:'legit', icon:ICONS.laundry, baseCost:600, researchCost:350, baseIncome:5, unlock:{type:'cash', value:500}, crewBaseCost:154, managerLevelReq:14, managerName:'Big Tomasz' },
-    { id:'backroom_cards', name:"Backroom Card Games", flavor:"High-stakes poker runs after hours. The house takes 5% of every pot.", category:'street', icon:ICONS.cards, baseCost:3500, researchCost:1800, baseIncome:20, heatPerLevel:0.3, unlock:{type:'respect', value:25}, crewBaseCost:840, managerLevelReq:14, managerName:'Dealer Vik' },
-    { id:'garage', name:"Ashok's Auto Garage", flavor:"Honest repairs by day. A generous re-painting service by night.", category:'legit', icon:ICONS.garage, baseCost:2500, researchCost:1500, baseIncome:15, unlock:{type:'cash', value:2000}, crewBaseCost:630, managerLevelReq:15, managerName:'Ashok Himself' },
-    { id:'cab', name:"Windy City Cab Co.", flavor:"A fleet of gypsy cabs. They know every alley shortcut in the city.", category:'legit', icon:ICONS.cab, baseCost:6000, researchCost:3600, baseIncome:32, unlock:{type:'cash', value:5000}, crewBaseCost:1540, managerLevelReq:15, managerName:'Dispatcher Rosa' },
-    { id:'chop_ring', name:"Stolen Vehicle Export Ring", flavor:"Cars lifted from the Hub, re-VINed at Ashok's, and shipped out on midnight freighters.", category:'street', icon:ICONS.car, baseCost:24000, researchCost:14000, baseIncome:110, heatPerLevel:0.7, unlock:{type:'respect', value:100}, crewBaseCost:5950, managerLevelReq:16, managerName:'Chop Foreman Deke' },
-    { id:'restaurant', name:"Windhaven Chaat House", flavor:"The flagship. A line out the door and a write-up in the Herald.", category:'legit', icon:ICONS.food, baseCost:18000, researchCost:11000, baseIncome:85, unlock:{type:'cash', value:15000}, crewBaseCost:4760, managerLevelReq:16, managerName:'Head Chef Meera' },
-    { id:'lounge', name:"Marigold Lounge", flavor:"A nightclub named for the flowers Arjun's mother strung on the door in Delhi.", category:'legit', icon:ICONS.lounge, baseCost:70000, researchCost:42000, baseIncome:280, unlock:{type:'cash', value:60000}, crewBaseCost:18900, managerLevelReq:17, managerName:'Lena, House Manager' },
-    { id:'wire_network', name:"Underground Bookmaking & Wire Ops", flavor:"High-volume sports betting and offshore wire transfers, handled quietly in the Marigold VIP booths.", category:'street', icon:ICONS.phone, baseCost:120000, researchCost:75000, baseIncome:450, heatPerLevel:1.2, unlock:{type:'respect', value:300}, crewBaseCost:29400, managerLevelReq:17, managerName:'Bookie Sal' },
-    { id:'realestate', name:"West Side Holdings", flavor:"Buildings with Arjun's name on the paperwork and nobody else's.", category:'legit', icon:ICONS.bld2, baseCost:260000, researchCost:150000, baseIncome:850, unlock:{type:'cash', value:220000}, crewBaseCost:66500, managerLevelReq:18, managerName:'Counsel Whitfield' },
-    { id:'syndicate_logistics', name:"Syndicate Freight & Contraband", flavor:"Controlling the docks. Everything that moves through the West Side pays a tariff before hitting the street.", category:'street', icon:ICONS.box, baseCost:550000, researchCost:320000, baseIncome:1600, heatPerLevel:2.0, unlock:{type:'respect', value:800}, crewBaseCost:126000, managerLevelReq:18, managerName:'Dockmaster Chen' },
-  ];
-  businesses.forEach(b=>{ b.level=0; b.crew=0; b.manager=false; b.researched = b.unlock.type==='start'; b.tempMult=1; b.tempMultExpire=0; });
-
-  const ranks = [
-    {respect:0, title:'Unknown'},{respect:5, title:'Devlin Street Vendor'},{respect:25, title:'Neighborhood Operator'},
-    {respect:60, title:'Local Boss'},{respect:150, title:'Connected Figure'},{respect:400, title:'Syndicate Partner'},
-    {respect:900, title:'West Side Kingpin'},{respect:2000, title:'Windhaven Power Broker'},{respect:5000, title:"The City's Shadow Boss"},
-  ];
-
-  const milestones = [
-    { id:'first_venture', title:"CHAAT CART TURNS A REAL PROFIT", body:"<p class='flavor'><strong>Two hundred dollars.</strong> He landed at O'Hare with a duffel bag and a cousin's phone number. This is the first cash that is entirely his.</p>" },
-    { id:'local_boss', title:"DEVON STREET TAKES NOTICE", body:"<p class='flavor'>People who ignored him six months ago nod when he walks past. A local merchant offers him a free coffee. He throws it out. Nothing on Devlin Street is free.</p>" },
-    { id:'first_property', title:"A NAME ON THE LEASE", body:"<p class='flavor'>He signs a commercial lease under his own name for the first time. No cousin co-signing, no favor owed. He sits in his car for ten minutes afterward, doors locked, just staring at the keys.</p>" },
-    { id:'chaat_house', title:"THE TRIBUNE WRITES HIM UP", body:"<p class='flavor'>A critic calls the Chaat House the best thing to happen to Devlin Street in a decade. His mother has the clipping read to her three times over the phone. He sleeps with a gun under the mattress for a week.</p>" },
-    { id:'kingpin', title:"THEY ASK HIM TO SIT DOWN", body:"<p class='flavor'>The kind of men who used to make people disappear for a living now pull out a chair for him. He used to run from rooms like this. Now, they pour him a drink and ask for his thoughts.</p>" },
-    { id:'heist', title:"WEST SIDE, EAST DELHI", body:"<p class='flavor'>His name is on buildings, a restaurant with a two-hour wait, and a ledger only four people have ever seen. The men he ran from in Delhi wouldn't recognize him.</p>" },
-    { id:'extortion', title:"THE PRICE OF DOING BUSINESS", body:"<p class='flavor'>He walks into a neighborhood shop and demands a cut of their register. He remembers when men did this to his uncle. The register clicks open anyway. The money feels different this time.</p>" },
-    { id:'raid', title:"KICKING IN THE DOORS", body:"<p class='flavor'>Sirens in the alley, flashing lights in the front window. The police take the cash, the product, and a chunk of his street reputation. He stands on the sidewalk watching it happen. Next time, he'll pay the right people.</p>" },
-    { id:'crew_induct', title:"A SEAT AT THE TABLE", body:"<p class='flavor'>He brings someone into the inner circle. They aren't just runners on a corner anymore—they're family. He pours them a drink, but keeps an eye on the door. Trust is expensive.</p>" },
-    { id:'bentley', title:"THE HEAVY MACHINERY", body:"<p class='flavor'>He buys a vintage Bentley with cash. It's too big for the narrow streets, too loud, too impossible to ignore. That's exactly why he bought it. He wants everyone to see him coming.</p>" },
-    { id:'docks', title:"CONTROLLING THE DOCKS", body:"<p class='flavor'>Nothing moves through the West Side without his say-so. The cargo ships, the trucks, the longshoremen—they all pay a tariff. The city's arteries belong to him now.</p>" },
-  ];
-
-  const familyTiers = [
-    { name:'Brother Ravi', desc:'Permanent +50% income, every venture.' },
-    { name:'Mother Kavita', desc:'Permanent -35% **Heat** generation, everywhere.' },
-    { name:"Sister's family", desc:'+6 permanent crew capacity. Crew costs -20% forever.' },
-    { name:'Deepak, childhood friend', desc:'Managed ventures now auto-reinvest 10% of their income into leveling themselves.' },
-    { name:'Grandmother', desc:'Unlocks a capstone venture, and +25% **Respect** gain forever.' },
-  ];
 
   const eventPool = [
     { id:'rival', title:'A RIVAL CREW EYES YOUR CORNER', neg:true, body:"<p class='flavor'>Word is a West Side crew thinks your runners are working streets that belong to them.</p>", choices:[
@@ -104,51 +48,17 @@
   ];
 
   // LEGAL: ================= ASSETS: CARS & PROPERTIES =================
-  const cars = [
-    { id:'sedan', name:'Used Sedan', icon:ICONS.car, cost:800, speedMult:1.10, heistBonus:0.02, respectPerSec:0, color:'#7d8a99', len:26, wid:14 },
-    { id:'impala', name:"Impala '19", icon:ICONS.car, cost:5000, speedMult:1.25, heistBonus:0.05, respectPerSec:0, color:'#3e6b8a', len:29, wid:15 },
-    { id:'escalade', name:'Cadillac Escalade', icon:ICONS.car, cost:35000, speedMult:1.40, heistBonus:0.08, respectPerSec:0.15, color:'#20242c', len:32, wid:17 },
-    { id:'bentley', name:'Vintage Bentley', icon:ICONS.car, cost:150000, speedMult:1.55, heistBonus:0.12, respectPerSec:0.4, color:'#c9a227', len:31, wid:16 },
-  ];
-  const properties = [
-    { id:'twoflat', name:'Rockwell Two-Flat', icon:ICONS.bld1, cost:3000, incomePerSec:4.5 },
-    { id:'retailstrip', name:'Devlin Retail Strip', icon:ICONS.bld1, cost:22000, incomePerSec:32 },
-    { id:'aptbuilding', name:'Uptown Apartments', icon:ICONS.bld2, cost:120000, incomePerSec:165 },
-    { id:'loft', name:'Riverside Lofts', icon:ICONS.bld3, cost:600000, incomePerSec:800 },
-  ];
 
   // LEGAL: Independent shops — not yours. You can rob them (one-off, cooldown, risk)
   // LEGAL: or extort them (permanent small income + permanent small heat, reversible).
-  const localBusinesses = [
-    { id:'patel', name:'Patel Grocery', icon:ICONS.store, owner:'Mr. Patel', robBase:900, extortIncome:0.8, extortHeat:0.12, district:'devlin', x:260, y:430, extorted:false, nextRobAt:0 },
-    { id:'pawn', name:"Nowak's Pawn Shop", icon:ICONS.store, owner:'Nowak', robBase:1500, extortIncome:1.3, extortHeat:0.18, district:'devlin', x:520, y:400, extorted:false, nextRobAt:0 },
-    { id:'herbalist', name:'Golden Lotus Herbalist', icon:ICONS.store, owner:'Mrs. Lin', robBase:700, extortIncome:0.6, extortHeat:0.10, district:'devlin', x:780, y:440, extorted:false, nextRobAt:0 },
-    { id:'bar', name:"O'Malley's Bar", icon:ICONS.lounge, owner:"O'Malley", robBase:1700, extortIncome:1.5, extortHeat:0.20, district:'devlin', x:1040, y:410, extorted:false, nextRobAt:0 },
-    { id:'chopshop', name:'West Side Chop Shop', icon:ICONS.garage, owner:'Deke', robBase:2000, extortIncome:1.8, extortHeat:0.22, district:'westside', x:220, y:560, extorted:false, nextRobAt:0 },
-    { id:'liquor', name:'Corner Liquor', icon:ICONS.store, owner:'Miss Odell', robBase:1100, extortIncome:1.0, extortHeat:0.15, district:'westside', x:920, y:600, extorted:false, nextRobAt:0 },
-    { id:'jewelers', name:'Whitfield & Co. Jewelers', icon:ICONS.diamond, owner:'Mr. Whitfield', robBase:3500, extortIncome:2.2, extortHeat:0.25, district:'hub', x:320, y:300, extorted:false, nextRobAt:0 },
-    { id:'marlowe', name:'The Marlowe Club', icon:ICONS.music, owner:'Vivienne', robBase:2600, extortIncome:1.9, extortHeat:0.20, district:'hub', x:900, y:320, extorted:false, nextRobAt:0 },
-  ];
 
   // LEGAL: Service buildings — not Ventures (no level/crew), just physical doors into
   // LEGAL: existing tab systems (Bank/Assets/Politics) or a direct dialogue (the heist).
-  const serviceBuildings = [
-    { id:'bankHome', kind:'bankHome', name:'West Side Savings & Loan', icon:ICONS.bank, district:'devlin', x:1360, y:230 },
-    { id:'cardealer', kind:'garage', name:'Windhaven Auto Exchange', icon:ICONS.garage, district:'devlin', x:1360, y:430 },
-    { id:'realty', kind:'realty', name:'Whitfield Realty', icon:ICONS.bld3, district:'devlin', x:1360, y:630 },
-    { id:'cityhall', kind:'cityhall', name:'City Hall Annex', icon:ICONS.gov, district:'hub', x:1150, y:250 },
-    { id:'heistTarget', kind:'heist', name:'First Windhaven Trust', icon:ICONS.bank, district:'hub', x:280, y:650 },
-  ];
 
   // LEGAL: ================= TERRITORY: DISTRICTS =================
   // LEGAL: Control is 0-100. >=60 is "yours" (bonus applies), <=25 is "rival controlled"
   // LEGAL: (small penalty), in between is contested (neutral). Control drifts based on
   // LEGAL: your presence there (muscle, active corners, ventures) vs. rival pressure.
-  const districts = [
-    { id:'devlin', name:'Devlin Street', homeTurf:true, control:65, pushCount:0, nextPushAt:0 },
-    { id:'westside', name:'West Side', homeTurf:false, control:15, pushCount:0, nextPushAt:0 },
-    { id:'hub', name:'The Hub', homeTurf:false, control:10, pushCount:0, nextPushAt:0 },
-  ];
   function districtStatus(id){
     const c = districts.find(d=>d.id===id).control;
     return c>=60 ? 'yours' : (c<=25 ? 'rival' : 'contested');
@@ -177,23 +87,11 @@
   // LEGAL: Lab (cash-funded, no crew) and consumed by dealers stationed on corners
   // LEGAL: across districts. No product in stock means a staffed corner just idles —
   // LEGAL: same production/distribution coupling Dope Slinger runs on, just spatial now.
-  const corners = [
-    { id:'devlinCorner', name:'Devlin & Rockwell', district:'devlin', tier:1, rate:3, consumption:1.4, dealerCost:250, x:700, y:800, dealer:false, busted:false, bustCooldownAt:0 },
-    { id:'ws1', name:'Cicero & 16th', district:'westside', tier:2, rate:9, consumption:4, dealerCost:900, x:320, y:260, dealer:false, busted:false, bustCooldownAt:0 },
-    { id:'ws2', name:'Pulaski Underpass', district:'westside', tier:2, rate:11, consumption:5, dealerCost:1200, x:1120, y:280, dealer:false, busted:false, bustCooldownAt:0 },
-    { id:'ws3', name:'Roosevelt Yard', district:'westside', tier:3, rate:22, consumption:9, dealerCost:3200, x:500, y:800, dealer:false, busted:false, bustCooldownAt:0 },
-    { id:'ws4', name:'The Warehouse Block', district:'westside', tier:3, rate:28, consumption:11, dealerCost:4200, x:1200, y:750, dealer:false, busted:false, bustCooldownAt:0 },
-  ];
 
   // LEGAL: ================= POLITICS =================
   // LEGAL: Influence is a cash-funded meter. Named politicians take individual favor
   // LEGAL: (also cash) and each unlock a distinct permanent bonus at favor>=60.
   // LEGAL: Running for office is a one-shot capstone gated behind enough influence.
-  const politicians = [
-    { id:'cole', name:'City Councilman Cole', role:'Zoning', favor:0, pocketed:false, desc:"Zoning favors: -10% research cost on every venture once he's in your pocket.", flavor:"Cole stops pretending the envelopes are for his re-election fund. \"We understand each other now,\" is all he says." },
-    { id:'boyle', name:'Commissioner Boyle', role:'Police', favor:0, pocketed:false, desc:"Fewer patrols where it counts: -20% heat generation once he's in your pocket.", flavor:"Boyle doesn't say yes outright. He just stops assigning patrols to your streets, and that's answer enough." },
-    { id:'whitmore', name:'Judge Whitmore', role:'Courts', favor:0, pocketed:false, desc:"A friendlier bench: raids and busts cost 30% less once she's in your pocket.", flavor:"Whitmore never looks at you directly in public. In private, cases involving your name start moving oddly fast, and not against you." },
-  ];
   function coleActive(){ return politicians.find(p=>p.id==='cole').favor >= 60; }
   function boyleActive(){ return politicians.find(p=>p.id==='boyle').favor >= 60; }
   function whitmoreActive(){ return politicians.find(p=>p.id==='whitmore').favor >= 60; }
@@ -202,12 +100,6 @@
   // LEGAL: A small, hand-authored roster (not procedural) — each recruit requires an
   // LEGAL: initiation trial through the dialogue engine and grants a distinct
   // LEGAL: permanent bonus once inducted, plus counts toward Gang Strength for wars.
-  const gangRecruits = [
-    { id:'chino', name:'Chino', trait:'Fast and reckless', reqRespect:100, cost:1500, bonus:"Corners are 15% less likely to get busted.", inducted:false, dialogueKey:'initChino', district:'westside', x:250, y:480 },
-    { id:'nadia', name:'Nadia Volkov', trait:'Knows every cop by name', reqRespect:150, cost:3000, bonus:'-10% **Heat** generation, citywide.', inducted:false, dialogueKey:'initNadia', district:'westside', x:900, y:460 },
-    { id:'bird', name:'Bird', trait:'Watches the corners', reqRespect:200, cost:4500, bonus:'+15% **Income** from every corner.', inducted:false, dialogueKey:'initBird', district:'westside', x:1300, y:520 },
-    { id:'les', name:'Les "Lockjaw" Tavares', trait:"Doesn't talk, doesn't run", reqRespect:300, cost:8000, bonus:'+8% Gang Strength in territory wars.', inducted:false, dialogueKey:'initLes', district:'westside', x:650, y:850 },
-  ];
   function gangStrength(){
     const car = getEquippedCar();
     let s = state.muscleCount*1 + gangRecruits.filter(g=>g.inducted).length*3;
@@ -435,9 +327,6 @@
   // LEGAL: Named NPCs are hand-authored and permanent (see `dialogues` above).
   // LEGAL: Procedural NPCs are generated from pools — this is the seed for a larger
   // LEGAL: rotating cast once robbery/recruitment lands in later phases.
-  const npcFirstNames = ['Marcus','Yolanda','Chen','Fatima','Danny','Rosa','Terrence','Aleksey','Priya','Deshawn','Grace','Miguel'];
-  const npcLastNames = ['Whitfield','Osei','Nowak','Reyes','Kowalski','Singh','Okafor','Brennan'];
-  const npcDispositions = ['Friendly','Wary','Business-minded','Streetwise'];
   function generateNPC(){
     return {
       name: npcFirstNames[Math.floor(Math.random()*npcFirstNames.length)] + ' ' + npcLastNames[Math.floor(Math.random()*npcLastNames.length)],
@@ -461,17 +350,6 @@
   }
 
   // LEGAL: ================= STOCK MARKET =================
-  const stockMarket = [
-    { symbol: 'MGV', name: 'MegaSaver', logo: 'MegaSaver.png', desc: "Everyday low prices, everyday low wages.", founded: 1962, fullDesc: "Founded in 1962. MegaSaver pioneered the art of crushing local businesses by selling bulk goods at a loss. Their true profit comes from real estate and relentless supply-chain extortion.", basePrice: 45, vol: 0.04 },
-    { symbol: 'QKC', name: 'QuickCart', logo: 'quickcart.png', desc: "Next-day delivery, lifetime subscription.", founded: 1994, fullDesc: "Founded in 1994 out of a garage. Now they own the garage, the street it's on, and the logistics network that runs through it. They bleed money on shipping just to watch competitors suffocate.", basePrice: 120, vol: 0.05 },
-    { symbol: 'MUD', name: 'Mudster', logo: 'mudster.png', desc: "For the concrete jungle.", founded: 1941, fullDesc: "Born in 1941 for war, now repurposed for suburban driveways. Mudster sells the illusion of rugged independence to people stuck in gridlock traffic. High margins, fanatic loyalty.", basePrice: 35, vol: 0.06 },
-    { symbol: 'ELC', name: 'Electron', logo: 'electron.png', desc: "The future is electric, and heavily subsidized.", founded: 2003, fullDesc: "Founded in 2003. They sell carbon credits disguised as luxury vehicles. Wall Street loves them because they promise to fix the climate while quietly ignoring the lithium strip mines.", basePrice: 210, vol: 0.08 },
-    { symbol: 'BNJ', name: 'BeanJuice', logo: 'beanjuice.png', desc: "Eight dollars for hot bean water.", founded: 1971, fullDesc: "Since 1971, they've convinced the world that burnt espresso is a premium lifestyle product. They operate like a bank that pays no interest, holding billions in unspent gift cards.", basePrice: 18, vol: 0.03 },
-    { symbol: 'CLS', name: 'ClipStream', logo: 'ClipStream.png', desc: "Monetizing attention spans by the second.", founded: 2005, fullDesc: "Launched in 2005. They don't make anything; they just host the vanity of millions and sell the resulting behavioral data to the highest bidder. An unstoppable digital tollbooth.", basePrice: 85, vol: 0.07 },
-    { symbol: 'PML', name: 'Pomello', logo: 'Pomello.png', desc: "Closed ecosystem, open wallets.", founded: 1976, fullDesc: "Founded in 1976. They design shiny boxes that trap users in a proprietary gilded cage. They have more cash on hand than most sovereign nations, and lawyers to protect every dime.", basePrice: 160, vol: 0.04 },
-    { symbol: 'FWT', name: 'First Windhaven Trust', logo: 'fwt.png', desc: "Old money. Doesn't ask questions.", founded: 1883, fullDesc: "Established in 1883. They built this city's skyline by looking the other way when the ledgers didn't add up. Safe, reliable, and deeply embedded in political machinery.", basePrice: 65, vol: 0.02 },
-    { symbol: 'HLG', name: 'Heartland Global', logo: 'hlg.png', desc: "Too big to fail, too connected to prosecute.", founded: 1911, fullDesc: "Founded in 1911. They've weathered depressions and scandals by making sure they owe the right people and the right people owe them. A financial fortress.", basePrice: 90, vol: 0.03 },
-  ];
 
   // LEGAL: ================= STATE =================
   const state = {
