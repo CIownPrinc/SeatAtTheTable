@@ -373,6 +373,17 @@ import { stockMarket } from '../config/stockMarket';
   };
 
   // LEGAL: ================= HELPERS =================
+  // LEGAL: byId fails fast and loudly when a required element is missing, rather
+  // LEGAL: than returning null and crashing later on a silent property access.
+  // LEGAL: byIdOrNull is for elements that are legitimately sometimes absent.
+  function byId<T extends HTMLElement = HTMLElement>(id: string): T {
+    const el = document.getElementById(id);
+    if (!el) throw new Error(`Required element #${id} not found`);
+    return el as T;
+  }
+  function byIdOrNull<T extends HTMLElement = HTMLElement>(id: string): T | null {
+    return document.getElementById(id) as T | null;
+  }
   function fmt(n){
     const sign = n<0?'-':''; n=Math.abs(n);
     if(n < 1000) return sign+'$' + Math.floor(n);
@@ -457,7 +468,7 @@ import { stockMarket } from '../config/stockMarket';
     return false;
   }
   function log(msg){
-    const wrap = document.getElementById('ticker');
+    const wrap = byId('ticker');
     const item = document.createElement('div');
     item.className = 'ticker-item';
     const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
@@ -468,24 +479,24 @@ import { stockMarket } from '../config/stockMarket';
 
   // LEGAL: ================= MODAL =================
   function showModal({eyebrow, title, body, stamp, buttons}){
-    document.getElementById('modal-eyebrow').textContent = eyebrow || '';
-    document.getElementById('modal-title').textContent = title || '';
-    document.getElementById('modal-body').innerHTML = body || '';
-    const stampEl = document.getElementById('modal-stamp');
+    byId('modal-eyebrow').textContent = eyebrow || '';
+    byId('modal-title').textContent = title || '';
+    byId('modal-body').innerHTML = body || '';
+    const stampEl = byId('modal-stamp');
     if(stamp){ stampEl.style.display='block'; stampEl.textContent = stamp; } else { stampEl.style.display='none'; }
-    const footer = document.getElementById('modal-footer');
+    const footer = byId('modal-footer');
     footer.innerHTML = '';
     (buttons || [{label:"Continue"}]).forEach((btnDef, idx)=>{
       const btn = document.createElement('button');
       btn.className = 'modal-btn' + (btnDef.secondary ? ' secondary' : '');
       btn.innerHTML = `` + btnDef.label;
       btn.onclick = function(){
-        document.getElementById('modal-overlay').classList.add('hidden');
+        byId('modal-overlay').classList.add('hidden');
         if(btnDef.onClick) btnDef.onClick();
       };
       footer.appendChild(btn);
     });
-    document.getElementById('modal-overlay').classList.remove('hidden');
+    byId('modal-overlay').classList.remove('hidden');
   }
 
   function triggerMilestone(id: string){
@@ -495,7 +506,7 @@ import { stockMarket } from '../config/stockMarket';
     state.seenMilestones.add(id);
     showModal({ eyebrow:'Windhaven Herald — West Side Edition', title:m.title, body:m.body, buttons:[{label:'Keep Going'}] });
     log(`<i class="ph-duotone ph-newspaper"></i> Headline: "${m.title.charAt(0)}${m.title.slice(1).toLowerCase()}"`);
-    if(id === 'chaat_house') document.getElementById('delhi-theme-row').style.display = 'flex';
+    if(id === 'chaat_house') byId('delhi-theme-row').style.display = 'flex';
     scheduleSave();
   }
 
@@ -648,8 +659,8 @@ import { stockMarket } from '../config/stockMarket';
 
   // LEGAL: ================= ASSETS: CARS & PROPERTIES =================
   function renderAssetsPanel(){
-    const carsWrap = document.getElementById('assets-cars');
-    const propWrap = document.getElementById('assets-buildings');
+    const carsWrap = byId('assets-cars');
+    const propWrap = byId('assets-buildings');
     if(!carsWrap || !propWrap) return;
 
     carsWrap.innerHTML = cars.map(c=>{
@@ -699,7 +710,7 @@ import { stockMarket } from '../config/stockMarket';
   }
 
   function renderBankPanel(){
-    const wrap = document.getElementById('bank-panel');
+    const wrap = byId('bank-panel');
     if(!wrap) return;
     
     if(state.financeView === 'vault') {
@@ -926,7 +937,7 @@ import { stockMarket } from '../config/stockMarket';
   }
 
   function drawStockChart(symbol) {
-    const canvas = document.getElementById('stock-chart') as HTMLCanvasElement;
+    const canvas = byId('stock-chart') as HTMLCanvasElement;
     if(!canvas) return;
     const ctx = canvas.getContext('2d');
     if(!ctx) return;
@@ -989,7 +1000,7 @@ import { stockMarket } from '../config/stockMarket';
       if(state.currentNews.length > 3) state.currentNews.pop();
       state.nextNewsAt = state.playSeconds + 120;
       
-      const newsCard = document.getElementById('market-news-card');
+      const newsCard = byId('market-news-card');
       if(newsCard) {
         newsCard.innerHTML = state.currentNews.map(n => `<div class="flavor-note" style="margin-top:4px;">>> ${n}</div>`).join('');
       }
@@ -1183,7 +1194,7 @@ import { stockMarket } from '../config/stockMarket';
   }
 
   function renderDistrictBar(){
-    const wrap = document.getElementById('district-bar');
+    const wrap = byId('district-bar');
     if(!wrap) return;
     wrap.innerHTML = districts.map(d=>{
       const here = state.currentDistrict===d.id;
@@ -1191,7 +1202,7 @@ import { stockMarket } from '../config/stockMarket';
     }).join('');
   }
   function renderLegend(){
-    const wrap = document.getElementById('map-legend');
+    const wrap = byId('map-legend');
     if(!wrap) return;
     wrap.innerHTML = `
       <span class="legend-item"><span class="legend-swatch" style="background:#3e6b78;border:1px solid #6fa6b5;"></span>Your Ventures</span>
@@ -1206,7 +1217,7 @@ import { stockMarket } from '../config/stockMarket';
     `;
   }
   function renderTerritoryPanel(){
-    const wrap = document.getElementById('territory-panel');
+    const wrap = byId('territory-panel');
     if(!wrap) return;
     const bonusText = { devlin:'+15% income to every venture when yours', westside:'-25% corner heat, +15% corner income when yours', hub:'+50% bank interest, +10% heist odds when yours' };
     wrap.innerHTML = districts.map(d=>{
@@ -1228,7 +1239,7 @@ import { stockMarket } from '../config/stockMarket';
   }
 
   function renderPoliticsPanel(){
-    const wrap = document.getElementById('politics-panel');
+    const wrap = byId('politics-panel');
     if(!wrap) return;
     const canOffice = state.influence >= 500;
     const canCampaign = canOffice && state.playSeconds >= state.nextCampaignAt && !state.electedOffice;
@@ -1280,7 +1291,7 @@ import { stockMarket } from '../config/stockMarket';
   }
 
   function renderGangPanel(){
-    const wrap = document.getElementById('gang-panel');
+    const wrap = byId('gang-panel');
     if(!wrap) return;
     const gs = gangStrength(), rs = rivalStrength();
     const canWar = state.playSeconds >= state.nextWarAt;
@@ -1492,13 +1503,13 @@ import { stockMarket } from '../config/stockMarket';
     const target = e.target as HTMLElement;
     const quickDeposit = target.closest('[data-deposit-quick]');
     if(quickDeposit){
-      const inp = document.getElementById('deposit-input') as HTMLInputElement;
+      const inp = byId('deposit-input') as HTMLInputElement;
       if(inp) inp.value = String(Math.floor(state.cash * Number(quickDeposit.getAttribute('data-deposit-quick'))));
       return;
     }
     const quickWithdraw = target.closest('[data-withdraw-quick]');
     if(quickWithdraw){
-      const inp = document.getElementById('withdraw-input') as HTMLInputElement;
+      const inp = byId('withdraw-input') as HTMLInputElement;
       if(inp) inp.value = String(Math.floor(state.bank * Number(quickWithdraw.getAttribute('data-withdraw-quick'))));
       return;
     }
@@ -1544,10 +1555,10 @@ import { stockMarket } from '../config/stockMarket';
     } else if(btn.id === 'go-lcn-home'){
       state.financeView = 'lcn-home'; renderBankPanel();
     } else if(btn.id === 'deposit-go'){
-      const inp = document.getElementById('deposit-input') as HTMLInputElement;
+      const inp = byId('deposit-input') as HTMLInputElement;
       depositAmount(inp?.value);
     } else if(btn.id === 'withdraw-go'){
-      const inp = document.getElementById('withdraw-input') as HTMLInputElement;
+      const inp = byId('withdraw-input') as HTMLInputElement;
       withdrawAmount(inp?.value);
     } else if(btn.id === 'start-heist'){
       if(state.playSeconds < state.nextHeistAt) return;
@@ -1601,22 +1612,22 @@ import { stockMarket } from '../config/stockMarket';
   // LEGAL: Wire all delegation listeners exactly once at boot. Stable containers
   // LEGAL: never get destroyed so each handler accumulates at exactly 1 per container.
   function wireDelegation(){
-    document.getElementById('grid-legit').addEventListener('click', handleCardAction);
-    document.getElementById('grid-street').addEventListener('click', handleCardAction);
-    document.getElementById('assets-cars').addEventListener('click', handleAssetAction);
-    document.getElementById('assets-buildings').addEventListener('click', handleAssetAction);
-    document.getElementById('street-panel').addEventListener('click', handleStreetAction);
-    const bankPanel = document.getElementById('bank-panel');
+    byId('grid-legit').addEventListener('click', handleCardAction);
+    byId('grid-street').addEventListener('click', handleCardAction);
+    byId('assets-cars').addEventListener('click', handleAssetAction);
+    byId('assets-buildings').addEventListener('click', handleAssetAction);
+    byId('street-panel').addEventListener('click', handleStreetAction);
+    const bankPanel = byId('bank-panel');
     if(bankPanel){ bankPanel.addEventListener('click', handleBankAction); bankPanel.addEventListener('keydown', handleBankKeydown); }
-    document.getElementById('territory-panel').addEventListener('click', handleTerritoryAction);
-    document.getElementById('politics-panel').addEventListener('click', handlePoliticsAction);
-    document.getElementById('gang-panel').addEventListener('click', handleGangAction);
-    document.getElementById('district-bar').addEventListener('click', handleDistrictAction);
+    byId('territory-panel').addEventListener('click', handleTerritoryAction);
+    byId('politics-panel').addEventListener('click', handlePoliticsAction);
+    byId('gang-panel').addEventListener('click', handleGangAction);
+    byId('district-bar').addEventListener('click', handleDistrictAction);
   }
 
   // LEGAL: ================= RENDER: STREET PANEL =================
   function renderStreetPanel(){
-    const wrap = document.getElementById('street-panel');
+    const wrap = byId('street-panel');
     const mc = muscleCost();
     const rcCash = ratsCashCost(), rcResp = ratsRespectCost();
     wrap.innerHTML = `
@@ -1713,8 +1724,8 @@ import { stockMarket } from '../config/stockMarket';
 
   // LEGAL: ================= RENDER: ALL =================
   function renderAll(){
-    const legitGrid = document.getElementById('grid-legit');
-    const streetGrid = document.getElementById('grid-street');
+    const legitGrid = byId('grid-legit');
+    const streetGrid = byId('grid-street');
     legitGrid.innerHTML=''; streetGrid.innerHTML='';
     businesses.forEach(b=>{ const card = renderCard(b); (b.category==='legit' ? legitGrid : streetGrid).appendChild(card); });
     renderStreetPanel();
@@ -1726,14 +1737,14 @@ import { stockMarket } from '../config/stockMarket';
     renderPoliticsPanel();
     renderGangPanel();
 
-    document.getElementById('hud-cash').textContent = fmt(state.cash);
-    document.getElementById('hud-income').textContent = (netIncome()>=0?'+':'') + fmt(netIncome()) + '/s';
-    document.getElementById('hud-rank').textContent = currentRank();
-    document.getElementById('hud-respect').textContent = `${fmtR(state.respect)} respect`;
-    document.getElementById('heat-fill').style.width = Math.min(100, state.heat) + '%';
-    document.getElementById('hud-crew').textContent = `${crewUsedGlobal()} / ${crewCapGlobal()}`;
+    byId('hud-cash').textContent = fmt(state.cash);
+    byId('hud-income').textContent = (netIncome()>=0?'+':'') + fmt(netIncome()) + '/s';
+    byId('hud-rank').textContent = currentRank();
+    byId('hud-respect').textContent = `${fmtR(state.respect)} respect`;
+    byId('heat-fill').style.width = Math.min(100, state.heat) + '%';
+    byId('hud-crew').textContent = `${crewUsedGlobal()} / ${crewCapGlobal()}`;
 
-    const prestigeBtn = document.getElementById('prestige-btn');
+    const prestigeBtn = byId('prestige-btn');
     const threshold = 50000 * Math.pow(4, state.prestigeCount);
     const nextFamily = familyTiers[Math.min(state.prestigeCount, familyTiers.length-1)];
     if(state.cash >= threshold*0.2 || state.prestigeCount>0){
@@ -1751,17 +1762,17 @@ import { stockMarket } from '../config/stockMarket';
   // LEGAL: calls every 250ms instead.
   function refreshHUD(){
     const rank = currentRank();
-    document.getElementById('hud-cash').textContent = fmt(state.cash);
-    document.getElementById('hud-income').textContent = (netIncome()>=0?'+':'') + fmt(netIncome()) + '/s';
-    document.getElementById('hud-rank').textContent = rank;
-    document.getElementById('hud-respect').textContent = `${fmtR(state.respect)} respect`;
-    document.getElementById('heat-fill').style.width = Math.min(100, state.heat) + '%';
-    document.getElementById('hud-crew').textContent = `${crewUsedGlobal()} / ${crewCapGlobal()}`;
+    byId('hud-cash').textContent = fmt(state.cash);
+    byId('hud-income').textContent = (netIncome()>=0?'+':'') + fmt(netIncome()) + '/s';
+    byId('hud-rank').textContent = rank;
+    byId('hud-respect').textContent = `${fmtR(state.respect)} respect`;
+    byId('heat-fill').style.width = Math.min(100, state.heat) + '%';
+    byId('hud-crew').textContent = `${crewUsedGlobal()} / ${crewCapGlobal()}`;
 
     if(rank === 'Local Boss') triggerMilestone('local_boss');
     if(rank === 'West Side Kingpin') triggerMilestone('kingpin');
 
-    const prestigeBtn = document.getElementById('prestige-btn');
+    const prestigeBtn = byId('prestige-btn');
     const threshold = 50000 * Math.pow(4, state.prestigeCount);
     const nextFamily = familyTiers[Math.min(state.prestigeCount, familyTiers.length-1)];
     if(state.cash >= threshold*0.2 || state.prestigeCount>0){
@@ -1784,37 +1795,37 @@ import { stockMarket } from '../config/stockMarket';
       } else if(action==='firecrew') btn.disabled = b.manager || b.crew<=0;
       else if(action==='hiremanager') btn.disabled = state.cash < managerCostFor(b);
     });
-    const hm=document.getElementById('hire-muscle'); if(hm) hm.disabled = state.cash<muscleCost();
-    const hr=document.getElementById('hire-rat'); if(hr) hr.disabled = !(state.cash>=ratsCashCost() && state.respect>=ratsRespectCost());
-    const bt=document.getElementById('buy-territory'); if(bt) bt.disabled = state.respect<territoryCost();
-    const bn=document.getElementById('buy-negotiate'); if(bn) bn.disabled = state.respect<negotiateCost();
+    const hm=byId('hire-muscle'); if(hm) hm.disabled = state.cash<muscleCost();
+    const hr=byId('hire-rat'); if(hr) hr.disabled = !(state.cash>=ratsCashCost() && state.respect>=ratsRespectCost());
+    const bt=byId('buy-territory'); if(bt) bt.disabled = state.respect<territoryCost();
+    const bn=byId('buy-negotiate'); if(bn) bn.disabled = state.respect<negotiateCost();
     document.querySelectorAll('[data-car-buy]').forEach(btn=>{ const c=cars.find(x=>x.id===btn.getAttribute('data-car-buy')); if(c) btn.disabled = state.cash<c.cost; });
     document.querySelectorAll('[data-prop-buy]').forEach(btn=>{ const p=properties.find(x=>x.id===btn.getAttribute('data-prop-buy')); if(p) btn.disabled = state.cash<p.cost; });
-    const heistBtn=document.getElementById('start-heist'); if(heistBtn) heistBtn.disabled = state.playSeconds<state.nextHeistAt;
-    const bankedEl=document.getElementById('bank-banked-value'); if(bankedEl) bankedEl.textContent=fmt(state.bank);
-    const onhandEl=document.getElementById('bank-onhand-value'); if(onhandEl) onhandEl.textContent=fmt(state.cash);
-    const heistStatusEl=document.getElementById('heist-status-value');
+    const heistBtn=byId('start-heist'); if(heistBtn) heistBtn.disabled = state.playSeconds<state.nextHeistAt;
+    const bankedEl=byId('bank-banked-value'); if(bankedEl) bankedEl.textContent=fmt(state.bank);
+    const onhandEl=byId('bank-onhand-value'); if(onhandEl) onhandEl.textContent=fmt(state.cash);
+    const heistStatusEl=byId('heist-status-value');
     if(heistStatusEl){
       const canHeist = state.playSeconds >= state.nextHeistAt;
       heistStatusEl.textContent = canHeist ? 'Ready' : `Cooling off (${Math.max(0,Math.ceil(state.nextHeistAt-state.playSeconds))}s)`;
     }
-    const labBtn=document.getElementById('upgrade-lab'); if(labBtn) labBtn.disabled = state.cash<labCost();
+    const labBtn=byId('upgrade-lab'); if(labBtn) labBtn.disabled = state.cash<labCost();
     document.querySelectorAll('[data-push]').forEach(btn=>{
       const d = districts.find(x=>x.id===btn.getAttribute('data-push'));
       if(d) btn.disabled = state.playSeconds<d.nextPushAt || state.respect<pushCost(d);
     });
-    const buyInfluenceBtn=document.getElementById('buy-influence'); if(buyInfluenceBtn) buyInfluenceBtn.disabled = state.cash<influenceCost();
+    const buyInfluenceBtn=byId('buy-influence'); if(buyInfluenceBtn) buyInfluenceBtn.disabled = state.cash<influenceCost();
     document.querySelectorAll('[data-bribe]').forEach(btn=>{
       const p = politicians.find(x=>x.id===btn.getAttribute('data-bribe'));
       if(p) btn.disabled = state.cash<favorCost(p) || p.favor>=100;
     });
-    const campaignBtn=document.getElementById('launch-campaign');
+    const campaignBtn=byId('launch-campaign');
     if(campaignBtn && !state.electedOffice) campaignBtn.disabled = !(state.influence>=100 && state.playSeconds>=state.nextCampaignAt);
     document.querySelectorAll('[data-initiate]').forEach(btn=>{
       const g = gangRecruits.find(x=>x.id===btn.getAttribute('data-initiate'));
       if(g) btn.disabled = state.cash<g.cost;
     });
-    const warBtn=document.getElementById('declare-war'); if(warBtn) warBtn.disabled = state.playSeconds<state.nextWarAt;
+    const warBtn=byId('declare-war'); if(warBtn) warBtn.disabled = state.playSeconds<state.nextWarAt;
     refreshTerritory();
   }
   function refreshTerritory(){
@@ -1824,7 +1835,7 @@ import { stockMarket } from '../config/stockMarket';
       const label = document.querySelector(`[data-control-label="${d.id}"]`);
       if(label) label.textContent = `${Math.round(d.control)}% — ${districtStatus(d.id)==='yours'?'Yours':(districtStatus(d.id)==='rival'?'Rival Controlled':'Contested')}`;
     });
-    const tradeEl = document.getElementById('trade-summary');
+    const tradeEl = byId('trade-summary');
     if(tradeEl){
       const active = activeCorners().length;
       tradeEl.textContent = `${state.product.toFixed(0)}/${productCap()} product · ${active}/${corners.length} corners staffed · ${cornerIncomePerSec().toFixed(1)}/s`;
@@ -1832,7 +1843,7 @@ import { stockMarket } from '../config/stockMarket';
   }
 
   // LEGAL: ================= PRESTIGE =================
-  document.getElementById('prestige-btn').addEventListener('click', function(){
+  byId('prestige-btn').addEventListener('click', function(){
     const threshold = 50000 * Math.pow(4, state.prestigeCount);
     if(state.cash < threshold) return;
     const tier = familyTiers[Math.min(state.prestigeCount, familyTiers.length-1)];
@@ -2106,12 +2117,12 @@ import { stockMarket } from '../config/stockMarket';
   });
   window.addEventListener('keyup', function(e){ keys[e.key.toLowerCase()] = false; });
   window.addEventListener('blur', function(){ Object.keys(keys).forEach(k=> keys[k]=false); });
-  document.getElementById('btn-interact').addEventListener('click', tryInteract);
+  byId('btn-interact').addEventListener('click', tryInteract);
 
-  document.getElementById('fullscreen-btn').addEventListener('click', function(){
-    const container = document.getElementById('scene3d-container');
+  byId('fullscreen-btn').addEventListener('click', function(){
+    const container = byId('scene3d-container');
     const isFs = container.classList.toggle('fullscreen');
-    const btn = document.getElementById('fullscreen-btn');
+    const btn = byId('fullscreen-btn');
     btn.innerHTML = isFs ? '<i class="ph-duotone ph-arrows-in"></i>' : '<i class="ph-duotone ph-arrows-out"></i>';
     if(renderer){
       const w = isFs ? window.innerWidth : VIEW_W;
@@ -2121,17 +2132,17 @@ import { stockMarket } from '../config/stockMarket';
     }
   });
   window.addEventListener('resize', function(){
-    const container = document.getElementById('scene3d-container');
+    const container = byId('scene3d-container');
     if(container.classList.contains('fullscreen') && renderer){
       renderer.setSize(window.innerWidth, window.innerHeight);
       if(camera3d){ camera3d.aspect = window.innerWidth/window.innerHeight; camera3d.updateProjectionMatrix(); }
     }
   });
 
-  document.getElementById('fullscreen-btn').addEventListener('click', function(){
-    const container = document.getElementById('scene3d-container');
+  byId('fullscreen-btn').addEventListener('click', function(){
+    const container = byId('scene3d-container');
     const isFs = container.classList.toggle('fullscreen');
-    const btn = document.getElementById('fullscreen-btn');
+    const btn = byId('fullscreen-btn');
     btn.innerHTML = isFs ? '<i class="ph-duotone ph-arrows-in"></i>' : '<i class="ph-duotone ph-arrows-out"></i>';
     if(renderer){
       const w = isFs ? window.innerWidth : VIEW_W;
@@ -2141,7 +2152,7 @@ import { stockMarket } from '../config/stockMarket';
     }
   });
   window.addEventListener('resize', function(){
-    const container = document.getElementById('scene3d-container');
+    const container = byId('scene3d-container');
     if(container.classList.contains('fullscreen') && renderer){
       renderer.setSize(window.innerWidth, window.innerHeight);
       if(camera3d){ camera3d.aspect = window.innerWidth/window.innerHeight; camera3d.updateProjectionMatrix(); }
@@ -2685,7 +2696,7 @@ import { stockMarket } from '../config/stockMarket';
   }
 
   function initScene(){
-    const container = document.getElementById('scene3d-container');
+    const container = byId('scene3d-container');
     scene = new THREE.Scene();
     scene.background = new THREE.Color('#0a0b10');
     scene.fog = new THREE.Fog(0x0a0b10, 480, 1050);
@@ -2716,7 +2727,7 @@ import { stockMarket } from '../config/stockMarket';
   initScene();
 
   // LEGAL: ================= MINIMAP (simple 2D, pannable, waypoints) =================
-  const minimapCanvas = document.getElementById('minimap-canvas');
+  const minimapCanvas = byId('minimap-canvas');
   const mctx = minimapCanvas.getContext('2d');
   const minimapPan = { x:0, y:0 };
   // LEGAL: Scale tuned for 5500-wide world so minimap shows local neighbourhood
@@ -2744,11 +2755,11 @@ import { stockMarket } from '../config/stockMarket';
       const wy = player.y + minimapPan.y + (py-75)/MINIMAP_SCALE;
       state.waypoints[state.currentDistrict] = { x:Math.max(0,Math.min(WORLD_W,wx)), y:Math.max(0,Math.min(WORLD_H,wy)) };
       rebuildWaypointBeacon();
-      document.getElementById('minimap-clear').classList.add('show');
+      byId('minimap-clear').classList.add('show');
       scheduleSave();
     }
   });
-  document.getElementById('minimap-clear').addEventListener('click', function(){
+  byId('minimap-clear').addEventListener('click', function(){
     state.waypoints[state.currentDistrict] = null;
     rebuildWaypointBeacon();
     this.classList.remove('show');
@@ -2790,7 +2801,7 @@ import { stockMarket } from '../config/stockMarket';
   }
 
   // LEGAL: ================= INTERIOR (lightweight 2D scene) =================
-  const interiorCanvas = document.getElementById('interior-canvas');
+  const interiorCanvas = byId('interior-canvas');
   const ictx = interiorCanvas.getContext('2d');
   function iRoundRect(x,y,w,h,r){
     ictx.beginPath(); ictx.moveTo(x+r,y);
@@ -2882,7 +2893,7 @@ import { stockMarket } from '../config/stockMarket';
     drawMinimap();
 
     const near = nearestMarker();
-    const hintEl = document.getElementById('map-hint');
+    const hintEl = byId('map-hint');
     if(near){
       let label = '';
       if(near.type==='door') label='Exit';
@@ -2905,20 +2916,20 @@ import { stockMarket } from '../config/stockMarket';
   }
 
   // LEGAL: ================= SETTINGS =================
-  document.getElementById('quiet-toggle').addEventListener('change', function(e){
+  byId('quiet-toggle').addEventListener('change', function(e){
     document.body.classList.toggle('quiet', e.target.checked);
     scheduleSave();
   });
-  document.getElementById('theme-toggle').addEventListener('change', function(e){
+  byId('theme-toggle').addEventListener('change', function(e){
     if(e.target.checked) document.body.classList.remove('theme-delhi');
     document.body.classList.toggle('theme-light', e.target.checked);
-    document.getElementById('delhi-theme-toggle').checked = false;
+    byId('delhi-theme-toggle').checked = false;
     scheduleSave();
   });
-  document.getElementById('delhi-theme-toggle').addEventListener('change', function(e){
+  byId('delhi-theme-toggle').addEventListener('change', function(e){
     if(e.target.checked) document.body.classList.remove('theme-light');
     document.body.classList.toggle('theme-delhi', e.target.checked);
-    document.getElementById('theme-toggle').checked = false;
+    byId('theme-toggle').checked = false;
     scheduleSave();
   });
   const storageAdapter = {
@@ -2945,8 +2956,8 @@ import { stockMarket } from '../config/stockMarket';
     }
   };
 
-  document.getElementById('save-now-btn').addEventListener('click', function(){ saveGame(true); });
-  document.getElementById('export-save-btn').addEventListener('click', function(){
+  byId('save-now-btn').addEventListener('click', function(){ saveGame(true); });
+  byId('export-save-btn').addEventListener('click', function(){
     const data = JSON.stringify(serializeState(), null, 2);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -2960,8 +2971,8 @@ import { stockMarket } from '../config/stockMarket';
     URL.revokeObjectURL(url);
     log('Game save exported to JSON file.');
   });
-  const importSaveInput = document.getElementById('import-save-input');
-  document.getElementById('import-save-btn').addEventListener('click', function(){
+  const importSaveInput = byId('import-save-input');
+  byId('import-save-btn').addEventListener('click', function(){
     if(importSaveInput) importSaveInput.click();
   });
   if(importSaveInput){
@@ -2993,7 +3004,7 @@ import { stockMarket } from '../config/stockMarket';
     });
   }
 
-  document.getElementById('reset-btn').addEventListener('click', function(){
+  byId('reset-btn').addEventListener('click', function(){
     showModal({
       eyebrow:'Are You Sure', title:'RESET ALL PROGRESS',
       body:`<p>This clears everything — cash, ventures, respect, territory — and starts the story over from Devlin Street, day one. There's no undoing this.</p>`,
@@ -3053,10 +3064,10 @@ import { stockMarket } from '../config/stockMarket';
     try{
       await storageAdapter.set('seat-save-v1', JSON.stringify(serializeState()));
       const stamp = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
-      const statusEl = document.getElementById('save-status');
+      const statusEl = byId('save-status');
       if(statusEl) statusEl.textContent = (manual?'Saved just now — ':'Last saved ') + stamp;
     }catch(e){
-      const statusEl = document.getElementById('save-status');
+      const statusEl = byId('save-status');
       if(statusEl) statusEl.textContent = 'Save failed — check storage settings';
     }
   }
@@ -3073,10 +3084,10 @@ import { stockMarket } from '../config/stockMarket';
         state.started = d.started; if(d.procNpc) state.procNpc = d.procNpc;
         if(d.lastTick) state.lastTick = d.lastTick;
         (d.businesses||[]).forEach(sb=>{ const b=businesses.find(x=>x.id===sb.id); if(b){ b.level=sb.level; b.crew=sb.crew; b.manager=sb.manager; b.researched=sb.researched; } });
-        if(d.quiet){ document.body.classList.add('quiet'); document.getElementById('quiet-toggle').checked = true; }
-        if(d.light){ document.body.classList.add('theme-light'); document.getElementById('theme-toggle').checked = true; }
-        if(d.delhi){ document.body.classList.add('theme-delhi'); document.getElementById('delhi-theme-toggle').checked = true; }
-        if(state.seenMilestones.has('chaat_house')) document.getElementById('delhi-theme-row').style.display = 'flex';
+        if(d.quiet){ document.body.classList.add('quiet'); byId('quiet-toggle').checked = true; }
+        if(d.light){ document.body.classList.add('theme-light'); byId('theme-toggle').checked = true; }
+        if(d.delhi){ document.body.classList.add('theme-delhi'); byId('delhi-theme-toggle').checked = true; }
+        if(state.seenMilestones.has('chaat_house')) byId('delhi-theme-row').style.display = 'flex';
         state.bank = d.bank||0; state.nextHeistAt = d.nextHeistAt||0;
         state.ownedCars = d.ownedCars||[]; state.equippedCar = d.equippedCar||null; state.ownedProperties = d.ownedProperties||[];
         (d.localBusinesses||[]).forEach(sb=>{ const b=localBusinesses.find(x=>x.id===sb.id); if(b){ b.extorted=sb.extorted; b.nextRobAt=sb.nextRobAt; } });
@@ -3260,7 +3271,7 @@ import { stockMarket } from '../config/stockMarket';
   })();
 
   // LEGAL: ================= TOOLTIPS =================
-  const globalTooltip = document.getElementById('global-tooltip');
+  const globalTooltip = byId('global-tooltip');
   document.addEventListener('mouseover', (e) => {
     const target = (e.target as HTMLElement).closest('[data-tooltip]');
     if (target && globalTooltip) {
@@ -3298,7 +3309,7 @@ import { stockMarket } from '../config/stockMarket';
     // LEGAL: Save shortcut: Ctrl+S or Cmd+S
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
       e.preventDefault();
-      const saveBtn = document.getElementById('save-now-btn');
+      const saveBtn = byId('save-now-btn');
       if(saveBtn) saveBtn.click();
       return;
     }
