@@ -60,7 +60,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
   // LEGAL: (small penalty), in between is contested (neutral). Control drifts based on
   // LEGAL: your presence there (muscle, active corners, ventures) vs. rival pressure.
   function districtStatus(id: string){
-    const c = districts.find(d=>d.id===id).control;
+    const c = districts.find(d=>d.id===id)!.control;
     return c>=60 ? 'yours' : (c<=25 ? 'rival' : 'contested');
   }
   function devlinIncomeBonus(){ const s=districtStatus('devlin'); return s==='yours'?1.15:(s==='rival'?0.9:1); }
@@ -93,9 +93,9 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
   // LEGAL: Influence is a cash-funded meter. Named politicians take individual favor
   // LEGAL: (also cash) and each unlock a distinct permanent bonus at favor>=60.
   // LEGAL: Running for office is a one-shot capstone gated behind enough influence.
-  function coleActive(){ return politicians.find(p=>p.id==='cole').favor >= 60; }
-  function boyleActive(){ return politicians.find(p=>p.id==='boyle').favor >= 60; }
-  function whitmoreActive(){ return politicians.find(p=>p.id==='whitmore').favor >= 60; }
+  function coleActive(){ return politicians.find(p=>p.id==='cole')!.favor >= 60; }
+  function boyleActive(){ return politicians.find(p=>p.id==='boyle')!.favor >= 60; }
+  function whitmoreActive(){ return politicians.find(p=>p.id==='whitmore')!.favor >= 60; }
 
   // LEGAL: ================= GANG =================
   // LEGAL: A small, hand-authored roster (not procedural) — each recruit requires an
@@ -105,11 +105,11 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     const car = getEquippedCar();
     let s = state.muscleCount*1 + gangRecruits.filter(g=>g.inducted).length*3;
     if(car) s += car.heistBonus*10;
-    if(gangRecruits.find(g=>g.id==='les').inducted) s *= 1.08;
+    if(gangRecruits.find(g=>g.id==='les')!.inducted) s *= 1.08;
     return s;
   }
   function rivalStrength(){
-    const ws = districts.find(d=>d.id==='westside');
+    const ws = districts.find(d=>d.id==='westside')!;
     return 20 + (100-ws.control)*0.3;
   }
 
@@ -402,9 +402,9 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
   function grandmotherActive(){ return hasFamilyTier(4); }
   function discountMult(){ return Math.pow(0.93, state.negotiateTier); }
   function globalIncomeMult(){ return Math.max(0.1, (brotherActive()?1.5:1) * (1 - (state.investorPenalty||0))); }
-  function nadiaInducted(){ return gangRecruits.find(g=>g.id==='nadia').inducted; }
-  function chinoInducted(){ return gangRecruits.find(g=>g.id==='chino').inducted; }
-  function birdInducted(){ return gangRecruits.find(g=>g.id==='bird').inducted; }
+  function nadiaInducted(){ return gangRecruits.find(g=>g.id==='nadia')!.inducted; }
+  function chinoInducted(){ return gangRecruits.find(g=>g.id==='chino')!.inducted; }
+  function birdInducted(){ return gangRecruits.find(g=>g.id==='bird')!.inducted; }
   function whitmoreMult(){ return whitmoreActive() ? 0.7 : 1; }
   function researchCostFor(b: Business){ return Math.ceil(b.researchCost * discountMult() * (coleActive()?0.9:1)); }
   function heatMult(){ return Math.max(0.3, (state.bribeOn?0.4:1) * (motherActive()?0.65:1) * (boyleActive()?0.8:1) * (nadiaInducted()?0.9:1)); }
@@ -1091,7 +1091,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     renderAll();
   }
   function openCornerPanel(corner: Corner){
-    const d = districts.find(x=>x.id===corner.district);
+    const d = districts.find(x=>x.id===corner.district)!;
     let body = `<p>Tier ${corner.tier} corner in ${d.name}. ${corner.dealer ? `Staffed — moving ${corner.rate}/s when there's product to sell.` : 'No one working it right now.'}</p>`;
     if(corner.busted){
       const left = Math.max(0, Math.ceil(corner.bustCooldownAt - state.playSeconds));
@@ -1154,6 +1154,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
   // LEGAL: ================= GANG: FUNCTIONS =================
   function inductRecruit(id: string, style: string){
     const g = gangRecruits.find(x=>x.id===id);
+    if(!g) return;
     if(g.inducted) return;
     if(state.respect < g.reqRespect || state.cash < g.cost){
       dialogues[g.dialogueKey].nodes.result.text = "It doesn't happen. Not enough weight behind your name yet — come back when you're further along.";
@@ -1176,7 +1177,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     renderAll();
   }
   function resolveWar(style: string){
-    const ws = districts.find(d=>d.id==='westside');
+    const ws = districts.find(d=>d.id==='westside')!;
     const cost = style==='assault' ? 4000 : 1800;
     if(state.cash < cost){
       dialogues.gangwar.nodes.result.text = "You don't have the cash to back this up tonight. Come back when you do.";
@@ -1344,7 +1345,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
         <div class="data-main">
           <div class="col-id"><i class="ph-duotone ph-swords"></i> ${ICONS.fist}</div>
           <div class="col-name">West Side War</div>
-          <div class="col-stat">CONTROL: ${Math.round(districts.find(d=>d.id==='westside').control)}%</div>
+          <div class="col-stat">CONTROL: ${Math.round(districts.find(d=>d.id==='westside')!.control)}%</div>
           <div class="col-status">ACTIVE</div>
         </div>
         <div class="data-expanded">
@@ -2123,7 +2124,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     updateParkedCarMesh();
     rebuildWaypointBeacon();
     refreshPlayerModel();
-    const d = districts.find(x=>x.id===id);
+    const d = districts.find(x=>x.id===id)!;
     log(`<i class="ph-duotone ph-car"></i> You head over to ${d.name}.`);
     renderAll();
   }
@@ -2769,7 +2770,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     minimapDragStart = { clientX:e.clientX, clientY:e.clientY, panX:minimapPan.x, panY:minimapPan.y };
   });
   window.addEventListener('mousemove', function(e){
-    if(!minimapDragging) return;
+    if(!minimapDragging || !minimapDragStart) return;
     const ddx = e.clientX - minimapDragStart.clientX, ddy = e.clientY - minimapDragStart.clientY;
     if(Math.abs(ddx)>3 || Math.abs(ddy)>3) minimapDragMoved = true;
     minimapPan.x = minimapDragStart.panX - ddx/MINIMAP_SCALE;
@@ -2928,7 +2929,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
       let label = '';
       if(near.type==='door') label='Exit';
       else if(near.type==='hotspot') label=near.ref.label;
-      else if(near.type==='car') label='Enter ' + (getEquippedCar()?getEquippedCar().name:'car');
+      else if(near.type==='car'){ const eq=getEquippedCar(); label='Enter ' + (eq?eq.name:'car'); }
       else if(near.type==='building') label=near.ref.biz.name;
       else if(near.type==='service') label=near.ref.name;
       else if(near.type==='local') label=near.ref.name;
@@ -2939,7 +2940,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     } else if(state.inVehicle){
       hintEl.textContent = 'Press E to park and get out';
     } else {
-      hintEl.textContent = state.currentInterior ? ('Inside ' + state.currentInterior.name) : ('Driving around ' + districts.find(function(d){return d.id===state.currentDistrict;}).name);
+      hintEl.textContent = state.currentInterior ? ('Inside ' + state.currentInterior.name) : ('Driving around ' + districts.find(function(d){return d.id===state.currentDistrict;})!.name);
     }
 
     requestAnimationFrame(mapHub);
