@@ -3,7 +3,8 @@ export type VentureCategory = 'legit' | 'street';
 export type UnlockRule =
   | { type: 'start' }
   | { type: 'cash'; value: number }
-  | { type: 'respect'; value: number };
+  | { type: 'respect'; value: number }
+  | { type: 'family'; value: number };
 
 export interface BusinessConfig {
   id: string;
@@ -28,6 +29,7 @@ export interface Business extends BusinessConfig {
   researched: boolean;
   tempMult: number;
   tempMultExpire: number;
+  reinvestedIncome: number;
 }
 
 export interface Rank {

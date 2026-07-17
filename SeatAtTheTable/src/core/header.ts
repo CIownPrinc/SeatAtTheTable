@@ -11,7 +11,6 @@ import { gangRecruits } from '../config/gang';
 import { npcFirstNames, npcLastNames, npcDispositions } from '../config/npcs';
 import { stockMarket } from '../config/stockMarket';
 
-
   const eventPool = [
     { id:'rival', title:'A RIVAL CREW EYES YOUR CORNER', neg:true, body:"<p class='flavor'>Word is a West Side crew thinks your runners are working streets that belong to them.</p>", choices:[
       {label:'Pay them off', sub:'-8% cash', run:function(){ state.cash *= 0.92; log('<i class="ph-duotone ph-envelope-simple"></i> You paid the rival crew to walk away quietly.'); } },
@@ -294,9 +293,9 @@ import { stockMarket } from '../config/stockMarket';
   // LEGAL: systems instead of repeating the same static lines forever.
   function npcOpeningNode(npcKey){
     if(npcKey==='sanjay'){
-      if(state.prestigeCount>=5) return 'stage3';
-      if(state.prestigeCount>=3) return 'stage2';
-      if(state.prestigeCount>=1) return 'stage1';
+      if(grandmotherActive()) return 'stage3';
+      if(sisterActive()) return 'stage2';
+      if(brotherActive()) return 'stage1';
       return 'start';
     }
     if(npcKey==='dice'){
@@ -392,15 +391,21 @@ import { stockMarket } from '../config/stockMarket';
     return sign+'$' + v.toFixed(v<10?2:1) + units[u];
   }
   function fmtR(n){ return Math.floor(n).toLocaleString(); }
-  function discountMult(){ return Math.pow(0.93, state.negotiateTier) * (state.prestigeCount>=3?0.8:1); }
-  function globalIncomeMult(){ return Math.max(0.1, (1 + state.prestigeCount*0.5) * (1 - (state.investorPenalty||0))); }
+  function hasFamilyTier(index){ return state.prestigeCount > index; }
+  function brotherActive(){ return hasFamilyTier(0); }
+  function motherActive(){ return hasFamilyTier(1); }
+  function sisterActive(){ return hasFamilyTier(2); }
+  function deepakActive(){ return hasFamilyTier(3); }
+  function grandmotherActive(){ return hasFamilyTier(4); }
+  function discountMult(){ return Math.pow(0.93, state.negotiateTier); }
+  function globalIncomeMult(){ return Math.max(0.1, (brotherActive()?1.5:1) * (1 - (state.investorPenalty||0))); }
   function nadiaInducted(){ return gangRecruits.find(g=>g.id==='nadia').inducted; }
   function chinoInducted(){ return gangRecruits.find(g=>g.id==='chino').inducted; }
   function birdInducted(){ return gangRecruits.find(g=>g.id==='bird').inducted; }
   function whitmoreMult(){ return whitmoreActive() ? 0.7 : 1; }
   function researchCostFor(b){ return Math.ceil(b.researchCost * discountMult() * (coleActive()?0.9:1)); }
-  function heatMult(){ return Math.max(0.3, (state.bribeOn?0.4:1) * (state.prestigeCount>=2?0.65:1) * (boyleActive()?0.8:1) * (nadiaInducted()?0.9:1)); }
-  function crewCapGlobal(){ return 6 + state.territoryTier*4 + (state.prestigeCount>=3?6:0); }
+  function heatMult(){ return Math.max(0.3, (state.bribeOn?0.4:1) * (motherActive()?0.65:1) * (boyleActive()?0.8:1) * (nadiaInducted()?0.9:1)); }
+  function crewCapGlobal(){ return 6 + state.territoryTier*4 + (sisterActive()?6:0); }
   function crewUsedGlobal(){ return businesses.reduce((s,b)=> s + (b.manager?0:b.crew), 0); }
   function crewNeeded(b){ return b.level<=0 ? 0 : Math.ceil(b.level/5); }
   function efficiency(b){
@@ -410,7 +415,7 @@ import { stockMarket } from '../config/stockMarket';
     return Math.max(0.35, Math.min(1, b.crew/need));
   }
   function costForLevel(b){ return Math.ceil(b.baseCost * Math.pow(1.15, b.level) * discountMult()); }
-  function crewCostFor(b){ return Math.ceil(b.crewBaseCost * Math.pow(1.22, b.crew) * discountMult()); }
+  function crewCostFor(b){ return Math.ceil(b.crewBaseCost * Math.pow(1.22, b.crew) * discountMult() * (sisterActive()?0.8:1)); }
   function managerCostFor(b){ return Math.ceil(b.baseCost * 45 * discountMult()); }
   function territoryCost(){ return Math.ceil(40 * Math.pow(2.1, state.territoryTier)); }
   function negotiateCost(){ return Math.ceil(25 * Math.pow(1.8, state.negotiateTier)); }
@@ -450,11 +455,11 @@ import { stockMarket } from '../config/stockMarket';
   }
   function labCost(){ return Math.ceil(400 * Math.pow(1.22, state.productLevel) * discountMult()); }
   function productCap(){ return 200 + state.productLevel*20; }
-  function electedOfficeIncome(){ return state.electedOffice ? (5 + state.prestigeCount*2) : 0; }
+  function electedOfficeIncome(){ return state.electedOffice ? (5 + Math.min(state.prestigeCount, familyTiers.length)*2) : 0; }
   function rawTotalIncome(){ return (businesses.reduce((s,b)=> s+incomeFor(b), 0)*devlinIncomeBonus() + propertiesIncome() + localBizIncome() + cornerIncomePerSec() + electedOfficeIncome()) * globalIncomeMult(); }
   function bribeUpkeep(){ return state.bribeOn ? rawTotalIncome()*0.12 : 0; }
   function netIncome(){ return rawTotalIncome() - bribeUpkeep(); }
-  function respectPerSec(){ const car=getEquippedCar(); return (state.muscleCount*0.6 + (car?car.respectPerSec:0)) * (state.prestigeCount>=5?1.25:1); }
+  function respectPerSec(){ const car=getEquippedCar(); return (state.muscleCount*0.6 + (car?car.respectPerSec:0)) * (grandmotherActive()?1.25:1); }
   function heatGenPerSec(){
     const streetHeat = businesses.filter(b=>b.category==='street').reduce((s,b)=> s+(b.heatPerLevel||0)*b.level, 0);
     const extortHeat = localBusinesses.filter(b=>b.extorted).reduce((s,b)=> s+b.extortHeat, 0);
@@ -465,6 +470,7 @@ import { stockMarket } from '../config/stockMarket';
     if(b.unlock.type==='start') return true;
     if(b.unlock.type==='cash') return state.cash>=b.unlock.value || b.level>0 || b.researched;
     if(b.unlock.type==='respect') return state.respect>=b.unlock.value || b.level>0 || b.researched;
+    if(b.unlock.type==='family') return hasFamilyTier(b.unlock.value) || b.level>0 || b.researched;
     return false;
   }
   function log(msg){
@@ -1746,7 +1752,8 @@ import { stockMarket } from '../config/stockMarket';
 
     const prestigeBtn = byId('prestige-btn');
     const threshold = 50000 * Math.pow(4, state.prestigeCount);
-    const nextFamily = familyTiers[Math.min(state.prestigeCount, familyTiers.length-1)];
+    const nextFamily = familyTiers[state.prestigeCount];
+    if(!nextFamily){ prestigeBtn.style.display = 'none'; return; }
     if(state.cash >= threshold*0.2 || state.prestigeCount>0){
       prestigeBtn.style.display = 'inline-block';
       prestigeBtn.disabled = state.cash < threshold;
@@ -1774,7 +1781,8 @@ import { stockMarket } from '../config/stockMarket';
 
     const prestigeBtn = byId('prestige-btn');
     const threshold = 50000 * Math.pow(4, state.prestigeCount);
-    const nextFamily = familyTiers[Math.min(state.prestigeCount, familyTiers.length-1)];
+    const nextFamily = familyTiers[state.prestigeCount];
+    if(!nextFamily){ prestigeBtn.style.display = 'none'; return; }
     if(state.cash >= threshold*0.2 || state.prestigeCount>0){
       prestigeBtn.style.display = 'inline-block';
       prestigeBtn.disabled = state.cash < threshold;
@@ -1844,16 +1852,17 @@ import { stockMarket } from '../config/stockMarket';
 
   // LEGAL: ================= PRESTIGE =================
   byId('prestige-btn').addEventListener('click', function(){
+    if(state.prestigeCount >= familyTiers.length) return;
     const threshold = 50000 * Math.pow(4, state.prestigeCount);
     if(state.cash < threshold) return;
-    const tier = familyTiers[Math.min(state.prestigeCount, familyTiers.length-1)];
+    const tier = familyTiers[state.prestigeCount];
     showModal({
       eyebrow:"O'Hare Terminal 5", title:"FAMILY INBOUND", stamp:'Arrived',
       body:`<p><strong>${tier.name}</strong> is cleared at customs. ${tier.desc}</p><p class="flavor">Setting them up in Chicago requires transferring almost every dollar on hand to clear their debts and secure their paper trail. Your active fronts will close down temporarily, and muscle on the street will scatter until the dust settles. Hired managers and research dossiers remain yours.</p>`,
       buttons:[
         {label:"Make the transfer", onClick:function(){
           state.cash = 47; state.heat = 0; state.muscleCount = 0; state.ratCount = 0;
-          businesses.forEach(b=>{ b.level=0; b.crew=0; });
+          businesses.forEach(b=>{ b.level=0; b.crew=0; b.reinvestedIncome=0; });
           state.prestigeCount += 1;
           log(`✈️ ${tier.name} lands in Chicago. ${tier.desc}`);
           renderAll(); scheduleSave();
@@ -3030,7 +3039,7 @@ import { stockMarket } from '../config/stockMarket';
       quiet: document.body.classList.contains('quiet'),
       light: document.body.classList.contains('theme-light'),
       delhi: document.body.classList.contains('theme-delhi'),
-      businesses: businesses.map(b=> ({ id:b.id, level:b.level, crew:b.crew, manager:b.manager, researched:b.researched })),
+      businesses: businesses.map(b=> ({ id:b.id, level:b.level, crew:b.crew, manager:b.manager, researched:b.researched, reinvestedIncome:b.reinvestedIncome })),
       bank: state.bank, nextHeistAt: state.nextHeistAt,
       ownedCars: state.ownedCars, equippedCar: state.equippedCar, ownedProperties: state.ownedProperties,
       localBusinesses: localBusinesses.map(b=> ({ id:b.id, extorted:b.extorted, nextRobAt:b.nextRobAt })),
@@ -3079,11 +3088,11 @@ import { stockMarket } from '../config/stockMarket';
         state.cash=d.cash; state.respect=d.respect; state.heat=d.heat;
         state.territoryTier=d.territoryTier; state.negotiateTier=d.negotiateTier;
         state.muscleCount=d.muscleCount; state.ratCount=d.ratCount; state.bribeOn=d.bribeOn;
-        state.prestigeCount=d.prestigeCount; state.seenMilestones = new Set((d.seenMilestones||[]).map(x=>String(x)));
+        state.prestigeCount=Math.max(0, Math.min(familyTiers.length, Number(d.prestigeCount)||0)); state.seenMilestones = new Set((d.seenMilestones||[]).map(x=>String(x)));
         state.playSeconds=d.playSeconds||0; state.investorPenalty=Math.min(0.5, d.investorPenalty||0);
         state.started = d.started; if(d.procNpc) state.procNpc = d.procNpc;
         if(d.lastTick) state.lastTick = d.lastTick;
-        (d.businesses||[]).forEach(sb=>{ const b=businesses.find(x=>x.id===sb.id); if(b){ b.level=sb.level; b.crew=sb.crew; b.manager=sb.manager; b.researched=sb.researched; } });
+        (d.businesses||[]).forEach(sb=>{ const b=businesses.find(x=>x.id===sb.id); if(b){ b.level=sb.level; b.crew=sb.crew; b.manager=sb.manager; b.researched=sb.researched; b.reinvestedIncome=Math.max(0, Number(sb.reinvestedIncome)||0); } });
         if(d.quiet){ document.body.classList.add('quiet'); byId('quiet-toggle').checked = true; }
         if(d.light){ document.body.classList.add('theme-light'); byId('theme-toggle').checked = true; }
         if(d.delhi){ document.body.classList.add('theme-delhi'); byId('delhi-theme-toggle').checked = true; }
@@ -3132,6 +3141,20 @@ import { stockMarket } from '../config/stockMarket';
     state.playSeconds += dt;
 
     state.cash += netIncome()*dt;
+    if(deepakActive()){
+      businesses.forEach(b=>{
+        if(!b.manager || b.level<=0) return;
+        const reinvestment = incomeFor(b) * globalIncomeMult() * 0.1 * dt;
+        state.cash = Math.max(0, state.cash-reinvestment);
+        b.reinvestedIncome += reinvestment;
+        let levelsAdded = 0;
+        while(levelsAdded < 25 && b.reinvestedIncome >= costForLevel(b)){
+          b.reinvestedIncome -= costForLevel(b);
+          b.level += 1;
+          levelsAdded += 1;
+        }
+      });
+    }
     state.respect += respectPerSec()*dt;
     state.bank += state.bank * 0.00035 * hubInterestMult() * dt;
     checkMilestones();

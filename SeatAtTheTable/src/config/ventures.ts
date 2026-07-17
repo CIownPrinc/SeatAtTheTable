@@ -14,6 +14,7 @@ const ventureDefs: BusinessConfig[] = [
   { id:'wire_network', name:"Underground Bookmaking & Wire Ops", flavor:"High-volume sports betting and offshore wire transfers, handled quietly in the Marigold VIP booths.", category:'street', icon:ICONS.phone, baseCost:120000, researchCost:75000, baseIncome:450, heatPerLevel:1.2, unlock:{type:'respect', value:300}, crewBaseCost:29400, managerLevelReq:17, managerName:'Bookie Sal' },
   { id:'realestate', name:"West Side Holdings", flavor:"Buildings with Arjun's name on the paperwork and nobody else's.", category:'legit', icon:ICONS.bld2, baseCost:260000, researchCost:150000, baseIncome:850, unlock:{type:'cash', value:220000}, crewBaseCost:66500, managerLevelReq:18, managerName:'Counsel Whitfield' },
   { id:'syndicate_logistics', name:"Syndicate Freight & Contraband", flavor:"Controlling the docks. Everything that moves through the West Side pays a tariff before hitting the street.", category:'street', icon:ICONS.box, baseCost:550000, researchCost:320000, baseIncome:1600, heatPerLevel:2.0, unlock:{type:'respect', value:800}, crewBaseCost:126000, managerLevelReq:18, managerName:'Dockmaster Chen' },
+  { id:'family_office', name:"Kavita Family Office", flavor:"Grandmother presides over a private office where the family's legitimate holdings and quiet obligations become one enduring institution.", category:'legit', icon:ICONS.diamond, baseCost:1800000, researchCost:1000000, baseIncome:5200, unlock:{type:'family', value:4}, crewBaseCost:420000, managerLevelReq:20, managerName:'Family Steward Leela' },
 ];
 
 export const businesses: Business[] = ventureDefs.map((v) => ({
@@ -24,6 +25,7 @@ export const businesses: Business[] = ventureDefs.map((v) => ({
   researched: v.unlock.type === 'start',
   tempMult: 1,
   tempMultExpire: 0,
+  reinvestedIncome: 0,
 }));
 
 export const ranks: Rank[] = [
