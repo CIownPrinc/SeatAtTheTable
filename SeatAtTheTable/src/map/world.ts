@@ -3,11 +3,13 @@ import type { Point } from '../config/types';
 export interface VerticalRoad {
   x: number;
   w: number;
+  name: string;
 }
 
 export interface HorizontalRoad {
   y: number;
   w: number;
+  name: string;
 }
 
 export interface Landmark {
@@ -73,19 +75,19 @@ export const landmarks: Landmark[] = [
 
 export const roadNetwork: { vertical: VerticalRoad[]; horizontal: HorizontalRoad[] } = {
   vertical: [
-    { x: 270, w: 74 },
-    { x: 700, w: 74 },
-    { x: 1130, w: 74 },
-    { x: 2270, w: 74 },
-    { x: 2700, w: 74 },
-    { x: 3130, w: 74 },
-    { x: 4270, w: 74 },
-    { x: 4700, w: 74 },
-    { x: 5130, w: 74 },
+    { x: 270, w: 74, name: 'Rockwell Avenue' },
+    { x: 700, w: 74, name: 'Devlin Street' },
+    { x: 1130, w: 74, name: 'Ashland Row' },
+    { x: 2270, w: 74, name: 'Cicero Avenue' },
+    { x: 2700, w: 74, name: 'Pulaski Road' },
+    { x: 3130, w: 74, name: 'Canal Yard Drive' },
+    { x: 4270, w: 74, name: 'LaSalle Street' },
+    { x: 4700, w: 74, name: 'Wabash Avenue' },
+    { x: 5130, w: 74, name: 'Lakefront Drive' },
   ],
   horizontal: [
-    { y: 300, w: 74 },
-    { y: 600, w: 74 },
-    { y: 900, w: 74 },
+    { y: 300, w: 74, name: 'Grand Avenue' },
+    { y: 600, w: 74, name: 'Roosevelt Road' },
+    { y: 900, w: 74, name: 'Cermak Road' },
   ],
 };

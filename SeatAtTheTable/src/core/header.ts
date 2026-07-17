@@ -13,6 +13,8 @@ import { stockMarket } from '../config/stockMarket';
 import type { GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState, Point, ServiceBuilding, GangRecruit, Car, FillerItem, DialogueTree } from '../config/types';
 import { buildableBands, localXForDistrict, rectsOverlap, rotatedHalfExtents } from '../map/layout';
 import { applyNamedBuildingLots, createMapBuildings, mapNpcs } from '../map/markers';
+import type { MapObject } from '../map/objects';
+import { createBounds, nearestMapObject, solidsFromObjects } from '../map/objects';
 import { DISTRICT_OFFSETS, DISTRICT_W, VIEW_H, VIEW_W, WORLD_H, WORLD_W, districtSeeds, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import type * as ThreeNamespace from 'three';
 
@@ -1963,6 +1965,33 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: rel-x 270/700/1130 (±37) and horizontal roads at y 300/600/900 (±37), so
   // LEGAL: these column/row centers keep every venture fully clear of the streets.
   const mapBuildings = createMapBuildings(businesses);
+  function ventureBounds(m: typeof mapBuildings[number]): Solid {
+    const w = m.biz.baseCost>=50000?66:(m.biz.baseCost<1000?46:56);
+    return createBounds(m.x, m.y, w/2+6, (w*0.85)/2+6);
+  }
+  function buildMapObjects(): MapObject[] {
+    return [
+      ...mapBuildings.map(function(m): MapObject<'building', typeof m> {
+        return { kind:'building', id:m.id, district:m.district, x:m.x, y:m.y, bounds:ventureBounds(m), interactRadius:46, minimapColor:m.biz.category==='legit'?'#3e7c8c':'#a8394a', minimapSize:3, ref:m };
+      }),
+      ...serviceBuildings.map(function(m): MapObject<'service', ServiceBuilding> {
+        return { kind:'service', id:m.id, district:m.district, x:m.x, y:m.y, bounds:createBounds(m.x,m.y,35,31), interactRadius:46, minimapColor:'#d4a017', minimapSize:3, ref:m };
+      }),
+      ...localBusinesses.map(function(m): MapObject<'local', LocalBusiness> {
+        return { kind:'local', id:m.id, district:m.district, x:m.x, y:m.y, bounds:createBounds(m.x,m.y,27,24), interactRadius:46, minimapColor:'#7a6fb0', minimapSize:2.5, ref:m };
+      }),
+      ...corners.map(function(m): MapObject<'corner', Corner> {
+        return { kind:'corner', id:m.id, district:m.district, x:m.x, y:m.y, interactRadius:46, minimapColor:m.busted?'#5f6275':(m.dealer?'#d4a017':'#a8394a'), minimapSize:2, ref:m };
+      }),
+      ...mapNpcs.map(function(m): MapObject<'npc', typeof m> {
+        return { kind:'npc', id:m.id, district:m.district, x:m.x, y:m.y, interactRadius:46, minimapColor:'#f0efe8', minimapSize:2, ref:m };
+      }),
+      ...gangRecruits.map(function(m): MapObject<'gangnpc', GangRecruit> {
+        return { kind:'gangnpc', id:m.id, district:m.district, x:m.x, y:m.y, interactRadius:46, minimapColor:'#f0efe8', minimapSize:2, ref:m };
+      }),
+    ];
+  }
+  const mapObjects = buildMapObjects();
   // LEGAL: District landmarks — unique, recognisable "spots" so each area reads as a
   // LEGAL: place rather than interchangeable blocks. Coords are world-space, sited on
   // LEGAL: each district's park/plaza and clear of the fixed anchors. (The Hub already
@@ -1974,6 +2003,13 @@ import type * as ThreeNamespace from 'three';
     if(player.x < 3500) return 'westside';
     if(player.x < 4000) return null;
     return 'hub';
+  }
+  function currentRoadLabel(): string {
+    const vertical = roadNetwork.vertical.reduce(function(best,r){ return Math.abs(player.x-r.x)<Math.abs(player.x-best.x)?r:best; }, roadNetwork.vertical[0]);
+    const horizontal = roadNetwork.horizontal.reduce(function(best,r){ return Math.abs(player.y-r.y)<Math.abs(player.y-best.y)?r:best; }, roadNetwork.horizontal[0]);
+    const road = Math.abs(player.x-vertical.x) < Math.abs(player.y-horizontal.y) ? vertical.name : horizontal.name;
+    const district = districts.find(function(d){return d.id===state.currentDistrict;})?.name ?? 'Windhaven';
+    return `${road}, ${district}`;
   }
   // LEGAL: Unified world — all markers always in scene
   function inDistrict(){ return true; }
@@ -1995,9 +2031,10 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: Filler band coordinates are district-local; offset is applied at render time.
   function occupiedZones(districtId: string){
     const zones: { x: number; y: number; r: number }[] = [];
-    const add = (arr: { district: string; x: number; y: number }[], r: number)=> arr.filter(m=>m.district===districtId).forEach(m=> zones.push({x:localXForDistrict(districtId, m.x, DISTRICT_OFFSETS),y:m.y,r}));
-    add(mapBuildings,70); add(serviceBuildings,70); add(localBusinesses,60);
-    add(corners,50); add(mapNpcs,50); add(gangRecruits,50);
+    mapObjects.filter(m=>m.district===districtId).forEach(function(m){
+      const radius = m.bounds ? Math.max(m.bounds.hw, m.bounds.hd) + 24 : 50;
+      zones.push({x:localXForDistrict(districtId, m.x, DISTRICT_OFFSETS),y:m.y,r:radius});
+    });
     landmarks.filter(m=>m.district===districtId).forEach(m=> zones.push({x:localXForDistrict(districtId, m.x, DISTRICT_OFFSETS), y:m.y, r:70}));
     return zones;
   }
@@ -2083,13 +2120,7 @@ import type * as ThreeNamespace from 'three';
     return fillerCache[districtId];
   }
     function buildAllSolids(){
-    const list: Solid[] = [];
-    mapBuildings.forEach(m=>{
-      const w = m.biz.baseCost>=50000?66:(m.biz.baseCost<1000?46:56);
-      list.push({x:m.x,y:m.y,hw:w/2+6,hd:(w*0.85)/2+6});
-    });
-    serviceBuildings.forEach(m=> list.push({x:m.x,y:m.y,hw:35,hd:31}));
-    localBusinesses.forEach(m=> list.push({x:m.x,y:m.y,hw:27,hd:24}));
+    const list: Solid[] = solidsFromObjects(mapObjects);
     ['devlin','westside','hub'].forEach(function(distId){
       const off = DISTRICT_OFFSETS[distId];
       fillerFor(distId).filter((f): f is Extract<FillerItem, {kind:'building'|'edge'}> => f.kind==='building'||f.kind==='edge').forEach(function(f){
@@ -2251,12 +2282,8 @@ import type * as ThreeNamespace from 'three';
       const d = Math.hypot(player.x-parked.x, player.y-parked.y);
       if(d<bestDist){ bestDist=d; best={type:'car', ref:parked}; }
     }
-    mapBuildings.filter(inDistrict).forEach(m=>{ const d=Math.hypot(player.x-m.x,player.y-m.y); if(d<bestDist){ bestDist=d; best={type:'building',ref:m}; } });
-    serviceBuildings.filter(inDistrict).forEach(m=>{ const d=Math.hypot(player.x-m.x,player.y-m.y); if(d<bestDist){ bestDist=d; best={type:'service',ref:m}; } });
-    mapNpcs.filter(inDistrict).forEach(m=>{ const d=Math.hypot(player.x-m.x,player.y-m.y); if(d<bestDist){ bestDist=d; best={type:'npc',ref:m}; } });
-    gangRecruits.filter(inDistrict).forEach(m=>{ const d=Math.hypot(player.x-m.x,player.y-m.y); if(d<bestDist){ bestDist=d; best={type:'gangnpc',ref:m}; } });
-    localBusinesses.filter(inDistrict).forEach(m=>{ const d=Math.hypot(player.x-m.x,player.y-m.y); if(d<bestDist){ bestDist=d; best={type:'local',ref:m}; } });
-    corners.filter(inDistrict).forEach(m=>{ const d=Math.hypot(player.x-m.x,player.y-m.y); if(d<bestDist){ bestDist=d; best={type:'corner',ref:m}; } });
+    const object = nearestMapObject(mapObjects, player.x, player.y, bestDist);
+    if(object) best = { type:object.kind, ref:object.ref } as MapMarker;
     return best;
   }
   function tryInteract(){
@@ -2308,6 +2335,7 @@ import type * as ThreeNamespace from 'three';
   type DisposableMaterial = ThreeNamespace.Material & { map?: ThreeNamespace.Texture };
   let THREE: ThreeModule;
   let scene: ThreeNamespace.Scene, camera3d: ThreeNamespace.PerspectiveCamera, renderer: ThreeNamespace.WebGLRenderer, worldGroup: ThreeNamespace.Group, playerGroup: ThreeNamespace.Group, ambientLight: ThreeNamespace.AmbientLight, sunLight: ThreeNamespace.DirectionalLight, waypointBeacon: ThreeNamespace.Group | null = null, parkedCarMesh: ThreeNamespace.Group | null = null;
+  let streetLights: ThreeNamespace.PointLight[] = [];
 
   function disposeObj(o: ThreeNamespace.Object3D){
     const mesh = o as ThreeNamespace.Mesh;
@@ -2412,6 +2440,9 @@ import type * as ThreeNamespace from 'three';
     sunLight.target.updateMatrixWorld();
     scene.background = new THREE.Color(sun < 0.18 ? '#070914' : (dusk > 0.45 ? '#241b20' : '#0a0b10'));
     scene.fog = new THREE.Fog(sun < 0.18 ? 0x070914 : 0x0a0b10, 420 + night * 80, 1050 + sun * 150);
+    streetLights.forEach(function(light){
+      light.intensity = Math.max(0, night - 0.25) * 0.95;
+    });
   }
   function buildingColorFor(b: Business){
     const unlocked = isUnlocked(b);
@@ -2420,14 +2451,20 @@ import type * as ThreeNamespace from 'three';
     if(!opened) return { color:'#33353d', h:26 };
     return { color: legit ? '#3e6b78' : '#7c3540', h: 24+Math.min(70,b.level*3) };
   }
+  function variantForId(id: string): number {
+    let seed = 0;
+    for(let i=0;i<id.length;i++) seed += id.charCodeAt(i) * (i + 1);
+    return (seed % 997) / 997;
+  }
 
 
   // LEGAL: ---- procedural building with windows, door, and zone-specific roof ----
-  function buildDetailedBuilding(w: number, h: number, d: number, color: number | string, zoneType: string){
+  function buildDetailedBuilding(w: number, h: number, d: number, color: number | string, zoneType: string, variant = 0){
     const g = new THREE.Group();
     const body = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), new THREE.MeshStandardMaterial({color, roughness:0.85, metalness:0.05}));
     body.castShadow=true; body.receiveShadow=true; g.add(body);
-    const winMat = new THREE.MeshStandardMaterial({color:'#c8d8ff', emissive:'#5070c0', emissiveIntensity:0.45, roughness:0.2});
+    const glassColor = variant > 0.66 ? '#b9ffe8' : (variant > 0.33 ? '#ffe4a8' : '#c8d8ff');
+    const winMat = new THREE.MeshStandardMaterial({color:glassColor, emissive:glassColor, emissiveIntensity:0.28 + variant*0.25, roughness:0.2});
     const winRows = Math.max(1, Math.floor(h/18));
     const winCols = Math.max(1, Math.floor(w/22));
     for(let wr=0; wr<winRows; wr++){
@@ -2443,6 +2480,32 @@ import type * as ThreeNamespace from 'three';
     const doorMat = new THREE.MeshStandardMaterial({color:'#101216', roughness:0.5});
     const door = new THREE.Mesh(new THREE.PlaneGeometry(11,16), doorMat);
     door.position.set(0, -h/2+8, d/2+0.11); g.add(door);
+    if(variant < 0.22){
+      const upper = box(w*0.68, h*0.32, d*0.68, color);
+      upper.position.y = h/2 + h*0.16; g.add(upper);
+      const cap = box(w*0.76, 3, d*0.76, '#242833');
+      cap.position.y = h/2 + h*0.32 + 1.5; g.add(cap);
+    } else if(variant < 0.44){
+      const cornice = box(w*1.02, 4, d*1.02, '#272a31');
+      cornice.position.y = h/2 + 2; g.add(cornice);
+      const awning = box(Math.min(w*0.7, 38), 3, 8, zoneType==='shop'?'#9b2f3f':'#2f5c68');
+      awning.position.set(0, -h/2+20, d/2+4); g.add(awning);
+    } else if(variant < 0.66){
+      const rooftop = box(w*0.34, 9, d*0.32, '#3b3f49');
+      rooftop.position.set(w*0.18, h/2+4.5, -d*0.12); g.add(rooftop);
+      const vent = new THREE.Mesh(new THREE.CylinderGeometry(3,3,10,8), new THREE.MeshStandardMaterial({color:'#565c68', roughness:0.65, metalness:0.4}));
+      vent.position.set(-w*0.22, h/2+5, d*0.12); vent.castShadow=true; g.add(vent);
+    } else if(variant > 0.84){
+      const tankMat = new THREE.MeshStandardMaterial({color:'#8a6a42', roughness:0.75});
+      [[-5,-5],[5,-5],[-5,5],[5,5]].forEach(function(p){
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.8,0.8,18,5), new THREE.MeshStandardMaterial({color:'#3f4248', roughness:0.7}));
+        leg.position.set(p[0], h/2+9, p[1]); leg.castShadow=true; g.add(leg);
+      });
+      const tank = new THREE.Mesh(new THREE.CylinderGeometry(8,8,10,12), tankMat);
+      tank.position.set(0, h/2+22, 0); tank.castShadow=true; g.add(tank);
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(8.5,5,12), tankMat);
+      cap.position.set(0, h/2+29, 0); cap.castShadow=true; g.add(cap);
+    }
     if(zoneType==='skyscraper' && h>60){
       const spire = new THREE.Mesh(new THREE.ConeGeometry(4,h*0.22,6), new THREE.MeshStandardMaterial({color:'#8090b0', metalness:0.8, roughness:0.1}));
       spire.position.y = h/2 + h*0.11; g.add(spire);
@@ -2459,11 +2522,61 @@ import type * as ThreeNamespace from 'three';
     }
     return g;
   }
+  function buildStreetLight(x: number, z: number){
+    const group = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(1.3,1.8,34,8), new THREE.MeshStandardMaterial({color:'#3b3e47', roughness:0.55, metalness:0.4}));
+    pole.position.set(0,17,0); pole.castShadow=true; group.add(pole);
+    const arm = box(14,1.8,1.8,'#3b3e47');
+    arm.position.set(6,33,0); group.add(arm);
+    const bulbMat = new THREE.MeshStandardMaterial({color:'#ffe6a0', emissive:'#ffd27a', emissiveIntensity:1.4});
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(3.2,10,8), bulbMat);
+    bulb.position.set(13,32,0); group.add(bulb);
+    const light = new THREE.PointLight(0xffcc7a, 0, 150, 2.2);
+    light.position.set(13,32,0); group.add(light);
+    group.position.set(x,0,z);
+    worldGroup.add(group);
+    streetLights.push(light);
+  }
+  function buildStopSign(x: number, z: number, rot: number){
+    const group = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.9,0.9,18,6), new THREE.MeshStandardMaterial({color:'#c8cad8', roughness:0.4, metalness:0.5}));
+    pole.position.set(0,9,0); pole.castShadow=true; group.add(pole);
+    const sign = new THREE.Mesh(new THREE.CylinderGeometry(5.2,5.2,0.8,8), new THREE.MeshStandardMaterial({color:'#b82f2f', roughness:0.45}));
+    sign.rotation.x = Math.PI/2; sign.position.set(0,20,0); sign.castShadow=true; group.add(sign);
+    const face = document.createElement('canvas');
+    face.width = 256; face.height = 256;
+    const fctx = face.getContext('2d')!;
+    fctx.fillStyle = '#b82f2f'; fctx.fillRect(0,0,256,256);
+    fctx.fillStyle = '#fff8f0'; fctx.font = 'bold 58px sans-serif'; fctx.textAlign = 'center'; fctx.textBaseline = 'middle'; fctx.fillText('STOP',128,128);
+    const tex = new THREE.CanvasTexture(face);
+    const label = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, depthTest:false}));
+    label.scale.set(14,14,1); label.position.set(0,20.2,0); group.add(label);
+    group.position.set(x,0,z); group.rotation.y=rot; worldGroup.add(group);
+  }
+  function buildTrafficLight(x: number, z: number, rot: number){
+    const group = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(1,1.4,30,8), new THREE.MeshStandardMaterial({color:'#2f333c', roughness:0.5, metalness:0.5}));
+    pole.position.set(0,15,0); pole.castShadow=true; group.add(pole);
+    const arm = box(22,2,2,'#2f333c'); arm.position.set(10,29,0); group.add(arm);
+    const housing = box(7,18,5,'#1b1d23'); housing.position.set(22,24,0); group.add(housing);
+    ['#d4322f','#d4a017','#2fa85f'].forEach(function(color, i){
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(2.1,10,8), new THREE.MeshStandardMaterial({color, emissive:color, emissiveIntensity:i===0?0.9:0.25}));
+      lamp.position.set(22,29-i*5,2.7); group.add(lamp);
+    });
+    group.position.set(x,0,z); group.rotation.y=rot; worldGroup.add(group);
+  }
+  function buildIntersectionFurniture(x: number, z: number, index: number){
+    buildStreetLight(x - 46, z - 46);
+    buildStreetLight(x + 46, z + 46);
+    buildStopSign(x - 42, z + 42, Math.PI / 4);
+    if(index % 2 === 0) buildTrafficLight(x + 42, z - 42, -Math.PI / 4);
+  }
 
 
   // LEGAL: ---- unified city — builds the entire world once; no per-district teardown ----
   function buildCityScene(){
     clearGroup(worldGroup);
+    streetLights = [];
 
     // LEGAL: Base ground plane — full city footprint
     const groundBase = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W,WORLD_H), new THREE.MeshStandardMaterial({color:'#1e2124', roughness:1}));
@@ -2504,6 +2617,11 @@ import type * as ThreeNamespace from 'three';
         dash.rotation.x=-Math.PI/2; dash.position.set(lx,0.07,r.y); worldGroup.add(dash);
       }
     });
+    roadNetwork.vertical.forEach(function(v, vi){
+      roadNetwork.horizontal.forEach(function(h, hi){
+        buildIntersectionFurniture(v.x, h.y, vi * roadNetwork.horizontal.length + hi);
+      });
+    });
 
     // LEGAL: Bridge railings over the two canals
     const deckMat = new THREE.MeshStandardMaterial({color:'#3a3d47', roughness:0.7});
@@ -2523,39 +2641,43 @@ import type * as ThreeNamespace from 'three';
     });
 
     // LEGAL: Venture buildings — all districts
-    mapBuildings.forEach(function(m){
+    mapObjects.filter(o=>o.kind==='building').forEach(function(object){
+      const m = object.ref as typeof mapBuildings[number];
       const info = buildingColorFor(m.biz);
       const bw=m.biz.baseCost>=50000?66:(m.biz.baseCost<1000?46:56), bd=bw*0.85;
       const zoneType = m.biz.category==='legit' ? 'commercial' : 'industrial';
-      const mesh = buildDetailedBuilding(bw, info.h, bd, info.color, zoneType);
-      mesh.position.set(m.x, info.h/2, m.y); worldGroup.add(mesh);
+      const mesh = buildDetailedBuilding(bw, info.h, bd, info.color, zoneType, variantForId(m.id));
+      mesh.position.set(object.x, info.h/2, object.y); worldGroup.add(mesh);
       addSign(mesh, m.biz.name, 34, 9, info.h/2+10, m.biz.category==='legit'?'#8fd0e0':'#f0a0ae');
     });
 
     // LEGAL: Service buildings — all districts
     const svcPalette: Record<string, string> = { bankHome:'#7a5f1a', garage:'#3e6b78', realty:'#3e6b78', cityhall:'#7a5f1a', heist:'#5a2a33' };
-    serviceBuildings.forEach(function(m){
-      const mesh = buildDetailedBuilding(58,34,50,svcPalette[m.kind],'service');
-      mesh.position.set(m.x,17,m.y); worldGroup.add(mesh);
+    mapObjects.filter(o=>o.kind==='service').forEach(function(object){
+      const m = object.ref as ServiceBuilding;
+      const mesh = buildDetailedBuilding(58,34,50,svcPalette[m.kind],'service', variantForId(m.id));
+      mesh.position.set(object.x,17,object.y); worldGroup.add(mesh);
       addSign(mesh, m.name, 40, 9, 26, '#ffe6a0');
     });
 
     // LEGAL: Extortable local businesses — all districts
-    localBusinesses.forEach(function(m){
+    mapObjects.filter(o=>o.kind==='local').forEach(function(object){
+      const m = object.ref as LocalBusiness;
       const color = m.extorted?'#8a6a1a':'#4a4360';
-      const mesh = buildDetailedBuilding(42,20,36,color,'shop');
-      mesh.position.set(m.x,10,m.y); worldGroup.add(mesh);
+      const mesh = buildDetailedBuilding(42,20,36,color,'shop', variantForId(m.id));
+      mesh.position.set(object.x,10,object.y); worldGroup.add(mesh);
       addSign(mesh, m.name, 32, 8, 18, m.extorted?'#ffd77a':'#b8aee0');
     });
 
     // LEGAL: Corners — all districts
-    corners.forEach(function(m){
+    mapObjects.filter(o=>o.kind==='corner').forEach(function(object){
+      const m = object.ref as Corner;
       const staffed=m.dealer&&!m.busted;
       const color=m.busted?'#5f6275':(staffed?'#d4a017':'#a8394a');
       const pole = new THREE.Mesh(new THREE.CylinderGeometry(1.4,1.4,26,6), new THREE.MeshStandardMaterial({color:'#2a2c33'}));
-      pole.position.set(m.x,13,m.y); pole.castShadow=true; worldGroup.add(pole);
+      pole.position.set(object.x,13,object.y); pole.castShadow=true; worldGroup.add(pole);
       const orb = new THREE.Mesh(new THREE.SphereGeometry(7,10,10), new THREE.MeshStandardMaterial({color, emissive:color, emissiveIntensity:0.4}));
-      orb.position.set(m.x,28,m.y); worldGroup.add(orb);
+      orb.position.set(object.x,28,object.y); worldGroup.add(orb);
       addSign(pole, m.name, 30, 8, 22, '#f0efe8');
     });
 
@@ -2565,8 +2687,8 @@ import type * as ThreeNamespace from 'three';
       g.position.set(m.x,0,m.y); worldGroup.add(g);
       addSign(g, m.type==='named'?(m.name ?? '?'):(m.name||'?'), 28, 7, 34, '#f0efe8');
     }
-    mapNpcs.forEach(function(m){ addPerson(m, m.type==='named'?'#d4a017':'#7a6fb0'); });
-    gangRecruits.forEach(function(m){ addPerson(m, m.inducted?'#d4a017':'#5f6275'); });
+    mapObjects.filter(o=>o.kind==='npc').forEach(function(object){ const m = object.ref as typeof mapNpcs[number]; addPerson(m, m.type==='named'?'#d4a017':'#7a6fb0'); });
+    mapObjects.filter(o=>o.kind==='gangnpc').forEach(function(object){ const m = object.ref as GangRecruit; addPerson(m, m.inducted?'#d4a017':'#5f6275'); });
 
     // LEGAL: Filler city buildings per district with zoning-aware types
     ['devlin','westside','hub'].forEach(function(distId){
@@ -2574,8 +2696,11 @@ import type * as ThreeNamespace from 'three';
       fillerFor(distId).forEach(function(f){
         if(f.kind==='building'){
           const zoneType = distId==='hub'?'skyscraper':(distId==='westside'?'industrial':'residential');
-          const color = distId==='hub'?(f.hue<0.5?'#2a3040':'#3a3550'):(distId==='westside'?(f.hue<0.5?'#3a3830':'#4a4038'):(f.hue<0.5?'#3a3f4a':'#4a4238'));
-          const mesh = buildDetailedBuilding(f.w,f.h,f.d,color,zoneType);
+          const palette = distId==='hub'
+            ? ['#283247','#33405c','#4d445f','#2f5360','#57515a']
+            : (distId==='westside' ? ['#463f34','#55443c','#3f4542','#5c4638','#3d3946'] : ['#394452','#4f463b','#365344','#58414a','#4f5159']);
+          const color = palette[Math.floor(f.hue * palette.length) % palette.length];
+          const mesh = buildDetailedBuilding(f.w,f.h,f.d,color,zoneType,f.hue);
           mesh.position.set(f.x+off,f.h/2,f.y); mesh.rotation.y = f.rot; worldGroup.add(mesh);
         } else if(f.kind==='edge'){
           // LEGAL: Background skyline block — plain shaded box (no windows) for cheap depth.
@@ -2839,12 +2964,14 @@ import type * as ThreeNamespace from 'three';
     roadNetwork.vertical.forEach(function(r){ const p1=proj(r.x,0), p2=proj(r.x,WORLD_H); mctx.beginPath(); mctx.moveTo(p1.x,p1.y); mctx.lineTo(p2.x,p2.y); mctx.stroke(); });
     roadNetwork.horizontal.forEach(function(r){ const p1=proj(0,r.y), p2=proj(WORLD_W,r.y); mctx.beginPath(); mctx.moveTo(p1.x,p1.y); mctx.lineTo(p2.x,p2.y); mctx.stroke(); });
     const dot = function(wx: number, wy: number, color: string, size: number){ const p=proj(wx,wy); if(p.x<-6||p.x>156||p.y<-6||p.y>156) return; mctx.beginPath(); mctx.arc(p.x,p.y,size,0,Math.PI*2); mctx.fillStyle=color; mctx.fill(); };
-    mapBuildings.filter(inDistrict).forEach(function(m){ dot(m.x,m.y, m.biz.category==='legit'?'#3e7c8c':'#a8394a', 3); });
-    serviceBuildings.filter(inDistrict).forEach(function(m){ dot(m.x,m.y,'#d4a017',3); });
-    localBusinesses.filter(inDistrict).forEach(function(m){ dot(m.x,m.y,'#7a6fb0',2.5); });
-    corners.filter(inDistrict).forEach(function(m){ dot(m.x,m.y, m.busted?'#5f6275':(m.dealer?'#d4a017':'#a8394a'), 2); });
-    mapNpcs.filter(inDistrict).forEach(function(m){ dot(m.x,m.y,'#f0efe8',2); });
-    gangRecruits.filter(inDistrict).forEach(function(m){ dot(m.x,m.y,'#f0efe8',2); });
+    const objectColor = function(object: MapObject): string {
+      if(object.kind==='corner'){
+        const corner = object.ref as Corner;
+        return corner.busted?'#5f6275':(corner.dealer?'#d4a017':'#a8394a');
+      }
+      return object.minimapColor;
+    };
+    mapObjects.forEach(function(object){ dot(object.x, object.y, objectColor(object), object.minimapSize); });
     // LEGAL: Landmark markers — small gold diamonds for the district "spots".
     landmarks.forEach(function(lm){
       const p = proj(lm.x, lm.y);
@@ -2869,6 +2996,19 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: ================= INTERIOR (lightweight 2D scene) =================
   const interiorCanvas = byId<HTMLCanvasElement>('interior-canvas');
   const ictx = interiorCanvas.getContext('2d')!;
+  function syncInteriorCanvasSize(): void {
+    const rect = interiorCanvas.getBoundingClientRect();
+    const cssW = Math.max(1, Math.round(rect.width || VIEW_W));
+    const cssH = Math.max(1, Math.round(rect.height || VIEW_H));
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const targetW = Math.round(cssW * dpr);
+    const targetH = Math.round(cssH * dpr);
+    if(interiorCanvas.width !== targetW || interiorCanvas.height !== targetH){
+      interiorCanvas.width = targetW;
+      interiorCanvas.height = targetH;
+    }
+    ictx.setTransform(targetW / VIEW_W, 0, 0, targetH / VIEW_H, 0, 0);
+  }
   function iRoundRect(x: number, y: number, w: number, h: number, r: number){
     ictx.beginPath(); ictx.moveTo(x+r,y);
     ictx.arcTo(x+w,y,x+w,y+h,r); ictx.arcTo(x+w,y+h,x,y+h,r);
@@ -2881,6 +3021,7 @@ import type * as ThreeNamespace from 'three';
     ictx.fillStyle='#c8cad8'; ictx.textAlign='center'; ictx.textBaseline='middle'; ictx.fillText(text,x,y-1);
   }
   function drawInteriorScene(){
+    syncInteriorCanvasSize();
     ictx.clearRect(0,0,VIEW_W,VIEW_H);
     ictx.fillStyle='#101116'; ictx.fillRect(0,0,VIEW_W,VIEW_H);
     const ox=ROOM_OX, oy=ROOM_OY;
@@ -2991,9 +3132,9 @@ import type * as ThreeNamespace from 'three';
       else label = (near.ref.type==='named' ? near.ref.name : state.procNpc.name);
       hintEl.textContent = 'Press E to interact — ' + label;
     } else if(state.inVehicle){
-      hintEl.textContent = 'Press E to park and get out';
+      hintEl.textContent = 'Press E to park | Driving on ' + currentRoadLabel();
     } else {
-      hintEl.textContent = state.currentInterior ? ('Inside ' + state.currentInterior.name) : ('Driving around ' + districts.find(function(d){return d.id===state.currentDistrict;})!.name);
+      hintEl.textContent = state.currentInterior ? ('Inside ' + state.currentInterior.name) : ('Walking on ' + currentRoadLabel());
     }
 
     requestAnimationFrame(mapHub);
