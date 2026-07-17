@@ -10,7 +10,7 @@ import { politicians } from '../config/politics';
 import { gangRecruits } from '../config/gang';
 import { npcFirstNames, npcLastNames, npcDispositions } from '../config/npcs';
 import { stockMarket } from '../config/stockMarket';
-import type { GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState, Point, ServiceBuilding, GangRecruit, Car, FillerItem } from '../config/types';
+import type { GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState, Point, ServiceBuilding, GangRecruit, Car, FillerItem, DialogueTree } from '../config/types';
 
   const eventPool = [
     { id:'rival', title:'A RIVAL CREW EYES YOUR CORNER', neg:true, body:"<p class='flavor'>Word is a West Side crew thinks your runners are working streets that belong to them.</p>", choices:[
@@ -116,7 +116,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
   // LEGAL: ================= DIALOGUE ENGINE =================
   // LEGAL: Reusable branching conversation tree. Any future NPC/mission/politics/gang
   // LEGAL: interaction plugs into this same structure: { npcName, nodes:{ id:{text,choices:[{label,effect,next}]} } }
-  const dialogues = {
+  const dialogues: Record<string, DialogueTree> = {
     sanjay: {
       npcName: 'Sanjay (Cousin)',
       nodes: {
@@ -293,7 +293,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
   // LEGAL: story stages gated on real progress (prestige, territory control, politics),
   // LEGAL: so revisiting them later reflects what's actually happened in the other
   // LEGAL: systems instead of repeating the same static lines forever.
-  function npcOpeningNode(npcKey){
+  function npcOpeningNode(npcKey: string){
     if(npcKey==='sanjay'){
       if(grandmotherActive()) return 'stage3';
       if(sisterActive()) return 'stage2';
@@ -301,7 +301,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
       return 'start';
     }
     if(npcKey==='dice'){
-      const control = districts.find(d=>d.id==='westside').control;
+      const control = districts.find(d=>d.id==='westside')?.control ?? 0;
       if(control>=60) return 'stage2';
       if(control>=25) return 'stage1';
       return 'start';
@@ -313,7 +313,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     }
     return 'start';
   }
-  function playDialogue(npcKey, nodeId){
+  function playDialogue(npcKey: string, nodeId: string){
     const tree = dialogues[npcKey];
     const node = tree.nodes[nodeId];
     showModal({
@@ -3113,26 +3113,26 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
         state.cash=d.cash; state.respect=d.respect; state.heat=d.heat;
         state.territoryTier=d.territoryTier; state.negotiateTier=d.negotiateTier;
         state.muscleCount=d.muscleCount; state.ratCount=d.ratCount; state.bribeOn=d.bribeOn;
-        state.prestigeCount=Math.max(0, Math.min(familyTiers.length, Number(d.prestigeCount)||0)); state.seenMilestones = new Set((d.seenMilestones||[]).map(x=>String(x)));
+        state.prestigeCount=Math.max(0, Math.min(familyTiers.length, Number(d.prestigeCount)||0)); state.seenMilestones = new Set((d.seenMilestones||[]).map((x: any)=>String(x)));
         state.playSeconds=d.playSeconds||0; state.investorPenalty=Math.min(0.5, d.investorPenalty||0);
         state.started = d.started; if(d.procNpc) state.procNpc = d.procNpc;
         if(d.lastTick) state.lastTick = d.lastTick;
-        (d.businesses||[]).forEach(sb=>{ const b=businesses.find(x=>x.id===sb.id); if(b){ b.level=sb.level; b.crew=sb.crew; b.manager=sb.manager; b.researched=sb.researched; b.reinvestedIncome=Math.max(0, Number(sb.reinvestedIncome)||0); } });
+        (d.businesses||[]).forEach((sb: any)=>{ const b=businesses.find(x=>x.id===sb.id); if(b){ b.level=sb.level; b.crew=sb.crew; b.manager=sb.manager; b.researched=sb.researched; b.reinvestedIncome=Math.max(0, Number(sb.reinvestedIncome)||0); } });
         if(d.quiet){ document.body.classList.add('quiet'); byId<HTMLInputElement>('quiet-toggle').checked = true; }
         if(d.light){ document.body.classList.add('theme-light'); byId<HTMLInputElement>('theme-toggle').checked = true; }
         if(d.delhi){ document.body.classList.add('theme-delhi'); byId<HTMLInputElement>('delhi-theme-toggle').checked = true; }
         if(state.seenMilestones.has('chaat_house')) byId('delhi-theme-row').style.display = 'flex';
         state.bank = d.bank||0; state.nextHeistAt = d.nextHeistAt||0;
         state.ownedCars = d.ownedCars||[]; state.equippedCar = d.equippedCar||null; state.ownedProperties = d.ownedProperties||[];
-        (d.localBusinesses||[]).forEach(sb=>{ const b=localBusinesses.find(x=>x.id===sb.id); if(b){ b.extorted=sb.extorted; b.nextRobAt=sb.nextRobAt; } });
+        (d.localBusinesses||[]).forEach((sb: any)=>{ const b=localBusinesses.find(x=>x.id===sb.id); if(b){ b.extorted=sb.extorted; b.nextRobAt=sb.nextRobAt; } });
         state.currentDistrict = d.currentDistrict || 'devlin'; state.product = d.product||0; state.productLevel = d.productLevel||0;
-        (d.districts||[]).forEach(sd=>{ const dist=districts.find(x=>x.id===sd.id); if(dist){ dist.control=sd.control; dist.pushCount=sd.pushCount; dist.nextPushAt=sd.nextPushAt; } });
-        (d.corners||[]).forEach(sc=>{ const c=corners.find(x=>x.id===sc.id); if(c){ c.dealer=sc.dealer; c.busted=sc.busted; c.bustCooldownAt=sc.bustCooldownAt; } });
+        (d.districts||[]).forEach((sd: any)=>{ const dist=districts.find(x=>x.id===sd.id); if(dist){ dist.control=sd.control; dist.pushCount=sd.pushCount; dist.nextPushAt=sd.nextPushAt; } });
+        (d.corners||[]).forEach((sc: any)=>{ const c=corners.find(x=>x.id===sc.id); if(c){ c.dealer=sc.dealer; c.busted=sc.busted; c.bustCooldownAt=sc.bustCooldownAt; } });
         state.influence=d.influence||0; state.influenceBuys=d.influenceBuys||0; state.electedOffice=d.electedOffice||false;
         state.campaignActive=d.campaignActive||false; state.campaignStyle=d.campaignStyle||''; state.campaignEndAt=d.campaignEndAt||0;
         state.nextCampaignAt=d.nextCampaignAt||0; state.nextWarAt=d.nextWarAt||0;
-        (d.politicians||[]).forEach(sp=>{ const p=politicians.find(x=>x.id===sp.id); if(p){ p.favor=sp.favor; p.pocketed=sp.pocketed||false; } });
-        (d.gangRecruits||[]).forEach(sg=>{ const g=gangRecruits.find(x=>x.id===sg.id); if(g) g.inducted=sg.inducted; });
+        (d.politicians||[]).forEach((sp: any)=>{ const p=politicians.find(x=>x.id===sp.id); if(p){ p.favor=sp.favor; p.pocketed=sp.pocketed||false; } });
+        (d.gangRecruits||[]).forEach((sg: any)=>{ const g=gangRecruits.find(x=>x.id===sg.id); if(g) g.inducted=sg.inducted; });
         state.inVehicle = d.inVehicle||false;
         state.waypoints = Object.assign({devlin:null,westside:null,hub:null}, d.waypoints||{});
         state.parkedCarPos = Object.assign({devlin:{x:700,y:660},westside:{x:2700,y:660},hub:{x:4700,y:660}}, d.parkedCarPos||{});

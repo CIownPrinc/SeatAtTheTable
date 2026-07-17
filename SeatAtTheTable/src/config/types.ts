@@ -206,6 +206,22 @@ export interface ModalOptions {
   buttons?: ModalButton[];
 }
 
+export interface DialogueChoice {
+  label: string;
+  next: string | null;
+  effect?: () => void;
+}
+
+export interface DialogueNode {
+  text: string;
+  choices: DialogueChoice[];
+}
+
+export interface DialogueTree {
+  npcName: string;
+  nodes: Record<string, DialogueNode>;
+}
+
 // LEGAL: Central mutable game state. Keyed maps (waypoints, parkedCarPos,
 // LEGAL: portfolio, market*) are indexed by district or stock symbol at runtime.
 export interface GameState {
