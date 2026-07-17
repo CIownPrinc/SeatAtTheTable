@@ -42,6 +42,30 @@ export const spawnPoints: Record<string, Point> = {
   hub: { x: 4700, y: 600 },
 };
 
+export const ventureDistricts = ['devlin', 'devlin', 'devlin', 'devlin', 'devlin', 'westside', 'westside', 'westside', 'westside', 'hub', 'hub', 'hub'];
+
+export const ventureLots: Record<string, Point[]> = {
+  devlin: [{ x: 120, y: 130 }, { x: 485, y: 130 }, { x: 915, y: 130 }, { x: 1330, y: 130 }, { x: 120, y: 450 }],
+  westside: [{ x: 2120, y: 130 }, { x: 2485, y: 130 }, { x: 2915, y: 130 }, { x: 3330, y: 130 }],
+  hub: [{ x: 4120, y: 130 }, { x: 4485, y: 130 }, { x: 4915, y: 130 }, { x: 5330, y: 130 }],
+};
+
+export const namedBuildingLots: Record<string, Point> = {
+  bankHome: { x: 485, y: 450 },
+  cardealer: { x: 915, y: 450 },
+  realty: { x: 1330, y: 450 },
+  patel: { x: 485, y: 750 },
+  pawn: { x: 915, y: 750 },
+  herbalist: { x: 1330, y: 750 },
+  bar: { x: 485, y: 1030 },
+  chopshop: { x: 2120, y: 450 },
+  liquor: { x: 3330, y: 450 },
+  jewelers: { x: 4485, y: 450 },
+  marlowe: { x: 4915, y: 450 },
+  cityhall: { x: 5330, y: 450 },
+  heistTarget: { x: 4120, y: 750 },
+};
+
 export const landmarks: Landmark[] = [
   { id: 'devlinHall', name: 'DEVLIN HALL', district: 'devlin', x: 125, y: 820 },
   { id: 'ciceroWorks', name: 'CICERO WORKS', district: 'westside', x: 2125, y: 850 },

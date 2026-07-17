@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { businesses } from '../config/ventures';
 import { buildableBands, localXForDistrict, rectsOverlap, rotatedHalfExtents } from './layout';
+import { namedBuildingLots, roadNetwork, ventureDistricts, ventureLots } from './world';
 
 describe('map layout helpers', function () {
   it('converts world x positions into district-local x positions', function () {
@@ -30,5 +32,43 @@ describe('map layout helpers', function () {
       [672, 828],
       [972, 1185],
     ]);
+  });
+
+  it('keeps named business lots clear of roads', function () {
+    const lots = [...Object.values(namedBuildingLots), ...Object.values(ventureLots).flat()];
+
+    lots.forEach(function(lot){
+      expect(roadNetwork.vertical.some(r=>Math.abs(lot.x - r.x) < 77)).toBe(false);
+      expect(roadNetwork.horizontal.some(r=>Math.abs(lot.y - r.y) < 71)).toBe(false);
+    });
+  });
+
+  it('keeps named business lots from overlapping each other', function () {
+    const lots = [...Object.values(namedBuildingLots), ...Object.values(ventureLots).flat()].map(lot=>({
+      x: lot.x,
+      y: lot.y,
+      hw: 40,
+      hd: 34,
+    }));
+
+    lots.forEach(function(lot, index){
+      lots.slice(index + 1).forEach(function(other){
+        expect(rectsOverlap(lot, other, 14)).toBe(false);
+      });
+    });
+  });
+
+  it('has a unique venture lot for every venture in each district', function () {
+    const counts: Record<string, number> = {};
+
+    businesses.forEach(function(_business, index){
+      const district = ventureDistricts[index] || 'hub';
+      counts[district] = (counts[district] || 0) + 1;
+    });
+
+    Object.entries(counts).forEach(function(entry){
+      const [district, count] = entry;
+      expect(ventureLots[district].length).toBeGreaterThanOrEqual(count);
+    });
   });
 });

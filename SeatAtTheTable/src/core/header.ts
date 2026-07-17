@@ -12,7 +12,7 @@ import { npcFirstNames, npcLastNames, npcDispositions } from '../config/npcs';
 import { stockMarket } from '../config/stockMarket';
 import type { GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState, Point, ServiceBuilding, GangRecruit, Car, FillerItem, DialogueTree } from '../config/types';
 import { buildableBands, localXForDistrict, rectsOverlap, rotatedHalfExtents } from '../map/layout';
-import { DISTRICT_OFFSETS, DISTRICT_W, VIEW_H, VIEW_W, WORLD_H, WORLD_W, districtSeeds, landmarks, roadNetwork, spawnPoints } from '../map/world';
+import { DISTRICT_OFFSETS, DISTRICT_W, VIEW_H, VIEW_W, WORLD_H, WORLD_W, districtSeeds, landmarks, namedBuildingLots, roadNetwork, spawnPoints, ventureDistricts, ventureLots } from '../map/world';
 import type * as ThreeNamespace from 'three';
 
   const eventPool = [
@@ -1954,18 +1954,28 @@ import type * as ThreeNamespace from 'three';
     }
   });
 
+  function applyNamedBuildingLots(items: { id: string; x: number; y: number }[]): void {
+    items.forEach(function(item){
+      const lot = namedBuildingLots[item.id];
+      if(!lot) return;
+      item.x = lot.x;
+      item.y = lot.y;
+    });
+  }
+  applyNamedBuildingLots(serviceBuildings);
+  applyNamedBuildingLots(localBusinesses);
+
   // LEGAL: Businesses spread proportionally across all 3 districts
-  const bizDistricts = ['devlin','devlin','devlin','devlin','devlin','westside','westside','westside','westside','hub','hub','hub'];
+  const bizDistrictCounts: Record<string, number> = {};
   // LEGAL: Building lots sit strictly between the road strips. Vertical roads are at
   // LEGAL: rel-x 270/700/1130 (±37) and horizontal roads at y 300/600/900 (±37), so
   // LEGAL: these column/row centers keep every venture fully clear of the streets.
   const mapBuildings = businesses.map((b,i)=>{
-    const dist = bizDistricts[i] || 'hub';
-    const col = i % 4;
-    const row = Math.floor(i / 4);
-    const relX = [116, 485, 915, 1333][col];
-    const relY = row===0 ? 131 : (row===1 ? 450 : 750);
-    return { id:b.id, biz:b, district:dist, x: relX + DISTRICT_OFFSETS[dist], y: relY };
+    const dist = ventureDistricts[i] || 'hub';
+    const districtIndex = bizDistrictCounts[dist] || 0;
+    bizDistrictCounts[dist] = districtIndex + 1;
+    const lot = ventureLots[dist][districtIndex] || ventureLots.hub[ventureLots.hub.length - 1];
+    return { id:b.id, biz:b, district:dist, x: lot.x, y: lot.y };
   });
   const mapNpcs = [
     { id:'sanjay', name:'Sanjay', district:'devlin', x:1300, y:960, type:'named' },
