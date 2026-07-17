@@ -1,0 +1,88 @@
+import { describe, expect, it } from 'vitest';
+import { businesses } from '../config/ventures';
+import { buildableBands, localXForDistrict, rectsOverlap, rotatedHalfExtents } from './layout';
+import { createMapBuildings } from './markers';
+import { namedBuildingLots, roadNetwork, ventureDistricts, ventureLots } from './world';
+
+describe('map layout helpers', function () {
+  it('converts world x positions into district-local x positions', function () {
+    expect(localXForDistrict('westside', 2450, { devlin: 0, westside: 2000 })).toBe(450);
+    expect(localXForDistrict('devlin', 450, { devlin: 0, westside: 2000 })).toBe(450);
+  });
+
+  it('expands rotated rectangles to their axis-aligned half extents', function () {
+    const extents = rotatedHalfExtents(80, 40, Math.PI / 2);
+
+    expect(extents.hw).toBeCloseTo(20);
+    expect(extents.hd).toBeCloseTo(40);
+  });
+
+  it('treats the requested gap as part of overlap rejection', function () {
+    const first = { x: 100, y: 100, hw: 20, hd: 20 };
+    const near = { x: 143, y: 100, hw: 20, hd: 20 };
+    const far = { x: 151, y: 100, hw: 20, hd: 20 };
+
+    expect(rectsOverlap(first, near, 4)).toBe(true);
+    expect(rectsOverlap(first, far, 4)).toBe(false);
+  });
+
+  it('returns only road-free bands large enough for buildings', function () {
+    expect(buildableBands([300, 600, 900], 1200, 72)).toEqual([
+      [15, 228],
+      [372, 528],
+      [672, 828],
+      [972, 1185],
+    ]);
+  });
+
+  it('keeps named business lots clear of roads', function () {
+    const lots = [...Object.values(namedBuildingLots), ...Object.values(ventureLots).flat()];
+
+    lots.forEach(function(lot){
+      expect(roadNetwork.vertical.some(r=>Math.abs(lot.x - r.x) < 77)).toBe(false);
+      expect(roadNetwork.horizontal.some(r=>Math.abs(lot.y - r.y) < 71)).toBe(false);
+    });
+  });
+
+  it('keeps named business lots from overlapping each other', function () {
+    const lots = [...Object.values(namedBuildingLots), ...Object.values(ventureLots).flat()].map(lot=>({
+      x: lot.x,
+      y: lot.y,
+      hw: 40,
+      hd: 34,
+    }));
+
+    lots.forEach(function(lot, index){
+      lots.slice(index + 1).forEach(function(other){
+        expect(rectsOverlap(lot, other, 14)).toBe(false);
+      });
+    });
+  });
+
+  it('has a unique venture lot for every venture in each district', function () {
+    const counts: Record<string, number> = {};
+
+    businesses.forEach(function(_business, index){
+      const district = ventureDistricts[index] || 'hub';
+      counts[district] = (counts[district] || 0) + 1;
+    });
+
+    Object.entries(counts).forEach(function(entry){
+      const [district, count] = entry;
+      expect(ventureLots[district].length).toBeGreaterThanOrEqual(count);
+    });
+  });
+
+  it('creates non-overlapping venture markers from the venture list', function () {
+    const markers = createMapBuildings(businesses);
+    const seen = new Set<string>();
+
+    markers.forEach(function(marker){
+      const key = `${marker.x}:${marker.y}`;
+      expect(seen.has(key)).toBe(false);
+      seen.add(key);
+      expect(roadNetwork.vertical.some(r=>Math.abs(marker.x - r.x) < 77)).toBe(false);
+      expect(roadNetwork.horizontal.some(r=>Math.abs(marker.y - r.y) < 71)).toBe(false);
+    });
+  });
+});
