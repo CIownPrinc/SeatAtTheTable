@@ -1230,7 +1230,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
   function renderTerritoryPanel(){
     const wrap = byId('territory-panel');
     if(!wrap) return;
-    const bonusText = { devlin:'+15% income to every venture when yours', westside:'-25% corner heat, +15% corner income when yours', hub:'+50% bank interest, +10% heist odds when yours' };
+    const bonusText: Record<string, string> = { devlin:'+15% income to every venture when yours', westside:'-25% corner heat, +15% corner income when yours', hub:'+50% bank interest, +10% heist odds when yours' };
     wrap.innerHTML = districts.map(d=>{
       const status = districtStatus(d.id);
       const canPush = state.playSeconds>=d.nextPushAt && state.respect>=pushCost(d);
@@ -1900,9 +1900,9 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
   const VIEW_W = 760, VIEW_H = 440;
   // LEGAL: Unified city — 3 districts side by side, canals between them
   const WORLD_W = 5500, WORLD_H = 1200;
-  const DISTRICT_OFFSETS = { devlin:0, westside:2000, hub:4000 };
+  const DISTRICT_OFFSETS: Record<string, number> = { devlin:0, westside:2000, hub:4000 };
   const player = { x:700, y:600, facing:Math.PI/2 };
-  const keys = {};
+  const keys: Record<string, boolean> = {};
   let lastFrame2 = Date.now();
 
   // LEGAL: Apply district offsets to all relative coordinates dynamically
@@ -1943,8 +1943,8 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     { id:'dice', name:'Dice', district:'westside', x:2750, y:400, type:'named' },
     { id:'reyes', name:'Councilman Reyes', district:'hub', x:4600, y:720, type:'named' },
   ];
-  const spawnPoints = { devlin:{x:700,y:600}, westside:{x:2700,y:600}, hub:{x:4700,y:600} };
-  const districtThemes = {
+  const spawnPoints: Record<string, Point> = { devlin:{x:700,y:600}, westside:{x:2700,y:600}, hub:{x:4700,y:600} };
+  const districtThemes: Record<string, { ground: string; parkLabel: string; hasRail: boolean; hasRiver: boolean }> = {
     devlin: { ground:'#232a26', parkLabel:'INDIAN BOUNDARY PARK', hasRail:false, hasRiver:false },
     westside: { ground:'#2a2222', parkLabel:'CICERO GREEN', hasRail:true, hasRiver:false },
     hub: { ground:'#211f16', parkLabel:'MILLENNIUM PARK', hasRail:false, hasRiver:true },
@@ -1985,7 +1985,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
-  const districtSeeds = { devlin:1001, westside:2002, hub:3003 };
+  const districtSeeds: Record<string, number> = { devlin:1001, westside:2002, hub:3003 };
   // LEGAL: Filler band X/Y coordinates are relative to a 1500x950 grid; offset applied at render time
   function occupiedZones(districtId: string){
     const zones: { x: number; y: number; r: number }[] = [];
@@ -2448,7 +2448,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     });
 
     // LEGAL: Service buildings — all districts
-    const svcPalette = { bankHome:'#7a5f1a', garage:'#3e6b78', realty:'#3e6b78', cityhall:'#7a5f1a', heist:'#5a2a33' };
+    const svcPalette: Record<string, string> = { bankHome:'#7a5f1a', garage:'#3e6b78', realty:'#3e6b78', cityhall:'#7a5f1a', heist:'#5a2a33' };
     serviceBuildings.forEach(function(m){
       const mesh = buildDetailedBuilding(58,34,50,svcPalette[m.kind],'service');
       mesh.position.set(m.x,17,m.y); worldGroup.add(mesh);
@@ -2577,7 +2577,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     });
 
     serviceBuildings.filter(function(m){return m.district===districtId;}).forEach(function(m){
-      const palette = { bankHome:'#7a5f1a', garage:'#3e6b78', realty:'#3e6b78', cityhall:'#7a5f1a', heist:'#5a2a33' };
+      const palette: Record<string, string> = { bankHome:'#7a5f1a', garage:'#3e6b78', realty:'#3e6b78', cityhall:'#7a5f1a', heist:'#5a2a33' };
       const mesh = box(58,34,50, palette[m.kind]);
       mesh.position.set(m.x,17,m.y); worldGroup.add(mesh);
       addSign(mesh, m.name, 40, 9, 26, '#ffe6a0');
