@@ -171,7 +171,9 @@ export interface Solid {
 export type FillerItem =
   | { kind: 'park'; x0: number; y0: number; x1: number; y1: number }
   | { kind: 'lot'; x0: number; y0: number; x1: number; y1: number }
-  | { kind: 'building'; x: number; y: number; w: number; d: number; h: number; hue: number };
+  | { kind: 'building'; x: number; y: number; w: number; d: number; h: number; hue: number; rot: number }
+  // LEGAL: 'edge' = cheap background block forming the city's rough outer skyline.
+  | { kind: 'edge'; x: number; y: number; w: number; d: number; h: number; hue: number; rot: number };
 
 export interface ProceduralNPC {
   name: string;

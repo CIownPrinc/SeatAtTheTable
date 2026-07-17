@@ -1620,7 +1620,15 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
   function handleDistrictAction(e: Event){
     const btn = (e.target as HTMLElement).closest('[data-travel]');
     if(!btn) return;
-    travelTo(btn.getAttribute('data-travel')!);
+    const id = btn.getAttribute('data-travel')!;
+    if(id === state.currentDistrict) return;
+    // LEGAL: No fast-travel — the district bar is a "you are here" indicator only.
+    // LEGAL: Set a waypoint toward the target and make the player cross on foot/by car.
+    const d = districts.find(x=>x.id===id);
+    const dest = spawnPoints[id];
+    if(dest) state.waypoints[state.currentDistrict] = { x:dest.x, y:dest.y };
+    rebuildWaypointBeacon();
+    log(`<i class="ph-duotone ph-path"></i> Head over to ${d?d.name:'the district'} yourself — follow the marker across the bridges.`);
   }
 
   // LEGAL: Wire all delegation listeners exactly once at boot. Stable containers
@@ -1902,7 +1910,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
   // LEGAL: Unified city — 3 districts side by side, canals between them
   const WORLD_W = 5500, WORLD_H = 1200;
   const DISTRICT_OFFSETS: Record<string, number> = { devlin:0, westside:2000, hub:4000 };
-  const player = { x:700, y:600, facing:Math.PI/2 };
+  const player = { x:700, y:600, facing:Math.PI/2, vx:0, vy:0 };
   const keys: Record<string, boolean> = {};
   let lastFrame2 = Date.now();
 
@@ -1930,12 +1938,15 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
 
   // LEGAL: Businesses spread proportionally across all 3 districts
   const bizDistricts = ['devlin','devlin','devlin','devlin','devlin','westside','westside','westside','westside','hub','hub','hub'];
+  // LEGAL: Building lots sit strictly between the road strips. Vertical roads are at
+  // LEGAL: rel-x 270/700/1130 (±37) and horizontal roads at y 300/600/900 (±37), so
+  // LEGAL: these column/row centers keep every venture fully clear of the streets.
   const mapBuildings = businesses.map((b,i)=>{
     const dist = bizDistricts[i] || 'hub';
     const col = i % 4;
     const row = Math.floor(i / 4);
-    const relX = [180, 480, 780, 1100][col];
-    const relY = row===0 ? 260 : (row===1 ? 620 : 960);
+    const relX = [116, 485, 915, 1333][col];
+    const relY = row===0 ? 131 : (row===1 ? 450 : 750);
     return { id:b.id, biz:b, district:dist, x: relX + DISTRICT_OFFSETS[dist], y: relY };
   });
   const mapNpcs = [
@@ -1943,6 +1954,14 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     { id:'stranger', name:'Stranger', district:'devlin', x:150, y:960, type:'procedural' },
     { id:'dice', name:'Dice', district:'westside', x:2750, y:400, type:'named' },
     { id:'reyes', name:'Councilman Reyes', district:'hub', x:4600, y:720, type:'named' },
+  ];
+  // LEGAL: District landmarks — unique, recognisable "spots" so each area reads as a
+  // LEGAL: place rather than interchangeable blocks. Coords are world-space, sited on
+  // LEGAL: each district's park/plaza and clear of the fixed anchors. (The Hub already
+  // LEGAL: has The Bean, built with the park.)
+  const landmarks = [
+    { id:'devlinHall', name:'DEVLIN HALL', district:'devlin', x:125, y:820 },
+    { id:'ciceroWorks', name:'CICERO WORKS', district:'westside', x:2125, y:850 },
   ];
   const spawnPoints: Record<string, Point> = { devlin:{x:700,y:600}, westside:{x:2700,y:600}, hub:{x:4700,y:600} };
   const districtThemes: Record<string, { ground: string; parkLabel: string; hasRail: boolean; hasRiver: boolean }> = {
@@ -2003,6 +2022,8 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     const parkBand = { xi:0, yi: districtId==='hub' ? 1 : 3 };
     const lotBand = { xi:3, yi: districtId==='hub' ? 3 : 0 };
     const filler: FillerItem[] = [];
+    const jit = ()=> rand()-0.5;
+    const isOccupied = (x: number, y: number, pad: number)=> occupied.some(o=> Math.abs(o.x-x)<o.r+pad && Math.abs(o.y-y)<o.r+pad);
     for(let xi=0; xi<xBands.length; xi++){
       for(let yi=0; yi<yBands.length; yi++){
         const x0=xBands[xi][0], x1=xBands[xi][1], y0=yBands[yi][0], y1=yBands[yi][1];
@@ -2010,15 +2031,47 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
         if(occupied.some(o=> Math.abs(o.x-cx)<(x1-x0)/2+30 && Math.abs(o.y-cy)<(y1-y0)/2+30)) continue;
         if(xi===parkBand.xi && yi===parkBand.yi){ filler.push({kind:'park', x0,y0,x1,y1}); continue; }
         if(xi===lotBand.xi && yi===lotBand.yi){ filler.push({kind:'lot', x0,y0,x1,y1}); continue; }
-        const count = 1 + Math.floor(rand()*2);
-        for(let n=0;n<count;n++){
-          const w=40+rand()*50, d=40+rand()*50, h=14+rand()*46;
-          const fx = x0+20+rand()*Math.max(10,(x1-x0-w-40));
-          const fy = y0+20+rand()*Math.max(10,(y1-y0-d-40));
-          filler.push({kind:'building', x:fx+w/2, y:fy+d/2, w, d, h, hue:rand()});
+        // LEGAL: Subdivide the block into an irregular cluster: 1-2 lots each way,
+        // LEGAL: varied footprint/height, occasional gaps, and a slight rotation so
+        // LEGAL: the built environment reads organic instead of as a uniform grid.
+        const bw = x1-x0, bd = y1-y0;
+        const cols = 1 + Math.floor(rand()*2);
+        const rows = 1 + Math.floor(rand()*2);
+        const cellW = bw/cols, cellD = bd/rows;
+        for(let ci=0; ci<cols; ci++){
+          for(let ri=0; ri<rows; ri++){
+            if(rand()<0.18) continue; // LEGAL: leave the odd empty lot
+            const w = cellW*(0.55+rand()*0.35);
+            const d = cellD*(0.55+rand()*0.35);
+            const h = 14 + rand()*rand()*90; // LEGAL: skew short, rare tall tower
+            const px = x0 + ci*cellW + (cellW-w)/2 + jit()*cellW*0.2;
+            const py = y0 + ri*cellD + (cellD-d)/2 + jit()*cellD*0.2;
+            const rot = jit()*0.18 + (rand()<0.12 ? jit()*0.6 : 0);
+            filler.push({kind:'building', x:px+w/2, y:py+d/2, w, d, h, hue:rand(), rot});
+          }
         }
       }
     }
+    // LEGAL: Rough city edge — a receding, irregular skyline of cheap background
+    // LEGAL: blocks along the north and south margins so the map doesn't stop at a
+    // LEGAL: clean straight line. Skipped where it would collide with real content.
+    function skylineRow(yBase: number, yJit: number, tallBias: number){
+      let x = 10;
+      while(x < 1490){
+        const w = 30 + rand()*70;
+        const gap = 6 + rand()*30;
+        const cxLocal = x + w/2;
+        const y = yBase + jit()*yJit;
+        if(rand()>0.15 && !isOccupied(cxLocal, y, 24)){
+          const d = 40 + rand()*70;
+          const h = 34 + rand()*rand()*170*tallBias;
+          filler.push({kind:'edge', x:cxLocal, y, w, d, h, hue:rand(), rot:jit()*0.25});
+        }
+        x += w + gap;
+      }
+    }
+    skylineRow(58, 34, districtId==='hub'?1.4:0.8);   // LEGAL: north edge
+    skylineRow(1090, 55, districtId==='hub'?1.6:1.0);  // LEGAL: south margin
     return filler;
   }
   const fillerCache: Record<string, FillerItem[]> = {};
@@ -2036,7 +2089,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     localBusinesses.forEach(m=> list.push({x:m.x,y:m.y,hw:27,hd:24}));
     ['devlin','westside','hub'].forEach(function(distId){
       const off = DISTRICT_OFFSETS[distId];
-      fillerFor(distId).filter((f): f is Extract<FillerItem, {kind:'building'}> => f.kind==='building').forEach(f=> list.push({x:f.x+off,y:f.y,hw:f.w/2+4,hd:f.d/2+4}));
+      fillerFor(distId).filter((f): f is Extract<FillerItem, {kind:'building'|'edge'}> => f.kind==='building'||f.kind==='edge').forEach(f=> list.push({x:f.x+off,y:f.y,hw:f.w/2+4,hd:f.d/2+4}));
     });
     return list;
   }
@@ -2079,7 +2132,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
   function enterBuilding(kind: string, refId: string, name: string){
     if(state.inVehicle) exitVehicle();
     state.currentInterior = { kind, refId, name, returnX:player.x, returnY:player.y, returnDistrict:state.currentDistrict };
-    player.x = DOOR_LOCAL.x; player.y = DOOR_LOCAL.y - 40; player.facing = -Math.PI/2;
+    player.x = DOOR_LOCAL.x; player.y = DOOR_LOCAL.y - 40; player.facing = -Math.PI/2; player.vx=0; player.vy=0;
     Object.keys(keys).forEach(k=> keys[k]=false);
     lastFrame2 = Date.now();
     log(`🚪 You step into ${name}.`);
@@ -2089,7 +2142,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     const ret = state.currentInterior;
     if(!ret) return;
     state.currentInterior = null;
-    player.x = ret.returnX; player.y = ret.returnY; player.facing = Math.PI/2;
+    player.x = ret.returnX; player.y = ret.returnY; player.facing = Math.PI/2; player.vx=0; player.vy=0;
     Object.keys(keys).forEach(k=> keys[k]=false);
     lastFrame2 = Date.now();
     renderAll();
@@ -2099,6 +2152,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
   function enterVehicle(){
     if(!getEquippedCar()) return;
     state.inVehicle = true;
+    player.vx=0; player.vy=0;
     refreshPlayerModel(); updateParkedCarMesh();
     log('You get in.');
     renderAll();
@@ -2106,6 +2160,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
   function exitVehicle(){
     if(!state.inVehicle) return;
     state.inVehicle = false;
+    player.vx=0; player.vy=0;
     state.parkedCarPos[state.currentDistrict] = { x:player.x, y:player.y };
     refreshPlayerModel(); updateParkedCarMesh();
     log('You park up and get out.');
@@ -2117,7 +2172,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     state.currentInterior = null;
     state.currentDistrict = id;
     const spawn = spawnPoints[id] || {x:700,y:600};
-    player.x = spawn.x; player.y = spawn.y; player.facing = Math.PI/2;
+    player.x = spawn.x; player.y = spawn.y; player.facing = Math.PI/2; player.vx=0; player.vy=0;
     Object.keys(keys).forEach(k=> keys[k]=false);
     lastFrame2 = Date.now();
     // LEGAL: City is built once — travelTo just repositions the player
@@ -2137,26 +2192,6 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
   window.addEventListener('keyup', function(e){ keys[e.key.toLowerCase()] = false; });
   window.addEventListener('blur', function(){ Object.keys(keys).forEach(k=> keys[k]=false); });
   byId('btn-interact').addEventListener('click', tryInteract);
-
-  byId('fullscreen-btn').addEventListener('click', function(){
-    const container = byId('scene3d-container');
-    const isFs = container.classList.toggle('fullscreen');
-    const btn = byId('fullscreen-btn');
-    btn.innerHTML = isFs ? '<i class="ph-duotone ph-arrows-in"></i>' : '<i class="ph-duotone ph-arrows-out"></i>';
-    if(renderer){
-      const w = isFs ? window.innerWidth : VIEW_W;
-      const h = isFs ? window.innerHeight : VIEW_H;
-      renderer.setSize(w, h);
-      if(camera3d){ camera3d.aspect = w/h; camera3d.updateProjectionMatrix(); }
-    }
-  });
-  window.addEventListener('resize', function(){
-    const container = byId('scene3d-container');
-    if(container.classList.contains('fullscreen') && renderer){
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      if(camera3d){ camera3d.aspect = window.innerWidth/window.innerHeight; camera3d.updateProjectionMatrix(); }
-    }
-  });
 
   byId('fullscreen-btn').addEventListener('click', function(){
     const container = byId('scene3d-container');
@@ -2202,8 +2237,11 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     if(state.inVehicle) return null;
     let best: MapMarker | null = null, bestDist=46;
     const car = getEquippedCar();
-    const parked = state.parkedCarPos[state.currentDistrict];
-    if(car && parked){
+    if(car){
+      // LEGAL: Enter-hitbox must match the rendered car mesh, which falls back to
+      // LEGAL: carSpawnPos() before the car has ever been parked. Using the same
+      // LEGAL: source here fixes the "car you can see but can never enter" deadlock.
+      const parked = state.parkedCarPos[state.currentDistrict] || carSpawnPos();
       const d = Math.hypot(player.x-parked.x, player.y-parked.y);
       if(d<bestDist){ bestDist=d; best={type:'car', ref:parked}; }
     }
@@ -2243,17 +2281,17 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
   }
   function tryMove(nx: number, ny: number, solids: Solid[]){
     if(nx<16||nx>WORLD_W-16||ny<16||ny>WORLD_H-16) return false;
-    // LEGAL: Block movement in canals except on bridge horizontal roads
-    if(!state.inVehicle){
-      const inCanal1 = nx > 1530 && nx < 1970;
-      const inCanal2 = nx > 3530 && nx < 3970;
-      if(inCanal1 || inCanal2){
-        const onBridge = roadNetwork.horizontal.some(r => Math.abs(ny - r.y) <= r.w/2);
-        if(!onBridge) return false;
-      }
+    // LEGAL: Canals are impassable on foot AND by car, except across a bridge deck
+    // LEGAL: (a horizontal road). Cars are otherwise free to drive anywhere that
+    // LEGAL: isn't water or a building — locking them to road strips made driving
+    // LEGAL: impossible, so that constraint is gone.
+    const inCanal1 = nx > 1530 && nx < 1970;
+    const inCanal2 = nx > 3530 && nx < 3970;
+    if(inCanal1 || inCanal2){
+      const onBridge = roadNetwork.horizontal.some(r => Math.abs(ny - r.y) <= r.w/2);
+      if(!onBridge) return false;
     }
     if(collidesBuilding(nx,ny,solids)) return false;
-    if(state.inVehicle && !isOnRoad(nx,ny)) return false;
     return true;
   }
 
@@ -2338,10 +2376,16 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
       const rack = new THREE.Mesh(new THREE.BoxGeometry(car.len*0.7,2,car.wid*0.8), new THREE.MeshStandardMaterial({color:'#555555', metalness:0.7}));
       rack.position.set(0, bodyH+11, 0); g.add(rack);
     }
-    const beam = new THREE.Mesh(new THREE.ConeGeometry(9,40,10,1,true), new THREE.MeshBasicMaterial({color:'#fff6d8', transparent:true, opacity:0.12, side:THREE.DoubleSide}));
-    beam.rotation.x=-Math.PI/2; beam.position.set(car.len/2+18, bodyH/2+1, 0); g.add(beam);
     g.castShadow=true;
-    return g;
+    // LEGAL: The body is modeled facing +x; wrap and rotate so its forward becomes
+    // LEGAL: +z, matching the pedestrian model and the shared heading convention
+    // LEGAL: (rotation.y = -facing + PI/2). Also scale the whole car up so it reads
+    // LEGAL: at city scale next to the buildings and roads.
+    g.rotation.y = -Math.PI/2;
+    const outer = new THREE.Group();
+    outer.add(g);
+    outer.scale.setScalar(1.6);
+    return outer;
   }
   function buildingColorFor(b: Business){
     const unlocked = isUnlocked(b);
@@ -2377,8 +2421,12 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
       const spire = new THREE.Mesh(new THREE.ConeGeometry(4,h*0.22,6), new THREE.MeshStandardMaterial({color:'#8090b0', metalness:0.8, roughness:0.1}));
       spire.position.y = h/2 + h*0.11; g.add(spire);
     } else if(zoneType==='residential'){
-      const roof = new THREE.Mesh(new THREE.ConeGeometry(w*0.58,12,4), new THREE.MeshStandardMaterial({color:'#4a3830', roughness:0.9}));
-      roof.position.y = h/2+6; roof.rotation.y=Math.PI/4; g.add(roof);
+      // LEGAL: Flat roof sized to the footprint (never overhangs, even when the
+      // LEGAL: building is rotated) plus a small rooftop unit for silhouette variety.
+      const roof = box(w*0.96, 3, d*0.96, '#2e2a26');
+      roof.position.y = h/2+1.5; g.add(roof);
+      const unit = box(Math.min(w,d)*0.3, 6, Math.min(w,d)*0.3, '#39342d');
+      unit.position.set(w*0.14, h/2+5, -d*0.14); g.add(unit);
     } else if(zoneType==='industrial'){
       const vent = new THREE.Mesh(new THREE.CylinderGeometry(4,5,14,8), new THREE.MeshStandardMaterial({color:'#404450', roughness:0.8}));
       vent.position.set(w*0.25, h/2+7, 0); g.add(vent);
@@ -2410,15 +2458,25 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
       canal.rotation.x=-Math.PI/2; canal.position.set(cx+cw/2,0.04,WORLD_H/2); worldGroup.add(canal);
     });
 
-    // LEGAL: Roads — horizontal roads span full width (also form bridge decks over canals)
+    // LEGAL: Road hierarchy — horizontal arterials (which also carry the canal
+    // LEGAL: bridges) render wide with a dashed centre line; verticals render as
+    // LEGAL: narrower side-streets. roadNetwork data (widths used by bridges and the
+    // LEGAL: waypoint router) is unchanged — this only affects how roads are drawn,
+    // LEGAL: giving the grid a legible main-road / side-street read instead of a
+    // LEGAL: uniform lattice.
     const roadMat = new THREE.MeshStandardMaterial({color:'#2b2d35', roughness:0.9});
+    const laneMat = new THREE.MeshStandardMaterial({color:'#c9b45a', roughness:0.6, emissive:'#4a4020', emissiveIntensity:0.15});
     roadNetwork.vertical.forEach(function(r){
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(r.w,WORLD_H), roadMat);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(62,WORLD_H), roadMat);
       m.rotation.x=-Math.PI/2; m.position.set(r.x,0.05,WORLD_H/2); m.receiveShadow=true; worldGroup.add(m);
     });
     roadNetwork.horizontal.forEach(function(r){
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W,r.w), roadMat);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W,80), roadMat);
       m.rotation.x=-Math.PI/2; m.position.set(WORLD_W/2,0.05,r.y); m.receiveShadow=true; worldGroup.add(m);
+      for(let lx=40; lx<WORLD_W; lx+=94){
+        const dash = new THREE.Mesh(new THREE.PlaneGeometry(48,3), laneMat);
+        dash.rotation.x=-Math.PI/2; dash.position.set(lx,0.07,r.y); worldGroup.add(dash);
+      }
     });
 
     // LEGAL: Bridge railings over the two canals
@@ -2492,7 +2550,12 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
           const zoneType = distId==='hub'?'skyscraper':(distId==='westside'?'industrial':'residential');
           const color = distId==='hub'?(f.hue<0.5?'#2a3040':'#3a3550'):(distId==='westside'?(f.hue<0.5?'#3a3830':'#4a4038'):(f.hue<0.5?'#3a3f4a':'#4a4238'));
           const mesh = buildDetailedBuilding(f.w,f.h,f.d,color,zoneType);
-          mesh.position.set(f.x+off,f.h/2,f.y); worldGroup.add(mesh);
+          mesh.position.set(f.x+off,f.h/2,f.y); mesh.rotation.y = f.rot; worldGroup.add(mesh);
+        } else if(f.kind==='edge'){
+          // LEGAL: Background skyline block — plain shaded box (no windows) for cheap depth.
+          const color = distId==='hub'?(f.hue<0.5?'#22262f':'#2c2a3a'):(distId==='westside'?(f.hue<0.5?'#2c2a24':'#332c26'):(f.hue<0.5?'#2a2e36':'#332e28'));
+          const mesh = box(f.w,f.h,f.d,color);
+          mesh.position.set(f.x+off,f.h/2,f.y); mesh.rotation.y = f.rot; worldGroup.add(mesh);
         } else if(f.kind==='park'){
           const cx=(f.x0+f.x1)/2+off, cy=(f.y0+f.y1)/2, w=f.x1-f.x0, d=f.y1-f.y0;
           const grass = new THREE.Mesh(new THREE.PlaneGeometry(w,d), new THREE.MeshStandardMaterial({color:'#2c4a30', roughness:1}));
@@ -2528,6 +2591,32 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
       });
     });
 
+    // LEGAL: District landmarks — a domed civic hall in Devlin, an industrial water
+    // LEGAL: tower in the West Side (the Hub's Bean is built with its park above).
+    landmarks.forEach(function(lm){
+      if(lm.id==='devlinHall'){
+        const base = box(70,26,70,'#6a5b3e'); base.position.set(lm.x,13,lm.y); worldGroup.add(base);
+        const steps = box(84,6,84,'#565049'); steps.position.set(lm.x,3,lm.y); worldGroup.add(steps);
+        const dome = new THREE.Mesh(new THREE.SphereGeometry(30,20,14,0,Math.PI*2,0,Math.PI/2), new THREE.MeshStandardMaterial({color:'#c9a227', metalness:0.6, roughness:0.3}));
+        dome.position.set(lm.x,26,lm.y); dome.castShadow=true; worldGroup.add(dome);
+        const finial = new THREE.Mesh(new THREE.ConeGeometry(3,14,8), new THREE.MeshStandardMaterial({color:'#e0c860', metalness:0.7, roughness:0.2}));
+        finial.position.set(lm.x,52,lm.y); worldGroup.add(finial);
+        addSign(base,lm.name,44,9,36,'#ffe6a0');
+      } else if(lm.id==='ciceroWorks'){
+        const legMat = new THREE.MeshStandardMaterial({color:'#3a3d47', roughness:0.7});
+        const tankMat = new THREE.MeshStandardMaterial({color:'#7a3b32', roughness:0.8});
+        [[-16,-16],[16,-16],[-16,16],[16,16]].forEach(function(p){
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(2.4,2.4,60,6), legMat);
+          leg.position.set(lm.x+p[0],30,lm.y+p[1]); leg.castShadow=true; worldGroup.add(leg);
+        });
+        const tank = new THREE.Mesh(new THREE.CylinderGeometry(24,24,30,14), tankMat);
+        tank.position.set(lm.x,74,lm.y); tank.castShadow=true; worldGroup.add(tank);
+        const cap = new THREE.Mesh(new THREE.ConeGeometry(26,14,14), tankMat);
+        cap.position.set(lm.x,95,lm.y); worldGroup.add(cap);
+        addSign(tank,lm.name,44,9,28,'#f0c0a0');
+      }
+    });
+
     // LEGAL: El-train track — west side east edge
     const rail = new THREE.Mesh(new THREE.PlaneGeometry(40,WORLD_H), new THREE.MeshStandardMaterial({color:'#2a2a2e', roughness:1}));
     rail.rotation.x=-Math.PI/2; rail.position.set(3470,0.06,WORLD_H/2); rail.receiveShadow=true; worldGroup.add(rail);
@@ -2538,6 +2627,8 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     river.rotation.x=-Math.PI/2; river.position.set(WORLD_W/2,0.06,20); river.receiveShadow=true; worldGroup.add(river);
 
     currentSolids = buildAllSolids();
+    // LEGAL: Block the landmark footprints so you can't walk through them.
+    currentSolids.push({x:125,y:820,hw:44,hd:44}, {x:2125,y:850,hw:26,hd:26});
     updateParkedCarMesh();
     rebuildWaypointBeacon();
 
@@ -2676,11 +2767,17 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     if(state.inVehicle){ const car=getEquippedCar(); if(car) playerGroup.add(buildCarModel(car)); }
     else playerGroup.add(buildPedestrianModel('#f0efe8'));
   }
+  // LEGAL: Where a freshly-bought (never-parked) car sits — just off the district
+  // LEGAL: spawn so the player has to step over to it rather than start on top of it.
+  function carSpawnPos(): Point {
+    const s = spawnPoints[state.currentDistrict] || { x:700, y:600 };
+    return { x: s.x + 70, y: s.y };
+  }
   function updateParkedCarMesh(){
     if(parkedCarMesh){ worldGroup.remove(parkedCarMesh); parkedCarMesh.traverse(disposeObj); parkedCarMesh=null; }
     const car = getEquippedCar();
     if(car && !state.inVehicle){
-      const pos = state.parkedCarPos[state.currentDistrict] || spawnPoints[state.currentDistrict];
+      const pos = state.parkedCarPos[state.currentDistrict] || carSpawnPos();
       parkedCarMesh = buildCarModel(car);
       parkedCarMesh.position.set(pos.x,0,pos.y);
       worldGroup.add(parkedCarMesh);
@@ -2807,6 +2904,26 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     }
     const centerX = player.x + minimapPan.x, centerY = player.y + minimapPan.y;
     const proj = function(wx: number, wy: number){ return { x:75+(wx-centerX)*MINIMAP_SCALE, y:75+(wy-centerY)*MINIMAP_SCALE }; };
+    const onMap = function(p: {x:number;y:number}){ return p.x>=-8 && p.x<=158 && p.y>=-8 && p.y<=158; };
+    // LEGAL: Filler city + parks + rough-edge skyline, drawn under the roads so the
+    // LEGAL: minimap matches the actual layout you see in the 3D view.
+    ['devlin','westside','hub'].forEach(function(distId){
+      const off = DISTRICT_OFFSETS[distId];
+      fillerFor(distId).forEach(function(f){
+        if(f.kind==='building' || f.kind==='edge'){
+          const p = proj(f.x+off, f.y);
+          if(!onMap(p)) return;
+          const bw = Math.max(1.5, f.w*MINIMAP_SCALE), bd = Math.max(1.5, f.d*MINIMAP_SCALE);
+          mctx.fillStyle = f.kind==='edge' ? 'rgba(84,90,104,0.5)' : 'rgba(120,126,142,0.72)';
+          mctx.fillRect(p.x-bw/2, p.y-bd/2, bw, bd);
+        } else if(f.kind==='park'){
+          const p = proj((f.x0+f.x1)/2+off,(f.y0+f.y1)/2);
+          if(!onMap(p)) return;
+          const w=(f.x1-f.x0)*MINIMAP_SCALE, d=(f.y1-f.y0)*MINIMAP_SCALE;
+          mctx.fillStyle='rgba(58,108,68,0.55)'; mctx.fillRect(p.x-w/2,p.y-d/2,w,d);
+        }
+      });
+    });
     mctx.strokeStyle='rgba(120,120,135,0.4)'; mctx.lineWidth=3;
     roadNetwork.vertical.forEach(function(r){ const p1=proj(r.x,0), p2=proj(r.x,WORLD_H); mctx.beginPath(); mctx.moveTo(p1.x,p1.y); mctx.lineTo(p2.x,p2.y); mctx.stroke(); });
     roadNetwork.horizontal.forEach(function(r){ const p1=proj(0,r.y), p2=proj(WORLD_W,r.y); mctx.beginPath(); mctx.moveTo(p1.x,p1.y); mctx.lineTo(p2.x,p2.y); mctx.stroke(); });
@@ -2817,6 +2934,13 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     corners.filter(inDistrict).forEach(function(m){ dot(m.x,m.y, m.busted?'#5f6275':(m.dealer?'#d4a017':'#a8394a'), 2); });
     mapNpcs.filter(inDistrict).forEach(function(m){ dot(m.x,m.y,'#f0efe8',2); });
     gangRecruits.filter(inDistrict).forEach(function(m){ dot(m.x,m.y,'#f0efe8',2); });
+    // LEGAL: Landmark markers — small gold diamonds for the district "spots".
+    landmarks.forEach(function(lm){
+      const p = proj(lm.x, lm.y);
+      if(!onMap(p)) return;
+      mctx.save(); mctx.translate(p.x,p.y); mctx.rotate(Math.PI/4);
+      mctx.fillStyle='#e0c860'; mctx.fillRect(-3,-3,6,6); mctx.restore();
+    });
     const wp = state.waypoints[state.currentDistrict];
     if(wp){
       const p = proj(wp.x,wp.y);
@@ -2884,21 +3008,38 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     if(keys['arrowdown']||keys['s']) dy += 1;
     if(keys['arrowleft']||keys['a']) dx -= 1;
     if(keys['arrowright']||keys['d']) dx += 1;
-    if(dx||dy){
-      const len = Math.hypot(dx,dy);
-      const spd = currentSpeed();
-      player.facing = Math.atan2(dy,dx);
-      const stepX = (dx/len)*spd*dt, stepY = (dy/len)*spd*dt;
+    // LEGAL: Target velocity from input, then ease the actual velocity toward it so
+    // LEGAL: movement accelerates and coasts instead of snapping on/off. Cars are
+    // LEGAL: heavier (slower to respond and to turn) than the player on foot.
+    const spd = currentSpeed();
+    let tvx=0, tvy=0;
+    if(dx||dy){ const len = Math.hypot(dx,dy); tvx=(dx/len)*spd; tvy=(dy/len)*spd; }
+    const respond = state.inVehicle ? 6 : 11;
+    const ease = 1 - Math.exp(-respond*dt);
+    player.vx += (tvx - player.vx)*ease;
+    player.vy += (tvy - player.vy)*ease;
+    const speed = Math.hypot(player.vx, player.vy);
+    if(speed > 2){
+      // LEGAL: Steer the heading toward the travel direction at a capped rate — the
+      // LEGAL: old code snapped facing instantly, which made the car spin on a dime.
+      const targetFacing = Math.atan2(player.vy, player.vx);
+      let af = targetFacing - player.facing;
+      while(af > Math.PI) af -= Math.PI*2;
+      while(af < -Math.PI) af += Math.PI*2;
+      const maxTurn = (state.inVehicle ? 7 : 14) * dt;
+      player.facing += Math.max(-maxTurn, Math.min(maxTurn, af));
+      const stepX = player.vx*dt, stepY = player.vy*dt;
       if(state.currentInterior){
         player.x = Math.max(20, Math.min(ROOM_W-20, player.x+stepX));
         player.y = Math.max(20, Math.min(ROOM_H-14, player.y+stepY));
       } else {
         const tryX = player.x+stepX, tryY = player.y+stepY;
         if(tryMove(tryX,tryY,currentSolids)){ player.x=tryX; player.y=tryY; }
-        else if(tryMove(tryX,player.y,currentSolids)){ player.x=tryX; }
-        else if(tryMove(player.x,tryY,currentSolids)){ player.y=tryY; }
+        else if(tryMove(tryX,player.y,currentSolids)){ player.x=tryX; player.vy=0; }
+        else if(tryMove(player.x,tryY,currentSolids)){ player.y=tryY; player.vx=0; }
+        else { player.vx=0; player.vy=0; }
       }
-    }
+    } else { player.vx=0; player.vy=0; }
     // LEGAL: Seamless district detection — update HUD when crossing a bridge
     if(!state.currentInterior){
       const detectedDist = playerDistrict();
