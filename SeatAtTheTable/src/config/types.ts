@@ -158,6 +158,14 @@ export interface Point {
   y: number;
 }
 
+// LEGAL: Axis-aligned collision box used by the map's building layout.
+export interface Solid {
+  x: number;
+  y: number;
+  hw: number;
+  hd: number;
+}
+
 export interface ProceduralNPC {
   name: string;
   disposition: string;
@@ -175,6 +183,20 @@ export interface InteriorState {
 export interface StockPosition {
   shares: number;
   avgCost: number;
+}
+
+export interface ModalButton {
+  label: string;
+  secondary?: boolean;
+  onClick?: () => void;
+}
+
+export interface ModalOptions {
+  eyebrow?: string;
+  title?: string;
+  body?: string;
+  stamp?: string;
+  buttons?: ModalButton[];
 }
 
 // LEGAL: Central mutable game state. Keyed maps (waypoints, parkedCarPos,

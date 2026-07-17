@@ -10,7 +10,7 @@ import { politicians } from '../config/politics';
 import { gangRecruits } from '../config/gang';
 import { npcFirstNames, npcLastNames, npcDispositions } from '../config/npcs';
 import { stockMarket } from '../config/stockMarket';
-import type { GameState } from '../config/types';
+import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../config/types';
 
   const eventPool = [
     { id:'rival', title:'A RIVAL CREW EYES YOUR CORNER', neg:true, body:"<p class='flavor'>Word is a West Side crew thinks your runners are working streets that belong to them.</p>", choices:[
@@ -385,14 +385,14 @@ import type { GameState } from '../config/types';
   function byIdOrNull<T extends HTMLElement = HTMLElement>(id: string): T | null {
     return document.getElementById(id) as T | null;
   }
-  function fmt(n){
+  function fmt(n: number){
     const sign = n<0?'-':''; n=Math.abs(n);
     if(n < 1000) return sign+'$' + Math.floor(n);
     const units=['','K','M','B','T']; let u=0; let v=n;
     while(v>=1000 && u<units.length-1){ v/=1000; u++; }
     return sign+'$' + v.toFixed(v<10?2:1) + units[u];
   }
-  function fmtR(n){ return Math.floor(n).toLocaleString(); }
+  function fmtR(n: number){ return Math.floor(n).toLocaleString(); }
   function hasFamilyTier(index){ return state.prestigeCount > index; }
   function brotherActive(){ return hasFamilyTier(0); }
   function motherActive(){ return hasFamilyTier(1); }
@@ -405,27 +405,27 @@ import type { GameState } from '../config/types';
   function chinoInducted(){ return gangRecruits.find(g=>g.id==='chino').inducted; }
   function birdInducted(){ return gangRecruits.find(g=>g.id==='bird').inducted; }
   function whitmoreMult(){ return whitmoreActive() ? 0.7 : 1; }
-  function researchCostFor(b){ return Math.ceil(b.researchCost * discountMult() * (coleActive()?0.9:1)); }
+  function researchCostFor(b: Business){ return Math.ceil(b.researchCost * discountMult() * (coleActive()?0.9:1)); }
   function heatMult(){ return Math.max(0.3, (state.bribeOn?0.4:1) * (motherActive()?0.65:1) * (boyleActive()?0.8:1) * (nadiaInducted()?0.9:1)); }
   function crewCapGlobal(){ return 6 + state.territoryTier*4 + (sisterActive()?6:0); }
   function crewUsedGlobal(){ return businesses.reduce((s,b)=> s + (b.manager?0:b.crew), 0); }
-  function crewNeeded(b){ return b.level<=0 ? 0 : Math.ceil(b.level/5); }
-  function efficiency(b){
+  function crewNeeded(b: Business){ return b.level<=0 ? 0 : Math.ceil(b.level/5); }
+  function efficiency(b: Business){
     if(b.manager) return 1;
     const need = crewNeeded(b);
     if(need===0) return 1;
     return Math.max(0.35, Math.min(1, b.crew/need));
   }
-  function costForLevel(b){ return Math.ceil(b.baseCost * Math.pow(1.15, b.level) * discountMult()); }
-  function crewCostFor(b){ return Math.ceil(b.crewBaseCost * Math.pow(1.22, b.crew) * discountMult() * (sisterActive()?0.8:1)); }
-  function managerCostFor(b){ return Math.ceil(b.baseCost * 45 * discountMult()); }
+  function costForLevel(b: Business){ return Math.ceil(b.baseCost * Math.pow(1.15, b.level) * discountMult()); }
+  function crewCostFor(b: Business){ return Math.ceil(b.crewBaseCost * Math.pow(1.22, b.crew) * discountMult() * (sisterActive()?0.8:1)); }
+  function managerCostFor(b: Business){ return Math.ceil(b.baseCost * 45 * discountMult()); }
   function territoryCost(){ return Math.ceil(40 * Math.pow(2.1, state.territoryTier)); }
   function negotiateCost(){ return Math.ceil(25 * Math.pow(1.8, state.negotiateTier)); }
   function muscleCost(){ return Math.ceil(80 * Math.pow(1.25, state.muscleCount)); }
   function ratsCashCost(){ return Math.ceil(150 * Math.pow(1.3, state.ratCount)); }
   function ratsRespectCost(){ return 5 + state.ratCount*2; }
-  function tempMultActive(b){ return b.tempMultExpire > Date.now() ? b.tempMult : 1; }
-  function applyTempMult(filter, mult, seconds){
+  function tempMultActive(b: Business){ return b.tempMultExpire > Date.now() ? b.tempMult : 1; }
+  function applyTempMult(filter: string, mult: number, seconds: number){
     businesses.forEach(b=>{ if(filter==='all' || b.category===filter){ b.tempMult = mult; b.tempMultExpire = Date.now() + seconds*1000; } });
   }
   function hireFreeCrew(){
@@ -435,7 +435,7 @@ import type { GameState } from '../config/types';
     b.crew += 1;
     log(`<i class="ph-duotone ph-handshake"></i> They join the crew at ${b.name}, no questions asked.`);
   }
-  function incomeFor(b){ return b.level * b.baseIncome * efficiency(b) * tempMultActive(b); }
+  function incomeFor(b: Business){ return b.level * b.baseIncome * efficiency(b) * tempMultActive(b); }
   function getEquippedCar(){ return cars.find(c=>c.id===state.equippedCar) || null; }
   function propertiesIncome(){ return state.ownedProperties.reduce((s,id)=>{ const p=properties.find(x=>x.id===id); return s+(p?p.incomePerSec:0); }, 0); }
   function localBizIncome(){ return localBusinesses.filter(b=>b.extorted).reduce((s,b)=> s+b.extortIncome, 0); }
@@ -468,25 +468,25 @@ import type { GameState } from '../config/types';
     return (state.muscleCount*0.5 + streetHeat + extortHeat + cornerHeatPerSec()) * heatMult() * (state.campaignActive ? 2.5 : 1);
   }
   function currentRank(){ let r=ranks[0]; for(const rk of ranks){ if(state.respect>=rk.respect) r=rk; } return r.title; }
-  function isUnlocked(b){
+  function isUnlocked(b: Business){
     if(b.unlock.type==='start') return true;
     if(b.unlock.type==='cash') return state.cash>=b.unlock.value || b.level>0 || b.researched;
     if(b.unlock.type==='respect') return state.respect>=b.unlock.value || b.level>0 || b.researched;
     if(b.unlock.type==='family') return hasFamilyTier(b.unlock.value) || b.level>0 || b.researched;
     return false;
   }
-  function log(msg){
+  function log(msg: string){
     const wrap = byId('ticker');
     const item = document.createElement('div');
     item.className = 'ticker-item';
     const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     item.innerHTML = `<span class="t-time">${time}</span><span>${msg}</span>`;
     wrap.prepend(item);
-    while(wrap.children.length > 45) wrap.removeChild(wrap.lastChild);
+    while(wrap.children.length > 45 && wrap.lastChild) wrap.removeChild(wrap.lastChild);
   }
 
   // LEGAL: ================= MODAL =================
-  function showModal({eyebrow, title, body, stamp, buttons}){
+  function showModal({eyebrow, title, body, stamp, buttons}: ModalOptions){
     byId('modal-eyebrow').textContent = eyebrow || '';
     byId('modal-title').textContent = title || '';
     byId('modal-body').innerHTML = body || '';
@@ -545,12 +545,12 @@ import type { GameState } from '../config/types';
   }
 
   // LEGAL: ================= VENTURE QUICK PANEL (used by the map) =================
-  function openVentureQuickPanel(b){
+  function openVentureQuickPanel(b: Business){
     const unlocked = isUnlocked(b);
     let bodyHtml = `<p>${b.flavor}</p>`;
-    let buttons = [];
+    const buttons: ModalButton[] = [];
     if(!unlocked){
-      bodyHtml += `<p class="flavor">${b.unlock.type==='cash' ? ('Unlocks at '+fmt(b.unlock.value)+' cash') : ('Unlocks at '+b.unlock.value+' respect')}</p>`;
+      bodyHtml += `<p class="flavor">${b.unlock.type==='cash' ? ('Unlocks at '+fmt(b.unlock.value)+' cash') : ('value' in b.unlock ? ('Unlocks at '+b.unlock.value+' respect') : '')}</p>`;
     } else if(!b.researched){
       const rc = researchCostFor(b);
       buttons.push({ label:`Research (${fmt(rc)})`, onClick:function(){ if(state.cash>=rc){ state.cash-=rc; b.researched=true; log(`<i class="ph-duotone ph-flask"></i> You research ${b.name}.`);} renderAll(); }});
@@ -568,7 +568,7 @@ import type { GameState } from '../config/types';
   }
 
   // LEGAL: ================= BANK =================
-  function depositAmount(rawAmt){
+  function depositAmount(rawAmt: string | undefined){
     const amt = Math.floor(Number(rawAmt));
     if(!isFinite(amt) || amt<=0){ log('<i class="ph-duotone ph-bank"></i> Enter a valid amount to deposit.'); return; }
     if(amt > state.cash){ log(`<i class="ph-duotone ph-vault"></i> You don't have ${fmt(amt)} on hand to deposit.`); return; }
@@ -576,7 +576,7 @@ import type { GameState } from '../config/types';
     log(`<i class="ph-duotone ph-vault"></i> You deposit ${fmt(amt)}. Safe from raids in there.`);
     renderAll();
   }
-  function withdrawAmount(rawAmt){
+  function withdrawAmount(rawAmt: string | undefined){
     const amt = Math.floor(Number(rawAmt));
     if(!isFinite(amt) || amt<=0){ log('<i class="ph-duotone ph-bank"></i> Enter a valid amount to withdraw.'); return; }
     if(amt > state.bank){ log(`<i class="ph-duotone ph-vault"></i> There's only ${fmt(state.bank)} banked.`); return; }
@@ -584,7 +584,7 @@ import type { GameState } from '../config/types';
     log(`<i class="ph-duotone ph-vault"></i> You withdraw ${fmt(amt)}.`);
     renderAll();
   }
-  function resolveHeist(approach){
+  function resolveHeist(approach: string){
     const car = getEquippedCar();
     const carBonus = car ? car.heistBonus : 0;
     let chance, reward, failLossPct, heatOnAttempt, heatOnFail, respectOnFail;
@@ -1982,9 +1982,9 @@ import type { GameState } from '../config/types';
   }
   const districtSeeds = { devlin:1001, westside:2002, hub:3003 };
   // LEGAL: Filler band X/Y coordinates are relative to a 1500x950 grid; offset applied at render time
-  function occupiedZones(districtId){
-    const zones = [];
-    const add = (arr,r)=> arr.filter(m=>m.district===districtId).forEach(m=> zones.push({x:m.x,y:m.y,r}));
+  function occupiedZones(districtId: string){
+    const zones: { x: number; y: number; r: number }[] = [];
+    const add = (arr: { district: string; x: number; y: number }[], r: number)=> arr.filter(m=>m.district===districtId).forEach(m=> zones.push({x:m.x,y:m.y,r}));
     add(mapBuildings,70); add(serviceBuildings,70); add(localBusinesses,60);
     add(corners,50); add(mapNpcs,50); add(gangRecruits,50);
     return zones;
@@ -2021,7 +2021,7 @@ import type { GameState } from '../config/types';
     return fillerCache[districtId];
   }
     function buildAllSolids(){
-    const list = [];
+    const list: Solid[] = [];
     mapBuildings.forEach(m=>{
       const w = m.biz.baseCost>=50000?66:(m.biz.baseCost<1000?46:56);
       list.push({x:m.x,y:m.y,hw:w/2+6,hd:(w*0.85)/2+6});
@@ -2037,8 +2037,8 @@ import type { GameState } from '../config/types';
   function buildingSolids(districtId){
     return buildAllSolids();
   }
-  function collidesBuilding(x,y,solids){ return solids.some(s=> Math.abs(x-s.x)<s.hw && Math.abs(y-s.y)<s.hd); }
-  let currentSolids = [];
+  function collidesBuilding(x: number, y: number, solids: Solid[]){ return solids.some(s=> Math.abs(x-s.x)<s.hw && Math.abs(y-s.y)<s.hd); }
+  let currentSolids: Solid[] = [];
 
   // LEGAL: ---- interiors: a small generic room per building, with 1-2 physical hotspots ----
   const ROOM_W = 480, ROOM_H = 280, ROOM_OX = (VIEW_W-ROOM_W)/2, ROOM_OY = (VIEW_H-ROOM_H)/2 - 10;
@@ -2240,7 +2240,9 @@ import type { GameState } from '../config/types';
   }
 
   // LEGAL: ================= THREE.JS SCENE =================
-  let scene, camera3d, renderer, worldGroup, playerGroup, sunLight, waypointBeacon, parkedCarMesh;
+  // LEGAL: Three.js objects; THREE is a CDN-loaded global typed as any, so these
+  // LEGAL: render-system handles are explicitly any rather than falsely precise.
+  let scene: any, camera3d: any, renderer: any, worldGroup: any, playerGroup: any, sunLight: any, waypointBeacon: any, parkedCarMesh: any;
 
   function disposeObj(o){
     if(o.geometry) o.geometry.dispose();
@@ -2743,7 +2745,7 @@ import type { GameState } from '../config/types';
   const minimapPan = { x:0, y:0 };
   // LEGAL: Scale tuned for 5500-wide world so minimap shows local neighbourhood
   const MINIMAP_SCALE = 150/600;
-  let minimapDragging=false, minimapDragStart=null, minimapDragMoved=false;
+  let minimapDragging=false, minimapDragStart: { clientX: number; clientY: number; panX: number; panY: number } | null =null, minimapDragMoved=false;
 
   minimapCanvas.addEventListener('mousedown', function(e){
     minimapDragging = true; minimapDragMoved = false;
@@ -3063,7 +3065,7 @@ import type { GameState } from '../config/types';
       currentNews: state.currentNews, newsQueue: state.newsQueue, nextNewsAt: state.nextNewsAt
     };
   }
-  let saveTimer = null;
+  let saveTimer: ReturnType<typeof setTimeout> | null = null;
   let lastSaveTime = 0;
   function scheduleSave(){
     const now = Date.now();
