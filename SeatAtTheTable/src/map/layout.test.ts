@@ -3,7 +3,8 @@ import { businesses } from '../config/ventures';
 import { buildableBands, localXForDistrict, rectsOverlap, rotatedHalfExtents } from './layout';
 import { createMapBuildings } from './markers';
 import { actorRadius, canMoveTo, isWaterBlocked } from './movement';
-import { districtParkSlots, namedBuildingLots, roadNetwork, ventureDistricts, ventureLots } from './world';
+import { districtParkSlots, namedBuildingLots, roadNetwork, ventureDistricts, ventureLots, ventureMapLots } from './world';
+import { zoneForDistrictBlock } from './zoning';
 
 describe('map layout helpers', function () {
   it('converts world x positions into district-local x positions', function () {
@@ -72,6 +73,29 @@ describe('map layout helpers', function () {
       const [district, count] = entry;
       expect(ventureLots[district].length).toBeGreaterThanOrEqual(count);
     });
+  });
+
+  it('maps every buyable venture to an explicit physical lot', function () {
+    const seen = new Set<string>();
+
+    businesses.forEach(function(business){
+      const lot = ventureMapLots[business.id];
+
+      expect(lot).toBeDefined();
+      expect(lot.zone.length).toBeGreaterThan(0);
+      expect(roadNetwork.vertical.some(r=>Math.abs(lot.x - r.x) < 77)).toBe(false);
+      expect(roadNetwork.horizontal.some(r=>Math.abs(lot.y - r.y) < 71)).toBe(false);
+      const key = `${lot.x}:${lot.y}`;
+      expect(seen.has(key)).toBe(false);
+      seen.add(key);
+    });
+  });
+
+  it('assigns district blocks to stable land-use zones', function () {
+    expect(zoneForDistrictBlock('devlin', 0, 3)).toBe('residential');
+    expect(zoneForDistrictBlock('westside', 3, 1)).toBe('industrial');
+    expect(zoneForDistrictBlock('hub', 1, 0)).toBe('corporate');
+    expect(zoneForDistrictBlock('hub', 2, 2)).toBe('entertainment');
   });
 
   it('creates non-overlapping venture markers from the venture list', function () {

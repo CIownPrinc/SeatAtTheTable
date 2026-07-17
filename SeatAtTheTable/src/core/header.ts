@@ -10,13 +10,14 @@ import { politicians } from '../config/politics';
 import { gangRecruits } from '../config/gang';
 import { npcFirstNames, npcLastNames, npcDispositions } from '../config/npcs';
 import { stockMarket } from '../config/stockMarket';
-import type { GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState, Point, ServiceBuilding, GangRecruit, Car, FillerItem, DialogueTree } from '../config/types';
-import { buildableBands, localXForDistrict, rectsOverlap, rotatedHalfExtents } from '../map/layout';
+import type { GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState, Point, ServiceBuilding, GangRecruit, Car, DialogueTree } from '../config/types';
+import { createFillerLayoutProvider, seededRandom } from '../map/filler';
 import { applyNamedBuildingLots, createMapBuildings, mapNpcs } from '../map/markers';
 import { canMoveTo } from '../map/movement';
 import type { MapObject } from '../map/objects';
 import { createBounds, nearestMapObject, solidsFromObjects } from '../map/objects';
-import { DISTRICT_OFFSETS, DISTRICT_W, VIEW_H, VIEW_W, WORLD_H, WORLD_W, districtParkSlots, districtSeeds, landmarks, roadNetwork, spawnPoints } from '../map/world';
+import { DISTRICT_OFFSETS, VIEW_H, VIEW_W, WORLD_H, WORLD_W, landmarks, roadNetwork, spawnPoints } from '../map/world';
+import { renderZoneType } from '../map/zoning';
 import type * as ThreeNamespace from 'three';
 
   const eventPool = [
@@ -1966,9 +1967,18 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: rel-x 270/700/1130 (±37) and horizontal roads at y 300/600/900 (±37), so
   // LEGAL: these column/row centers keep every venture fully clear of the streets.
   const mapBuildings = createMapBuildings(businesses);
+  function ventureFootprint(m: typeof mapBuildings[number]): { w: number; d: number; h: number; zoneType: string } {
+    if(m.id==='cart') return { w:30, d:22, h:14, zoneType:'shop' };
+    if(m.zone==='corporate') return { w:72, d:58, h:m.id==='family_office'?96:82, zoneType:'skyscraper' };
+    if(m.zone==='logistics') return { w:82, d:58, h:32, zoneType:'industrial' };
+    if(m.zone==='industrial') return { w:76, d:54, h:28, zoneType:'industrial' };
+    if(m.zone==='entertainment') return { w:70, d:54, h:42, zoneType:'commercial' };
+    if(m.zone==='street') return { w:56, d:44, h:26, zoneType:'industrial' };
+    return { w:m.biz.baseCost<1000?46:58, d:m.biz.baseCost<1000?34:46, h:m.biz.baseCost>=18000?38:24, zoneType:'shop' };
+  }
   function ventureBounds(m: typeof mapBuildings[number]): Solid {
-    const w = m.biz.baseCost>=50000?66:(m.biz.baseCost<1000?46:56);
-    return createBounds(m.x, m.y, w/2+6, (w*0.85)/2+6);
+    const footprint = ventureFootprint(m);
+    return createBounds(m.x, m.y, footprint.w/2+6, footprint.d/2+6);
   }
   function buildMapObjects(): MapObject[] {
     return [
@@ -1996,7 +2006,7 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: District landmarks — unique, recognisable "spots" so each area reads as a
   // LEGAL: place rather than interchangeable blocks. Coords are world-space, sited on
   // LEGAL: each district's park/plaza and clear of the fixed anchors. (The Hub already
-  // LEGAL: has The Bean, built with the park.)
+  // LEGAL: has The Potato, built with the park.)
   // LEGAL: Returns which district the player is in based on X position
   function playerDistrict(){
     if(player.x < 1500) return 'devlin';
@@ -2015,124 +2025,13 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: Unified world — all markers always in scene
   function inDistrict(){ return true; }
 
-    // LEGAL: Horizontal roads span full width — they form bridge decks over canals
-  // LEGAL: ---- deterministic filler city: same layout every time, not regenerated per load ----
-  function seededRandom(seed: number){
-    return function(){
-      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
-      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }
-  const ROAD_VISUAL_CLEARANCE_X = 56;
-  const ROAD_VISUAL_CLEARANCE_Y = 66;
-  const BUILDING_GAP = 14;
-
-  // LEGAL: Filler band coordinates are district-local; offset is applied at render time.
-  function occupiedZones(districtId: string){
-    const zones: { x: number; y: number; r: number }[] = [];
-    mapObjects.filter(m=>m.district===districtId).forEach(function(m){
-      const radius = m.bounds ? Math.max(m.bounds.hw, m.bounds.hd) + 24 : 50;
-      zones.push({x:localXForDistrict(districtId, m.x, DISTRICT_OFFSETS),y:m.y,r:radius});
-    });
-    landmarks.filter(m=>m.district===districtId).forEach(m=> zones.push({x:localXForDistrict(districtId, m.x, DISTRICT_OFFSETS), y:m.y, r:70}));
-    return zones;
-  }
-  function generateFillerLayout(districtId: string){
-    const rand = seededRandom(districtSeeds[districtId]);
-    const occupied = occupiedZones(districtId);
-    const localRoadXs = [270,700,1130];
-    const xBands = buildableBands(localRoadXs, DISTRICT_W, ROAD_VISUAL_CLEARANCE_X);
-    const yBands = buildableBands(roadNetwork.horizontal.map(r=>r.y), WORLD_H, ROAD_VISUAL_CLEARANCE_Y);
-    const lotBand = { xi:xBands.length-1, yi: districtId==='hub' ? yBands.length-1 : 0 };
-    const parkSlots = districtParkSlots[districtId] || [];
-    const filler: FillerItem[] = [];
-    const placed: Solid[] = occupied.map(o=>({ x:o.x, y:o.y, hw:o.r, hd:o.r }));
-    const jit = ()=> rand()-0.5;
-    const fitsSolid = function(candidate: Solid): boolean {
-      if(candidate.x-candidate.hw < 8 || candidate.x+candidate.hw > DISTRICT_W-8) return false;
-      if(candidate.y-candidate.hd < 8 || candidate.y+candidate.hd > WORLD_H-8) return false;
-      if(localRoadXs.some(x=> Math.abs(candidate.x-x) < candidate.hw+ROAD_VISUAL_CLEARANCE_X)) return false;
-      if(roadNetwork.horizontal.some(r=> Math.abs(candidate.y-r.y) < candidate.hd+ROAD_VISUAL_CLEARANCE_Y)) return false;
-      return !placed.some(s=>rectsOverlap(candidate, s, BUILDING_GAP));
-    };
-    const pushBuilding = function(kind: 'building' | 'edge', x: number, y: number, w: number, d: number, h: number, hue: number, rot: number): void {
-      const ext = rotatedHalfExtents(w, d, rot);
-      const solid = { x, y, hw:ext.hw, hd:ext.hd };
-      if(!fitsSolid(solid)) return;
-      filler.push({kind, x, y, w, d, h, hue, rot});
-      placed.push(solid);
-    };
-    for(let xi=0; xi<xBands.length; xi++){
-      for(let yi=0; yi<yBands.length; yi++){
-        const x0=xBands[xi][0], x1=xBands[xi][1], y0=yBands[yi][0], y1=yBands[yi][1];
-        const cx=(x0+x1)/2, cy=(y0+y1)/2;
-        const blockSolid = { x:cx, y:cy, hw:(x1-x0)/2, hd:(y1-y0)/2 };
-        const blockHasAnchor = placed.some(o=>rectsOverlap(blockSolid, o, 8));
-        const parkSlot = parkSlots.find(function(slot){
-          const slotYi = slot.yi === 'south' ? yBands.length - 1 : slot.yi;
-          return slot.xi === xi && slotYi === yi;
-        });
-        if(parkSlot && !blockHasAnchor){ filler.push({kind:'park', name:parkSlot.name, x0,y0,x1,y1}); placed.push(blockSolid); continue; }
-        if((xi===lotBand.xi && yi===lotBand.yi || (districtId!=='hub' && xi===0 && yi===1) || (districtId==='hub' && xi===2 && yi===2)) && !blockHasAnchor){ filler.push({kind:'lot', x0,y0,x1,y1}); placed.push(blockSolid); continue; }
-        // LEGAL: Subdivide the block into an irregular cluster: 1-2 lots each way,
-        // LEGAL: varied footprint/height, occasional gaps, and a slight rotation so
-        // LEGAL: the built environment reads organic instead of as a uniform grid.
-        const bw = x1-x0, bd = y1-y0;
-        const cols = 1 + Math.floor(rand()*2);
-        const rows = 1 + Math.floor(rand()*2);
-        const cellW = bw/cols, cellD = bd/rows;
-        for(let ci=0; ci<cols; ci++){
-          for(let ri=0; ri<rows; ri++){
-            if(rand()<0.18) continue; // LEGAL: leave the odd empty lot
-            const w = cellW*(0.55+rand()*0.35);
-            const d = cellD*(0.55+rand()*0.35);
-            const h = districtId==='hub' && yi < 2 ? 70 + rand()*rand()*210 : 14 + rand()*rand()*90;
-            const px = x0 + ci*cellW + (cellW-w)/2 + jit()*cellW*0.2;
-            const py = y0 + ri*cellD + (cellD-d)/2 + jit()*cellD*0.2;
-            const rot = jit()*0.18 + (rand()<0.12 ? jit()*0.6 : 0);
-            pushBuilding('building', px+w/2, py+d/2, w, d, h, rand(), rot);
-          }
-        }
-      }
-    }
-    // LEGAL: Rough city edge — a receding, irregular skyline of cheap background
-    // LEGAL: blocks along the north and south margins so the map doesn't stop at a
-    // LEGAL: clean straight line. Skipped where it would collide with real content.
-    function skylineRow(yBase: number, yJit: number, tallBias: number){
-      let x = 10;
-      while(x < 1490){
-        const w = 30 + rand()*70;
-        const gap = 6 + rand()*30;
-        const cxLocal = x + w/2;
-        const y = yBase + jit()*yJit;
-        if(rand()>0.15){
-          const d = 40 + rand()*70;
-          const h = 34 + rand()*rand()*170*tallBias;
-          pushBuilding('edge', cxLocal, y, w, d, h, rand(), jit()*0.25);
-        }
-        x += w + gap;
-      }
-    }
-    skylineRow(58, 34, districtId==='hub'?1.4:0.8);
-    skylineRow(1090, 55, districtId==='hub'?1.6:1.0);
-    return filler;
-  }
-  const fillerCache: Record<string, FillerItem[]> = {};
+  const fillerLayout = createFillerLayoutProvider(mapObjects);
   function fillerFor(districtId: string){
-    if(!fillerCache[districtId]) fillerCache[districtId] = generateFillerLayout(districtId);
-    return fillerCache[districtId];
+    return fillerLayout.fillerFor(districtId);
   }
-    function buildAllSolids(){
+  function buildAllSolids(){
     const list: Solid[] = solidsFromObjects(mapObjects);
-    ['devlin','westside','hub'].forEach(function(distId){
-      const off = DISTRICT_OFFSETS[distId];
-      fillerFor(distId).filter((f): f is Extract<FillerItem, {kind:'building'|'edge'}> => f.kind==='building'||f.kind==='edge').forEach(function(f){
-        const ext = rotatedHalfExtents(f.w, f.d, f.rot);
-        list.push({x:f.x+off,y:f.y,hw:ext.hw+4,hd:ext.hd+4});
-      });
-    });
+    list.push(...fillerLayout.fillerSolids());
     return list;
   }
   function buildingSolids(districtId: string){
@@ -2324,8 +2223,10 @@ import type * as ThreeNamespace from 'three';
   type ThreeModule = typeof ThreeNamespace;
   type DisposableMaterial = ThreeNamespace.Material & { map?: ThreeNamespace.Texture };
   let THREE: ThreeModule;
-  let scene: ThreeNamespace.Scene, camera3d: ThreeNamespace.PerspectiveCamera, renderer: ThreeNamespace.WebGLRenderer, worldGroup: ThreeNamespace.Group, playerGroup: ThreeNamespace.Group, ambientLight: ThreeNamespace.AmbientLight, sunLight: ThreeNamespace.DirectionalLight, waypointBeacon: ThreeNamespace.Group | null = null, parkedCarMesh: ThreeNamespace.Group | null = null;
+  let scene: ThreeNamespace.Scene, camera3d: ThreeNamespace.PerspectiveCamera, renderer: ThreeNamespace.WebGLRenderer, worldGroup: ThreeNamespace.Group, playerGroup: ThreeNamespace.Group, ambientLight: ThreeNamespace.AmbientLight, sunLight: ThreeNamespace.DirectionalLight, moonLight: ThreeNamespace.DirectionalLight, waypointBeacon: ThreeNamespace.Group | null = null, parkedCarMesh: ThreeNamespace.Group | null = null;
   let streetLights: ThreeNamespace.PointLight[] = [];
+  let weatherPoints: ThreeNamespace.Points | null = null;
+  let activeWeather: 'clear' | 'rain' | 'snow' = 'clear';
 
   function disposeObj(o: ThreeNamespace.Object3D){
     const mesh = o as ThreeNamespace.Mesh;
@@ -2416,7 +2317,7 @@ import type * as ThreeNamespace from 'three';
     return outer;
   }
   function updateDayNightLighting(){
-    if(!scene || !sunLight || !ambientLight) return;
+    if(!scene || !sunLight || !moonLight || !ambientLight) return;
     const cycleSeconds = 240;
     const phase = ((state.playSeconds % cycleSeconds) / cycleSeconds) * Math.PI * 2;
     const sun = Math.max(0, Math.sin(phase - Math.PI / 2));
@@ -2428,11 +2329,24 @@ import type * as ThreeNamespace from 'three';
     sunLight.position.set(WORLD_W*0.5 + Math.cos(phase) * 900, 130 + sun * 520, WORLD_H*0.35 + Math.sin(phase) * 260);
     sunLight.target.position.set(WORLD_W/2,0,WORLD_H/2);
     sunLight.target.updateMatrixWorld();
+    moonLight.intensity = Math.max(0, night - 0.18) * 0.42;
+    moonLight.position.set(WORLD_W*0.5 - Math.cos(phase) * 700, 430, WORLD_H*0.55 - Math.sin(phase) * 220);
+    moonLight.target.position.set(WORLD_W/2,0,WORLD_H/2);
+    moonLight.target.updateMatrixWorld();
     scene.background = new THREE.Color(sun < 0.18 ? '#070914' : (dusk > 0.45 ? '#241b20' : '#0a0b10'));
     scene.fog = new THREE.Fog(sun < 0.18 ? 0x070914 : 0x0a0b10, 420 + night * 80, 1050 + sun * 150);
     streetLights.forEach(function(light){
-      light.intensity = Math.max(0, night - 0.25) * 0.95;
+      light.intensity = Math.max(0, night - 0.2) * 1.75;
     });
+  }
+  function mapClockLabel(): string {
+    const cycleSeconds = 240;
+    const totalMinutes = Math.floor(((state.playSeconds % cycleSeconds) / cycleSeconds) * 24 * 60);
+    const hours24 = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    const suffix = hours24 >= 12 ? 'PM' : 'AM';
+    const hours12 = hours24 % 12 || 12;
+    return `${hours12}:${String(minutes).padStart(2,'0')} ${suffix}`;
   }
   function buildingColorFor(b: Business){
     const unlocked = isUnlocked(b);
@@ -2445,6 +2359,30 @@ import type * as ThreeNamespace from 'three';
     let seed = 0;
     for(let i=0;i<id.length;i++) seed += id.charCodeAt(i) * (i + 1);
     return (seed % 997) / 997;
+  }
+  function addVentureDetail(m: typeof mapBuildings[number], base: ThreeNamespace.Group){
+    if(m.id==='cart'){
+      const canopy = box(34,4,26,'#d4a017'); canopy.position.set(0,13,0); base.add(canopy);
+      const counter = box(28,7,14,'#7b4a2c'); counter.position.set(0,4,7); base.add(counter);
+    } else if(m.id==='garage'){
+      const bay = box(34,16,3,'#15171c'); bay.position.set(0,-2,28); base.add(bay);
+      const lift = box(26,2,18,'#555a68'); lift.position.set(0,-12,36); base.add(lift);
+    } else if(m.id==='cab'){
+      [-24,0,24].forEach(function(x){
+        const cab = box(18,8,11,'#d4a017'); cab.position.set(x,-8,36); base.add(cab);
+      });
+    } else if(m.id==='restaurant'){
+      const awning = box(54,4,9,'#b13f35'); awning.position.set(0,2,27); base.add(awning);
+    } else if(m.id==='lounge'){
+      const glow = new THREE.Mesh(new THREE.PlaneGeometry(50,12), new THREE.MeshBasicMaterial({color:'#d44d96', transparent:true, opacity:0.62}));
+      glow.position.set(0,12,27.5); base.add(glow);
+    } else if(m.id==='syndicate_logistics' || m.id==='chop_ring'){
+      [-18,0,18].forEach(function(x){
+        const crate = box(14,12,14,m.id==='chop_ring'?'#444a52':'#6a5132'); crate.position.set(x,-10,35); base.add(crate);
+      });
+    } else if(m.id==='family_office'){
+      const crown = box(52,8,42,'#8b7a42'); crown.position.set(0,52,0); base.add(crown);
+    }
   }
 
 
@@ -2523,7 +2461,11 @@ import type * as ThreeNamespace from 'three';
     const bulbMat = new THREE.MeshStandardMaterial({color:'#ffe6a0', emissive:'#ffd27a', emissiveIntensity:1.4});
     const bulb = new THREE.Mesh(new THREE.SphereGeometry(3.2,10,8), bulbMat);
     bulb.position.set(13,32,0); group.add(bulb);
-    const light = new THREE.PointLight(0xffcc7a, 0, 150, 2.2);
+    const light = new THREE.PointLight(0xffcc7a, 0, 230, 1.65);
+    light.castShadow = true;
+    light.shadow.mapSize.set(256,256);
+    light.shadow.camera.near = 2;
+    light.shadow.camera.far = 240;
     light.position.set(13,32,0); group.add(light);
     group.position.set(x,0,z);
     worldGroup.add(group);
@@ -2562,6 +2504,79 @@ import type * as ThreeNamespace from 'three';
     buildStreetLight(x + 46, z + 46);
     buildStopSign(x - 42, z + 42, Math.PI / 4);
     if(index % 2 === 0) buildTrafficLight(x + 42, z - 42, -Math.PI / 4);
+  }
+  function buildStreetTree(x: number, z: number, size: number){
+    const group = new THREE.Group();
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(2.2*size,2.8*size,15*size,7), new THREE.MeshStandardMaterial({color:'#4a3624', roughness:0.9}));
+    trunk.position.set(0,7.5*size,0); trunk.castShadow=true; group.add(trunk);
+    const crownMat = new THREE.MeshStandardMaterial({color:size > 1.08 ? '#2f6a3d' : '#365c34', roughness:0.95});
+    const crown = new THREE.Mesh(new THREE.SphereGeometry(12*size,12,9), crownMat);
+    crown.scale.set(1.05,0.9,1); crown.position.set(0,22*size,0); crown.castShadow=true; group.add(crown);
+    const lower = new THREE.Mesh(new THREE.SphereGeometry(8*size,10,8), crownMat);
+    lower.position.set(5*size,17*size,-4*size); lower.castShadow=true; group.add(lower);
+    group.position.set(x,0,z);
+    worldGroup.add(group);
+  }
+  function buildStreetTrees(){
+    ['devlin','westside','hub'].forEach(function(distId){
+      const off = DISTRICT_OFFSETS[distId];
+      const rand = seededRandom(off + 4307);
+      roadNetwork.horizontal.forEach(function(r){
+        for(let x=off+95; x<off+1405; x+=125){
+          if(roadNetwork.vertical.some(v=>Math.abs(x-v.x)<72)) continue;
+          const side = rand() > 0.5 ? -1 : 1;
+          buildStreetTree(x + (rand()-0.5)*18, r.y + side*58 + (rand()-0.5)*14, 0.78 + rand()*0.45);
+        }
+      });
+      roadNetwork.vertical.filter(v=>v.x>off && v.x<off+1500).forEach(function(v){
+        for(let y=95; y<WORLD_H-95; y+=155){
+          if(roadNetwork.horizontal.some(r=>Math.abs(y-r.y)<82)) continue;
+          const side = rand() > 0.5 ? -1 : 1;
+          buildStreetTree(v.x + side*50 + (rand()-0.5)*12, y + (rand()-0.5)*18, 0.72 + rand()*0.38);
+        }
+      });
+    });
+  }
+  function weatherKindAtTime(): 'clear' | 'rain' | 'snow' {
+    const t = state.playSeconds % 360;
+    if(t > 72 && t < 118) return 'rain';
+    if(t > 226 && t < 258) return 'snow';
+    return 'clear';
+  }
+  function rebuildWeather(kind: 'clear' | 'rain' | 'snow'){
+    if(weatherPoints){ scene.remove(weatherPoints); weatherPoints.geometry.dispose(); const material = weatherPoints.material; if(Array.isArray(material)) material.forEach(m=>m.dispose()); else material.dispose(); weatherPoints = null; }
+    activeWeather = kind;
+    if(kind === 'clear') return;
+    const count = kind === 'rain' ? 520 : 260;
+    const positions = new Float32Array(count * 3);
+    const rand = seededRandom(kind === 'rain' ? 8811 : 9913);
+    for(let i=0; i<count; i++){
+      positions[i*3] = (rand()-0.5) * 760;
+      positions[i*3+1] = rand() * 300 + 40;
+      positions[i*3+2] = (rand()-0.5) * 520;
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const material = new THREE.PointsMaterial({color:kind==='rain'?'#8ab7ff':'#f2f5ff', size:kind==='rain'?2.2:4.2, transparent:true, opacity:kind==='rain'?0.58:0.82, depthWrite:false});
+    weatherPoints = new THREE.Points(geometry, material);
+    scene.add(weatherPoints);
+  }
+  function updateWeather(dt: number){
+    const kind = weatherKindAtTime();
+    if(kind !== activeWeather) rebuildWeather(kind);
+    if(!weatherPoints) return;
+    weatherPoints.position.set(player.x,0,player.y);
+    const attr = weatherPoints.geometry.getAttribute('position') as ThreeNamespace.BufferAttribute;
+    const fall = kind === 'rain' ? 520 * dt : 95 * dt;
+    const drift = kind === 'rain' ? -85 * dt : 24 * Math.sin(state.playSeconds*0.7) * dt;
+    for(let i=0; i<attr.count; i++){
+      let y = attr.getY(i) - fall;
+      let x = attr.getX(i) + drift;
+      if(y < 8){ y += 300; x = ((x + 380) % 760) - 380; }
+      attr.setY(i, y);
+      attr.setX(i, x);
+    }
+    attr.needsUpdate = true;
   }
 
 
@@ -2614,6 +2629,7 @@ import type * as ThreeNamespace from 'three';
         buildIntersectionFurniture(v.x, h.y, vi * roadNetwork.horizontal.length + hi);
       });
     });
+    buildStreetTrees();
 
     // LEGAL: Bridge railings over the two canals
     const deckMat = new THREE.MeshStandardMaterial({color:'#3a3d47', roughness:0.7});
@@ -2636,11 +2652,12 @@ import type * as ThreeNamespace from 'three';
     mapObjects.filter(o=>o.kind==='building').forEach(function(object){
       const m = object.ref as typeof mapBuildings[number];
       const info = buildingColorFor(m.biz);
-      const bw=m.biz.baseCost>=50000?66:(m.biz.baseCost<1000?46:56), bd=bw*0.85;
-      const zoneType = m.biz.category==='legit' ? 'commercial' : 'industrial';
-      const mesh = buildDetailedBuilding(bw, info.h, bd, info.color, zoneType, variantForId(m.id));
-      mesh.position.set(object.x, info.h/2, object.y); worldGroup.add(mesh);
-      addSign(mesh, m.biz.name, 34, 9, info.h/2+10, m.biz.category==='legit'?'#8fd0e0':'#f0a0ae');
+      const footprint = ventureFootprint(m);
+      const color = m.zone==='corporate' ? '#46516d' : (m.zone==='entertainment' ? '#5a345e' : info.color);
+      const mesh = buildDetailedBuilding(footprint.w, Math.max(info.h, footprint.h), footprint.d, color, footprint.zoneType, variantForId(m.id));
+      addVentureDetail(m, mesh);
+      mesh.position.set(object.x, Math.max(info.h, footprint.h)/2, object.y); worldGroup.add(mesh);
+      addSign(mesh, m.biz.name, 34, 9, Math.max(info.h, footprint.h)/2+10, m.biz.category==='legit'?'#8fd0e0':'#f0a0ae');
     });
 
     // LEGAL: Service buildings — all districts
@@ -2687,10 +2704,10 @@ import type * as ThreeNamespace from 'three';
       const off = DISTRICT_OFFSETS[distId];
       fillerFor(distId).forEach(function(f){
         if(f.kind==='building'){
-          const zoneType = distId==='hub'?'skyscraper':(distId==='westside'?'industrial':'residential');
-          const palette = distId==='hub'
+          const zoneType = renderZoneType(f.zone);
+          const palette = f.zone==='corporate'
             ? ['#283247','#33405c','#4d445f','#2f5360','#57515a']
-            : (distId==='westside' ? ['#463f34','#55443c','#3f4542','#5c4638','#3d3946'] : ['#394452','#4f463b','#365344','#58414a','#4f5159']);
+            : (f.zone==='industrial' || f.zone==='logistics' ? ['#463f34','#55443c','#3f4542','#5c4638','#3d3946'] : (f.zone==='entertainment' ? ['#5a345e','#4a3f68','#6a3d4a','#3c5264'] : ['#394452','#4f463b','#365344','#58414a','#4f5159']));
           const color = palette[Math.floor(f.hue * palette.length) % palette.length];
           const mesh = buildDetailedBuilding(f.w,f.h,f.d,color,zoneType,f.hue);
           mesh.position.set(f.x+off,f.h/2,f.y); mesh.rotation.y = f.rot; worldGroup.add(mesh);
@@ -2712,9 +2729,9 @@ import type * as ThreeNamespace from 'three';
             leaves.position.set(tx,18,ty); leaves.castShadow=true; worldGroup.add(leaves);
           }
           if(f.name==='MILLENNIUM PARK'){
-            const bean = new THREE.Mesh(new THREE.SphereGeometry(20,24,18), new THREE.MeshStandardMaterial({color:'#c9c9d4', metalness:1, roughness:0.08}));
-            bean.scale.set(1.6,0.85,1); bean.position.set(cx,22,cy); bean.castShadow=true; bean.receiveShadow=true; worldGroup.add(bean);
-            addSign(bean,'THE BEAN',44,10,34,'#e8e6de');
+            const potato = new THREE.Mesh(new THREE.SphereGeometry(20,24,18), new THREE.MeshStandardMaterial({color:'#c9c9d4', metalness:1, roughness:0.08}));
+            potato.scale.set(1.6,0.85,1); potato.position.set(cx,22,cy); potato.castShadow=true; potato.receiveShadow=true; worldGroup.add(potato);
+            addSign(potato,'THE POTATO',44,10,34,'#e8e6de');
           } else {
             addSign(grass,f.name,44,9,4,'#a8d0a8');
           }
@@ -2740,7 +2757,7 @@ import type * as ThreeNamespace from 'three';
     });
 
     // LEGAL: District landmarks — a domed civic hall in Devlin, an industrial water
-    // LEGAL: tower in the West Side (the Hub's Bean is built with its park above).
+    // LEGAL: tower in the West Side (the Hub's Potato is built with its park above).
     landmarks.forEach(function(lm){
       if(lm.id==='devlinHall'){
         const base = box(70,26,70,'#6a5b3e'); base.position.set(lm.x,13,lm.y); worldGroup.add(base);
@@ -2875,6 +2892,13 @@ import type * as ThreeNamespace from 'three';
     sunLight.shadow.camera.top=500; sunLight.shadow.camera.bottom=-500;
     sunLight.shadow.camera.near=10; sunLight.shadow.camera.far=1200;
     scene.add(sunLight); scene.add(sunLight.target);
+    moonLight = new THREE.DirectionalLight(0xb9c8ff, 0);
+    moonLight.castShadow = true;
+    moonLight.shadow.mapSize.set(512,512);
+    moonLight.shadow.camera.left=-500; moonLight.shadow.camera.right=500;
+    moonLight.shadow.camera.top=500; moonLight.shadow.camera.bottom=-500;
+    moonLight.shadow.camera.near=10; moonLight.shadow.camera.far=1200;
+    scene.add(moonLight); scene.add(moonLight.target);
 
     worldGroup = new THREE.Group(); scene.add(worldGroup);
     playerGroup = new THREE.Group(); scene.add(playerGroup);
@@ -3106,6 +3130,7 @@ import type * as ThreeNamespace from 'three';
       interiorCanvas.style.display = 'none';
       renderer.domElement.style.display = 'block';
       updateDayNightLighting();
+      updateWeather(dt);
       playerGroup.position.set(player.x, 0, player.y);
       playerGroup.rotation.y = -player.facing + Math.PI/2;
       camera3d.position.set(player.x, 260, player.y+72);
@@ -3116,6 +3141,14 @@ import type * as ThreeNamespace from 'three';
 
     const near = nearestMarker();
     const hintEl = byId('map-hint');
+    const outdoorStatus = (state.inVehicle ? 'Driving on ' : 'Walking on ') + currentRoadLabel() + ' | ' + mapClockLabel();
+    const wp = state.waypoints[state.currentDistrict];
+    if(wp && !state.currentInterior && Math.hypot(player.x-wp.x, player.y-wp.y) < (state.inVehicle ? 42 : 28)){
+      state.waypoints[state.currentDistrict] = null;
+      rebuildWaypointBeacon();
+      byId('minimap-clear').classList.remove('show');
+      scheduleSave();
+    }
     if(near){
       let label = '';
       if(near.type==='door') label='Exit';
@@ -3127,11 +3160,11 @@ import type * as ThreeNamespace from 'three';
       else if(near.type==='corner') label=near.ref.name;
       else if(near.type==='gangnpc') label=near.ref.name;
       else label = (near.ref.type==='named' ? near.ref.name : state.procNpc.name);
-      hintEl.textContent = 'Press E to interact — ' + label;
+      hintEl.textContent = state.currentInterior ? 'Press E to interact — ' + label : 'Press E to interact — ' + label + ' | ' + outdoorStatus;
     } else if(state.inVehicle){
-      hintEl.textContent = 'Press E to park | Driving on ' + currentRoadLabel();
+      hintEl.textContent = 'Press E to park | ' + outdoorStatus;
     } else {
-      hintEl.textContent = state.currentInterior ? ('Inside ' + state.currentInterior.name) : ('Walking on ' + currentRoadLabel());
+      hintEl.textContent = state.currentInterior ? ('Inside ' + state.currentInterior.name) : outdoorStatus;
     }
 
     requestAnimationFrame(mapHub);
@@ -3445,26 +3478,32 @@ import type * as ThreeNamespace from 'three';
     refreshHUD();
     refreshAffordability();
     scheduleSave();
-    state.lastTick = now;
+    if(document.visibilityState === 'visible') state.lastTick = now;
   }, 250);
+
+  function applyOfflineProgress(fromTime: number): boolean {
+    const away = (Date.now() - fromTime)/1000;
+    if(away <= 25) return false;
+    const capped = Math.min(away, 7200);
+    const earned = netIncome() * capped;
+    state.cash += earned;
+    const mins = Math.max(1, Math.round(capped/60));
+    showModal({ eyebrow:'Business Report', title:"WHILE YOU WERE OUT",
+      body:`<p>Managers and crew kept things running. In the <strong>${mins} minute${mins===1?'':'s'}</strong> you were gone, the operation cleared <strong>${fmt(earned)}</strong>.</p>`,
+      buttons:[{label:'Good'}] });
+    log(`Business Report: ${fmt(earned)} earned while you were away.`);
+    return true;
+  }
 
   document.addEventListener('visibilitychange', function(){
     if(document.visibilityState==='visible' && state.started){
-      const away = (Date.now() - state.lastTick)/1000;
-      if(away > 25){
-        const capped = Math.min(away, 7200);
-        const earned = netIncome() * capped;
-        state.cash += earned;
-        const mins = Math.round(capped/60);
-        showModal({ eyebrow:'Business Report', title:"WHILE YOU WERE OUT",
-          body:`<p>Managers and crew kept things running. In the <strong>${mins} minute${mins===1?'':'s'}</strong> you were gone, the operation cleared <strong>${fmt(earned)}</strong>.</p>`,
-          buttons:[{label:'Good'}] });
-        log(`📒 Business Report: ${fmt(earned)} earned while you were away.`);
-        renderAll();
-      }
+      if(applyOfflineProgress(state.lastTick)) renderAll();
+      state.lastTick = Date.now();
     }
-    state.lastTick = Date.now();
-    if(document.visibilityState==='hidden') saveGame(false);
+    if(document.visibilityState==='hidden'){
+      state.lastTick = Date.now();
+      saveGame(false);
+    }
   });
   window.addEventListener('beforeunload', function(){ saveGame(true); });
 
@@ -3473,17 +3512,8 @@ import type * as ThreeNamespace from 'three';
     wireDelegation();
     const loaded = await loadGame();
     if(loaded && state.started){
-      const away = (Date.now() - state.lastTick)/1000;
-      if(away > 25){
-        const capped = Math.min(away, 7200);
-        const earned = netIncome() * capped;
-        state.cash += earned;
-        const mins = Math.round(capped/60);
-        showModal({ eyebrow:'Business Report', title:"WHILE YOU WERE OUT",
-          body:`<p>Managers and crew kept things running. In the <strong>${mins} minute${mins===1?'':'s'}</strong> you were gone, the operation cleared <strong>${fmt(earned)}</strong>.</p>`,
-          buttons:[{label:'Good'}] });
-        log(`📒 Business Report: ${fmt(earned)} earned while you were away.`);
-      }
+      applyOfflineProgress(state.lastTick);
+      state.lastTick = Date.now();
 
       const spawn = spawnPoints[state.currentDistrict] || {x:700,y:460};
       player.x = spawn.x; player.y = spawn.y;
