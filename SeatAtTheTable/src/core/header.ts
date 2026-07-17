@@ -11,6 +11,9 @@ import { gangRecruits } from '../config/gang';
 import { npcFirstNames, npcLastNames, npcDispositions } from '../config/npcs';
 import { stockMarket } from '../config/stockMarket';
 import type { GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState, Point, ServiceBuilding, GangRecruit, Car, FillerItem, DialogueTree } from '../config/types';
+import { buildableBands, localXForDistrict, rectsOverlap, rotatedHalfExtents } from '../map/layout';
+import { DISTRICT_OFFSETS, DISTRICT_W, VIEW_H, VIEW_W, WORLD_H, WORLD_W, districtSeeds, landmarks, roadNetwork, spawnPoints } from '../map/world';
+import type * as ThreeNamespace from 'three';
 
   const eventPool = [
     { id:'rival', title:'A RIVAL CREW EYES YOUR CORNER', neg:true, body:"<p class='flavor'>Word is a West Side crew thinks your runners are working streets that belong to them.</p>", choices:[
@@ -1891,6 +1894,8 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
   // LEGAL: ================= TABS =================
   let mapActive = false;
   let mapHubRunning = false;
+  let mapSceneReady = false;
+  let mapScenePromise: Promise<void> | null = null;
   document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.addEventListener('click', function(){ setTab(btn.getAttribute('data-tab')!); });
   });
@@ -1898,18 +1903,31 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     document.querySelectorAll('.tab-btn').forEach(b=> b.classList.toggle('active', b.getAttribute('data-tab')===tab));
     document.querySelectorAll('.tab-panel').forEach(p=> p.classList.toggle('active', p.getAttribute('data-tab')===tab));
     mapActive = (tab==='map');
-    if(mapActive && !mapHubRunning){
-      mapHubRunning = true;
-      lastFrame2 = Date.now(); // LEGAL: avoid a huge dt spike from time spent on another tab
-      requestAnimationFrame(mapHub);
+    if(mapActive){
+      void startMapLoop();
     }
+  }
+  async function startMapLoop(): Promise<void> {
+    await ensureMapScene();
+    if(!mapActive || mapHubRunning) return;
+    mapHubRunning = true;
+    lastFrame2 = Date.now();
+    requestAnimationFrame(mapHub);
+  }
+  async function ensureMapScene(): Promise<void> {
+    if(mapSceneReady) return;
+    if(!mapScenePromise){
+      mapScenePromise = (async function(){
+        THREE = await import('three');
+        mapSceneReady = true;
+        initScene();
+      })();
+    }
+    await mapScenePromise;
   }
 
   // LEGAL: ================= MAP: 3D WORLD + MINIMAP + INTERIORS =================
-  const VIEW_W = 760, VIEW_H = 440;
   // LEGAL: Unified city — 3 districts side by side, canals between them
-  const WORLD_W = 5500, WORLD_H = 1200;
-  const DISTRICT_OFFSETS: Record<string, number> = { devlin:0, westside:2000, hub:4000 };
   const player = { x:700, y:600, facing:Math.PI/2, vx:0, vy:0 };
   const keys: Record<string, boolean> = {};
   let lastFrame2 = Date.now();
@@ -1959,17 +1977,6 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
   // LEGAL: place rather than interchangeable blocks. Coords are world-space, sited on
   // LEGAL: each district's park/plaza and clear of the fixed anchors. (The Hub already
   // LEGAL: has The Bean, built with the park.)
-  const landmarks = [
-    { id:'devlinHall', name:'DEVLIN HALL', district:'devlin', x:125, y:820 },
-    { id:'ciceroWorks', name:'CICERO WORKS', district:'westside', x:2125, y:850 },
-  ];
-  const spawnPoints: Record<string, Point> = { devlin:{x:700,y:600}, westside:{x:2700,y:600}, hub:{x:4700,y:600} };
-  const districtThemes: Record<string, { ground: string; parkLabel: string; hasRail: boolean; hasRiver: boolean }> = {
-    devlin: { ground:'#232a26', parkLabel:'INDIAN BOUNDARY PARK', hasRail:false, hasRiver:false },
-    westside: { ground:'#2a2222', parkLabel:'CICERO GREEN', hasRail:true, hasRiver:false },
-    hub: { ground:'#211f16', parkLabel:'MILLENNIUM PARK', hasRail:false, hasRiver:true },
-  };
-
   // LEGAL: Returns which district the player is in based on X position
   function playerDistrict(){
     if(player.x < 1500) return 'devlin';
@@ -1981,21 +1988,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
   // LEGAL: Unified world — all markers always in scene
   function inDistrict(){ return true; }
 
-  // LEGAL: ---- road network: full unified grid spanning all 5500 units ----
-  const roadNetwork = {
-    // LEGAL: Vertical arteries per district
-    vertical: [
-      {x:270,w:74},{x:700,w:74},{x:1130,w:74},
-      {x:2270,w:74},{x:2700,w:74},{x:3130,w:74},
-      {x:4270,w:74},{x:4700,w:74},{x:5130,w:74}
-    ],
     // LEGAL: Horizontal roads span full width — they form bridge decks over canals
-    horizontal: [{y:300,w:74},{y:600,w:74},{y:900,w:74}],
-  };
-  function isOnRoad(x: number, y: number){
-    return roadNetwork.vertical.some(r=> Math.abs(x-r.x)<=r.w/2) || roadNetwork.horizontal.some(r=> Math.abs(y-r.y)<=r.w/2);
-  }
-
   // LEGAL: ---- deterministic filler city: same layout every time, not regenerated per load ----
   function seededRandom(seed: number){
     return function(){
@@ -2005,32 +1998,52 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
-  const districtSeeds: Record<string, number> = { devlin:1001, westside:2002, hub:3003 };
-  // LEGAL: Filler band X/Y coordinates are relative to a 1500x950 grid; offset applied at render time
+  const ROAD_VISUAL_CLEARANCE_X = 56;
+  const ROAD_VISUAL_CLEARANCE_Y = 66;
+  const BUILDING_GAP = 14;
+
+  // LEGAL: Filler band coordinates are district-local; offset is applied at render time.
   function occupiedZones(districtId: string){
     const zones: { x: number; y: number; r: number }[] = [];
-    const add = (arr: { district: string; x: number; y: number }[], r: number)=> arr.filter(m=>m.district===districtId).forEach(m=> zones.push({x:m.x,y:m.y,r}));
+    const add = (arr: { district: string; x: number; y: number }[], r: number)=> arr.filter(m=>m.district===districtId).forEach(m=> zones.push({x:localXForDistrict(districtId, m.x, DISTRICT_OFFSETS),y:m.y,r}));
     add(mapBuildings,70); add(serviceBuildings,70); add(localBusinesses,60);
     add(corners,50); add(mapNpcs,50); add(gangRecruits,50);
+    landmarks.filter(m=>m.district===districtId).forEach(m=> zones.push({x:localXForDistrict(districtId, m.x, DISTRICT_OFFSETS), y:m.y, r:70}));
     return zones;
   }
   function generateFillerLayout(districtId: string){
     const rand = seededRandom(districtSeeds[districtId]);
     const occupied = occupiedZones(districtId);
-    const xBands = [[15,235],[305,665],[735,1095],[1165,1485]];
-    const yBands = [[15,185],[255,425],[495,695],[765,935]];
-    const parkBand = { xi:0, yi: districtId==='hub' ? 1 : 3 };
-    const lotBand = { xi:3, yi: districtId==='hub' ? 3 : 0 };
+    const localRoadXs = [270,700,1130];
+    const xBands = buildableBands(localRoadXs, DISTRICT_W, ROAD_VISUAL_CLEARANCE_X);
+    const yBands = buildableBands(roadNetwork.horizontal.map(r=>r.y), WORLD_H, ROAD_VISUAL_CLEARANCE_Y);
+    const parkBand = { xi:0, yi: districtId==='hub' ? 1 : yBands.length-1 };
+    const lotBand = { xi:xBands.length-1, yi: districtId==='hub' ? yBands.length-1 : 0 };
     const filler: FillerItem[] = [];
+    const placed: Solid[] = occupied.map(o=>({ x:o.x, y:o.y, hw:o.r, hd:o.r }));
     const jit = ()=> rand()-0.5;
-    const isOccupied = (x: number, y: number, pad: number)=> occupied.some(o=> Math.abs(o.x-x)<o.r+pad && Math.abs(o.y-y)<o.r+pad);
+    const fitsSolid = function(candidate: Solid): boolean {
+      if(candidate.x-candidate.hw < 8 || candidate.x+candidate.hw > DISTRICT_W-8) return false;
+      if(candidate.y-candidate.hd < 8 || candidate.y+candidate.hd > WORLD_H-8) return false;
+      if(localRoadXs.some(x=> Math.abs(candidate.x-x) < candidate.hw+ROAD_VISUAL_CLEARANCE_X)) return false;
+      if(roadNetwork.horizontal.some(r=> Math.abs(candidate.y-r.y) < candidate.hd+ROAD_VISUAL_CLEARANCE_Y)) return false;
+      return !placed.some(s=>rectsOverlap(candidate, s, BUILDING_GAP));
+    };
+    const pushBuilding = function(kind: 'building' | 'edge', x: number, y: number, w: number, d: number, h: number, hue: number, rot: number): void {
+      const ext = rotatedHalfExtents(w, d, rot);
+      const solid = { x, y, hw:ext.hw, hd:ext.hd };
+      if(!fitsSolid(solid)) return;
+      filler.push({kind, x, y, w, d, h, hue, rot});
+      placed.push(solid);
+    };
     for(let xi=0; xi<xBands.length; xi++){
       for(let yi=0; yi<yBands.length; yi++){
         const x0=xBands[xi][0], x1=xBands[xi][1], y0=yBands[yi][0], y1=yBands[yi][1];
         const cx=(x0+x1)/2, cy=(y0+y1)/2;
-        if(occupied.some(o=> Math.abs(o.x-cx)<(x1-x0)/2+30 && Math.abs(o.y-cy)<(y1-y0)/2+30)) continue;
-        if(xi===parkBand.xi && yi===parkBand.yi){ filler.push({kind:'park', x0,y0,x1,y1}); continue; }
-        if(xi===lotBand.xi && yi===lotBand.yi){ filler.push({kind:'lot', x0,y0,x1,y1}); continue; }
+        const blockSolid = { x:cx, y:cy, hw:(x1-x0)/2, hd:(y1-y0)/2 };
+        if(placed.some(o=>rectsOverlap(blockSolid, o, 8))) continue;
+        if(xi===parkBand.xi && yi===parkBand.yi){ filler.push({kind:'park', x0,y0,x1,y1}); placed.push(blockSolid); continue; }
+        if(xi===lotBand.xi && yi===lotBand.yi){ filler.push({kind:'lot', x0,y0,x1,y1}); placed.push(blockSolid); continue; }
         // LEGAL: Subdivide the block into an irregular cluster: 1-2 lots each way,
         // LEGAL: varied footprint/height, occasional gaps, and a slight rotation so
         // LEGAL: the built environment reads organic instead of as a uniform grid.
@@ -2047,7 +2060,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
             const px = x0 + ci*cellW + (cellW-w)/2 + jit()*cellW*0.2;
             const py = y0 + ri*cellD + (cellD-d)/2 + jit()*cellD*0.2;
             const rot = jit()*0.18 + (rand()<0.12 ? jit()*0.6 : 0);
-            filler.push({kind:'building', x:px+w/2, y:py+d/2, w, d, h, hue:rand(), rot});
+            pushBuilding('building', px+w/2, py+d/2, w, d, h, rand(), rot);
           }
         }
       }
@@ -2062,16 +2075,16 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
         const gap = 6 + rand()*30;
         const cxLocal = x + w/2;
         const y = yBase + jit()*yJit;
-        if(rand()>0.15 && !isOccupied(cxLocal, y, 24)){
+        if(rand()>0.15){
           const d = 40 + rand()*70;
           const h = 34 + rand()*rand()*170*tallBias;
-          filler.push({kind:'edge', x:cxLocal, y, w, d, h, hue:rand(), rot:jit()*0.25});
+          pushBuilding('edge', cxLocal, y, w, d, h, rand(), jit()*0.25);
         }
         x += w + gap;
       }
     }
-    skylineRow(58, 34, districtId==='hub'?1.4:0.8);   // LEGAL: north edge
-    skylineRow(1090, 55, districtId==='hub'?1.6:1.0);  // LEGAL: south margin
+    skylineRow(58, 34, districtId==='hub'?1.4:0.8);
+    skylineRow(1090, 55, districtId==='hub'?1.6:1.0);
     return filler;
   }
   const fillerCache: Record<string, FillerItem[]> = {};
@@ -2089,7 +2102,10 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     localBusinesses.forEach(m=> list.push({x:m.x,y:m.y,hw:27,hd:24}));
     ['devlin','westside','hub'].forEach(function(distId){
       const off = DISTRICT_OFFSETS[distId];
-      fillerFor(distId).filter((f): f is Extract<FillerItem, {kind:'building'|'edge'}> => f.kind==='building'||f.kind==='edge').forEach(f=> list.push({x:f.x+off,y:f.y,hw:f.w/2+4,hd:f.d/2+4}));
+      fillerFor(distId).filter((f): f is Extract<FillerItem, {kind:'building'|'edge'}> => f.kind==='building'||f.kind==='edge').forEach(function(f){
+        const ext = rotatedHalfExtents(f.w, f.d, f.rot);
+        list.push({x:f.x+off,y:f.y,hw:ext.hw+4,hd:ext.hd+4});
+      });
     });
     return list;
   }
@@ -2296,25 +2312,27 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
   }
 
   // LEGAL: ================= THREE.JS SCENE =================
-  // LEGAL: Three.js objects; THREE is a CDN-loaded global typed as any, so these
-  // LEGAL: render-system handles are explicitly any rather than falsely precise.
-  let scene: any, camera3d: any, renderer: any, worldGroup: any, playerGroup: any, sunLight: any, waypointBeacon: any, parkedCarMesh: any;
+  type ThreeModule = typeof ThreeNamespace;
+  type DisposableMaterial = ThreeNamespace.Material & { map?: ThreeNamespace.Texture };
+  let THREE: ThreeModule;
+  let scene: ThreeNamespace.Scene, camera3d: ThreeNamespace.PerspectiveCamera, renderer: ThreeNamespace.WebGLRenderer, worldGroup: ThreeNamespace.Group, playerGroup: ThreeNamespace.Group, sunLight: ThreeNamespace.DirectionalLight, waypointBeacon: ThreeNamespace.Group | null = null, parkedCarMesh: ThreeNamespace.Group | null = null;
 
-  function disposeObj(o: any){
-    if(o.geometry) o.geometry.dispose();
-    if(o.material){
-      const mats = Array.isArray(o.material) ? o.material : [o.material];
-      mats.forEach((m: any)=>{ if(m.map) m.map.dispose(); m.dispose(); });
+  function disposeObj(o: ThreeNamespace.Object3D){
+    const mesh = o as ThreeNamespace.Mesh;
+    if(mesh.geometry) mesh.geometry.dispose();
+    if(mesh.material){
+      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      mats.forEach((m: DisposableMaterial)=>{ if(m.map) m.map.dispose(); m.dispose(); });
     }
   }
-  function clearGroup(g: any){ while(g.children.length){ const c=g.children.pop(); c.traverse(disposeObj); } }
+  function clearGroup(g: ThreeNamespace.Group){ while(g.children.length){ const c=g.children.pop(); if(c) c.traverse(disposeObj); } }
 
   function box(w: number, h: number, d: number, color: number | string){
     const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), new THREE.MeshStandardMaterial({color, roughness:0.85, metalness:0.05}));
     m.castShadow = true; m.receiveShadow = true;
     return m;
   }
-  function addSign(parent: any, text: string, w: number, h: number, y: number, color: string){
+  function addSign(parent: ThreeNamespace.Object3D, text: string, w: number, h: number, y: number, color: string){
     const c = document.createElement('canvas'); c.width=2048; c.height=256;
     const cctx = c.getContext('2d')!;
     cctx.fillStyle='rgba(10,11,16,0.85)'; cctx.fillRect(0,0,2048,256);
@@ -2534,10 +2552,10 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     });
 
     // LEGAL: NPCs and gang recruits — all districts
-    function addPerson(m: any, color: number | string){
+    function addPerson(m: { x: number; y: number; name?: string; type?: string }, color: number | string){
       const g = buildPedestrianModel(color);
       g.position.set(m.x,0,m.y); worldGroup.add(g);
-      addSign(g, m.type==='named'?m.name:(m.name||'?'), 28, 7, 34, '#f0efe8');
+      addSign(g, m.type==='named'?(m.name ?? '?'):(m.name||'?'), 28, 7, 34, '#f0efe8');
     }
     mapNpcs.forEach(function(m){ addPerson(m, m.type==='named'?'#d4a017':'#7a6fb0'); });
     gangRecruits.forEach(function(m){ addPerson(m, m.inducted?'#d4a017':'#5f6275'); });
@@ -2639,130 +2657,13 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     }
   }
 
-  // LEGAL: Legacy alias — now delegates to buildCityScene
-  function buildDistrictScene(districtId: string){
-    buildCityScene(); return;
-    clearGroup(worldGroup);
-    const theme = districtThemes[districtId];
-
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W,WORLD_H), new THREE.MeshStandardMaterial({color:theme.ground, roughness:1}));
-    ground.rotation.x = -Math.PI/2; ground.position.set(WORLD_W/2,0,WORLD_H/2); ground.receiveShadow=true;
-    worldGroup.add(ground);
-
-    const roadMat = new THREE.MeshStandardMaterial({color:'#2b2d35', roughness:0.9});
-    roadNetwork.vertical.forEach(function(r){
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(r.w,WORLD_H), roadMat);
-      m.rotation.x=-Math.PI/2; m.position.set(r.x,0.05,WORLD_H/2); m.receiveShadow=true; worldGroup.add(m);
-    });
-    roadNetwork.horizontal.forEach(function(r){
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W,r.w), roadMat);
-      m.rotation.x=-Math.PI/2; m.position.set(WORLD_W/2,0.05,r.y); m.receiveShadow=true; worldGroup.add(m);
-    });
-
-    mapBuildings.filter(function(m){return m.district===districtId;}).forEach(function(m){
-      const info = buildingColorFor(m.biz);
-      const bw = m.biz.baseCost>=50000?66:(m.biz.baseCost<1000?46:56), bd=bw*0.85;
-      const mesh = box(bw, info.h, bd, info.color);
-      mesh.position.set(m.x, info.h/2, m.y);
-      worldGroup.add(mesh);
-      addSign(mesh, m.biz.name, 34, 9, info.h/2+10, m.biz.category==='legit'?'#8fd0e0':'#f0a0ae');
-    });
-
-    serviceBuildings.filter(function(m){return m.district===districtId;}).forEach(function(m){
-      const palette: Record<string, string> = { bankHome:'#7a5f1a', garage:'#3e6b78', realty:'#3e6b78', cityhall:'#7a5f1a', heist:'#5a2a33' };
-      const mesh = box(58,34,50, palette[m.kind]);
-      mesh.position.set(m.x,17,m.y); worldGroup.add(mesh);
-      addSign(mesh, m.name, 40, 9, 26, '#ffe6a0');
-    });
-
-    localBusinesses.filter(function(m){return m.district===districtId;}).forEach(function(m){
-      const color = m.extorted ? '#8a6a1a' : '#4a4360';
-      const mesh = box(42,20,36,color);
-      mesh.position.set(m.x,10,m.y); worldGroup.add(mesh);
-      addSign(mesh, m.name, 32, 8, 18, m.extorted?'#ffd77a':'#b8aee0');
-    });
-
-    corners.filter(function(m){return m.district===districtId;}).forEach(function(m){
-      const staffed = m.dealer && !m.busted;
-      const color = m.busted ? '#5f6275' : (staffed ? '#d4a017' : '#a8394a');
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(1.4,1.4,26,6), new THREE.MeshStandardMaterial({color:'#2a2c33'}));
-      pole.position.set(m.x,13,m.y); pole.castShadow=true; worldGroup.add(pole);
-      const orb = new THREE.Mesh(new THREE.SphereGeometry(7,10,10), new THREE.MeshStandardMaterial({color, emissive:color, emissiveIntensity:0.4}));
-      orb.position.set(m.x,28,m.y); worldGroup.add(orb);
-      addSign(pole, m.name, 30, 8, 22, '#f0efe8');
-    });
-
-    function addPerson(m: any, color: number | string){
-      const g = buildPedestrianModel(color);
-      g.position.set(m.x,0,m.y); worldGroup.add(g);
-      addSign(g, m.type==='named' ? m.name : (m.name||'?'), 28, 7, 34, '#f0efe8');
-    }
-    mapNpcs.filter(function(m){return m.district===districtId;}).forEach(function(m){ addPerson(m, m.type==='named'?'#d4a017':'#7a6fb0'); });
-    gangRecruits.filter(function(m){return m.district===districtId;}).forEach(function(m){ addPerson(m, m.inducted?'#d4a017':'#5f6275'); });
-
-    fillerFor(districtId).forEach(function(f){
-      if(f.kind==='building'){
-        const color = f.hue<0.5 ? '#3a3f4a' : '#4a4238';
-        const mesh = box(f.w, f.h, f.d, color);
-        mesh.position.set(f.x, f.h/2, f.y);
-        worldGroup.add(mesh);
-      } else if(f.kind==='park'){
-        const cx=(f.x0+f.x1)/2, cy=(f.y0+f.y1)/2, w=f.x1-f.x0, d=f.y1-f.y0;
-        const grass = new THREE.Mesh(new THREE.PlaneGeometry(w,d), new THREE.MeshStandardMaterial({color:'#2c4a30', roughness:1}));
-        grass.rotation.x=-Math.PI/2; grass.position.set(cx,0.08,cy); grass.receiveShadow=true; worldGroup.add(grass);
-        const rand = seededRandom(Math.floor(cx*7+cy*13));
-        for(let i=0;i<6;i++){
-          const tx=f.x0+20+rand()*(w-40), ty=f.y0+20+rand()*(d-40);
-          const trunk = new THREE.Mesh(new THREE.CylinderGeometry(2,2.5,10,6), new THREE.MeshStandardMaterial({color:'#4a3624'}));
-          trunk.position.set(tx,5,ty); trunk.castShadow=true; worldGroup.add(trunk);
-          const leaves = new THREE.Mesh(new THREE.ConeGeometry(9,20,7), new THREE.MeshStandardMaterial({color:'#2f5c38'}));
-          leaves.position.set(tx,18,ty); leaves.castShadow=true; worldGroup.add(leaves);
-        }
-        if(districtId==='hub'){
-          const bean = new THREE.Mesh(new THREE.SphereGeometry(20,24,18), new THREE.MeshStandardMaterial({color:'#c9c9d4', metalness:1, roughness:0.08}));
-          bean.scale.set(1.6,0.85,1); bean.position.set(cx,22,cy); bean.castShadow=true; bean.receiveShadow=true;
-          worldGroup.add(bean);
-          addSign(bean, 'THE BEAN', 44, 10, 34, '#e8e6de');
-        } else {
-          addSign(grass, theme.parkLabel, 44, 9, 4, '#a8d0a8');
-        }
-      } else if(f.kind==='lot'){
-        const cx=(f.x0+f.x1)/2, cy=(f.y0+f.y1)/2, w=f.x1-f.x0, d=f.y1-f.y0;
-        const lot = new THREE.Mesh(new THREE.PlaneGeometry(w,d), new THREE.MeshStandardMaterial({color:'#26282e', roughness:1}));
-        lot.rotation.x=-Math.PI/2; lot.position.set(cx,0.08,cy); lot.receiveShadow=true; worldGroup.add(lot);
-        const rand = seededRandom(Math.floor(cx*11+cy*17));
-        const carColors=['#556070','#704040','#405560','#606050'];
-        for(let i=0;i<5;i++){
-          const px=f.x0+18+rand()*(w-36), py=f.y0+18+rand()*(d-36);
-          const c = box(20,9,11, carColors[Math.floor(rand()*carColors.length)]);
-          c.position.set(px,4.5,py); c.rotation.y = rand()*Math.PI;
-          worldGroup.add(c);
-        }
-      }
-    });
-
-    if(theme.hasRail){
-      const rail = new THREE.Mesh(new THREE.PlaneGeometry(40,WORLD_H), new THREE.MeshStandardMaterial({color:'#2a2a2e', roughness:1}));
-      rail.rotation.x=-Math.PI/2; rail.position.set(WORLD_W-30,0.06,WORLD_H/2); rail.receiveShadow=true; worldGroup.add(rail);
-      for(let ty=20; ty<WORLD_H; ty+=26){ const tie=box(36,2,4,'#3a3530'); tie.position.set(WORLD_W-30,1,ty); worldGroup.add(tie); }
-    }
-    if(theme.hasRiver){
-      const river = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W,46), new THREE.MeshStandardMaterial({color:'#1c3a52', roughness:0.3, metalness:0.3}));
-      river.rotation.x=-Math.PI/2; river.position.set(WORLD_W/2,0.06,20); river.receiveShadow=true; worldGroup.add(river);
-    }
-
-    currentSolids = buildingSolids(districtId);
-    updateParkedCarMesh();
-    rebuildWaypointBeacon();
-
-    if(sunLight){
-      sunLight.position.set(WORLD_W*0.4, 420, WORLD_H*0.25);
-      sunLight.target.position.set(WORLD_W/2, 0, WORLD_H/2);
-      sunLight.target.updateMatrixWorld();
-    }
+  // LEGAL: Historical entry point kept for saved-game boot; the city is unified now.
+  function buildDistrictScene(_districtId: string){
+    buildCityScene();
   }
 
   function refreshPlayerModel(){
+    if(!mapSceneReady) return;
     clearGroup(playerGroup);
     if(state.inVehicle){ const car=getEquippedCar(); if(car) playerGroup.add(buildCarModel(car)); }
     else playerGroup.add(buildPedestrianModel('#f0efe8'));
@@ -2774,6 +2675,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     return { x: s.x + 70, y: s.y };
   }
   function updateParkedCarMesh(){
+    if(!mapSceneReady) return;
     if(parkedCarMesh){ worldGroup.remove(parkedCarMesh); parkedCarMesh.traverse(disposeObj); parkedCarMesh=null; }
     const car = getEquippedCar();
     if(car && !state.inVehicle){
@@ -2800,6 +2702,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     return dots.slice(0,40);
   }
   function rebuildWaypointBeacon(){
+    if(!mapSceneReady) return;
     if(waypointBeacon){ worldGroup.remove(waypointBeacon); waypointBeacon.traverse(disposeObj); waypointBeacon=null; }
     const wp = state.waypoints[state.currentDistrict];
     if(!wp) return;
@@ -2852,7 +2755,6 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     buildCityScene();
     refreshPlayerModel();
   }
-  initScene();
 
   // LEGAL: ================= MINIMAP (simple 2D, pannable, waypoints) =================
   const minimapCanvas = byId<HTMLCanvasElement>('minimap-canvas');
@@ -2886,6 +2788,8 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
       byId('minimap-clear').classList.add('show');
       scheduleSave();
     }
+    minimapPan.x = 0;
+    minimapPan.y = 0;
   });
   byId('minimap-clear').addEventListener('click', function(){
     state.waypoints[state.currentDistrict] = null;
@@ -2901,6 +2805,10 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
       mctx.fillText('Indoors', 75, 75);
       mctx.strokeStyle='rgba(212,160,23,0.5)'; mctx.strokeRect(0.5,0.5,149,149);
       return;
+    }
+    if(!minimapDragging){
+      minimapPan.x = 0;
+      minimapPan.y = 0;
     }
     const centerX = player.x + minimapPan.x, centerY = player.y + minimapPan.y;
     const proj = function(wx: number, wy: number){ return { x:75+(wx-centerX)*MINIMAP_SCALE, y:75+(wy-centerY)*MINIMAP_SCALE }; };
