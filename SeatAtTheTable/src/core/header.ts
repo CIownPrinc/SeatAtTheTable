@@ -12,7 +12,8 @@ import { npcFirstNames, npcLastNames, npcDispositions } from '../config/npcs';
 import { stockMarket } from '../config/stockMarket';
 import type { GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState, Point, ServiceBuilding, GangRecruit, Car, FillerItem, DialogueTree } from '../config/types';
 import { buildableBands, localXForDistrict, rectsOverlap, rotatedHalfExtents } from '../map/layout';
-import { DISTRICT_OFFSETS, DISTRICT_W, VIEW_H, VIEW_W, WORLD_H, WORLD_W, districtSeeds, landmarks, namedBuildingLots, roadNetwork, spawnPoints, ventureDistricts, ventureLots } from '../map/world';
+import { applyNamedBuildingLots, createMapBuildings, mapNpcs } from '../map/markers';
+import { DISTRICT_OFFSETS, DISTRICT_W, VIEW_H, VIEW_W, WORLD_H, WORLD_W, districtSeeds, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import type * as ThreeNamespace from 'three';
 
   const eventPool = [
@@ -1954,35 +1955,14 @@ import type * as ThreeNamespace from 'three';
     }
   });
 
-  function applyNamedBuildingLots(items: { id: string; x: number; y: number }[]): void {
-    items.forEach(function(item){
-      const lot = namedBuildingLots[item.id];
-      if(!lot) return;
-      item.x = lot.x;
-      item.y = lot.y;
-    });
-  }
   applyNamedBuildingLots(serviceBuildings);
   applyNamedBuildingLots(localBusinesses);
 
   // LEGAL: Businesses spread proportionally across all 3 districts
-  const bizDistrictCounts: Record<string, number> = {};
   // LEGAL: Building lots sit strictly between the road strips. Vertical roads are at
   // LEGAL: rel-x 270/700/1130 (±37) and horizontal roads at y 300/600/900 (±37), so
   // LEGAL: these column/row centers keep every venture fully clear of the streets.
-  const mapBuildings = businesses.map((b,i)=>{
-    const dist = ventureDistricts[i] || 'hub';
-    const districtIndex = bizDistrictCounts[dist] || 0;
-    bizDistrictCounts[dist] = districtIndex + 1;
-    const lot = ventureLots[dist][districtIndex] || ventureLots.hub[ventureLots.hub.length - 1];
-    return { id:b.id, biz:b, district:dist, x: lot.x, y: lot.y };
-  });
-  const mapNpcs = [
-    { id:'sanjay', name:'Sanjay', district:'devlin', x:1300, y:960, type:'named' },
-    { id:'stranger', name:'Stranger', district:'devlin', x:150, y:960, type:'procedural' },
-    { id:'dice', name:'Dice', district:'westside', x:2750, y:400, type:'named' },
-    { id:'reyes', name:'Councilman Reyes', district:'hub', x:4600, y:720, type:'named' },
-  ];
+  const mapBuildings = createMapBuildings(businesses);
   // LEGAL: District landmarks — unique, recognisable "spots" so each area reads as a
   // LEGAL: place rather than interchangeable blocks. Coords are world-space, sited on
   // LEGAL: each district's park/plaza and clear of the fixed anchors. (The Hub already

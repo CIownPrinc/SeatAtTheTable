@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { businesses } from '../config/ventures';
 import { buildableBands, localXForDistrict, rectsOverlap, rotatedHalfExtents } from './layout';
+import { createMapBuildings } from './markers';
 import { namedBuildingLots, roadNetwork, ventureDistricts, ventureLots } from './world';
 
 describe('map layout helpers', function () {
@@ -69,6 +70,19 @@ describe('map layout helpers', function () {
     Object.entries(counts).forEach(function(entry){
       const [district, count] = entry;
       expect(ventureLots[district].length).toBeGreaterThanOrEqual(count);
+    });
+  });
+
+  it('creates non-overlapping venture markers from the venture list', function () {
+    const markers = createMapBuildings(businesses);
+    const seen = new Set<string>();
+
+    markers.forEach(function(marker){
+      const key = `${marker.x}:${marker.y}`;
+      expect(seen.has(key)).toBe(false);
+      seen.add(key);
+      expect(roadNetwork.vertical.some(r=>Math.abs(marker.x - r.x) < 77)).toBe(false);
+      expect(roadNetwork.horizontal.some(r=>Math.abs(marker.y - r.y) < 71)).toBe(false);
     });
   });
 });
