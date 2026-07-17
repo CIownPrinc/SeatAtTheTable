@@ -267,7 +267,6 @@ export interface GameState {
   nextMarketTickAt: number;
   financeView: string;
   activeStock: string | null;
-  activeCar: string | null;
   currentNews: string[];
   newsQueue: string[];
   nextNewsAt: number;

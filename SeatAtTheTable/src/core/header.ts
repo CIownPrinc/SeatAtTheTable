@@ -371,7 +371,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     campaignActive: false, campaignEndAt: 0, campaignStyle: '',
     portfolio: {}, marketPrices: {}, marketHistory: {}, nextMarketTickAt: 0,
     financeView: 'vault', activeStock: null,
-    activeCar: null, currentNews: [], newsQueue: [], nextNewsAt: 0,
+    currentNews: [], newsQueue: [], nextNewsAt: 0,
   };
 
   // LEGAL: ================= HELPERS =================
@@ -528,7 +528,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
     if(r && r.level >= 1) triggerMilestone('chaat_house');
     const d = businesses.find(b => b.id === 'syndicate_logistics');
     if(d && d.level >= 1) triggerMilestone('docks');
-    if(state.activeCar === 'bentley') triggerMilestone('bentley');
+    if(state.ownedCars.includes('bentley')) triggerMilestone('bentley');
     if(gangRecruits.some(g => g.inducted)) triggerMilestone('crew_induct');
   }
 
