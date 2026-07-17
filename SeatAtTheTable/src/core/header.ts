@@ -10,7 +10,7 @@ import { politicians } from '../config/politics';
 import { gangRecruits } from '../config/gang';
 import { npcFirstNames, npcLastNames, npcDispositions } from '../config/npcs';
 import { stockMarket } from '../config/stockMarket';
-import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../config/types';
+import type { GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState } from '../config/types';
 
   const eventPool = [
     { id:'rival', title:'A RIVAL CREW EYES YOUR CORNER', neg:true, body:"<p class='flavor'>Word is a West Side crew thinks your runners are working streets that belong to them.</p>", choices:[
@@ -59,7 +59,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
   // LEGAL: Control is 0-100. >=60 is "yours" (bonus applies), <=25 is "rival controlled"
   // LEGAL: (small penalty), in between is contested (neutral). Control drifts based on
   // LEGAL: your presence there (muscle, active corners, ventures) vs. rival pressure.
-  function districtStatus(id){
+  function districtStatus(id: string){
     const c = districts.find(d=>d.id===id).control;
     return c>=60 ? 'yours' : (c<=25 ? 'rival' : 'contested');
   }
@@ -68,9 +68,10 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
   function westsideRateBonus(){ const s=districtStatus('westside'); return s==='yours'?1.15:(s==='rival'?0.85:1); }
   function hubInterestMult(){ return districtStatus('hub')==='yours' ? 1.5 : 1; }
   function hubHeistBonus(){ return districtStatus('hub')==='yours' ? 0.10 : 0; }
-  function pushCost(d){ return Math.ceil(20 * Math.pow(1.6, d.pushCount)); }
-  function pushDistrict(id){
+  function pushCost(d: District){ return Math.ceil(20 * Math.pow(1.6, d.pushCount)); }
+  function pushDistrict(id: string){
     const d = districts.find(x=>x.id===id);
+    if(!d) return;
     if(state.playSeconds < d.nextPushAt) return;
     const cost = pushCost(d);
     if(state.respect < cost) return;
@@ -393,7 +394,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
     return sign+'$' + v.toFixed(v<10?2:1) + units[u];
   }
   function fmtR(n: number){ return Math.floor(n).toLocaleString(); }
-  function hasFamilyTier(index){ return state.prestigeCount > index; }
+  function hasFamilyTier(index: number){ return state.prestigeCount > index; }
   function brotherActive(){ return hasFamilyTier(0); }
   function motherActive(){ return hasFamilyTier(1); }
   function sisterActive(){ return hasFamilyTier(2); }
@@ -618,7 +619,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
   }
 
   // LEGAL: ================= LOCAL BUSINESSES (map-only, rob/extort) =================
-  function robLocalBiz(biz){
+  function robLocalBiz(biz: LocalBusiness){
     const car = getEquippedCar();
     const carBonus = car ? car.heistBonus : 0;
     let chance = 0.55 + state.ratCount*0.03 + carBonus - (state.heat>60 ? 0.15 : 0);
@@ -635,7 +636,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
     }
     renderAll();
   }
-  function openTillPanel(biz){
+  function openTillPanel(biz: LocalBusiness){
     const canRob = state.playSeconds >= (biz.nextRobAt||0);
     const cooldownLeft = Math.max(0, Math.ceil((biz.nextRobAt||0) - state.playSeconds));
     const body = `<p>The register's right there. ${biz.owner} hasn't noticed you yet.</p>`;
@@ -646,7 +647,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
     buttons.push({ label:'Walk away', secondary:true });
     showModal({ eyebrow:'Cash Register', title:biz.name, body, buttons });
   }
-  function openOwnerPanel(biz){
+  function openOwnerPanel(biz: LocalBusiness){
     let body = `<p>${biz.owner} runs this place. Not part of your operation — yet.</p>`;
     if(biz.extorted) body += `<p class="flavor">${biz.owner} pays tribute: +${biz.extortIncome.toFixed(1)}/s, +${biz.extortHeat.toFixed(2)} heat/s, ongoing.</p>`;
     const buttons = [];
@@ -944,7 +945,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
     }
   }
 
-  function drawStockChart(symbol) {
+  function drawStockChart(symbol: string) {
     const canvas = byId('stock-chart') as HTMLCanvasElement;
     if(!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -1004,7 +1005,8 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
       if(state.newsQueue.length === 0) {
         state.newsQueue = [...rcnNewsPool].sort(() => Math.random() - 0.5);
       }
-      state.currentNews.unshift(state.newsQueue.pop());
+      const next = state.newsQueue.pop();
+      if(next) state.currentNews.unshift(next);
       if(state.currentNews.length > 3) state.currentNews.pop();
       state.nextNewsAt = state.playSeconds + 120;
       
@@ -1042,7 +1044,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
     }
   }
 
-  function tradeStock(symbol, amount, isBuy) {
+  function tradeStock(symbol: string, amount: number, isBuy: boolean) {
     if(amount <= 0 || isNaN(amount)) return;
     const price = state.marketPrices[symbol];
     if(!price) return;
@@ -1075,20 +1077,20 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
     log(`<i class="ph-duotone ph-briefcase"></i> The Lab steps up to level ${state.productLevel}. More product, more room to store it.`);
     renderAll();
   }
-  function assignDealer(corner){
+  function assignDealer(corner: Corner){
     if(corner.dealer || corner.busted) return;
     if(state.cash < corner.dealerCost) return;
     state.cash -= corner.dealerCost; corner.dealer = true;
     log(`<i class="ph-duotone ph-briefcase"></i> A dealer's posted at ${corner.name}.`);
     renderAll();
   }
-  function fireDealer(corner){
+  function fireDealer(corner: Corner){
     if(!corner.dealer) return;
     corner.dealer = false;
     log(`<i class="ph-duotone ph-briefcase"></i> You pull the dealer off ${corner.name}.`);
     renderAll();
   }
-  function openCornerPanel(corner){
+  function openCornerPanel(corner: Corner){
     const d = districts.find(x=>x.id===corner.district);
     let body = `<p>Tier ${corner.tier} corner in ${d.name}. ${corner.dealer ? `Staffed — moving ${corner.rate}/s when there's product to sell.` : 'No one working it right now.'}</p>`;
     if(corner.busted){
@@ -1116,9 +1118,10 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
     log(`<i class="ph-duotone ph-bank"></i> Another envelope, another favor owed. Influence is at ${state.influence}.`);
     renderAll();
   }
-  function favorCost(p){ return Math.ceil(200 * Math.pow(1.25, Math.floor(p.favor/15))); }
-  function bribePolitician(id){
+  function favorCost(p: Politician){ return Math.ceil(200 * Math.pow(1.25, Math.floor(p.favor/15))); }
+  function bribePolitician(id: string){
     const p = politicians.find(x=>x.id===id);
+    if(!p) return;
     const cost = favorCost(p);
     if(state.cash < cost || p.favor>=100) return;
     state.cash -= cost; p.favor = Math.min(100, p.favor+15);
@@ -1133,7 +1136,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
     }
     renderAll();
   }
-  function runCampaign(style){
+  function runCampaign(style: string){
     let cost = style === 'grassroots' ? 250000 : 1500000;
     if(state.cash < cost){
       dialogues.campaign.nodes.result.text = "You can't even front the filing fees on this one. Come back when the cash is there.";
@@ -1149,7 +1152,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
   }
 
   // LEGAL: ================= GANG: FUNCTIONS =================
-  function inductRecruit(id, style){
+  function inductRecruit(id: string, style: string){
     const g = gangRecruits.find(x=>x.id===id);
     if(g.inducted) return;
     if(state.respect < g.reqRespect || state.cash < g.cost){
@@ -1172,7 +1175,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
     log(`<i class="ph-duotone ph-handshake"></i> ${g.name} joins the crew for real. ${g.bonus}`);
     renderAll();
   }
-  function resolveWar(style){
+  function resolveWar(style: string){
     const ws = districts.find(d=>d.id==='westside');
     const cost = style==='assault' ? 4000 : 1800;
     if(state.cash < cost){
@@ -1353,7 +1356,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
   }
 
   // LEGAL: ================= RENDER: VENTURE CARDS =================
-  function renderCard(b){
+  function renderCard(b: Business){
     const unlocked = isUnlocked(b);
     const el = document.createElement('div');
     el.className = `data-row ${unlocked ? '' : 'locked'}`;
@@ -1424,7 +1427,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
     return el;
   }
 
-  function handleCardAction(e){
+  function handleCardAction(e: Event){
     const btn = (e.target as HTMLElement).closest('[data-action]');
     if(!btn) return;
     const id = btn.getAttribute('data-id');
@@ -1464,12 +1467,12 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
     renderAll();
   }
 
-  function handleAssetAction(e){
+  function handleAssetAction(e: Event){
     const btn = (e.target as HTMLElement).closest('[data-car-buy],[data-car-equip],[data-car-sell],[data-prop-buy],[data-prop-sell]');
     if(!btn) return;
     if(btn.hasAttribute('data-car-buy')){
-      const id = btn.getAttribute('data-car-buy'); const c = cars.find(x=>x.id===id);
-      if(state.cash<c.cost) return;
+      const id = btn.getAttribute('data-car-buy')!; const c = cars.find(x=>x.id===id);
+      if(!c || state.cash<c.cost) return;
       state.cash -= c.cost; state.ownedCars.push(id);
       if(!state.equippedCar) state.equippedCar = id;
       if(id === 'bentley') triggerMilestone('bentley');
@@ -1477,26 +1480,28 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
     } else if(btn.hasAttribute('data-car-equip')){
       state.equippedCar = btn.getAttribute('data-car-equip'); updateParkedCarMesh(); refreshPlayerModel(); renderAll();
     } else if(btn.hasAttribute('data-car-sell')){
-      const id = btn.getAttribute('data-car-sell'); const c = cars.find(x=>x.id===id);
+      const id = btn.getAttribute('data-car-sell')!; const c = cars.find(x=>x.id===id);
+      if(!c) return;
       state.ownedCars = state.ownedCars.filter(x=>x!==id);
       if(state.equippedCar===id) state.equippedCar = state.ownedCars[0] || null;
       state.cash += Math.round(c.cost*0.55);
       log(`<i class="ph-duotone ph-car"></i> You sell the ${c.name}.`); updateParkedCarMesh(); refreshPlayerModel(); renderAll();
     } else if(btn.hasAttribute('data-prop-buy')){
-      const id = btn.getAttribute('data-prop-buy'); const p = properties.find(x=>x.id===id);
-      if(state.cash<p.cost) return;
+      const id = btn.getAttribute('data-prop-buy')!; const p = properties.find(x=>x.id===id);
+      if(!p || state.cash<p.cost) return;
       state.cash -= p.cost; state.ownedProperties.push(id);
       if(state.ownedProperties.length === 1) triggerMilestone('first_property');
       log(`🏢 You close on ${p.name}.`); renderAll();
     } else if(btn.hasAttribute('data-prop-sell')){
-      const id = btn.getAttribute('data-prop-sell'); const p = properties.find(x=>x.id===id);
+      const id = btn.getAttribute('data-prop-sell')!; const p = properties.find(x=>x.id===id);
+      if(!p) return;
       state.ownedProperties = state.ownedProperties.filter(x=>x!==id);
       state.cash += Math.round(p.cost*0.6);
       log(`🏢 You sell ${p.name}.`); renderAll();
     }
   }
 
-  function handleStreetAction(e){
+  function handleStreetAction(e: Event){
     const btn = (e.target as HTMLElement).closest('button');
     if(!btn) return;
     if(btn.id === 'upgrade-lab'){ upgradeLab(); }
@@ -1507,7 +1512,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
     else if(btn.id === 'buy-negotiate'){ if(state.respect<negotiateCost()) return; state.respect -= negotiateCost(); state.negotiateTier += 1; log(`<i class="ph-duotone ph-handshake"></i> You've got leverage now. Everyone's prices just got friendlier.`); renderAll(); }
   }
 
-  function handleBankAction(e){
+  function handleBankAction(e: Event){
     const target = e.target as HTMLElement;
     const quickDeposit = target.closest('[data-deposit-quick]');
     if(quickDeposit){
@@ -1530,8 +1535,8 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
     }
     const tradeBtn = target.closest('[data-trade]');
     if(tradeBtn) {
-      const action = tradeBtn.getAttribute('data-trade');
-      const sym = tradeBtn.getAttribute('data-sym');
+      const action = tradeBtn.getAttribute('data-trade')!;
+      const sym = tradeBtn.getAttribute('data-sym')!;
       const price = state.marketPrices[sym];
       const pos = state.portfolio[sym];
       if(!price || !pos) return;
@@ -1573,23 +1578,23 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
       playDialogue('bankheist', 'start');
     }
   }
-  function handleBankKeydown(e){
+  function handleBankKeydown(e: KeyboardEvent){
     if((e as KeyboardEvent).key !== 'Enter') return;
     const target = e.target as HTMLInputElement;
     if(target.id === 'deposit-input') depositAmount(target.value);
     else if(target.id === 'withdraw-input') withdrawAmount(target.value);
   }
 
-  function handleTerritoryAction(e){
+  function handleTerritoryAction(e: Event){
     const btn = (e.target as HTMLElement).closest('[data-push]');
     if(!btn) return;
-    pushDistrict(btn.getAttribute('data-push'));
+    pushDistrict(btn.getAttribute('data-push')!);
   }
 
-  function handlePoliticsAction(e){
+  function handlePoliticsAction(e: Event){
     const target = e.target as HTMLElement;
     const bribeBtn = target.closest('[data-bribe]');
-    if(bribeBtn){ bribePolitician(bribeBtn.getAttribute('data-bribe')); return; }
+    if(bribeBtn){ bribePolitician(bribeBtn.getAttribute('data-bribe')!); return; }
     const btn = target.closest('button');
     if(!btn) return;
     if(btn.id === 'buy-influence'){ buyInfluence(); }
@@ -1600,7 +1605,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
     }
   }
 
-  function handleGangAction(e){
+  function handleGangAction(e: Event){
     const target = e.target as HTMLElement;
     const checkinBtn = target.closest('[data-checkin]');
     if(checkinBtn){ const g = gangRecruits.find(x=>x.id===checkinBtn.getAttribute('data-checkin')); if(g) playDialogue(g.dialogueKey, 'checkin'); return; }
@@ -1611,10 +1616,10 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
     if(btn.id === 'declare-war'){ if(state.playSeconds < state.nextWarAt) return; playDialogue('gangwar', 'start'); }
   }
 
-  function handleDistrictAction(e){
+  function handleDistrictAction(e: Event){
     const btn = (e.target as HTMLElement).closest('[data-travel]');
     if(!btn) return;
-    travelTo(btn.getAttribute('data-travel'));
+    travelTo(btn.getAttribute('data-travel')!);
   }
 
   // LEGAL: Wire all delegation listeners exactly once at boot. Stable containers
@@ -1878,9 +1883,9 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
   let mapActive = false;
   let mapHubRunning = false;
   document.querySelectorAll('.tab-btn').forEach(btn=>{
-    btn.addEventListener('click', function(){ setTab(btn.getAttribute('data-tab')); });
+    btn.addEventListener('click', function(){ setTab(btn.getAttribute('data-tab')!); });
   });
-  function setTab(tab){
+  function setTab(tab: string){
     document.querySelectorAll('.tab-btn').forEach(b=> b.classList.toggle('active', b.getAttribute('data-tab')===tab));
     document.querySelectorAll('.tab-panel').forEach(p=> p.classList.toggle('active', p.getAttribute('data-tab')===tab));
     mapActive = (tab==='map');
@@ -2016,7 +2021,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
     return filler;
   }
   const fillerCache = {};
-  function fillerFor(districtId){
+  function fillerFor(districtId: string){
     if(!fillerCache[districtId]) fillerCache[districtId] = generateFillerLayout(districtId);
     return fillerCache[districtId];
   }
@@ -2034,7 +2039,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
     });
     return list;
   }
-  function buildingSolids(districtId){
+  function buildingSolids(districtId: string){
     return buildAllSolids();
   }
   function collidesBuilding(x: number, y: number, solids: Solid[]){ return solids.some(s=> Math.abs(x-s.x)<s.hw && Math.abs(y-s.y)<s.hd); }
@@ -2044,14 +2049,16 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
   const ROOM_W = 480, ROOM_H = 280, ROOM_OX = (VIEW_W-ROOM_W)/2, ROOM_OY = (VIEW_H-ROOM_H)/2 - 10;
   const DOOR_LOCAL = { x: ROOM_W/2, y: ROOM_H-6 };
 
-  function hotspotsFor(interior){
+  function hotspotsFor(interior: InteriorState | null){
     if(!interior) return [];
     if(interior.kind==='venture'){
       const b = businesses.find(x=>x.id===interior.refId);
+      if(!b) return [];
       return [{ id:'counter', x:ROOM_W/2, y:80, label:'Counter', icon:'🧾', action:()=> openVentureQuickPanel(b) }];
     }
     if(interior.kind==='local'){
       const biz = localBusinesses.find(x=>x.id===interior.refId);
+      if(!biz) return [];
       return [
         { id:'register', x:ROOM_W*0.32, y:80, label:'Register', icon:'💵', action:()=> openTillPanel(biz) },
         { id:'owner', x:ROOM_W*0.68, y:80, label:biz.owner, icon:'🙂', action:()=> openOwnerPanel(biz) },
@@ -2068,7 +2075,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
     return [];
   }
 
-  function enterBuilding(kind, refId, name){
+  function enterBuilding(kind: string, refId: string, name: string){
     if(state.inVehicle) exitVehicle();
     state.currentInterior = { kind, refId, name, returnX:player.x, returnY:player.y, returnDistrict:state.currentDistrict };
     player.x = DOOR_LOCAL.x; player.y = DOOR_LOCAL.y - 40; player.facing = -Math.PI/2;
@@ -2104,7 +2111,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid } from '../c
     renderAll();
   }
 
-  function travelTo(id){
+  function travelTo(id: string){
     if(state.currentDistrict === id) return;
     state.currentInterior = null;
     state.currentDistrict = id;
