@@ -20,6 +20,14 @@ export interface Landmark {
   y: number;
 }
 
+export type BandIndex = number | 'south';
+
+export interface DistrictParkSlot {
+  xi: number;
+  yi: BandIndex;
+  name: string;
+}
+
 export const VIEW_W = 760;
 export const VIEW_H = 440;
 export const WORLD_W = 5500;
@@ -72,6 +80,26 @@ export const landmarks: Landmark[] = [
   { id: 'devlinHall', name: 'DEVLIN HALL', district: 'devlin', x: 125, y: 820 },
   { id: 'ciceroWorks', name: 'CICERO WORKS', district: 'westside', x: 2125, y: 850 },
 ];
+
+export const districtParkSlots: Record<string, DistrictParkSlot[]> = {
+  devlin: [
+    { xi: 0, yi: 'south', name: 'INDIAN BOUNDARY PARK' },
+    { xi: 2, yi: 'south', name: 'ROCKWELL GREEN' },
+    { xi: 3, yi: 'south', name: 'DEVLIN PLAYLOT' },
+  ],
+  westside: [
+    { xi: 0, yi: 'south', name: 'CICERO GREEN' },
+    { xi: 1, yi: 2, name: 'PULASKI COMMONS' },
+    { xi: 2, yi: 'south', name: 'CANAL YARD PARK' },
+    { xi: 3, yi: 2, name: 'CERMAK POCKET PARK' },
+  ],
+  hub: [
+    { xi: 0, yi: 1, name: 'MILLENNIUM PARK' },
+    { xi: 1, yi: 'south', name: 'WABASH PLAZA' },
+    { xi: 2, yi: 'south', name: 'RIVERWALK LAWN' },
+    { xi: 3, yi: 'south', name: 'LAKEFRONT SQUARE' },
+  ],
+};
 
 export const roadNetwork: { vertical: VerticalRoad[]; horizontal: HorizontalRoad[] } = {
   vertical: [

@@ -13,9 +13,10 @@ import { stockMarket } from '../config/stockMarket';
 import type { GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState, Point, ServiceBuilding, GangRecruit, Car, FillerItem, DialogueTree } from '../config/types';
 import { buildableBands, localXForDistrict, rectsOverlap, rotatedHalfExtents } from '../map/layout';
 import { applyNamedBuildingLots, createMapBuildings, mapNpcs } from '../map/markers';
+import { canMoveTo } from '../map/movement';
 import type { MapObject } from '../map/objects';
 import { createBounds, nearestMapObject, solidsFromObjects } from '../map/objects';
-import { DISTRICT_OFFSETS, DISTRICT_W, VIEW_H, VIEW_W, WORLD_H, WORLD_W, districtSeeds, landmarks, roadNetwork, spawnPoints } from '../map/world';
+import { DISTRICT_OFFSETS, DISTRICT_W, VIEW_H, VIEW_W, WORLD_H, WORLD_W, districtParkSlots, districtSeeds, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import type * as ThreeNamespace from 'three';
 
   const eventPool = [
@@ -2044,8 +2045,8 @@ import type * as ThreeNamespace from 'three';
     const localRoadXs = [270,700,1130];
     const xBands = buildableBands(localRoadXs, DISTRICT_W, ROAD_VISUAL_CLEARANCE_X);
     const yBands = buildableBands(roadNetwork.horizontal.map(r=>r.y), WORLD_H, ROAD_VISUAL_CLEARANCE_Y);
-    const parkBand = { xi:0, yi: districtId==='hub' ? 1 : yBands.length-1 };
     const lotBand = { xi:xBands.length-1, yi: districtId==='hub' ? yBands.length-1 : 0 };
+    const parkSlots = districtParkSlots[districtId] || [];
     const filler: FillerItem[] = [];
     const placed: Solid[] = occupied.map(o=>({ x:o.x, y:o.y, hw:o.r, hd:o.r }));
     const jit = ()=> rand()-0.5;
@@ -2069,8 +2070,12 @@ import type * as ThreeNamespace from 'three';
         const cx=(x0+x1)/2, cy=(y0+y1)/2;
         const blockSolid = { x:cx, y:cy, hw:(x1-x0)/2, hd:(y1-y0)/2 };
         const blockHasAnchor = placed.some(o=>rectsOverlap(blockSolid, o, 8));
-        if(xi===parkBand.xi && yi===parkBand.yi && !blockHasAnchor){ filler.push({kind:'park', x0,y0,x1,y1}); placed.push(blockSolid); continue; }
-        if(xi===lotBand.xi && yi===lotBand.yi && !blockHasAnchor){ filler.push({kind:'lot', x0,y0,x1,y1}); placed.push(blockSolid); continue; }
+        const parkSlot = parkSlots.find(function(slot){
+          const slotYi = slot.yi === 'south' ? yBands.length - 1 : slot.yi;
+          return slot.xi === xi && slotYi === yi;
+        });
+        if(parkSlot && !blockHasAnchor){ filler.push({kind:'park', name:parkSlot.name, x0,y0,x1,y1}); placed.push(blockSolid); continue; }
+        if((xi===lotBand.xi && yi===lotBand.yi || (districtId!=='hub' && xi===0 && yi===1) || (districtId==='hub' && xi===2 && yi===2)) && !blockHasAnchor){ filler.push({kind:'lot', x0,y0,x1,y1}); placed.push(blockSolid); continue; }
         // LEGAL: Subdivide the block into an irregular cluster: 1-2 lots each way,
         // LEGAL: varied footprint/height, occasional gaps, and a slight rotation so
         // LEGAL: the built environment reads organic instead of as a uniform grid.
@@ -2083,7 +2088,7 @@ import type * as ThreeNamespace from 'three';
             if(rand()<0.18) continue; // LEGAL: leave the odd empty lot
             const w = cellW*(0.55+rand()*0.35);
             const d = cellD*(0.55+rand()*0.35);
-            const h = 14 + rand()*rand()*90; // LEGAL: skew short, rare tall tower
+            const h = districtId==='hub' && yi < 2 ? 70 + rand()*rand()*210 : 14 + rand()*rand()*90;
             const px = x0 + ci*cellW + (cellW-w)/2 + jit()*cellW*0.2;
             const py = y0 + ri*cellD + (cellD-d)/2 + jit()*cellD*0.2;
             const rot = jit()*0.18 + (rand()<0.12 ? jit()*0.6 : 0);
@@ -2133,7 +2138,6 @@ import type * as ThreeNamespace from 'three';
   function buildingSolids(districtId: string){
     return buildAllSolids();
   }
-  function collidesBuilding(x: number, y: number, solids: Solid[], padding: number){ return solids.some(s=> Math.abs(x-s.x)<s.hw+padding && Math.abs(y-s.y)<s.hd+padding); }
   let currentSolids: Solid[] = [];
 
   // LEGAL: ---- interiors: a small generic room per building, with 1-2 physical hotspots ----
@@ -2313,21 +2317,7 @@ import type * as ThreeNamespace from 'three';
     return 150;
   }
   function tryMove(nx: number, ny: number, solids: Solid[]){
-    const radius = state.inVehicle ? 24 : 8;
-    if(nx<16+radius||nx>WORLD_W-16-radius||ny<16+radius||ny>WORLD_H-16-radius) return false;
-    // LEGAL: Canals are impassable on foot AND by car, except across a bridge deck
-    // LEGAL: (a horizontal road). Cars are otherwise free to drive anywhere that
-    // LEGAL: isn't water or a building — locking them to road strips made driving
-    // LEGAL: impossible, so that constraint is gone.
-    if(ny < 46 + radius) return false;
-    const inCanal1 = nx > 1530 - radius && nx < 1970 + radius;
-    const inCanal2 = nx > 3530 - radius && nx < 3970 + radius;
-    if(inCanal1 || inCanal2){
-      const onBridge = roadNetwork.horizontal.some(r => Math.abs(ny - r.y) <= r.w/2 - Math.min(radius, 18));
-      if(!onBridge) return false;
-    }
-    if(collidesBuilding(nx,ny,solids,radius)) return false;
-    return true;
+    return canMoveTo(nx, ny, solids, state.inVehicle);
   }
 
   // LEGAL: ================= THREE.JS SCENE =================
@@ -2480,6 +2470,8 @@ import type * as ThreeNamespace from 'three';
     const doorMat = new THREE.MeshStandardMaterial({color:'#101216', roughness:0.5});
     const door = new THREE.Mesh(new THREE.PlaneGeometry(11,16), doorMat);
     door.position.set(0, -h/2+8, d/2+0.11); g.add(door);
+    const canUseMachinery = zoneType==='commercial' || zoneType==='service' || zoneType==='skyscraper' || zoneType==='industrial';
+    const canUseWaterTank = zoneType==='industrial';
     if(variant < 0.22){
       const upper = box(w*0.68, h*0.32, d*0.68, color);
       upper.position.y = h/2 + h*0.16; g.add(upper);
@@ -2490,12 +2482,12 @@ import type * as ThreeNamespace from 'three';
       cornice.position.y = h/2 + 2; g.add(cornice);
       const awning = box(Math.min(w*0.7, 38), 3, 8, zoneType==='shop'?'#9b2f3f':'#2f5c68');
       awning.position.set(0, -h/2+20, d/2+4); g.add(awning);
-    } else if(variant < 0.66){
+    } else if(variant < 0.66 && canUseMachinery){
       const rooftop = box(w*0.34, 9, d*0.32, '#3b3f49');
       rooftop.position.set(w*0.18, h/2+4.5, -d*0.12); g.add(rooftop);
       const vent = new THREE.Mesh(new THREE.CylinderGeometry(3,3,10,8), new THREE.MeshStandardMaterial({color:'#565c68', roughness:0.65, metalness:0.4}));
       vent.position.set(-w*0.22, h/2+5, d*0.12); vent.castShadow=true; g.add(vent);
-    } else if(variant > 0.84){
+    } else if(variant > 0.84 && canUseWaterTank){
       const tankMat = new THREE.MeshStandardMaterial({color:'#8a6a42', roughness:0.75});
       [[-5,-5],[5,-5],[-5,5],[5,5]].forEach(function(p){
         const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.8,0.8,18,5), new THREE.MeshStandardMaterial({color:'#3f4248', roughness:0.7}));
@@ -2719,24 +2711,29 @@ import type * as ThreeNamespace from 'three';
             const leaves = new THREE.Mesh(new THREE.ConeGeometry(9,20,7), new THREE.MeshStandardMaterial({color:'#2f5c38'}));
             leaves.position.set(tx,18,ty); leaves.castShadow=true; worldGroup.add(leaves);
           }
-          if(distId==='hub'){
+          if(f.name==='MILLENNIUM PARK'){
             const bean = new THREE.Mesh(new THREE.SphereGeometry(20,24,18), new THREE.MeshStandardMaterial({color:'#c9c9d4', metalness:1, roughness:0.08}));
             bean.scale.set(1.6,0.85,1); bean.position.set(cx,22,cy); bean.castShadow=true; bean.receiveShadow=true; worldGroup.add(bean);
             addSign(bean,'THE BEAN',44,10,34,'#e8e6de');
           } else {
-            const parkLabel = ({devlin:'INDIAN BOUNDARY PARK',westside:'CICERO GREEN',hub:'MILLENNIUM PARK'} as Record<string,string>)[distId] ?? '';
-            addSign(grass,parkLabel,44,9,4,'#a8d0a8');
+            addSign(grass,f.name,44,9,4,'#a8d0a8');
           }
         } else if(f.kind==='lot'){
           const cx=(f.x0+f.x1)/2+off, cy=(f.y0+f.y1)/2, w=f.x1-f.x0, d=f.y1-f.y0;
           const lot = new THREE.Mesh(new THREE.PlaneGeometry(w,d), new THREE.MeshStandardMaterial({color:'#26282e', roughness:1}));
           lot.rotation.x=-Math.PI/2; lot.position.set(cx,0.08,cy); lot.receiveShadow=true; worldGroup.add(lot);
+          const stripeMat = new THREE.MeshBasicMaterial({color:'#d9d2b8', transparent:true, opacity:0.5});
+          for(let sx=f.x0+off+18; sx<f.x1+off-18; sx+=24){
+            const stripe = new THREE.Mesh(new THREE.PlaneGeometry(2,d-24), stripeMat);
+            stripe.rotation.x=-Math.PI/2; stripe.position.set(sx,0.11,cy); worldGroup.add(stripe);
+          }
+          const curb = box(w,2,3,'#565a63'); curb.position.set(cx,1,f.y0+8); worldGroup.add(curb);
           const rand = seededRandom(Math.floor(cx*11+cy*17));
           const carColors=['#556070','#704040','#405560','#606050'];
-          for(let i=0;i<6;i++){
+          for(let i=0;i<10;i++){
             const px=f.x0+off+18+rand()*(w-36), py=f.y0+18+rand()*(d-36);
             const c=box(20,9,11,carColors[Math.floor(rand()*carColors.length)]);
-            c.position.set(px,4.5,py); c.rotation.y=rand()*Math.PI; worldGroup.add(c);
+            c.position.set(px,4.5,py); c.rotation.y=Math.round(rand()*1)*Math.PI/2; worldGroup.add(c);
           }
         }
       });
