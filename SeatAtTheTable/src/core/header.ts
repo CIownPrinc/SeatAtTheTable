@@ -2031,9 +2031,9 @@ import type * as ThreeNamespace from 'three';
         const x0=xBands[xi][0], x1=xBands[xi][1], y0=yBands[yi][0], y1=yBands[yi][1];
         const cx=(x0+x1)/2, cy=(y0+y1)/2;
         const blockSolid = { x:cx, y:cy, hw:(x1-x0)/2, hd:(y1-y0)/2 };
-        if(placed.some(o=>rectsOverlap(blockSolid, o, 8))) continue;
-        if(xi===parkBand.xi && yi===parkBand.yi){ filler.push({kind:'park', x0,y0,x1,y1}); placed.push(blockSolid); continue; }
-        if(xi===lotBand.xi && yi===lotBand.yi){ filler.push({kind:'lot', x0,y0,x1,y1}); placed.push(blockSolid); continue; }
+        const blockHasAnchor = placed.some(o=>rectsOverlap(blockSolid, o, 8));
+        if(xi===parkBand.xi && yi===parkBand.yi && !blockHasAnchor){ filler.push({kind:'park', x0,y0,x1,y1}); placed.push(blockSolid); continue; }
+        if(xi===lotBand.xi && yi===lotBand.yi && !blockHasAnchor){ filler.push({kind:'lot', x0,y0,x1,y1}); placed.push(blockSolid); continue; }
         // LEGAL: Subdivide the block into an irregular cluster: 1-2 lots each way,
         // LEGAL: varied footprint/height, occasional gaps, and a slight rotation so
         // LEGAL: the built environment reads organic instead of as a uniform grid.
@@ -2102,7 +2102,7 @@ import type * as ThreeNamespace from 'three';
   function buildingSolids(districtId: string){
     return buildAllSolids();
   }
-  function collidesBuilding(x: number, y: number, solids: Solid[]){ return solids.some(s=> Math.abs(x-s.x)<s.hw && Math.abs(y-s.y)<s.hd); }
+  function collidesBuilding(x: number, y: number, solids: Solid[], padding: number){ return solids.some(s=> Math.abs(x-s.x)<s.hw+padding && Math.abs(y-s.y)<s.hd+padding); }
   let currentSolids: Solid[] = [];
 
   // LEGAL: ---- interiors: a small generic room per building, with 1-2 physical hotspots ----
@@ -2286,18 +2286,20 @@ import type * as ThreeNamespace from 'three';
     return 150;
   }
   function tryMove(nx: number, ny: number, solids: Solid[]){
-    if(nx<16||nx>WORLD_W-16||ny<16||ny>WORLD_H-16) return false;
+    const radius = state.inVehicle ? 24 : 8;
+    if(nx<16+radius||nx>WORLD_W-16-radius||ny<16+radius||ny>WORLD_H-16-radius) return false;
     // LEGAL: Canals are impassable on foot AND by car, except across a bridge deck
     // LEGAL: (a horizontal road). Cars are otherwise free to drive anywhere that
     // LEGAL: isn't water or a building — locking them to road strips made driving
     // LEGAL: impossible, so that constraint is gone.
-    const inCanal1 = nx > 1530 && nx < 1970;
-    const inCanal2 = nx > 3530 && nx < 3970;
+    if(ny < 46 + radius) return false;
+    const inCanal1 = nx > 1530 - radius && nx < 1970 + radius;
+    const inCanal2 = nx > 3530 - radius && nx < 3970 + radius;
     if(inCanal1 || inCanal2){
-      const onBridge = roadNetwork.horizontal.some(r => Math.abs(ny - r.y) <= r.w/2);
+      const onBridge = roadNetwork.horizontal.some(r => Math.abs(ny - r.y) <= r.w/2 - Math.min(radius, 18));
       if(!onBridge) return false;
     }
-    if(collidesBuilding(nx,ny,solids)) return false;
+    if(collidesBuilding(nx,ny,solids,radius)) return false;
     return true;
   }
 
@@ -2305,7 +2307,7 @@ import type * as ThreeNamespace from 'three';
   type ThreeModule = typeof ThreeNamespace;
   type DisposableMaterial = ThreeNamespace.Material & { map?: ThreeNamespace.Texture };
   let THREE: ThreeModule;
-  let scene: ThreeNamespace.Scene, camera3d: ThreeNamespace.PerspectiveCamera, renderer: ThreeNamespace.WebGLRenderer, worldGroup: ThreeNamespace.Group, playerGroup: ThreeNamespace.Group, sunLight: ThreeNamespace.DirectionalLight, waypointBeacon: ThreeNamespace.Group | null = null, parkedCarMesh: ThreeNamespace.Group | null = null;
+  let scene: ThreeNamespace.Scene, camera3d: ThreeNamespace.PerspectiveCamera, renderer: ThreeNamespace.WebGLRenderer, worldGroup: ThreeNamespace.Group, playerGroup: ThreeNamespace.Group, ambientLight: ThreeNamespace.AmbientLight, sunLight: ThreeNamespace.DirectionalLight, waypointBeacon: ThreeNamespace.Group | null = null, parkedCarMesh: ThreeNamespace.Group | null = null;
 
   function disposeObj(o: ThreeNamespace.Object3D){
     const mesh = o as ThreeNamespace.Mesh;
@@ -2394,6 +2396,22 @@ import type * as ThreeNamespace from 'three';
     outer.add(g);
     outer.scale.setScalar(1.6);
     return outer;
+  }
+  function updateDayNightLighting(){
+    if(!scene || !sunLight || !ambientLight) return;
+    const cycleSeconds = 240;
+    const phase = ((state.playSeconds % cycleSeconds) / cycleSeconds) * Math.PI * 2;
+    const sun = Math.max(0, Math.sin(phase - Math.PI / 2));
+    const dusk = Math.max(0, 1 - Math.abs(sun * 2 - 1));
+    const night = 1 - sun;
+    ambientLight.intensity = 0.28 + sun * 0.48 + dusk * 0.08;
+    sunLight.intensity = 0.15 + sun * 0.95;
+    sunLight.color.set(sun < 0.18 ? '#9fb4ff' : (dusk > 0.45 ? '#ffc37a' : '#fff2d0'));
+    sunLight.position.set(WORLD_W*0.5 + Math.cos(phase) * 900, 130 + sun * 520, WORLD_H*0.35 + Math.sin(phase) * 260);
+    sunLight.target.position.set(WORLD_W/2,0,WORLD_H/2);
+    sunLight.target.updateMatrixWorld();
+    scene.background = new THREE.Color(sun < 0.18 ? '#070914' : (dusk > 0.45 ? '#241b20' : '#0a0b10'));
+    scene.fog = new THREE.Fog(sun < 0.18 ? 0x070914 : 0x0a0b10, 420 + night * 80, 1050 + sun * 150);
   }
   function buildingColorFor(b: Business){
     const unlocked = isUnlocked(b);
@@ -2640,11 +2658,7 @@ import type * as ThreeNamespace from 'three';
     updateParkedCarMesh();
     rebuildWaypointBeacon();
 
-    if(sunLight){
-      sunLight.position.set(WORLD_W*0.5,500,WORLD_H*0.3);
-      sunLight.target.position.set(WORLD_W/2,0,WORLD_H/2);
-      sunLight.target.updateMatrixWorld();
-    }
+    updateDayNightLighting();
   }
 
   // LEGAL: Historical entry point kept for saved-game boot; the city is unified now.
@@ -2730,7 +2744,8 @@ import type * as ThreeNamespace from 'three';
     renderer.domElement.classList.add('webgl-canvas');
     container.insertBefore(renderer.domElement, container.firstChild);
 
-    scene.add(new THREE.AmbientLight(0x8891a8, 0.65));
+    ambientLight = new THREE.AmbientLight(0x8891a8, 0.65);
+    scene.add(ambientLight);
     sunLight = new THREE.DirectionalLight(0xfff2d0, 0.9);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.set(1024,1024);
@@ -2778,8 +2793,6 @@ import type * as ThreeNamespace from 'three';
       byId('minimap-clear').classList.add('show');
       scheduleSave();
     }
-    minimapPan.x = 0;
-    minimapPan.y = 0;
   });
   byId('minimap-clear').addEventListener('click', function(){
     state.waypoints[state.currentDistrict] = null;
@@ -2796,7 +2809,7 @@ import type * as ThreeNamespace from 'three';
       mctx.strokeStyle='rgba(212,160,23,0.5)'; mctx.strokeRect(0.5,0.5,149,149);
       return;
     }
-    if(!minimapDragging){
+    if(!minimapDragging && Math.hypot(player.vx, player.vy) > 5){
       minimapPan.x = 0;
       minimapPan.y = 0;
     }
@@ -2954,6 +2967,7 @@ import type * as ThreeNamespace from 'three';
     } else {
       interiorCanvas.style.display = 'none';
       renderer.domElement.style.display = 'block';
+      updateDayNightLighting();
       playerGroup.position.set(player.x, 0, player.y);
       playerGroup.rotation.y = -player.facing + Math.PI/2;
       camera3d.position.set(player.x, 260, player.y+72);

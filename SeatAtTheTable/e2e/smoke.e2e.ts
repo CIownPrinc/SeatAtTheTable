@@ -43,4 +43,56 @@ test.describe('game boot', () => {
       return goldPixels;
     })).toBeGreaterThan(6);
   });
+
+  test('minimap can pan while stopped and recenters while moving', async ({ page }) => {
+    await page.goto('/');
+
+    await page.getByRole('button', { name: 'Open the Cart' }).click();
+    await page.locator('.tab-btn[data-tab="map"]').click();
+    const minimap = page.locator('#minimap-canvas');
+    await expect(minimap).toBeVisible();
+
+    const box = await minimap.boundingBox();
+    expect(box).not.toBeNull();
+    if(!box) return;
+
+    await page.mouse.move(box.x + 75, box.y + 75);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 112, box.y + 75);
+    await page.mouse.up();
+
+    await expect.poll(async () => minimap.evaluate((canvas: HTMLCanvasElement) => {
+      const context = canvas.getContext('2d');
+      if(!context) return 0;
+      const pixels = context.getImageData(68, 68, 14, 14).data;
+      let goldPixels = 0;
+      for(let i = 0; i < pixels.length; i += 4){
+        const r = pixels[i];
+        const g = pixels[i + 1];
+        const b = pixels[i + 2];
+        const a = pixels[i + 3];
+        if(r > 150 && g > 95 && g < 190 && b < 80 && a > 180) goldPixels += 1;
+      }
+      return goldPixels;
+    })).toBeLessThan(4);
+
+    await page.keyboard.down('ArrowRight');
+    await page.waitForTimeout(350);
+    await page.keyboard.up('ArrowRight');
+
+    await expect.poll(async () => minimap.evaluate((canvas: HTMLCanvasElement) => {
+      const context = canvas.getContext('2d');
+      if(!context) return 0;
+      const pixels = context.getImageData(68, 68, 14, 14).data;
+      let goldPixels = 0;
+      for(let i = 0; i < pixels.length; i += 4){
+        const r = pixels[i];
+        const g = pixels[i + 1];
+        const b = pixels[i + 2];
+        const a = pixels[i + 3];
+        if(r > 150 && g > 95 && g < 190 && b < 80 && a > 180) goldPixels += 1;
+      }
+      return goldPixels;
+    })).toBeGreaterThan(6);
+  });
 });
