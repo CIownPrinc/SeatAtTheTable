@@ -10,6 +10,7 @@ import { politicians } from '../config/politics';
 import { gangRecruits } from '../config/gang';
 import { npcFirstNames, npcLastNames, npcDispositions } from '../config/npcs';
 import { stockMarket } from '../config/stockMarket';
+import type { GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState, Point, ServiceBuilding, GangRecruit, Car, FillerItem, DialogueTree } from '../config/types';
 
   const eventPool = [
     { id:'rival', title:'A RIVAL CREW EYES YOUR CORNER', neg:true, body:"<p class='flavor'>Word is a West Side crew thinks your runners are working streets that belong to them.</p>", choices:[
@@ -58,8 +59,8 @@ import { stockMarket } from '../config/stockMarket';
   // LEGAL: Control is 0-100. >=60 is "yours" (bonus applies), <=25 is "rival controlled"
   // LEGAL: (small penalty), in between is contested (neutral). Control drifts based on
   // LEGAL: your presence there (muscle, active corners, ventures) vs. rival pressure.
-  function districtStatus(id){
-    const c = districts.find(d=>d.id===id).control;
+  function districtStatus(id: string){
+    const c = districts.find(d=>d.id===id)!.control;
     return c>=60 ? 'yours' : (c<=25 ? 'rival' : 'contested');
   }
   function devlinIncomeBonus(){ const s=districtStatus('devlin'); return s==='yours'?1.15:(s==='rival'?0.9:1); }
@@ -67,9 +68,10 @@ import { stockMarket } from '../config/stockMarket';
   function westsideRateBonus(){ const s=districtStatus('westside'); return s==='yours'?1.15:(s==='rival'?0.85:1); }
   function hubInterestMult(){ return districtStatus('hub')==='yours' ? 1.5 : 1; }
   function hubHeistBonus(){ return districtStatus('hub')==='yours' ? 0.10 : 0; }
-  function pushCost(d){ return Math.ceil(20 * Math.pow(1.6, d.pushCount)); }
-  function pushDistrict(id){
+  function pushCost(d: District){ return Math.ceil(20 * Math.pow(1.6, d.pushCount)); }
+  function pushDistrict(id: string){
     const d = districts.find(x=>x.id===id);
+    if(!d) return;
     if(state.playSeconds < d.nextPushAt) return;
     const cost = pushCost(d);
     if(state.respect < cost) return;
@@ -91,9 +93,9 @@ import { stockMarket } from '../config/stockMarket';
   // LEGAL: Influence is a cash-funded meter. Named politicians take individual favor
   // LEGAL: (also cash) and each unlock a distinct permanent bonus at favor>=60.
   // LEGAL: Running for office is a one-shot capstone gated behind enough influence.
-  function coleActive(){ return politicians.find(p=>p.id==='cole').favor >= 60; }
-  function boyleActive(){ return politicians.find(p=>p.id==='boyle').favor >= 60; }
-  function whitmoreActive(){ return politicians.find(p=>p.id==='whitmore').favor >= 60; }
+  function coleActive(){ return politicians.find(p=>p.id==='cole')!.favor >= 60; }
+  function boyleActive(){ return politicians.find(p=>p.id==='boyle')!.favor >= 60; }
+  function whitmoreActive(){ return politicians.find(p=>p.id==='whitmore')!.favor >= 60; }
 
   // LEGAL: ================= GANG =================
   // LEGAL: A small, hand-authored roster (not procedural) — each recruit requires an
@@ -103,18 +105,18 @@ import { stockMarket } from '../config/stockMarket';
     const car = getEquippedCar();
     let s = state.muscleCount*1 + gangRecruits.filter(g=>g.inducted).length*3;
     if(car) s += car.heistBonus*10;
-    if(gangRecruits.find(g=>g.id==='les').inducted) s *= 1.08;
+    if(gangRecruits.find(g=>g.id==='les')!.inducted) s *= 1.08;
     return s;
   }
   function rivalStrength(){
-    const ws = districts.find(d=>d.id==='westside');
+    const ws = districts.find(d=>d.id==='westside')!;
     return 20 + (100-ws.control)*0.3;
   }
 
   // LEGAL: ================= DIALOGUE ENGINE =================
   // LEGAL: Reusable branching conversation tree. Any future NPC/mission/politics/gang
   // LEGAL: interaction plugs into this same structure: { npcName, nodes:{ id:{text,choices:[{label,effect,next}]} } }
-  const dialogues = {
+  const dialogues: Record<string, DialogueTree> = {
     sanjay: {
       npcName: 'Sanjay (Cousin)',
       nodes: {
@@ -291,7 +293,7 @@ import { stockMarket } from '../config/stockMarket';
   // LEGAL: story stages gated on real progress (prestige, territory control, politics),
   // LEGAL: so revisiting them later reflects what's actually happened in the other
   // LEGAL: systems instead of repeating the same static lines forever.
-  function npcOpeningNode(npcKey){
+  function npcOpeningNode(npcKey: string){
     if(npcKey==='sanjay'){
       if(grandmotherActive()) return 'stage3';
       if(sisterActive()) return 'stage2';
@@ -299,7 +301,7 @@ import { stockMarket } from '../config/stockMarket';
       return 'start';
     }
     if(npcKey==='dice'){
-      const control = districts.find(d=>d.id==='westside').control;
+      const control = districts.find(d=>d.id==='westside')?.control ?? 0;
       if(control>=60) return 'stage2';
       if(control>=25) return 'stage1';
       return 'start';
@@ -311,7 +313,7 @@ import { stockMarket } from '../config/stockMarket';
     }
     return 'start';
   }
-  function playDialogue(npcKey, nodeId){
+  function playDialogue(npcKey: string, nodeId: string){
     const tree = dialogues[npcKey];
     const node = tree.nodes[nodeId];
     showModal({
@@ -351,11 +353,11 @@ import { stockMarket } from '../config/stockMarket';
   // LEGAL: ================= STOCK MARKET =================
 
   // LEGAL: ================= STATE =================
-  const state = {
+  const state: GameState = {
     cash: 47, respect: 0, heat: 0,
     territoryTier: 0, negotiateTier: 0,
     muscleCount: 0, ratCount: 0, bribeOn: false,
-    prestigeCount: 0, seenMilestones: new Set(),
+    prestigeCount: 0, seenMilestones: new Set<string>(),
     started: false, lastTick: Date.now(), nextEventAt: 110 + Math.random()*60,
     playSeconds: 0, investorPenalty: 0,
     procNpc: generateNPC(),
@@ -369,6 +371,7 @@ import { stockMarket } from '../config/stockMarket';
     campaignActive: false, campaignEndAt: 0, campaignStyle: '',
     portfolio: {}, marketPrices: {}, marketHistory: {}, nextMarketTickAt: 0,
     financeView: 'vault', activeStock: null,
+    currentNews: [], newsQueue: [], nextNewsAt: 0,
   };
 
   // LEGAL: ================= HELPERS =================
@@ -383,15 +386,15 @@ import { stockMarket } from '../config/stockMarket';
   function byIdOrNull<T extends HTMLElement = HTMLElement>(id: string): T | null {
     return document.getElementById(id) as T | null;
   }
-  function fmt(n){
+  function fmt(n: number){
     const sign = n<0?'-':''; n=Math.abs(n);
     if(n < 1000) return sign+'$' + Math.floor(n);
     const units=['','K','M','B','T']; let u=0; let v=n;
     while(v>=1000 && u<units.length-1){ v/=1000; u++; }
     return sign+'$' + v.toFixed(v<10?2:1) + units[u];
   }
-  function fmtR(n){ return Math.floor(n).toLocaleString(); }
-  function hasFamilyTier(index){ return state.prestigeCount > index; }
+  function fmtR(n: number){ return Math.floor(n).toLocaleString(); }
+  function hasFamilyTier(index: number){ return state.prestigeCount > index; }
   function brotherActive(){ return hasFamilyTier(0); }
   function motherActive(){ return hasFamilyTier(1); }
   function sisterActive(){ return hasFamilyTier(2); }
@@ -399,31 +402,31 @@ import { stockMarket } from '../config/stockMarket';
   function grandmotherActive(){ return hasFamilyTier(4); }
   function discountMult(){ return Math.pow(0.93, state.negotiateTier); }
   function globalIncomeMult(){ return Math.max(0.1, (brotherActive()?1.5:1) * (1 - (state.investorPenalty||0))); }
-  function nadiaInducted(){ return gangRecruits.find(g=>g.id==='nadia').inducted; }
-  function chinoInducted(){ return gangRecruits.find(g=>g.id==='chino').inducted; }
-  function birdInducted(){ return gangRecruits.find(g=>g.id==='bird').inducted; }
+  function nadiaInducted(){ return gangRecruits.find(g=>g.id==='nadia')!.inducted; }
+  function chinoInducted(){ return gangRecruits.find(g=>g.id==='chino')!.inducted; }
+  function birdInducted(){ return gangRecruits.find(g=>g.id==='bird')!.inducted; }
   function whitmoreMult(){ return whitmoreActive() ? 0.7 : 1; }
-  function researchCostFor(b){ return Math.ceil(b.researchCost * discountMult() * (coleActive()?0.9:1)); }
+  function researchCostFor(b: Business){ return Math.ceil(b.researchCost * discountMult() * (coleActive()?0.9:1)); }
   function heatMult(){ return Math.max(0.3, (state.bribeOn?0.4:1) * (motherActive()?0.65:1) * (boyleActive()?0.8:1) * (nadiaInducted()?0.9:1)); }
   function crewCapGlobal(){ return 6 + state.territoryTier*4 + (sisterActive()?6:0); }
   function crewUsedGlobal(){ return businesses.reduce((s,b)=> s + (b.manager?0:b.crew), 0); }
-  function crewNeeded(b){ return b.level<=0 ? 0 : Math.ceil(b.level/5); }
-  function efficiency(b){
+  function crewNeeded(b: Business){ return b.level<=0 ? 0 : Math.ceil(b.level/5); }
+  function efficiency(b: Business){
     if(b.manager) return 1;
     const need = crewNeeded(b);
     if(need===0) return 1;
     return Math.max(0.35, Math.min(1, b.crew/need));
   }
-  function costForLevel(b){ return Math.ceil(b.baseCost * Math.pow(1.15, b.level) * discountMult()); }
-  function crewCostFor(b){ return Math.ceil(b.crewBaseCost * Math.pow(1.22, b.crew) * discountMult() * (sisterActive()?0.8:1)); }
-  function managerCostFor(b){ return Math.ceil(b.baseCost * 45 * discountMult()); }
+  function costForLevel(b: Business){ return Math.ceil(b.baseCost * Math.pow(1.15, b.level) * discountMult()); }
+  function crewCostFor(b: Business){ return Math.ceil(b.crewBaseCost * Math.pow(1.22, b.crew) * discountMult() * (sisterActive()?0.8:1)); }
+  function managerCostFor(b: Business){ return Math.ceil(b.baseCost * 45 * discountMult()); }
   function territoryCost(){ return Math.ceil(40 * Math.pow(2.1, state.territoryTier)); }
   function negotiateCost(){ return Math.ceil(25 * Math.pow(1.8, state.negotiateTier)); }
   function muscleCost(){ return Math.ceil(80 * Math.pow(1.25, state.muscleCount)); }
   function ratsCashCost(){ return Math.ceil(150 * Math.pow(1.3, state.ratCount)); }
   function ratsRespectCost(){ return 5 + state.ratCount*2; }
-  function tempMultActive(b){ return b.tempMultExpire > Date.now() ? b.tempMult : 1; }
-  function applyTempMult(filter, mult, seconds){
+  function tempMultActive(b: Business){ return b.tempMultExpire > Date.now() ? b.tempMult : 1; }
+  function applyTempMult(filter: string, mult: number, seconds: number){
     businesses.forEach(b=>{ if(filter==='all' || b.category===filter){ b.tempMult = mult; b.tempMultExpire = Date.now() + seconds*1000; } });
   }
   function hireFreeCrew(){
@@ -433,7 +436,7 @@ import { stockMarket } from '../config/stockMarket';
     b.crew += 1;
     log(`<i class="ph-duotone ph-handshake"></i> They join the crew at ${b.name}, no questions asked.`);
   }
-  function incomeFor(b){ return b.level * b.baseIncome * efficiency(b) * tempMultActive(b); }
+  function incomeFor(b: Business){ return b.level * b.baseIncome * efficiency(b) * tempMultActive(b); }
   function getEquippedCar(){ return cars.find(c=>c.id===state.equippedCar) || null; }
   function propertiesIncome(){ return state.ownedProperties.reduce((s,id)=>{ const p=properties.find(x=>x.id===id); return s+(p?p.incomePerSec:0); }, 0); }
   function localBizIncome(){ return localBusinesses.filter(b=>b.extorted).reduce((s,b)=> s+b.extortIncome, 0); }
@@ -466,25 +469,25 @@ import { stockMarket } from '../config/stockMarket';
     return (state.muscleCount*0.5 + streetHeat + extortHeat + cornerHeatPerSec()) * heatMult() * (state.campaignActive ? 2.5 : 1);
   }
   function currentRank(){ let r=ranks[0]; for(const rk of ranks){ if(state.respect>=rk.respect) r=rk; } return r.title; }
-  function isUnlocked(b){
+  function isUnlocked(b: Business){
     if(b.unlock.type==='start') return true;
     if(b.unlock.type==='cash') return state.cash>=b.unlock.value || b.level>0 || b.researched;
     if(b.unlock.type==='respect') return state.respect>=b.unlock.value || b.level>0 || b.researched;
     if(b.unlock.type==='family') return hasFamilyTier(b.unlock.value) || b.level>0 || b.researched;
     return false;
   }
-  function log(msg){
+  function log(msg: string){
     const wrap = byId('ticker');
     const item = document.createElement('div');
     item.className = 'ticker-item';
     const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     item.innerHTML = `<span class="t-time">${time}</span><span>${msg}</span>`;
     wrap.prepend(item);
-    while(wrap.children.length > 45) wrap.removeChild(wrap.lastChild);
+    while(wrap.children.length > 45 && wrap.lastChild) wrap.removeChild(wrap.lastChild);
   }
 
   // LEGAL: ================= MODAL =================
-  function showModal({eyebrow, title, body, stamp, buttons}){
+  function showModal({eyebrow, title, body, stamp, buttons}: ModalOptions){
     byId('modal-eyebrow').textContent = eyebrow || '';
     byId('modal-title').textContent = title || '';
     byId('modal-body').innerHTML = body || '';
@@ -525,7 +528,7 @@ import { stockMarket } from '../config/stockMarket';
     if(r && r.level >= 1) triggerMilestone('chaat_house');
     const d = businesses.find(b => b.id === 'syndicate_logistics');
     if(d && d.level >= 1) triggerMilestone('docks');
-    if(state.activeCar === 'bentley') triggerMilestone('bentley');
+    if(state.ownedCars.includes('bentley')) triggerMilestone('bentley');
     if(gangRecruits.some(g => g.inducted)) triggerMilestone('crew_induct');
   }
 
@@ -543,12 +546,12 @@ import { stockMarket } from '../config/stockMarket';
   }
 
   // LEGAL: ================= VENTURE QUICK PANEL (used by the map) =================
-  function openVentureQuickPanel(b){
+  function openVentureQuickPanel(b: Business){
     const unlocked = isUnlocked(b);
     let bodyHtml = `<p>${b.flavor}</p>`;
-    let buttons = [];
+    const buttons: ModalButton[] = [];
     if(!unlocked){
-      bodyHtml += `<p class="flavor">${b.unlock.type==='cash' ? ('Unlocks at '+fmt(b.unlock.value)+' cash') : ('Unlocks at '+b.unlock.value+' respect')}</p>`;
+      bodyHtml += `<p class="flavor">${b.unlock.type==='cash' ? ('Unlocks at '+fmt(b.unlock.value)+' cash') : ('value' in b.unlock ? ('Unlocks at '+b.unlock.value+' respect') : '')}</p>`;
     } else if(!b.researched){
       const rc = researchCostFor(b);
       buttons.push({ label:`Research (${fmt(rc)})`, onClick:function(){ if(state.cash>=rc){ state.cash-=rc; b.researched=true; log(`<i class="ph-duotone ph-flask"></i> You research ${b.name}.`);} renderAll(); }});
@@ -566,7 +569,7 @@ import { stockMarket } from '../config/stockMarket';
   }
 
   // LEGAL: ================= BANK =================
-  function depositAmount(rawAmt){
+  function depositAmount(rawAmt: string | undefined){
     const amt = Math.floor(Number(rawAmt));
     if(!isFinite(amt) || amt<=0){ log('<i class="ph-duotone ph-bank"></i> Enter a valid amount to deposit.'); return; }
     if(amt > state.cash){ log(`<i class="ph-duotone ph-vault"></i> You don't have ${fmt(amt)} on hand to deposit.`); return; }
@@ -574,7 +577,7 @@ import { stockMarket } from '../config/stockMarket';
     log(`<i class="ph-duotone ph-vault"></i> You deposit ${fmt(amt)}. Safe from raids in there.`);
     renderAll();
   }
-  function withdrawAmount(rawAmt){
+  function withdrawAmount(rawAmt: string | undefined){
     const amt = Math.floor(Number(rawAmt));
     if(!isFinite(amt) || amt<=0){ log('<i class="ph-duotone ph-bank"></i> Enter a valid amount to withdraw.'); return; }
     if(amt > state.bank){ log(`<i class="ph-duotone ph-vault"></i> There's only ${fmt(state.bank)} banked.`); return; }
@@ -582,7 +585,7 @@ import { stockMarket } from '../config/stockMarket';
     log(`<i class="ph-duotone ph-vault"></i> You withdraw ${fmt(amt)}.`);
     renderAll();
   }
-  function resolveHeist(approach){
+  function resolveHeist(approach: string){
     const car = getEquippedCar();
     const carBonus = car ? car.heistBonus : 0;
     let chance, reward, failLossPct, heatOnAttempt, heatOnFail, respectOnFail;
@@ -616,7 +619,7 @@ import { stockMarket } from '../config/stockMarket';
   }
 
   // LEGAL: ================= LOCAL BUSINESSES (map-only, rob/extort) =================
-  function robLocalBiz(biz){
+  function robLocalBiz(biz: LocalBusiness){
     const car = getEquippedCar();
     const carBonus = car ? car.heistBonus : 0;
     let chance = 0.55 + state.ratCount*0.03 + carBonus - (state.heat>60 ? 0.15 : 0);
@@ -633,7 +636,7 @@ import { stockMarket } from '../config/stockMarket';
     }
     renderAll();
   }
-  function openTillPanel(biz){
+  function openTillPanel(biz: LocalBusiness){
     const canRob = state.playSeconds >= (biz.nextRobAt||0);
     const cooldownLeft = Math.max(0, Math.ceil((biz.nextRobAt||0) - state.playSeconds));
     const body = `<p>The register's right there. ${biz.owner} hasn't noticed you yet.</p>`;
@@ -644,7 +647,7 @@ import { stockMarket } from '../config/stockMarket';
     buttons.push({ label:'Walk away', secondary:true });
     showModal({ eyebrow:'Cash Register', title:biz.name, body, buttons });
   }
-  function openOwnerPanel(biz){
+  function openOwnerPanel(biz: LocalBusiness){
     let body = `<p>${biz.owner} runs this place. Not part of your operation — yet.</p>`;
     if(biz.extorted) body += `<p class="flavor">${biz.owner} pays tribute: +${biz.extortIncome.toFixed(1)}/s, +${biz.extortHeat.toFixed(2)} heat/s, ongoing.</p>`;
     const buttons = [];
@@ -942,7 +945,7 @@ import { stockMarket } from '../config/stockMarket';
     }
   }
 
-  function drawStockChart(symbol) {
+  function drawStockChart(symbol: string) {
     const canvas = byId('stock-chart') as HTMLCanvasElement;
     if(!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -1002,7 +1005,8 @@ import { stockMarket } from '../config/stockMarket';
       if(state.newsQueue.length === 0) {
         state.newsQueue = [...rcnNewsPool].sort(() => Math.random() - 0.5);
       }
-      state.currentNews.unshift(state.newsQueue.pop());
+      const next = state.newsQueue.pop();
+      if(next) state.currentNews.unshift(next);
       if(state.currentNews.length > 3) state.currentNews.pop();
       state.nextNewsAt = state.playSeconds + 120;
       
@@ -1040,7 +1044,7 @@ import { stockMarket } from '../config/stockMarket';
     }
   }
 
-  function tradeStock(symbol, amount, isBuy) {
+  function tradeStock(symbol: string, amount: number, isBuy: boolean) {
     if(amount <= 0 || isNaN(amount)) return;
     const price = state.marketPrices[symbol];
     if(!price) return;
@@ -1073,21 +1077,21 @@ import { stockMarket } from '../config/stockMarket';
     log(`<i class="ph-duotone ph-briefcase"></i> The Lab steps up to level ${state.productLevel}. More product, more room to store it.`);
     renderAll();
   }
-  function assignDealer(corner){
+  function assignDealer(corner: Corner){
     if(corner.dealer || corner.busted) return;
     if(state.cash < corner.dealerCost) return;
     state.cash -= corner.dealerCost; corner.dealer = true;
     log(`<i class="ph-duotone ph-briefcase"></i> A dealer's posted at ${corner.name}.`);
     renderAll();
   }
-  function fireDealer(corner){
+  function fireDealer(corner: Corner){
     if(!corner.dealer) return;
     corner.dealer = false;
     log(`<i class="ph-duotone ph-briefcase"></i> You pull the dealer off ${corner.name}.`);
     renderAll();
   }
-  function openCornerPanel(corner){
-    const d = districts.find(x=>x.id===corner.district);
+  function openCornerPanel(corner: Corner){
+    const d = districts.find(x=>x.id===corner.district)!;
     let body = `<p>Tier ${corner.tier} corner in ${d.name}. ${corner.dealer ? `Staffed — moving ${corner.rate}/s when there's product to sell.` : 'No one working it right now.'}</p>`;
     if(corner.busted){
       const left = Math.max(0, Math.ceil(corner.bustCooldownAt - state.playSeconds));
@@ -1114,9 +1118,10 @@ import { stockMarket } from '../config/stockMarket';
     log(`<i class="ph-duotone ph-bank"></i> Another envelope, another favor owed. Influence is at ${state.influence}.`);
     renderAll();
   }
-  function favorCost(p){ return Math.ceil(200 * Math.pow(1.25, Math.floor(p.favor/15))); }
-  function bribePolitician(id){
+  function favorCost(p: Politician){ return Math.ceil(200 * Math.pow(1.25, Math.floor(p.favor/15))); }
+  function bribePolitician(id: string){
     const p = politicians.find(x=>x.id===id);
+    if(!p) return;
     const cost = favorCost(p);
     if(state.cash < cost || p.favor>=100) return;
     state.cash -= cost; p.favor = Math.min(100, p.favor+15);
@@ -1131,7 +1136,7 @@ import { stockMarket } from '../config/stockMarket';
     }
     renderAll();
   }
-  function runCampaign(style){
+  function runCampaign(style: string){
     let cost = style === 'grassroots' ? 250000 : 1500000;
     if(state.cash < cost){
       dialogues.campaign.nodes.result.text = "You can't even front the filing fees on this one. Come back when the cash is there.";
@@ -1147,8 +1152,9 @@ import { stockMarket } from '../config/stockMarket';
   }
 
   // LEGAL: ================= GANG: FUNCTIONS =================
-  function inductRecruit(id, style){
+  function inductRecruit(id: string, style: string){
     const g = gangRecruits.find(x=>x.id===id);
+    if(!g) return;
     if(g.inducted) return;
     if(state.respect < g.reqRespect || state.cash < g.cost){
       dialogues[g.dialogueKey].nodes.result.text = "It doesn't happen. Not enough weight behind your name yet — come back when you're further along.";
@@ -1170,8 +1176,8 @@ import { stockMarket } from '../config/stockMarket';
     log(`<i class="ph-duotone ph-handshake"></i> ${g.name} joins the crew for real. ${g.bonus}`);
     renderAll();
   }
-  function resolveWar(style){
-    const ws = districts.find(d=>d.id==='westside');
+  function resolveWar(style: string){
+    const ws = districts.find(d=>d.id==='westside')!;
     const cost = style==='assault' ? 4000 : 1800;
     if(state.cash < cost){
       dialogues.gangwar.nodes.result.text = "You don't have the cash to back this up tonight. Come back when you do.";
@@ -1225,7 +1231,7 @@ import { stockMarket } from '../config/stockMarket';
   function renderTerritoryPanel(){
     const wrap = byId('territory-panel');
     if(!wrap) return;
-    const bonusText = { devlin:'+15% income to every venture when yours', westside:'-25% corner heat, +15% corner income when yours', hub:'+50% bank interest, +10% heist odds when yours' };
+    const bonusText: Record<string, string> = { devlin:'+15% income to every venture when yours', westside:'-25% corner heat, +15% corner income when yours', hub:'+50% bank interest, +10% heist odds when yours' };
     wrap.innerHTML = districts.map(d=>{
       const status = districtStatus(d.id);
       const canPush = state.playSeconds>=d.nextPushAt && state.respect>=pushCost(d);
@@ -1339,7 +1345,7 @@ import { stockMarket } from '../config/stockMarket';
         <div class="data-main">
           <div class="col-id"><i class="ph-duotone ph-swords"></i> ${ICONS.fist}</div>
           <div class="col-name">West Side War</div>
-          <div class="col-stat">CONTROL: ${Math.round(districts.find(d=>d.id==='westside').control)}%</div>
+          <div class="col-stat">CONTROL: ${Math.round(districts.find(d=>d.id==='westside')!.control)}%</div>
           <div class="col-status">ACTIVE</div>
         </div>
         <div class="data-expanded">
@@ -1351,7 +1357,7 @@ import { stockMarket } from '../config/stockMarket';
   }
 
   // LEGAL: ================= RENDER: VENTURE CARDS =================
-  function renderCard(b){
+  function renderCard(b: Business){
     const unlocked = isUnlocked(b);
     const el = document.createElement('div');
     el.className = `data-row ${unlocked ? '' : 'locked'}`;
@@ -1360,7 +1366,7 @@ import { stockMarket } from '../config/stockMarket';
       <div class="col-name">${b.name}<div class="col-name-sub">${b.category==='legit'?'Corporate Front':'Illicit Operation'}</div></div>`;
       
     if(!unlocked){
-      let note = b.unlock.type==='cash' ? `Requires ${fmt(b.unlock.value)} cash` : `Requires ${b.unlock.value} **Respect**`;
+      let note = b.unlock.type==='cash' ? `Requires ${fmt(b.unlock.value)} cash` : ('value' in b.unlock ? `Requires ${b.unlock.value} **Respect**` : '');
       main += `<div class="col-lvl">-</div><div class="col-inc">-</div><div class="col-crew">-</div><div class="col-status">${note}</div></div>`;
       el.innerHTML = main;
       return el;
@@ -1422,7 +1428,7 @@ import { stockMarket } from '../config/stockMarket';
     return el;
   }
 
-  function handleCardAction(e){
+  function handleCardAction(e: Event){
     const btn = (e.target as HTMLElement).closest('[data-action]');
     if(!btn) return;
     const id = btn.getAttribute('data-id');
@@ -1462,12 +1468,12 @@ import { stockMarket } from '../config/stockMarket';
     renderAll();
   }
 
-  function handleAssetAction(e){
+  function handleAssetAction(e: Event){
     const btn = (e.target as HTMLElement).closest('[data-car-buy],[data-car-equip],[data-car-sell],[data-prop-buy],[data-prop-sell]');
     if(!btn) return;
     if(btn.hasAttribute('data-car-buy')){
-      const id = btn.getAttribute('data-car-buy'); const c = cars.find(x=>x.id===id);
-      if(state.cash<c.cost) return;
+      const id = btn.getAttribute('data-car-buy')!; const c = cars.find(x=>x.id===id);
+      if(!c || state.cash<c.cost) return;
       state.cash -= c.cost; state.ownedCars.push(id);
       if(!state.equippedCar) state.equippedCar = id;
       if(id === 'bentley') triggerMilestone('bentley');
@@ -1475,26 +1481,28 @@ import { stockMarket } from '../config/stockMarket';
     } else if(btn.hasAttribute('data-car-equip')){
       state.equippedCar = btn.getAttribute('data-car-equip'); updateParkedCarMesh(); refreshPlayerModel(); renderAll();
     } else if(btn.hasAttribute('data-car-sell')){
-      const id = btn.getAttribute('data-car-sell'); const c = cars.find(x=>x.id===id);
+      const id = btn.getAttribute('data-car-sell')!; const c = cars.find(x=>x.id===id);
+      if(!c) return;
       state.ownedCars = state.ownedCars.filter(x=>x!==id);
       if(state.equippedCar===id) state.equippedCar = state.ownedCars[0] || null;
       state.cash += Math.round(c.cost*0.55);
       log(`<i class="ph-duotone ph-car"></i> You sell the ${c.name}.`); updateParkedCarMesh(); refreshPlayerModel(); renderAll();
     } else if(btn.hasAttribute('data-prop-buy')){
-      const id = btn.getAttribute('data-prop-buy'); const p = properties.find(x=>x.id===id);
-      if(state.cash<p.cost) return;
+      const id = btn.getAttribute('data-prop-buy')!; const p = properties.find(x=>x.id===id);
+      if(!p || state.cash<p.cost) return;
       state.cash -= p.cost; state.ownedProperties.push(id);
       if(state.ownedProperties.length === 1) triggerMilestone('first_property');
       log(`🏢 You close on ${p.name}.`); renderAll();
     } else if(btn.hasAttribute('data-prop-sell')){
-      const id = btn.getAttribute('data-prop-sell'); const p = properties.find(x=>x.id===id);
+      const id = btn.getAttribute('data-prop-sell')!; const p = properties.find(x=>x.id===id);
+      if(!p) return;
       state.ownedProperties = state.ownedProperties.filter(x=>x!==id);
       state.cash += Math.round(p.cost*0.6);
       log(`🏢 You sell ${p.name}.`); renderAll();
     }
   }
 
-  function handleStreetAction(e){
+  function handleStreetAction(e: Event){
     const btn = (e.target as HTMLElement).closest('button');
     if(!btn) return;
     if(btn.id === 'upgrade-lab'){ upgradeLab(); }
@@ -1505,7 +1513,7 @@ import { stockMarket } from '../config/stockMarket';
     else if(btn.id === 'buy-negotiate'){ if(state.respect<negotiateCost()) return; state.respect -= negotiateCost(); state.negotiateTier += 1; log(`<i class="ph-duotone ph-handshake"></i> You've got leverage now. Everyone's prices just got friendlier.`); renderAll(); }
   }
 
-  function handleBankAction(e){
+  function handleBankAction(e: Event){
     const target = e.target as HTMLElement;
     const quickDeposit = target.closest('[data-deposit-quick]');
     if(quickDeposit){
@@ -1528,8 +1536,8 @@ import { stockMarket } from '../config/stockMarket';
     }
     const tradeBtn = target.closest('[data-trade]');
     if(tradeBtn) {
-      const action = tradeBtn.getAttribute('data-trade');
-      const sym = tradeBtn.getAttribute('data-sym');
+      const action = tradeBtn.getAttribute('data-trade')!;
+      const sym = tradeBtn.getAttribute('data-sym')!;
       const price = state.marketPrices[sym];
       const pos = state.portfolio[sym];
       if(!price || !pos) return;
@@ -1571,23 +1579,23 @@ import { stockMarket } from '../config/stockMarket';
       playDialogue('bankheist', 'start');
     }
   }
-  function handleBankKeydown(e){
+  function handleBankKeydown(e: KeyboardEvent){
     if((e as KeyboardEvent).key !== 'Enter') return;
     const target = e.target as HTMLInputElement;
     if(target.id === 'deposit-input') depositAmount(target.value);
     else if(target.id === 'withdraw-input') withdrawAmount(target.value);
   }
 
-  function handleTerritoryAction(e){
+  function handleTerritoryAction(e: Event){
     const btn = (e.target as HTMLElement).closest('[data-push]');
     if(!btn) return;
-    pushDistrict(btn.getAttribute('data-push'));
+    pushDistrict(btn.getAttribute('data-push')!);
   }
 
-  function handlePoliticsAction(e){
+  function handlePoliticsAction(e: Event){
     const target = e.target as HTMLElement;
     const bribeBtn = target.closest('[data-bribe]');
-    if(bribeBtn){ bribePolitician(bribeBtn.getAttribute('data-bribe')); return; }
+    if(bribeBtn){ bribePolitician(bribeBtn.getAttribute('data-bribe')!); return; }
     const btn = target.closest('button');
     if(!btn) return;
     if(btn.id === 'buy-influence'){ buyInfluence(); }
@@ -1598,7 +1606,7 @@ import { stockMarket } from '../config/stockMarket';
     }
   }
 
-  function handleGangAction(e){
+  function handleGangAction(e: Event){
     const target = e.target as HTMLElement;
     const checkinBtn = target.closest('[data-checkin]');
     if(checkinBtn){ const g = gangRecruits.find(x=>x.id===checkinBtn.getAttribute('data-checkin')); if(g) playDialogue(g.dialogueKey, 'checkin'); return; }
@@ -1609,10 +1617,10 @@ import { stockMarket } from '../config/stockMarket';
     if(btn.id === 'declare-war'){ if(state.playSeconds < state.nextWarAt) return; playDialogue('gangwar', 'start'); }
   }
 
-  function handleDistrictAction(e){
+  function handleDistrictAction(e: Event){
     const btn = (e.target as HTMLElement).closest('[data-travel]');
     if(!btn) return;
-    travelTo(btn.getAttribute('data-travel'));
+    travelTo(btn.getAttribute('data-travel')!);
   }
 
   // LEGAL: Wire all delegation listeners exactly once at boot. Stable containers
@@ -1750,7 +1758,7 @@ import { stockMarket } from '../config/stockMarket';
     byId('heat-fill').style.width = Math.min(100, state.heat) + '%';
     byId('hud-crew').textContent = `${crewUsedGlobal()} / ${crewCapGlobal()}`;
 
-    const prestigeBtn = byId('prestige-btn');
+    const prestigeBtn = byId<HTMLButtonElement>('prestige-btn');
     const threshold = 50000 * Math.pow(4, state.prestigeCount);
     const nextFamily = familyTiers[state.prestigeCount];
     if(!nextFamily){ prestigeBtn.style.display = 'none'; return; }
@@ -1779,7 +1787,7 @@ import { stockMarket } from '../config/stockMarket';
     if(rank === 'Local Boss') triggerMilestone('local_boss');
     if(rank === 'West Side Kingpin') triggerMilestone('kingpin');
 
-    const prestigeBtn = byId('prestige-btn');
+    const prestigeBtn = byId<HTMLButtonElement>('prestige-btn');
     const threshold = 50000 * Math.pow(4, state.prestigeCount);
     const nextFamily = familyTiers[state.prestigeCount];
     if(!nextFamily){ prestigeBtn.style.display = 'none'; return; }
@@ -1790,7 +1798,7 @@ import { stockMarket } from '../config/stockMarket';
     }
   }
   function refreshAffordability(){
-    document.querySelectorAll('[data-action]').forEach(btn=>{
+    document.querySelectorAll<HTMLButtonElement>('[data-action]').forEach(btn=>{
       const id = btn.getAttribute('data-id');
       const action = btn.getAttribute('data-action');
       const b = businesses.find(x=>x.id===id);
@@ -1803,13 +1811,13 @@ import { stockMarket } from '../config/stockMarket';
       } else if(action==='firecrew') btn.disabled = b.manager || b.crew<=0;
       else if(action==='hiremanager') btn.disabled = state.cash < managerCostFor(b);
     });
-    const hm=byId('hire-muscle'); if(hm) hm.disabled = state.cash<muscleCost();
-    const hr=byId('hire-rat'); if(hr) hr.disabled = !(state.cash>=ratsCashCost() && state.respect>=ratsRespectCost());
-    const bt=byId('buy-territory'); if(bt) bt.disabled = state.respect<territoryCost();
-    const bn=byId('buy-negotiate'); if(bn) bn.disabled = state.respect<negotiateCost();
-    document.querySelectorAll('[data-car-buy]').forEach(btn=>{ const c=cars.find(x=>x.id===btn.getAttribute('data-car-buy')); if(c) btn.disabled = state.cash<c.cost; });
-    document.querySelectorAll('[data-prop-buy]').forEach(btn=>{ const p=properties.find(x=>x.id===btn.getAttribute('data-prop-buy')); if(p) btn.disabled = state.cash<p.cost; });
-    const heistBtn=byId('start-heist'); if(heistBtn) heistBtn.disabled = state.playSeconds<state.nextHeistAt;
+    const hm=byId<HTMLButtonElement>('hire-muscle'); if(hm) hm.disabled = state.cash<muscleCost();
+    const hr=byId<HTMLButtonElement>('hire-rat'); if(hr) hr.disabled = !(state.cash>=ratsCashCost() && state.respect>=ratsRespectCost());
+    const bt=byId<HTMLButtonElement>('buy-territory'); if(bt) bt.disabled = state.respect<territoryCost();
+    const bn=byId<HTMLButtonElement>('buy-negotiate'); if(bn) bn.disabled = state.respect<negotiateCost();
+    document.querySelectorAll<HTMLButtonElement>('[data-car-buy]').forEach(btn=>{ const c=cars.find(x=>x.id===btn.getAttribute('data-car-buy')); if(c) btn.disabled = state.cash<c.cost; });
+    document.querySelectorAll<HTMLButtonElement>('[data-prop-buy]').forEach(btn=>{ const p=properties.find(x=>x.id===btn.getAttribute('data-prop-buy')); if(p) btn.disabled = state.cash<p.cost; });
+    const heistBtn=byId<HTMLButtonElement>('start-heist'); if(heistBtn) heistBtn.disabled = state.playSeconds<state.nextHeistAt;
     const bankedEl=byId('bank-banked-value'); if(bankedEl) bankedEl.textContent=fmt(state.bank);
     const onhandEl=byId('bank-onhand-value'); if(onhandEl) onhandEl.textContent=fmt(state.cash);
     const heistStatusEl=byId('heist-status-value');
@@ -1817,28 +1825,28 @@ import { stockMarket } from '../config/stockMarket';
       const canHeist = state.playSeconds >= state.nextHeistAt;
       heistStatusEl.textContent = canHeist ? 'Ready' : `Cooling off (${Math.max(0,Math.ceil(state.nextHeistAt-state.playSeconds))}s)`;
     }
-    const labBtn=byId('upgrade-lab'); if(labBtn) labBtn.disabled = state.cash<labCost();
-    document.querySelectorAll('[data-push]').forEach(btn=>{
+    const labBtn=byId<HTMLButtonElement>('upgrade-lab'); if(labBtn) labBtn.disabled = state.cash<labCost();
+    document.querySelectorAll<HTMLButtonElement>('[data-push]').forEach(btn=>{
       const d = districts.find(x=>x.id===btn.getAttribute('data-push'));
       if(d) btn.disabled = state.playSeconds<d.nextPushAt || state.respect<pushCost(d);
     });
-    const buyInfluenceBtn=byId('buy-influence'); if(buyInfluenceBtn) buyInfluenceBtn.disabled = state.cash<influenceCost();
-    document.querySelectorAll('[data-bribe]').forEach(btn=>{
+    const buyInfluenceBtn=byId<HTMLButtonElement>('buy-influence'); if(buyInfluenceBtn) buyInfluenceBtn.disabled = state.cash<influenceCost();
+    document.querySelectorAll<HTMLButtonElement>('[data-bribe]').forEach(btn=>{
       const p = politicians.find(x=>x.id===btn.getAttribute('data-bribe'));
       if(p) btn.disabled = state.cash<favorCost(p) || p.favor>=100;
     });
-    const campaignBtn=byId('launch-campaign');
+    const campaignBtn=byId<HTMLButtonElement>('launch-campaign');
     if(campaignBtn && !state.electedOffice) campaignBtn.disabled = !(state.influence>=100 && state.playSeconds>=state.nextCampaignAt);
-    document.querySelectorAll('[data-initiate]').forEach(btn=>{
+    document.querySelectorAll<HTMLButtonElement>('[data-initiate]').forEach(btn=>{
       const g = gangRecruits.find(x=>x.id===btn.getAttribute('data-initiate'));
       if(g) btn.disabled = state.cash<g.cost;
     });
-    const warBtn=byId('declare-war'); if(warBtn) warBtn.disabled = state.playSeconds<state.nextWarAt;
+    const warBtn=byId<HTMLButtonElement>('declare-war'); if(warBtn) warBtn.disabled = state.playSeconds<state.nextWarAt;
     refreshTerritory();
   }
   function refreshTerritory(){
     districts.forEach(d=>{
-      const bar = document.querySelector(`[data-control-bar="${d.id}"]`);
+      const bar = document.querySelector<HTMLElement>(`[data-control-bar="${d.id}"]`);
       if(bar) bar.style.width = Math.round(d.control) + '%';
       const label = document.querySelector(`[data-control-label="${d.id}"]`);
       if(label) label.textContent = `${Math.round(d.control)}% — ${districtStatus(d.id)==='yours'?'Yours':(districtStatus(d.id)==='rival'?'Rival Controlled':'Contested')}`;
@@ -1876,9 +1884,9 @@ import { stockMarket } from '../config/stockMarket';
   let mapActive = false;
   let mapHubRunning = false;
   document.querySelectorAll('.tab-btn').forEach(btn=>{
-    btn.addEventListener('click', function(){ setTab(btn.getAttribute('data-tab')); });
+    btn.addEventListener('click', function(){ setTab(btn.getAttribute('data-tab')!); });
   });
-  function setTab(tab){
+  function setTab(tab: string){
     document.querySelectorAll('.tab-btn').forEach(b=> b.classList.toggle('active', b.getAttribute('data-tab')===tab));
     document.querySelectorAll('.tab-panel').forEach(p=> p.classList.toggle('active', p.getAttribute('data-tab')===tab));
     mapActive = (tab==='map');
@@ -1893,9 +1901,9 @@ import { stockMarket } from '../config/stockMarket';
   const VIEW_W = 760, VIEW_H = 440;
   // LEGAL: Unified city — 3 districts side by side, canals between them
   const WORLD_W = 5500, WORLD_H = 1200;
-  const DISTRICT_OFFSETS = { devlin:0, westside:2000, hub:4000 };
+  const DISTRICT_OFFSETS: Record<string, number> = { devlin:0, westside:2000, hub:4000 };
   const player = { x:700, y:600, facing:Math.PI/2 };
-  const keys = {};
+  const keys: Record<string, boolean> = {};
   let lastFrame2 = Date.now();
 
   // LEGAL: Apply district offsets to all relative coordinates dynamically
@@ -1936,8 +1944,8 @@ import { stockMarket } from '../config/stockMarket';
     { id:'dice', name:'Dice', district:'westside', x:2750, y:400, type:'named' },
     { id:'reyes', name:'Councilman Reyes', district:'hub', x:4600, y:720, type:'named' },
   ];
-  const spawnPoints = { devlin:{x:700,y:600}, westside:{x:2700,y:600}, hub:{x:4700,y:600} };
-  const districtThemes = {
+  const spawnPoints: Record<string, Point> = { devlin:{x:700,y:600}, westside:{x:2700,y:600}, hub:{x:4700,y:600} };
+  const districtThemes: Record<string, { ground: string; parkLabel: string; hasRail: boolean; hasRiver: boolean }> = {
     devlin: { ground:'#232a26', parkLabel:'INDIAN BOUNDARY PARK', hasRail:false, hasRiver:false },
     westside: { ground:'#2a2222', parkLabel:'CICERO GREEN', hasRail:true, hasRiver:false },
     hub: { ground:'#211f16', parkLabel:'MILLENNIUM PARK', hasRail:false, hasRiver:true },
@@ -1965,12 +1973,12 @@ import { stockMarket } from '../config/stockMarket';
     // LEGAL: Horizontal roads span full width — they form bridge decks over canals
     horizontal: [{y:300,w:74},{y:600,w:74},{y:900,w:74}],
   };
-  function isOnRoad(x,y){
+  function isOnRoad(x: number, y: number){
     return roadNetwork.vertical.some(r=> Math.abs(x-r.x)<=r.w/2) || roadNetwork.horizontal.some(r=> Math.abs(y-r.y)<=r.w/2);
   }
 
   // LEGAL: ---- deterministic filler city: same layout every time, not regenerated per load ----
-  function seededRandom(seed){
+  function seededRandom(seed: number){
     return function(){
       seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
       let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
@@ -1978,23 +1986,23 @@ import { stockMarket } from '../config/stockMarket';
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
-  const districtSeeds = { devlin:1001, westside:2002, hub:3003 };
+  const districtSeeds: Record<string, number> = { devlin:1001, westside:2002, hub:3003 };
   // LEGAL: Filler band X/Y coordinates are relative to a 1500x950 grid; offset applied at render time
-  function occupiedZones(districtId){
-    const zones = [];
-    const add = (arr,r)=> arr.filter(m=>m.district===districtId).forEach(m=> zones.push({x:m.x,y:m.y,r}));
+  function occupiedZones(districtId: string){
+    const zones: { x: number; y: number; r: number }[] = [];
+    const add = (arr: { district: string; x: number; y: number }[], r: number)=> arr.filter(m=>m.district===districtId).forEach(m=> zones.push({x:m.x,y:m.y,r}));
     add(mapBuildings,70); add(serviceBuildings,70); add(localBusinesses,60);
     add(corners,50); add(mapNpcs,50); add(gangRecruits,50);
     return zones;
   }
-  function generateFillerLayout(districtId){
+  function generateFillerLayout(districtId: string){
     const rand = seededRandom(districtSeeds[districtId]);
     const occupied = occupiedZones(districtId);
     const xBands = [[15,235],[305,665],[735,1095],[1165,1485]];
     const yBands = [[15,185],[255,425],[495,695],[765,935]];
     const parkBand = { xi:0, yi: districtId==='hub' ? 1 : 3 };
     const lotBand = { xi:3, yi: districtId==='hub' ? 3 : 0 };
-    const filler = [];
+    const filler: FillerItem[] = [];
     for(let xi=0; xi<xBands.length; xi++){
       for(let yi=0; yi<yBands.length; yi++){
         const x0=xBands[xi][0], x1=xBands[xi][1], y0=yBands[yi][0], y1=yBands[yi][1];
@@ -2013,13 +2021,13 @@ import { stockMarket } from '../config/stockMarket';
     }
     return filler;
   }
-  const fillerCache = {};
-  function fillerFor(districtId){
+  const fillerCache: Record<string, FillerItem[]> = {};
+  function fillerFor(districtId: string){
     if(!fillerCache[districtId]) fillerCache[districtId] = generateFillerLayout(districtId);
     return fillerCache[districtId];
   }
     function buildAllSolids(){
-    const list = [];
+    const list: Solid[] = [];
     mapBuildings.forEach(m=>{
       const w = m.biz.baseCost>=50000?66:(m.biz.baseCost<1000?46:56);
       list.push({x:m.x,y:m.y,hw:w/2+6,hd:(w*0.85)/2+6});
@@ -2028,28 +2036,30 @@ import { stockMarket } from '../config/stockMarket';
     localBusinesses.forEach(m=> list.push({x:m.x,y:m.y,hw:27,hd:24}));
     ['devlin','westside','hub'].forEach(function(distId){
       const off = DISTRICT_OFFSETS[distId];
-      fillerFor(distId).filter(f=>f.kind==='building').forEach(f=> list.push({x:f.x+off,y:f.y,hw:f.w/2+4,hd:f.d/2+4}));
+      fillerFor(distId).filter((f): f is Extract<FillerItem, {kind:'building'}> => f.kind==='building').forEach(f=> list.push({x:f.x+off,y:f.y,hw:f.w/2+4,hd:f.d/2+4}));
     });
     return list;
   }
-  function buildingSolids(districtId){
+  function buildingSolids(districtId: string){
     return buildAllSolids();
   }
-  function collidesBuilding(x,y,solids){ return solids.some(s=> Math.abs(x-s.x)<s.hw && Math.abs(y-s.y)<s.hd); }
-  let currentSolids = [];
+  function collidesBuilding(x: number, y: number, solids: Solid[]){ return solids.some(s=> Math.abs(x-s.x)<s.hw && Math.abs(y-s.y)<s.hd); }
+  let currentSolids: Solid[] = [];
 
   // LEGAL: ---- interiors: a small generic room per building, with 1-2 physical hotspots ----
   const ROOM_W = 480, ROOM_H = 280, ROOM_OX = (VIEW_W-ROOM_W)/2, ROOM_OY = (VIEW_H-ROOM_H)/2 - 10;
   const DOOR_LOCAL = { x: ROOM_W/2, y: ROOM_H-6 };
 
-  function hotspotsFor(interior){
+  function hotspotsFor(interior: InteriorState | null){
     if(!interior) return [];
     if(interior.kind==='venture'){
       const b = businesses.find(x=>x.id===interior.refId);
+      if(!b) return [];
       return [{ id:'counter', x:ROOM_W/2, y:80, label:'Counter', icon:'🧾', action:()=> openVentureQuickPanel(b) }];
     }
     if(interior.kind==='local'){
       const biz = localBusinesses.find(x=>x.id===interior.refId);
+      if(!biz) return [];
       return [
         { id:'register', x:ROOM_W*0.32, y:80, label:'Register', icon:'💵', action:()=> openTillPanel(biz) },
         { id:'owner', x:ROOM_W*0.68, y:80, label:biz.owner, icon:'🙂', action:()=> openOwnerPanel(biz) },
@@ -2066,7 +2076,7 @@ import { stockMarket } from '../config/stockMarket';
     return [];
   }
 
-  function enterBuilding(kind, refId, name){
+  function enterBuilding(kind: string, refId: string, name: string){
     if(state.inVehicle) exitVehicle();
     state.currentInterior = { kind, refId, name, returnX:player.x, returnY:player.y, returnDistrict:state.currentDistrict };
     player.x = DOOR_LOCAL.x; player.y = DOOR_LOCAL.y - 40; player.facing = -Math.PI/2;
@@ -2102,7 +2112,7 @@ import { stockMarket } from '../config/stockMarket';
     renderAll();
   }
 
-  function travelTo(id){
+  function travelTo(id: string){
     if(state.currentDistrict === id) return;
     state.currentInterior = null;
     state.currentDistrict = id;
@@ -2114,7 +2124,7 @@ import { stockMarket } from '../config/stockMarket';
     updateParkedCarMesh();
     rebuildWaypointBeacon();
     refreshPlayerModel();
-    const d = districts.find(x=>x.id===id);
+    const d = districts.find(x=>x.id===id)!;
     log(`<i class="ph-duotone ph-car"></i> You head over to ${d.name}.`);
     renderAll();
   }
@@ -2168,9 +2178,19 @@ import { stockMarket } from '../config/stockMarket';
     }
   });
 
-  function nearestMarker(){
+  type MapMarker =
+    | { type: 'door'; ref: { label: string } }
+    | { type: 'hotspot'; ref: ReturnType<typeof hotspotsFor>[number] }
+    | { type: 'car'; ref: Point }
+    | { type: 'building'; ref: typeof mapBuildings[number] }
+    | { type: 'service'; ref: ServiceBuilding }
+    | { type: 'npc'; ref: typeof mapNpcs[number] }
+    | { type: 'gangnpc'; ref: GangRecruit }
+    | { type: 'local'; ref: LocalBusiness }
+    | { type: 'corner'; ref: Corner };
+  function nearestMarker(): MapMarker | null {
     if(state.currentInterior){
-      let best=null, bestDist=46;
+      let best: MapMarker | null = null, bestDist=46;
       const dDoor = Math.hypot(player.x-DOOR_LOCAL.x, player.y-DOOR_LOCAL.y);
       if(dDoor<bestDist){ bestDist=dDoor; best={type:'door', ref:{label:'Exit'}}; }
       hotspotsFor(state.currentInterior).forEach(h=>{
@@ -2180,7 +2200,7 @@ import { stockMarket } from '../config/stockMarket';
       return best;
     }
     if(state.inVehicle) return null;
-    let best=null, bestDist=46;
+    let best: MapMarker | null = null, bestDist=46;
     const car = getEquippedCar();
     const parked = state.parkedCarPos[state.currentDistrict];
     if(car && parked){
@@ -2212,7 +2232,7 @@ import { stockMarket } from '../config/stockMarket';
     else if(m.type==='local') enterBuilding('local', m.ref.id, m.ref.name);
     else if(m.type==='corner') openCornerPanel(m.ref);
     else if(m.type==='gangnpc') playDialogue(m.ref.dialogueKey, m.ref.inducted ? 'checkin' : 'start');
-    else if(m.ref.type==='named') playDialogue(m.ref.id, npcOpeningNode(m.ref.id));
+    else if(m.type==='npc' && m.ref.type==='named') playDialogue(m.ref.id, npcOpeningNode(m.ref.id));
     else proceduralInteract();
   }
 
@@ -2221,7 +2241,7 @@ import { stockMarket } from '../config/stockMarket';
     if(state.inVehicle){ const car=getEquippedCar(); return 210*(car?car.speedMult:1); }
     return 150;
   }
-  function tryMove(nx, ny, solids){
+  function tryMove(nx: number, ny: number, solids: Solid[]){
     if(nx<16||nx>WORLD_W-16||ny<16||ny>WORLD_H-16) return false;
     // LEGAL: Block movement in canals except on bridge horizontal roads
     if(!state.inVehicle){
@@ -2238,25 +2258,27 @@ import { stockMarket } from '../config/stockMarket';
   }
 
   // LEGAL: ================= THREE.JS SCENE =================
-  let scene, camera3d, renderer, worldGroup, playerGroup, sunLight, waypointBeacon, parkedCarMesh;
+  // LEGAL: Three.js objects; THREE is a CDN-loaded global typed as any, so these
+  // LEGAL: render-system handles are explicitly any rather than falsely precise.
+  let scene: any, camera3d: any, renderer: any, worldGroup: any, playerGroup: any, sunLight: any, waypointBeacon: any, parkedCarMesh: any;
 
-  function disposeObj(o){
+  function disposeObj(o: any){
     if(o.geometry) o.geometry.dispose();
     if(o.material){
       const mats = Array.isArray(o.material) ? o.material : [o.material];
-      mats.forEach(m=>{ if(m.map) m.map.dispose(); m.dispose(); });
+      mats.forEach((m: any)=>{ if(m.map) m.map.dispose(); m.dispose(); });
     }
   }
-  function clearGroup(g){ while(g.children.length){ const c=g.children.pop(); c.traverse(disposeObj); } }
+  function clearGroup(g: any){ while(g.children.length){ const c=g.children.pop(); c.traverse(disposeObj); } }
 
-  function box(w,h,d,color){
+  function box(w: number, h: number, d: number, color: number | string){
     const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), new THREE.MeshStandardMaterial({color, roughness:0.85, metalness:0.05}));
     m.castShadow = true; m.receiveShadow = true;
     return m;
   }
-  function addSign(parent, text, w, h, y, color){
+  function addSign(parent: any, text: string, w: number, h: number, y: number, color: string){
     const c = document.createElement('canvas'); c.width=2048; c.height=256;
-    const cctx = c.getContext('2d');
+    const cctx = c.getContext('2d')!;
     cctx.fillStyle='rgba(10,11,16,0.85)'; cctx.fillRect(0,0,2048,256);
     cctx.fillStyle=color; cctx.font='bold 120px sans-serif'; cctx.textAlign='center'; cctx.textBaseline='middle';
     cctx.fillText(text.slice(0,32), 1024, 128);
@@ -2266,7 +2288,7 @@ import { stockMarket } from '../config/stockMarket';
     sprite.scale.set(w * 4, h * 2, 1); sprite.position.y = y;
     parent.add(sprite);
   }
-  function buildPedestrianModel(color){
+  function buildPedestrianModel(color: number | string){
     const g = new THREE.Group();
     const body = new THREE.Mesh(new THREE.CylinderGeometry(6,7,20,8), new THREE.MeshStandardMaterial({color: color||'#e8e6de'}));
     body.position.y = 14; body.castShadow=true; g.add(body);
@@ -2276,7 +2298,7 @@ import { stockMarket } from '../config/stockMarket';
     nose.rotation.x = Math.PI/2; nose.position.set(0,14,8); g.add(nose);
     return g;
   }
-  function buildCarModel(car){
+  function buildCarModel(car: Car){
     const g = new THREE.Group();
     const bodyH = car.id==='escalade'?18:(car.id==='bentley'?16:14);
     const body = box(car.len, bodyH, car.wid, car.color);
@@ -2321,7 +2343,7 @@ import { stockMarket } from '../config/stockMarket';
     g.castShadow=true;
     return g;
   }
-  function buildingColorFor(b){
+  function buildingColorFor(b: Business){
     const unlocked = isUnlocked(b);
     const opened = unlocked && b.researched && b.level>0;
     const legit = b.category==='legit';
@@ -2331,7 +2353,7 @@ import { stockMarket } from '../config/stockMarket';
 
 
   // LEGAL: ---- procedural building with windows, door, and zone-specific roof ----
-  function buildDetailedBuilding(w, h, d, color, zoneType){
+  function buildDetailedBuilding(w: number, h: number, d: number, color: number | string, zoneType: string){
     const g = new THREE.Group();
     const body = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), new THREE.MeshStandardMaterial({color, roughness:0.85, metalness:0.05}));
     body.castShadow=true; body.receiveShadow=true; g.add(body);
@@ -2427,7 +2449,7 @@ import { stockMarket } from '../config/stockMarket';
     });
 
     // LEGAL: Service buildings — all districts
-    const svcPalette = { bankHome:'#7a5f1a', garage:'#3e6b78', realty:'#3e6b78', cityhall:'#7a5f1a', heist:'#5a2a33' };
+    const svcPalette: Record<string, string> = { bankHome:'#7a5f1a', garage:'#3e6b78', realty:'#3e6b78', cityhall:'#7a5f1a', heist:'#5a2a33' };
     serviceBuildings.forEach(function(m){
       const mesh = buildDetailedBuilding(58,34,50,svcPalette[m.kind],'service');
       mesh.position.set(m.x,17,m.y); worldGroup.add(mesh);
@@ -2454,7 +2476,7 @@ import { stockMarket } from '../config/stockMarket';
     });
 
     // LEGAL: NPCs and gang recruits — all districts
-    function addPerson(m, color){
+    function addPerson(m: any, color: number | string){
       const g = buildPedestrianModel(color);
       g.position.set(m.x,0,m.y); worldGroup.add(g);
       addSign(g, m.type==='named'?m.name:(m.name||'?'), 28, 7, 34, '#f0efe8');
@@ -2488,7 +2510,7 @@ import { stockMarket } from '../config/stockMarket';
             bean.scale.set(1.6,0.85,1); bean.position.set(cx,22,cy); bean.castShadow=true; bean.receiveShadow=true; worldGroup.add(bean);
             addSign(bean,'THE BEAN',44,10,34,'#e8e6de');
           } else {
-            const parkLabel = {devlin:'INDIAN BOUNDARY PARK',westside:'CICERO GREEN',hub:'MILLENNIUM PARK'}[distId];
+            const parkLabel = ({devlin:'INDIAN BOUNDARY PARK',westside:'CICERO GREEN',hub:'MILLENNIUM PARK'} as Record<string,string>)[distId] ?? '';
             addSign(grass,parkLabel,44,9,4,'#a8d0a8');
           }
         } else if(f.kind==='lot'){
@@ -2527,7 +2549,7 @@ import { stockMarket } from '../config/stockMarket';
   }
 
   // LEGAL: Legacy alias — now delegates to buildCityScene
-  function buildDistrictScene(districtId){
+  function buildDistrictScene(districtId: string){
     buildCityScene(); return;
     clearGroup(worldGroup);
     const theme = districtThemes[districtId];
@@ -2556,7 +2578,7 @@ import { stockMarket } from '../config/stockMarket';
     });
 
     serviceBuildings.filter(function(m){return m.district===districtId;}).forEach(function(m){
-      const palette = { bankHome:'#7a5f1a', garage:'#3e6b78', realty:'#3e6b78', cityhall:'#7a5f1a', heist:'#5a2a33' };
+      const palette: Record<string, string> = { bankHome:'#7a5f1a', garage:'#3e6b78', realty:'#3e6b78', cityhall:'#7a5f1a', heist:'#5a2a33' };
       const mesh = box(58,34,50, palette[m.kind]);
       mesh.position.set(m.x,17,m.y); worldGroup.add(mesh);
       addSign(mesh, m.name, 40, 9, 26, '#ffe6a0');
@@ -2579,7 +2601,7 @@ import { stockMarket } from '../config/stockMarket';
       addSign(pole, m.name, 30, 8, 22, '#f0efe8');
     });
 
-    function addPerson(m, color){
+    function addPerson(m: any, color: number | string){
       const g = buildPedestrianModel(color);
       g.position.set(m.x,0,m.y); worldGroup.add(g);
       addSign(g, m.type==='named' ? m.name : (m.name||'?'), 28, 7, 34, '#f0efe8');
@@ -2664,7 +2686,7 @@ import { stockMarket } from '../config/stockMarket';
       worldGroup.add(parkedCarMesh);
     }
   }
-  function computeRoadGuide(px, py, wx, wy){
+  function computeRoadGuide(px: number, py: number, wx: number, wy: number){
     // LEGAL: Simple road-snapped guide: approach nearest horizontal road, traverse to WP X, then descend to WP
     const nearestRoad = roadNetwork.horizontal.reduce(function(best,r){ return Math.abs(r.y-py)<Math.abs(best.y-py)?r:best; }, roadNetwork.horizontal[0]);
     const ry = nearestRoad.y;
@@ -2736,19 +2758,19 @@ import { stockMarket } from '../config/stockMarket';
   initScene();
 
   // LEGAL: ================= MINIMAP (simple 2D, pannable, waypoints) =================
-  const minimapCanvas = byId('minimap-canvas');
-  const mctx = minimapCanvas.getContext('2d');
+  const minimapCanvas = byId<HTMLCanvasElement>('minimap-canvas');
+  const mctx = minimapCanvas.getContext('2d')!;
   const minimapPan = { x:0, y:0 };
   // LEGAL: Scale tuned for 5500-wide world so minimap shows local neighbourhood
   const MINIMAP_SCALE = 150/600;
-  let minimapDragging=false, minimapDragStart=null, minimapDragMoved=false;
+  let minimapDragging=false, minimapDragStart: { clientX: number; clientY: number; panX: number; panY: number } | null =null, minimapDragMoved=false;
 
   minimapCanvas.addEventListener('mousedown', function(e){
     minimapDragging = true; minimapDragMoved = false;
     minimapDragStart = { clientX:e.clientX, clientY:e.clientY, panX:minimapPan.x, panY:minimapPan.y };
   });
   window.addEventListener('mousemove', function(e){
-    if(!minimapDragging) return;
+    if(!minimapDragging || !minimapDragStart) return;
     const ddx = e.clientX - minimapDragStart.clientX, ddy = e.clientY - minimapDragStart.clientY;
     if(Math.abs(ddx)>3 || Math.abs(ddy)>3) minimapDragMoved = true;
     minimapPan.x = minimapDragStart.panX - ddx/MINIMAP_SCALE;
@@ -2784,11 +2806,11 @@ import { stockMarket } from '../config/stockMarket';
       return;
     }
     const centerX = player.x + minimapPan.x, centerY = player.y + minimapPan.y;
-    const proj = function(wx,wy){ return { x:75+(wx-centerX)*MINIMAP_SCALE, y:75+(wy-centerY)*MINIMAP_SCALE }; };
+    const proj = function(wx: number, wy: number){ return { x:75+(wx-centerX)*MINIMAP_SCALE, y:75+(wy-centerY)*MINIMAP_SCALE }; };
     mctx.strokeStyle='rgba(120,120,135,0.4)'; mctx.lineWidth=3;
     roadNetwork.vertical.forEach(function(r){ const p1=proj(r.x,0), p2=proj(r.x,WORLD_H); mctx.beginPath(); mctx.moveTo(p1.x,p1.y); mctx.lineTo(p2.x,p2.y); mctx.stroke(); });
     roadNetwork.horizontal.forEach(function(r){ const p1=proj(0,r.y), p2=proj(WORLD_W,r.y); mctx.beginPath(); mctx.moveTo(p1.x,p1.y); mctx.lineTo(p2.x,p2.y); mctx.stroke(); });
-    const dot = function(wx,wy,color,size){ const p=proj(wx,wy); if(p.x<-6||p.x>156||p.y<-6||p.y>156) return; mctx.beginPath(); mctx.arc(p.x,p.y,size,0,Math.PI*2); mctx.fillStyle=color; mctx.fill(); };
+    const dot = function(wx: number, wy: number, color: string, size: number){ const p=proj(wx,wy); if(p.x<-6||p.x>156||p.y<-6||p.y>156) return; mctx.beginPath(); mctx.arc(p.x,p.y,size,0,Math.PI*2); mctx.fillStyle=color; mctx.fill(); };
     mapBuildings.filter(inDistrict).forEach(function(m){ dot(m.x,m.y, m.biz.category==='legit'?'#3e7c8c':'#a8394a', 3); });
     serviceBuildings.filter(inDistrict).forEach(function(m){ dot(m.x,m.y,'#d4a017',3); });
     localBusinesses.filter(inDistrict).forEach(function(m){ dot(m.x,m.y,'#7a6fb0',2.5); });
@@ -2810,14 +2832,14 @@ import { stockMarket } from '../config/stockMarket';
   }
 
   // LEGAL: ================= INTERIOR (lightweight 2D scene) =================
-  const interiorCanvas = byId('interior-canvas');
-  const ictx = interiorCanvas.getContext('2d');
-  function iRoundRect(x,y,w,h,r){
+  const interiorCanvas = byId<HTMLCanvasElement>('interior-canvas');
+  const ictx = interiorCanvas.getContext('2d')!;
+  function iRoundRect(x: number, y: number, w: number, h: number, r: number){
     ictx.beginPath(); ictx.moveTo(x+r,y);
     ictx.arcTo(x+w,y,x+w,y+h,r); ictx.arcTo(x+w,y+h,x,y+h,r);
     ictx.arcTo(x,y+h,x,y,r); ictx.arcTo(x,y,x+w,y,r); ictx.closePath();
   }
-  function iLabelChip(text,x,y){
+  function iLabelChip(text: string, x: number, y: number){
     ictx.font='9px IBM Plex Mono, monospace';
     const w = ictx.measureText(text).width+8;
     ictx.fillStyle='rgba(10,11,16,0.6)'; iRoundRect(x-w/2,y-8,w,14,4); ictx.fill();
@@ -2907,7 +2929,7 @@ import { stockMarket } from '../config/stockMarket';
       let label = '';
       if(near.type==='door') label='Exit';
       else if(near.type==='hotspot') label=near.ref.label;
-      else if(near.type==='car') label='Enter ' + (getEquippedCar()?getEquippedCar().name:'car');
+      else if(near.type==='car'){ const eq=getEquippedCar(); label='Enter ' + (eq?eq.name:'car'); }
       else if(near.type==='building') label=near.ref.biz.name;
       else if(near.type==='service') label=near.ref.name;
       else if(near.type==='local') label=near.ref.name;
@@ -2918,7 +2940,7 @@ import { stockMarket } from '../config/stockMarket';
     } else if(state.inVehicle){
       hintEl.textContent = 'Press E to park and get out';
     } else {
-      hintEl.textContent = state.currentInterior ? ('Inside ' + state.currentInterior.name) : ('Driving around ' + districts.find(function(d){return d.id===state.currentDistrict;}).name);
+      hintEl.textContent = state.currentInterior ? ('Inside ' + state.currentInterior.name) : ('Driving around ' + districts.find(function(d){return d.id===state.currentDistrict;})!.name);
     }
 
     requestAnimationFrame(mapHub);
@@ -2926,29 +2948,32 @@ import { stockMarket } from '../config/stockMarket';
 
   // LEGAL: ================= SETTINGS =================
   byId('quiet-toggle').addEventListener('change', function(e){
-    document.body.classList.toggle('quiet', e.target.checked);
+    const t = e.target as HTMLInputElement;
+    document.body.classList.toggle('quiet', t.checked);
     scheduleSave();
   });
   byId('theme-toggle').addEventListener('change', function(e){
-    if(e.target.checked) document.body.classList.remove('theme-delhi');
-    document.body.classList.toggle('theme-light', e.target.checked);
-    byId('delhi-theme-toggle').checked = false;
+    const t = e.target as HTMLInputElement;
+    if(t.checked) document.body.classList.remove('theme-delhi');
+    document.body.classList.toggle('theme-light', t.checked);
+    byId<HTMLInputElement>('delhi-theme-toggle').checked = false;
     scheduleSave();
   });
   byId('delhi-theme-toggle').addEventListener('change', function(e){
-    if(e.target.checked) document.body.classList.remove('theme-light');
-    document.body.classList.toggle('theme-delhi', e.target.checked);
-    byId('theme-toggle').checked = false;
+    const t = e.target as HTMLInputElement;
+    if(t.checked) document.body.classList.remove('theme-light');
+    document.body.classList.toggle('theme-delhi', t.checked);
+    byId<HTMLInputElement>('theme-toggle').checked = false;
     scheduleSave();
   });
   const storageAdapter = {
-    async set(key, value){
+    async set(key: string, value: string){
       if(window.storage && typeof window.storage.set === 'function'){
         try { await window.storage.set(key, value, false); return; } catch(e){}
       }
       try { window.localStorage.setItem(key, value); } catch(e){}
     },
-    async get(key){
+    async get(key: string){
       if(window.storage && typeof window.storage.get === 'function'){
         try {
           const res = await window.storage.get(key, false);
@@ -2957,7 +2982,7 @@ import { stockMarket } from '../config/stockMarket';
       }
       try { return window.localStorage.getItem(key); } catch(e){ return null; }
     },
-    async delete(key){
+    async delete(key: string){
       if(window.storage && typeof window.storage.delete === 'function'){
         try { await window.storage.delete(key, false); return; } catch(e){}
       }
@@ -2980,13 +3005,14 @@ import { stockMarket } from '../config/stockMarket';
     URL.revokeObjectURL(url);
     log('Game save exported to JSON file.');
   });
-  const importSaveInput = byId('import-save-input');
+  const importSaveInput = byId<HTMLInputElement>('import-save-input');
   byId('import-save-btn').addEventListener('click', function(){
     if(importSaveInput) importSaveInput.click();
   });
   if(importSaveInput){
     importSaveInput.addEventListener('change', function(e){
-      const file = (e.target && e.target.files) ? e.target.files[0] : null;
+      const t = e.target as HTMLInputElement;
+      const file = (t && t.files) ? t.files[0] : null;
       if(!file) return;
       const reader = new FileReader();
       reader.onload = async function(evt){
@@ -3057,7 +3083,7 @@ import { stockMarket } from '../config/stockMarket';
       currentNews: state.currentNews, newsQueue: state.newsQueue, nextNewsAt: state.nextNewsAt
     };
   }
-  let saveTimer = null;
+  let saveTimer: ReturnType<typeof setTimeout> | null = null;
   let lastSaveTime = 0;
   function scheduleSave(){
     const now = Date.now();
@@ -3069,7 +3095,7 @@ import { stockMarket } from '../config/stockMarket';
       saveGame(false);
     }, delay);
   }
-  async function saveGame(manual){
+  async function saveGame(manual: boolean){
     try{
       await storageAdapter.set('seat-save-v1', JSON.stringify(serializeState()));
       const stamp = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
@@ -3088,26 +3114,26 @@ import { stockMarket } from '../config/stockMarket';
         state.cash=d.cash; state.respect=d.respect; state.heat=d.heat;
         state.territoryTier=d.territoryTier; state.negotiateTier=d.negotiateTier;
         state.muscleCount=d.muscleCount; state.ratCount=d.ratCount; state.bribeOn=d.bribeOn;
-        state.prestigeCount=Math.max(0, Math.min(familyTiers.length, Number(d.prestigeCount)||0)); state.seenMilestones = new Set((d.seenMilestones||[]).map(x=>String(x)));
+        state.prestigeCount=Math.max(0, Math.min(familyTiers.length, Number(d.prestigeCount)||0)); state.seenMilestones = new Set((d.seenMilestones||[]).map((x: any)=>String(x)));
         state.playSeconds=d.playSeconds||0; state.investorPenalty=Math.min(0.5, d.investorPenalty||0);
         state.started = d.started; if(d.procNpc) state.procNpc = d.procNpc;
         if(d.lastTick) state.lastTick = d.lastTick;
-        (d.businesses||[]).forEach(sb=>{ const b=businesses.find(x=>x.id===sb.id); if(b){ b.level=sb.level; b.crew=sb.crew; b.manager=sb.manager; b.researched=sb.researched; b.reinvestedIncome=Math.max(0, Number(sb.reinvestedIncome)||0); } });
-        if(d.quiet){ document.body.classList.add('quiet'); byId('quiet-toggle').checked = true; }
-        if(d.light){ document.body.classList.add('theme-light'); byId('theme-toggle').checked = true; }
-        if(d.delhi){ document.body.classList.add('theme-delhi'); byId('delhi-theme-toggle').checked = true; }
+        (d.businesses||[]).forEach((sb: any)=>{ const b=businesses.find(x=>x.id===sb.id); if(b){ b.level=sb.level; b.crew=sb.crew; b.manager=sb.manager; b.researched=sb.researched; b.reinvestedIncome=Math.max(0, Number(sb.reinvestedIncome)||0); } });
+        if(d.quiet){ document.body.classList.add('quiet'); byId<HTMLInputElement>('quiet-toggle').checked = true; }
+        if(d.light){ document.body.classList.add('theme-light'); byId<HTMLInputElement>('theme-toggle').checked = true; }
+        if(d.delhi){ document.body.classList.add('theme-delhi'); byId<HTMLInputElement>('delhi-theme-toggle').checked = true; }
         if(state.seenMilestones.has('chaat_house')) byId('delhi-theme-row').style.display = 'flex';
         state.bank = d.bank||0; state.nextHeistAt = d.nextHeistAt||0;
         state.ownedCars = d.ownedCars||[]; state.equippedCar = d.equippedCar||null; state.ownedProperties = d.ownedProperties||[];
-        (d.localBusinesses||[]).forEach(sb=>{ const b=localBusinesses.find(x=>x.id===sb.id); if(b){ b.extorted=sb.extorted; b.nextRobAt=sb.nextRobAt; } });
+        (d.localBusinesses||[]).forEach((sb: any)=>{ const b=localBusinesses.find(x=>x.id===sb.id); if(b){ b.extorted=sb.extorted; b.nextRobAt=sb.nextRobAt; } });
         state.currentDistrict = d.currentDistrict || 'devlin'; state.product = d.product||0; state.productLevel = d.productLevel||0;
-        (d.districts||[]).forEach(sd=>{ const dist=districts.find(x=>x.id===sd.id); if(dist){ dist.control=sd.control; dist.pushCount=sd.pushCount; dist.nextPushAt=sd.nextPushAt; } });
-        (d.corners||[]).forEach(sc=>{ const c=corners.find(x=>x.id===sc.id); if(c){ c.dealer=sc.dealer; c.busted=sc.busted; c.bustCooldownAt=sc.bustCooldownAt; } });
+        (d.districts||[]).forEach((sd: any)=>{ const dist=districts.find(x=>x.id===sd.id); if(dist){ dist.control=sd.control; dist.pushCount=sd.pushCount; dist.nextPushAt=sd.nextPushAt; } });
+        (d.corners||[]).forEach((sc: any)=>{ const c=corners.find(x=>x.id===sc.id); if(c){ c.dealer=sc.dealer; c.busted=sc.busted; c.bustCooldownAt=sc.bustCooldownAt; } });
         state.influence=d.influence||0; state.influenceBuys=d.influenceBuys||0; state.electedOffice=d.electedOffice||false;
         state.campaignActive=d.campaignActive||false; state.campaignStyle=d.campaignStyle||''; state.campaignEndAt=d.campaignEndAt||0;
         state.nextCampaignAt=d.nextCampaignAt||0; state.nextWarAt=d.nextWarAt||0;
-        (d.politicians||[]).forEach(sp=>{ const p=politicians.find(x=>x.id===sp.id); if(p){ p.favor=sp.favor; p.pocketed=sp.pocketed||false; } });
-        (d.gangRecruits||[]).forEach(sg=>{ const g=gangRecruits.find(x=>x.id===sg.id); if(g) g.inducted=sg.inducted; });
+        (d.politicians||[]).forEach((sp: any)=>{ const p=politicians.find(x=>x.id===sp.id); if(p){ p.favor=sp.favor; p.pocketed=sp.pocketed||false; } });
+        (d.gangRecruits||[]).forEach((sg: any)=>{ const g=gangRecruits.find(x=>x.id===sg.id); if(g) g.inducted=sg.inducted; });
         state.inVehicle = d.inVehicle||false;
         state.waypoints = Object.assign({devlin:null,westside:null,hub:null}, d.waypoints||{});
         state.parkedCarPos = Object.assign({devlin:{x:700,y:660},westside:{x:2700,y:660},hub:{x:4700,y:660}}, d.parkedCarPos||{});
