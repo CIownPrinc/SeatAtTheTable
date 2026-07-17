@@ -84,6 +84,18 @@ export interface LocalBusiness {
   nextRobAt: number;
 }
 
+export type MapAmenityKind = 'basketball' | 'petstore' | 'shop' | 'parkgame';
+
+export interface MapAmenity {
+  id: string;
+  kind: MapAmenityKind;
+  name: string;
+  district: string;
+  x: number;
+  y: number;
+  prompt: string;
+}
+
 export interface ServiceBuilding {
   id: string;
   kind: string;

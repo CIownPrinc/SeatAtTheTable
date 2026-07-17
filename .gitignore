@@ -8,3 +8,5 @@ test-results
 playwright-report
 SeatAtTheTable/.codex-dev-server.log
 SeatAtTheTable/.codex-dev-server.err.log
+.tmp-assets
+.pnpm-store/

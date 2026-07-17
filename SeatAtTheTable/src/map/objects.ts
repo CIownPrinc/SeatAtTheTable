@@ -1,9 +1,9 @@
-import type { Corner, GangRecruit, LocalBusiness, ServiceBuilding, Solid } from '../config/types';
+import type { Corner, GangRecruit, LocalBusiness, MapAmenity, ServiceBuilding, Solid } from '../config/types';
 import type { MapBuilding, MapNpc } from './markers';
 
-export type MapObjectKind = 'building' | 'service' | 'local' | 'corner' | 'npc' | 'gangnpc';
+export type MapObjectKind = 'building' | 'service' | 'local' | 'amenity' | 'corner' | 'npc' | 'gangnpc';
 
-export type MapObjectRef = MapBuilding | ServiceBuilding | LocalBusiness | Corner | MapNpc | GangRecruit;
+export type MapObjectRef = MapBuilding | ServiceBuilding | LocalBusiness | MapAmenity | Corner | MapNpc | GangRecruit;
 
 export interface MapBounds extends Solid {}
 

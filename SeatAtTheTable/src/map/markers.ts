@@ -45,6 +45,6 @@ export function createMapBuildings(businesses: Business[]): MapBuilding[] {
 export const mapNpcs: MapNpc[] = [
   { id:'sanjay', name:'Sanjay', district:'devlin', x:1300, y:960, type:'named' },
   { id:'stranger', name:'Stranger', district:'devlin', x:150, y:960, type:'procedural' },
-  { id:'dice', name:'Dice', district:'westside', x:2750, y:400, type:'named' },
-  { id:'reyes', name:'Councilman Reyes', district:'hub', x:4600, y:720, type:'named' },
+  { id:'dice', name:'Dice', district:'westside', x:2750, y:430, type:'named' },
+  { id:'reyes', name:'Councilman Reyes', district:'hub', x:5260, y:520, type:'named' },
 ];

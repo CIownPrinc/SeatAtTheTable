@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { businesses } from '../config/ventures';
+import { amenityHasSolidFootprint, mapAmenities } from './amenities';
 import { buildableBands, localXForDistrict, rectsOverlap, rotatedHalfExtents } from './layout';
 import { createMapBuildings } from './markers';
 import { actorRadius, canMoveTo, isWaterBlocked } from './movement';
@@ -152,5 +153,13 @@ describe('map layout helpers', function () {
     expect(canMoveTo(18, 600, [], true)).toBe(false);
     expect(canMoveTo(245, 200, solids, true)).toBe(true);
     expect(canMoveTo(243, 200, solids, true)).toBe(false);
+  });
+
+  it('keeps open-space amenities walkable while storefront amenities have collision', function () {
+    const solidKinds = new Set(mapAmenities.filter(a=>amenityHasSolidFootprint(a.kind)).map(a=>a.kind));
+    const walkableKinds = new Set(mapAmenities.filter(a=>!amenityHasSolidFootprint(a.kind)).map(a=>a.kind));
+
+    expect(solidKinds).toEqual(new Set(['petstore', 'shop']));
+    expect(walkableKinds).toEqual(new Set(['basketball', 'parkgame']));
   });
 });
