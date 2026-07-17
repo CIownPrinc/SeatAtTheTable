@@ -10,6 +10,7 @@ import { politicians } from '../config/politics';
 import { gangRecruits } from '../config/gang';
 import { npcFirstNames, npcLastNames, npcDispositions } from '../config/npcs';
 import { stockMarket } from '../config/stockMarket';
+import type { GameState } from '../config/types';
 
   const eventPool = [
     { id:'rival', title:'A RIVAL CREW EYES YOUR CORNER', neg:true, body:"<p class='flavor'>Word is a West Side crew thinks your runners are working streets that belong to them.</p>", choices:[
@@ -351,11 +352,11 @@ import { stockMarket } from '../config/stockMarket';
   // LEGAL: ================= STOCK MARKET =================
 
   // LEGAL: ================= STATE =================
-  const state = {
+  const state: GameState = {
     cash: 47, respect: 0, heat: 0,
     territoryTier: 0, negotiateTier: 0,
     muscleCount: 0, ratCount: 0, bribeOn: false,
-    prestigeCount: 0, seenMilestones: new Set(),
+    prestigeCount: 0, seenMilestones: new Set<string>(),
     started: false, lastTick: Date.now(), nextEventAt: 110 + Math.random()*60,
     playSeconds: 0, investorPenalty: 0,
     procNpc: generateNPC(),
@@ -369,6 +370,7 @@ import { stockMarket } from '../config/stockMarket';
     campaignActive: false, campaignEndAt: 0, campaignStyle: '',
     portfolio: {}, marketPrices: {}, marketHistory: {}, nextMarketTickAt: 0,
     financeView: 'vault', activeStock: null,
+    activeCar: null, currentNews: [], newsQueue: [], nextNewsAt: 0,
   };
 
   // LEGAL: ================= HELPERS =================
@@ -1750,7 +1752,7 @@ import { stockMarket } from '../config/stockMarket';
     byId('heat-fill').style.width = Math.min(100, state.heat) + '%';
     byId('hud-crew').textContent = `${crewUsedGlobal()} / ${crewCapGlobal()}`;
 
-    const prestigeBtn = byId('prestige-btn');
+    const prestigeBtn = byId<HTMLButtonElement>('prestige-btn');
     const threshold = 50000 * Math.pow(4, state.prestigeCount);
     const nextFamily = familyTiers[state.prestigeCount];
     if(!nextFamily){ prestigeBtn.style.display = 'none'; return; }
@@ -1779,7 +1781,7 @@ import { stockMarket } from '../config/stockMarket';
     if(rank === 'Local Boss') triggerMilestone('local_boss');
     if(rank === 'West Side Kingpin') triggerMilestone('kingpin');
 
-    const prestigeBtn = byId('prestige-btn');
+    const prestigeBtn = byId<HTMLButtonElement>('prestige-btn');
     const threshold = 50000 * Math.pow(4, state.prestigeCount);
     const nextFamily = familyTiers[state.prestigeCount];
     if(!nextFamily){ prestigeBtn.style.display = 'none'; return; }
@@ -1790,7 +1792,7 @@ import { stockMarket } from '../config/stockMarket';
     }
   }
   function refreshAffordability(){
-    document.querySelectorAll('[data-action]').forEach(btn=>{
+    document.querySelectorAll<HTMLButtonElement>('[data-action]').forEach(btn=>{
       const id = btn.getAttribute('data-id');
       const action = btn.getAttribute('data-action');
       const b = businesses.find(x=>x.id===id);
@@ -1803,13 +1805,13 @@ import { stockMarket } from '../config/stockMarket';
       } else if(action==='firecrew') btn.disabled = b.manager || b.crew<=0;
       else if(action==='hiremanager') btn.disabled = state.cash < managerCostFor(b);
     });
-    const hm=byId('hire-muscle'); if(hm) hm.disabled = state.cash<muscleCost();
-    const hr=byId('hire-rat'); if(hr) hr.disabled = !(state.cash>=ratsCashCost() && state.respect>=ratsRespectCost());
-    const bt=byId('buy-territory'); if(bt) bt.disabled = state.respect<territoryCost();
-    const bn=byId('buy-negotiate'); if(bn) bn.disabled = state.respect<negotiateCost();
-    document.querySelectorAll('[data-car-buy]').forEach(btn=>{ const c=cars.find(x=>x.id===btn.getAttribute('data-car-buy')); if(c) btn.disabled = state.cash<c.cost; });
-    document.querySelectorAll('[data-prop-buy]').forEach(btn=>{ const p=properties.find(x=>x.id===btn.getAttribute('data-prop-buy')); if(p) btn.disabled = state.cash<p.cost; });
-    const heistBtn=byId('start-heist'); if(heistBtn) heistBtn.disabled = state.playSeconds<state.nextHeistAt;
+    const hm=byId<HTMLButtonElement>('hire-muscle'); if(hm) hm.disabled = state.cash<muscleCost();
+    const hr=byId<HTMLButtonElement>('hire-rat'); if(hr) hr.disabled = !(state.cash>=ratsCashCost() && state.respect>=ratsRespectCost());
+    const bt=byId<HTMLButtonElement>('buy-territory'); if(bt) bt.disabled = state.respect<territoryCost();
+    const bn=byId<HTMLButtonElement>('buy-negotiate'); if(bn) bn.disabled = state.respect<negotiateCost();
+    document.querySelectorAll<HTMLButtonElement>('[data-car-buy]').forEach(btn=>{ const c=cars.find(x=>x.id===btn.getAttribute('data-car-buy')); if(c) btn.disabled = state.cash<c.cost; });
+    document.querySelectorAll<HTMLButtonElement>('[data-prop-buy]').forEach(btn=>{ const p=properties.find(x=>x.id===btn.getAttribute('data-prop-buy')); if(p) btn.disabled = state.cash<p.cost; });
+    const heistBtn=byId<HTMLButtonElement>('start-heist'); if(heistBtn) heistBtn.disabled = state.playSeconds<state.nextHeistAt;
     const bankedEl=byId('bank-banked-value'); if(bankedEl) bankedEl.textContent=fmt(state.bank);
     const onhandEl=byId('bank-onhand-value'); if(onhandEl) onhandEl.textContent=fmt(state.cash);
     const heistStatusEl=byId('heist-status-value');
@@ -1817,28 +1819,28 @@ import { stockMarket } from '../config/stockMarket';
       const canHeist = state.playSeconds >= state.nextHeistAt;
       heistStatusEl.textContent = canHeist ? 'Ready' : `Cooling off (${Math.max(0,Math.ceil(state.nextHeistAt-state.playSeconds))}s)`;
     }
-    const labBtn=byId('upgrade-lab'); if(labBtn) labBtn.disabled = state.cash<labCost();
-    document.querySelectorAll('[data-push]').forEach(btn=>{
+    const labBtn=byId<HTMLButtonElement>('upgrade-lab'); if(labBtn) labBtn.disabled = state.cash<labCost();
+    document.querySelectorAll<HTMLButtonElement>('[data-push]').forEach(btn=>{
       const d = districts.find(x=>x.id===btn.getAttribute('data-push'));
       if(d) btn.disabled = state.playSeconds<d.nextPushAt || state.respect<pushCost(d);
     });
-    const buyInfluenceBtn=byId('buy-influence'); if(buyInfluenceBtn) buyInfluenceBtn.disabled = state.cash<influenceCost();
-    document.querySelectorAll('[data-bribe]').forEach(btn=>{
+    const buyInfluenceBtn=byId<HTMLButtonElement>('buy-influence'); if(buyInfluenceBtn) buyInfluenceBtn.disabled = state.cash<influenceCost();
+    document.querySelectorAll<HTMLButtonElement>('[data-bribe]').forEach(btn=>{
       const p = politicians.find(x=>x.id===btn.getAttribute('data-bribe'));
       if(p) btn.disabled = state.cash<favorCost(p) || p.favor>=100;
     });
-    const campaignBtn=byId('launch-campaign');
+    const campaignBtn=byId<HTMLButtonElement>('launch-campaign');
     if(campaignBtn && !state.electedOffice) campaignBtn.disabled = !(state.influence>=100 && state.playSeconds>=state.nextCampaignAt);
-    document.querySelectorAll('[data-initiate]').forEach(btn=>{
+    document.querySelectorAll<HTMLButtonElement>('[data-initiate]').forEach(btn=>{
       const g = gangRecruits.find(x=>x.id===btn.getAttribute('data-initiate'));
       if(g) btn.disabled = state.cash<g.cost;
     });
-    const warBtn=byId('declare-war'); if(warBtn) warBtn.disabled = state.playSeconds<state.nextWarAt;
+    const warBtn=byId<HTMLButtonElement>('declare-war'); if(warBtn) warBtn.disabled = state.playSeconds<state.nextWarAt;
     refreshTerritory();
   }
   function refreshTerritory(){
     districts.forEach(d=>{
-      const bar = document.querySelector(`[data-control-bar="${d.id}"]`);
+      const bar = document.querySelector<HTMLElement>(`[data-control-bar="${d.id}"]`);
       if(bar) bar.style.width = Math.round(d.control) + '%';
       const label = document.querySelector(`[data-control-label="${d.id}"]`);
       if(label) label.textContent = `${Math.round(d.control)}% — ${districtStatus(d.id)==='yours'?'Yours':(districtStatus(d.id)==='rival'?'Rival Controlled':'Contested')}`;
@@ -2736,8 +2738,8 @@ import { stockMarket } from '../config/stockMarket';
   initScene();
 
   // LEGAL: ================= MINIMAP (simple 2D, pannable, waypoints) =================
-  const minimapCanvas = byId('minimap-canvas');
-  const mctx = minimapCanvas.getContext('2d');
+  const minimapCanvas = byId<HTMLCanvasElement>('minimap-canvas');
+  const mctx = minimapCanvas.getContext('2d')!;
   const minimapPan = { x:0, y:0 };
   // LEGAL: Scale tuned for 5500-wide world so minimap shows local neighbourhood
   const MINIMAP_SCALE = 150/600;
@@ -2810,8 +2812,8 @@ import { stockMarket } from '../config/stockMarket';
   }
 
   // LEGAL: ================= INTERIOR (lightweight 2D scene) =================
-  const interiorCanvas = byId('interior-canvas');
-  const ictx = interiorCanvas.getContext('2d');
+  const interiorCanvas = byId<HTMLCanvasElement>('interior-canvas');
+  const ictx = interiorCanvas.getContext('2d')!;
   function iRoundRect(x,y,w,h,r){
     ictx.beginPath(); ictx.moveTo(x+r,y);
     ictx.arcTo(x+w,y,x+w,y+h,r); ictx.arcTo(x+w,y+h,x,y+h,r);
@@ -2926,19 +2928,22 @@ import { stockMarket } from '../config/stockMarket';
 
   // LEGAL: ================= SETTINGS =================
   byId('quiet-toggle').addEventListener('change', function(e){
-    document.body.classList.toggle('quiet', e.target.checked);
+    const t = e.target as HTMLInputElement;
+    document.body.classList.toggle('quiet', t.checked);
     scheduleSave();
   });
   byId('theme-toggle').addEventListener('change', function(e){
-    if(e.target.checked) document.body.classList.remove('theme-delhi');
-    document.body.classList.toggle('theme-light', e.target.checked);
-    byId('delhi-theme-toggle').checked = false;
+    const t = e.target as HTMLInputElement;
+    if(t.checked) document.body.classList.remove('theme-delhi');
+    document.body.classList.toggle('theme-light', t.checked);
+    byId<HTMLInputElement>('delhi-theme-toggle').checked = false;
     scheduleSave();
   });
   byId('delhi-theme-toggle').addEventListener('change', function(e){
-    if(e.target.checked) document.body.classList.remove('theme-light');
-    document.body.classList.toggle('theme-delhi', e.target.checked);
-    byId('theme-toggle').checked = false;
+    const t = e.target as HTMLInputElement;
+    if(t.checked) document.body.classList.remove('theme-light');
+    document.body.classList.toggle('theme-delhi', t.checked);
+    byId<HTMLInputElement>('theme-toggle').checked = false;
     scheduleSave();
   });
   const storageAdapter = {
@@ -2980,13 +2985,14 @@ import { stockMarket } from '../config/stockMarket';
     URL.revokeObjectURL(url);
     log('Game save exported to JSON file.');
   });
-  const importSaveInput = byId('import-save-input');
+  const importSaveInput = byId<HTMLInputElement>('import-save-input');
   byId('import-save-btn').addEventListener('click', function(){
     if(importSaveInput) importSaveInput.click();
   });
   if(importSaveInput){
     importSaveInput.addEventListener('change', function(e){
-      const file = (e.target && e.target.files) ? e.target.files[0] : null;
+      const t = e.target as HTMLInputElement;
+      const file = (t && t.files) ? t.files[0] : null;
       if(!file) return;
       const reader = new FileReader();
       reader.onload = async function(evt){
@@ -3093,9 +3099,9 @@ import { stockMarket } from '../config/stockMarket';
         state.started = d.started; if(d.procNpc) state.procNpc = d.procNpc;
         if(d.lastTick) state.lastTick = d.lastTick;
         (d.businesses||[]).forEach(sb=>{ const b=businesses.find(x=>x.id===sb.id); if(b){ b.level=sb.level; b.crew=sb.crew; b.manager=sb.manager; b.researched=sb.researched; b.reinvestedIncome=Math.max(0, Number(sb.reinvestedIncome)||0); } });
-        if(d.quiet){ document.body.classList.add('quiet'); byId('quiet-toggle').checked = true; }
-        if(d.light){ document.body.classList.add('theme-light'); byId('theme-toggle').checked = true; }
-        if(d.delhi){ document.body.classList.add('theme-delhi'); byId('delhi-theme-toggle').checked = true; }
+        if(d.quiet){ document.body.classList.add('quiet'); byId<HTMLInputElement>('quiet-toggle').checked = true; }
+        if(d.light){ document.body.classList.add('theme-light'); byId<HTMLInputElement>('theme-toggle').checked = true; }
+        if(d.delhi){ document.body.classList.add('theme-delhi'); byId<HTMLInputElement>('delhi-theme-toggle').checked = true; }
         if(state.seenMilestones.has('chaat_house')) byId('delhi-theme-row').style.display = 'flex';
         state.bank = d.bank||0; state.nextHeistAt = d.nextHeistAt||0;
         state.ownedCars = d.ownedCars||[]; state.equippedCar = d.equippedCar||null; state.ownedProperties = d.ownedProperties||[];

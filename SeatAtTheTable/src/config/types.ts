@@ -152,3 +152,78 @@ export interface Stock {
   basePrice: number;
   vol: number;
 }
+
+export interface Point {
+  x: number;
+  y: number;
+}
+
+export interface ProceduralNPC {
+  name: string;
+  disposition: string;
+}
+
+export interface InteriorState {
+  kind: string;
+  refId: string;
+  name: string;
+  returnX: number;
+  returnY: number;
+  returnDistrict: string;
+}
+
+export interface StockPosition {
+  shares: number;
+  avgCost: number;
+}
+
+// LEGAL: Central mutable game state. Keyed maps (waypoints, parkedCarPos,
+// LEGAL: portfolio, market*) are indexed by district or stock symbol at runtime.
+export interface GameState {
+  cash: number;
+  respect: number;
+  heat: number;
+  territoryTier: number;
+  negotiateTier: number;
+  muscleCount: number;
+  ratCount: number;
+  bribeOn: boolean;
+  prestigeCount: number;
+  seenMilestones: Set<string>;
+  started: boolean;
+  lastTick: number;
+  nextEventAt: number;
+  playSeconds: number;
+  investorPenalty: number;
+  procNpc: ProceduralNPC;
+  bank: number;
+  nextHeistAt: number;
+  ownedCars: string[];
+  equippedCar: string | null;
+  ownedProperties: string[];
+  currentDistrict: string;
+  product: number;
+  productLevel: number;
+  currentInterior: InteriorState | null;
+  inVehicle: boolean;
+  waypoints: Record<string, Point | null>;
+  parkedCarPos: Record<string, Point>;
+  influence: number;
+  influenceBuys: number;
+  electedOffice: boolean;
+  nextCampaignAt: number;
+  nextWarAt: number;
+  campaignActive: boolean;
+  campaignEndAt: number;
+  campaignStyle: string;
+  portfolio: Record<string, StockPosition>;
+  marketPrices: Record<string, number>;
+  marketHistory: Record<string, number[]>;
+  nextMarketTickAt: number;
+  financeView: string;
+  activeStock: string | null;
+  activeCar: string | null;
+  currentNews: string[];
+  newsQueue: string[];
+  nextNewsAt: number;
+}
