@@ -22,6 +22,7 @@ import { drawMinimap as drawMapMinimap, MINIMAP_SCALE } from '../map/minimap';
 import type { MapObject } from '../map/objects';
 import { createBounds, nearestMapObject, solidsFromObjects } from '../map/objects';
 import { actorDisplayName, createRoamingActors, updateRoamingActors } from '../map/roaming';
+import { buildBaseGround, buildCanalBridges, buildCanalWater, buildRoadNetwork } from '../map/sceneBuilding';
 import { DISTRICT_OFFSETS, VIEW_H, VIEW_W, WORLD_H, WORLD_W, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { renderZoneType } from '../map/zoning';
 import type * as ThreeNamespace from 'three';
@@ -2280,29 +2281,36 @@ import type * as ThreeNamespace from 'three';
     sprite.scale.set(w * 4, h * 2, 1); sprite.position.y = y;
     parent.add(sprite);
   }
-  function buildPedestrianModel(color: number | string){
-    const asset = mapAssets?.createFittedModel(assetKeyForPedestrian(color), 15, 38, 15);
-    if(asset) return asset;
+  function appearanceForPerson(id: string, baseColor: number | string): { coat: string | number; shirt: string; skin: string; hair: string; pants: string; scaleY: number; scaleX: number } {
+    const variant = variantForId(id);
+    const skin = ['#d9b48f','#b98663','#8f5f43','#e0c0a0','#c79870'][Math.floor(variant * 5) % 5];
+    const hair = ['#24211f','#3a2618','#111217','#5a4637','#d0c0a0'][Math.floor(variant * 17) % 5];
+    const shirt = ['#232734','#35445a','#3f2f45','#2f4a3a','#5a3f2f','#4a3240'][Math.floor(variant * 23) % 6];
+    const pants = ['#1d2028','#202c35','#2e2b28','#273126','#2a2635'][Math.floor(variant * 29) % 5];
+    return { coat:baseColor || '#e8e6de', shirt, skin, hair, pants, scaleY:0.92 + variant * 0.18, scaleX:0.9 + ((variant * 7) % 1) * 0.16 };
+  }
+  function buildPedestrianModel(color: number | string, identity = 'person'){
+    const look = appearanceForPerson(identity, color);
     const g = new THREE.Group();
-    const coat = new THREE.Mesh(new THREE.CylinderGeometry(5.5,7.5,18,8), new THREE.MeshStandardMaterial({color: color||'#e8e6de', roughness:0.72}));
+    const coat = new THREE.Mesh(new THREE.CylinderGeometry(5.5*look.scaleX,7.5*look.scaleX,18*look.scaleY,8), new THREE.MeshStandardMaterial({color: look.coat, roughness:0.72}));
     coat.position.y = 16; coat.castShadow=true; g.add(coat);
-    const shirt = new THREE.Mesh(new THREE.BoxGeometry(8,9,4), new THREE.MeshStandardMaterial({color:'#232734', roughness:0.8}));
+    const shirt = new THREE.Mesh(new THREE.BoxGeometry(8*look.scaleX,9,4), new THREE.MeshStandardMaterial({color:look.shirt, roughness:0.8}));
     shirt.position.set(0,18,3.8); shirt.castShadow=true; g.add(shirt);
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(2.4,2.6,3,8), new THREE.MeshStandardMaterial({color:'#c99774'}));
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(2.4,2.6,3,8), new THREE.MeshStandardMaterial({color:look.skin}));
     neck.position.y = 27; neck.castShadow=true; g.add(neck);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(6.2,12,10), new THREE.MeshStandardMaterial({color:'#d9b48f', roughness:0.65}));
+    const head = new THREE.Mesh(new THREE.SphereGeometry(6.2*look.scaleX,12,10), new THREE.MeshStandardMaterial({color:look.skin, roughness:0.65}));
     head.position.y = 32; head.castShadow=true; g.add(head);
-    const hair = new THREE.Mesh(new THREE.SphereGeometry(6.4,12,8,0,Math.PI*2,0,Math.PI*0.48), new THREE.MeshStandardMaterial({color:'#24211f', roughness:0.9}));
+    const hair = new THREE.Mesh(new THREE.SphereGeometry(6.4*look.scaleX,12,8,0,Math.PI*2,0,Math.PI*0.48), new THREE.MeshStandardMaterial({color:look.hair, roughness:0.9}));
     hair.rotation.x = Math.PI; hair.position.y = 35.2; hair.castShadow=true; g.add(hair);
-    const nose = new THREE.Mesh(new THREE.ConeGeometry(1.8,4.5,6), new THREE.MeshStandardMaterial({color:'#c99774'}));
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(1.8,4.5,6), new THREE.MeshStandardMaterial({color:look.skin}));
     nose.rotation.x = Math.PI/2; nose.position.set(0,31.4,6.2); g.add(nose);
-    const armMat = new THREE.MeshStandardMaterial({color: color||'#e8e6de', roughness:0.76});
+    const armMat = new THREE.MeshStandardMaterial({color: look.coat, roughness:0.76});
     [-1,1].forEach(function(side){
       const arm = new THREE.Mesh(new THREE.CapsuleGeometry(1.8,13,4,6), armMat);
       arm.position.set(side*7.1,17,0.5); arm.rotation.z = side*0.2; arm.castShadow=true; g.add(arm);
-      const hand = new THREE.Mesh(new THREE.SphereGeometry(2.1,8,6), new THREE.MeshStandardMaterial({color:'#d9b48f'}));
+      const hand = new THREE.Mesh(new THREE.SphereGeometry(2.1,8,6), new THREE.MeshStandardMaterial({color:look.skin}));
       hand.position.set(side*7.7,9.5,0.9); hand.castShadow=true; g.add(hand);
-      const leg = new THREE.Mesh(new THREE.CapsuleGeometry(2.1,12,4,6), new THREE.MeshStandardMaterial({color:'#1d2028', roughness:0.82}));
+      const leg = new THREE.Mesh(new THREE.CapsuleGeometry(2.1,12,4,6), new THREE.MeshStandardMaterial({color:look.pants, roughness:0.82}));
       leg.position.set(side*2.8,5.5,0); leg.castShadow=true; g.add(leg);
       const shoe = new THREE.Mesh(new THREE.BoxGeometry(5,2,8), new THREE.MeshStandardMaterial({color:'#111217', roughness:0.8}));
       shoe.position.set(side*2.8,1.1,2.2); shoe.castShadow=true; g.add(shoe);
@@ -2310,8 +2318,6 @@ import type * as ThreeNamespace from 'three';
     return g;
   }
   function buildCarModel(car: Car){
-    const asset = mapAssets?.createFittedModel(assetKeyForCar(car), car.len * 1.6, 32, car.wid * 1.6);
-    if(asset) return asset;
     const g = new THREE.Group();
     const bodyH = car.id==='escalade'?18:(car.id==='bentley'?16:14);
     const body = box(car.len, bodyH, car.wid, car.color);
@@ -2436,23 +2442,6 @@ import type * as ThreeNamespace from 'three';
     if(zoneType==='commercial' || zoneType==='shop') return variant > 0.5 ? 'commercialAwning' : 'commercialWide';
     if(zoneType==='residential') return variant > 0.5 ? 'houseB' : 'houseA';
     return null;
-  }
-  function assetKeyForPedestrian(color: number | string): MapAssetKey {
-    if(color === '#d4a017') return 'characterK';
-    if(color === '#5f6275') return 'characterN';
-    if(color === '#7a6fb0') return 'characterH';
-    if(color === '#f0efe8') return 'characterA';
-    return variantForId(String(color)) > 0.5 ? 'characterC' : 'characterE';
-  }
-  function assetKeyForCar(car: Car): MapAssetKey {
-    if(car.id==='bentley') return 'carLuxurySuv';
-    if(car.id==='escalade') return 'carSuv';
-    if(car.id==='impala') return 'carSport';
-    if(car.id.includes('cab')) return 'carTaxi';
-    if(car.id.includes('cruiser')) return 'carPolice';
-    if(car.id.includes('delivery')) return 'carDelivery';
-    if(car.id.includes('van')) return 'carVan';
-    return 'carSedan';
   }
   function addVentureDetail(m: typeof mapBuildings[number], base: ThreeNamespace.Group){
     if(m.id==='cart'){
@@ -2679,69 +2668,12 @@ import type * as ThreeNamespace from 'three';
     clearGroup(worldGroup);
     streetLights = [];
 
-    // LEGAL: Base ground plane — full city footprint
-    const groundBase = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W,WORLD_H), new THREE.MeshStandardMaterial({color:'#303438', roughness:1}));
-    groundBase.rotation.x=-Math.PI/2; groundBase.position.set(WORLD_W/2,0,WORLD_H/2); groundBase.receiveShadow=true; worldGroup.add(groundBase);
-
-    // LEGAL: District ground tints
-    [{x0:0,x1:1500,color:'#39453d'},{x0:2000,x1:3500,color:'#443838'},{x0:4000,x1:5500,color:'#403c2c'}].forEach(function(dg){
-      const w=dg.x1-dg.x0;
-      const tint = new THREE.Mesh(new THREE.PlaneGeometry(w,WORLD_H), new THREE.MeshStandardMaterial({color:dg.color, roughness:1}));
-      tint.rotation.x=-Math.PI/2; tint.position.set(dg.x0+w/2,0.01,WORLD_H/2); tint.receiveShadow=true; worldGroup.add(tint);
-    });
-
-    // LEGAL: Canal water strips (X:1500-2000 and X:3500-4000)
-    const canalMat = new THREE.MeshStandardMaterial({color:'#1c3a52', roughness:0.2, metalness:0.4});
-    [[1500,500],[3500,500]].forEach(function(pair){
-      const cx=pair[0], cw=pair[1];
-      const canal = new THREE.Mesh(new THREE.PlaneGeometry(cw,WORLD_H), canalMat);
-      canal.rotation.x=-Math.PI/2; canal.position.set(cx+cw/2,0.04,WORLD_H/2); worldGroup.add(canal);
-    });
-
-    // LEGAL: Road hierarchy — horizontal arterials (which also carry the canal
-    // LEGAL: bridges) render wide with a dashed centre line; verticals render as
-    // LEGAL: narrower side-streets. roadNetwork data (widths used by bridges and the
-    // LEGAL: waypoint router) is unchanged — this only affects how roads are drawn,
-    // LEGAL: giving the grid a legible main-road / side-street read instead of a
-    // LEGAL: uniform lattice.
-    const roadMat = new THREE.MeshStandardMaterial({color:'#454a54', roughness:0.9});
-    const laneMat = new THREE.MeshStandardMaterial({color:'#c9b45a', roughness:0.6, emissive:'#4a4020', emissiveIntensity:0.15});
-    roadNetwork.vertical.forEach(function(r){
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(62,WORLD_H), roadMat);
-      m.rotation.x=-Math.PI/2; m.position.set(r.x,0.05,WORLD_H/2); m.receiveShadow=true; worldGroup.add(m);
-    });
-    roadNetwork.horizontal.forEach(function(r){
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W,80), roadMat);
-      m.rotation.x=-Math.PI/2; m.position.set(WORLD_W/2,0.05,r.y); m.receiveShadow=true; worldGroup.add(m);
-      for(let lx=40; lx<WORLD_W; lx+=94){
-        const dash = new THREE.Mesh(new THREE.PlaneGeometry(48,3), laneMat);
-        dash.rotation.x=-Math.PI/2; dash.position.set(lx,0.07,r.y); worldGroup.add(dash);
-      }
-    });
-    roadNetwork.vertical.forEach(function(v, vi){
-      roadNetwork.horizontal.forEach(function(h, hi){
-        buildIntersectionFurniture(v.x, h.y, vi * roadNetwork.horizontal.length + hi);
-      });
-    });
+    const baseScene = { THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H };
+    buildBaseGround(baseScene);
+    buildCanalWater(baseScene);
+    buildRoadNetwork({ ...baseScene, roadNetwork, buildIntersectionFurniture });
     buildStreetTrees();
-
-    // LEGAL: Bridge railings over the two canals
-    const deckMat = new THREE.MeshStandardMaterial({color:'#3a3d47', roughness:0.7});
-    const railMat = new THREE.MeshStandardMaterial({color:'#555a68', roughness:0.6});
-    [[1500,500],[3500,500]].forEach(function(pair){
-      const cx=pair[0], cw=pair[1];
-      [300,600,900].forEach(function(ry){
-        const deck = new THREE.Mesh(new THREE.BoxGeometry(cw,4,74), deckMat);
-        deck.position.set(cx+cw/2,2,ry); worldGroup.add(deck);
-        for(let rx=cx+30; rx<cx+cw-20; rx+=60){
-          const p1 = new THREE.Mesh(new THREE.BoxGeometry(4,18,4), railMat);
-          p1.position.set(rx,10,ry-33); worldGroup.add(p1);
-          const p2 = new THREE.Mesh(new THREE.BoxGeometry(4,18,4), railMat);
-          p2.position.set(rx,10,ry+33); worldGroup.add(p2);
-        }
-      });
-    });
-
+    buildCanalBridges(baseScene);
     // LEGAL: Venture buildings — all districts
     mapObjects.filter(o=>o.kind==='building').forEach(function(object){
       const m = object.ref as typeof mapBuildings[number];
@@ -2801,7 +2733,7 @@ import type * as ThreeNamespace from 'three';
         actor.group = car;
         return;
       }
-      const g = buildPedestrianModel(actor.object?.kind === 'gangnpc' && (actor.object.ref as GangRecruit).inducted ? '#d4a017' : actor.color);
+      const g = buildPedestrianModel(actor.object?.kind === 'gangnpc' && (actor.object.ref as GangRecruit).inducted ? '#d4a017' : actor.color, actor.id);
       g.position.set(actor.x,0,actor.y);
       g.rotation.y = -actor.facing + Math.PI / 2;
       worldGroup.add(g);
@@ -2919,7 +2851,7 @@ import type * as ThreeNamespace from 'three';
     if(!mapSceneReady) return;
     clearGroup(playerGroup);
     if(state.inVehicle){ const car=getEquippedCar(); if(car) playerGroup.add(buildCarModel(car)); }
-    else playerGroup.add(buildPedestrianModel('#f0efe8'));
+    else playerGroup.add(buildPedestrianModel('#f0efe8', 'arjun'));
   }
   // LEGAL: Where a freshly-bought (never-parked) car sits — just off the district
   // LEGAL: spawn so the player has to step over to it rather than start on top of it.
