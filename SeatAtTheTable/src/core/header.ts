@@ -25,7 +25,7 @@ import { createBounds, nearestMapObject, solidsFromObjects } from '../map/object
 import { actorDisplayName, createRoamingActors, updateRoamingActors } from '../map/roaming';
 import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, buildLandmarks, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
 import { buildIntersectionFurniture as buildMapIntersectionFurniture } from '../map/streetFurniture';
-import { DISTRICT_OFFSETS, VIEW_H, VIEW_W, WORLD_H, WORLD_W, landmarks, roadNetwork, spawnPoints } from '../map/world';
+import { DISTRICT_OFFSETS, DISTRICT_W, VIEW_H, VIEW_W, WORLD_H, WORLD_W, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { renderZoneType } from '../map/zoning';
 import type * as ThreeNamespace from 'three';
 
@@ -2334,11 +2334,13 @@ import type * as ThreeNamespace from 'three';
       fill.classList.toggle('critical', t >= 4);
     }
     const label = byIdOrNull('wanted-label');
-    if(label){ label.textContent = crackdownActive() ? info.label + ' · SWEEP' : info.label; label.style.color = info.color; }
+    if(label){ label.textContent = `${info.label} · ${Math.round(state.heat)}%` + (crackdownActive() ? ' · SWEEP' : ''); label.style.color = info.color; }
     const invRow = byIdOrNull('inv-row');
     if(invRow) invRow.style.display = state.investigation > 2 ? 'flex' : 'none';
     const invFill = byIdOrNull('inv-fill');
     if(invFill) invFill.style.width = Math.min(100, state.investigation) + '%';
+    const invTag = byIdOrNull('inv-tag');
+    if(invTag) invTag.textContent = `FED. CASE ${Math.round(state.investigation)}%`;
   }
 
   function refreshHUD(){
@@ -2538,26 +2540,27 @@ import type * as ThreeNamespace from 'three';
   function buildMapObjects(): MapObject[] {
     return [
       ...mapBuildings.map(function(m): MapObject<'building', typeof m> {
-        return { kind:'building', id:m.id, district:m.district, x:m.x, y:m.y, bounds:ventureBounds(m), interactRadius:46, minimapColor:m.biz.category==='legit'?'#3e7c8c':'#a8394a', minimapSize:3, ref:m };
+        const legit = m.biz.category==='legit';
+        return { kind:'building', id:m.id, district:m.district, x:m.x, y:m.y, bounds:ventureBounds(m), interactRadius:46, minimapColor:legit?'#3e7c8c':'#a8394a', minimapSize:3, minimapIcon:legit?'legal':'illegal', ref:m };
       }),
       ...serviceBuildings.map(function(m): MapObject<'service', ServiceBuilding> {
-        return { kind:'service', id:m.id, district:m.district, x:m.x, y:m.y, bounds:createBounds(m.x,m.y,35,31), interactRadius:46, minimapColor:'#d4a017', minimapSize:3, ref:m };
+        return { kind:'service', id:m.id, district:m.district, x:m.x, y:m.y, bounds:createBounds(m.x,m.y,35,31), interactRadius:46, minimapColor:'#d4a017', minimapSize:3, minimapIcon:'service', ref:m };
       }),
       ...localBusinesses.map(function(m): MapObject<'local', LocalBusiness> {
-        return { kind:'local', id:m.id, district:m.district, x:m.x, y:m.y, bounds:createBounds(m.x,m.y,27,24), interactRadius:46, minimapColor:'#7a6fb0', minimapSize:2.5, ref:m };
+        return { kind:'local', id:m.id, district:m.district, x:m.x, y:m.y, bounds:createBounds(m.x,m.y,27,24), interactRadius:46, minimapColor:'#7a6fb0', minimapSize:2.5, minimapIcon:'home', ref:m };
       }),
       ...mapAmenities.map(function(m): MapObject<'amenity', typeof m> {
         const bounds = amenityHasSolidFootprint(m.kind) ? createBounds(m.x,m.y,27,24) : undefined;
-        return { kind:'amenity', id:m.id, district:m.district, x:m.x, y:m.y, bounds, interactRadius:52, minimapColor:m.kind==='basketball'?'#d47a2a':'#5fbf8f', minimapSize:2.5, ref:m };
+        return { kind:'amenity', id:m.id, district:m.district, x:m.x, y:m.y, bounds, interactRadius:52, minimapColor:m.kind==='basketball'?'#d47a2a':'#5fbf8f', minimapSize:2.5, minimapIcon:'amenity', ref:m };
       }),
       ...corners.map(function(m): MapObject<'corner', Corner> {
-        return { kind:'corner', id:m.id, district:m.district, x:m.x, y:m.y, interactRadius:46, minimapColor:m.busted?'#5f6275':(m.dealer?'#d4a017':'#a8394a'), minimapSize:2, ref:m };
+        return { kind:'corner', id:m.id, district:m.district, x:m.x, y:m.y, interactRadius:46, minimapColor:m.busted?'#5f6275':(m.dealer?'#d4a017':'#a8394a'), minimapSize:2, minimapIcon:'corner', ref:m };
       }),
       ...mapNpcs.map(function(m): MapObject<'npc', typeof m> {
-        return { kind:'npc', id:m.id, district:m.district, x:m.x, y:m.y, interactRadius:46, minimapColor:'#f0efe8', minimapSize:2, ref:m };
+        return { kind:'npc', id:m.id, district:m.district, x:m.x, y:m.y, interactRadius:46, minimapColor:'#f0efe8', minimapSize:2, minimapIcon:'person', ref:m };
       }),
       ...gangRecruits.map(function(m): MapObject<'gangnpc', GangRecruit> {
-        return { kind:'gangnpc', id:m.id, district:m.district, x:m.x, y:m.y, interactRadius:46, minimapColor:'#f0efe8', minimapSize:2, ref:m };
+        return { kind:'gangnpc', id:m.id, district:m.district, x:m.x, y:m.y, interactRadius:46, minimapColor:'#f0efe8', minimapSize:2, minimapIcon:'gang', ref:m };
       }),
     ];
   }
@@ -3385,7 +3388,78 @@ import type * as ThreeNamespace from 'three';
       landmarks,
       waypoint:state.waypoints[state.currentDistrict],
     });
+    if(cityMapOpen) drawCityMap();
   }
+
+  // LEGAL: ================= CITY MAP (full-world overlay, GTA-style) =================
+  const cityMapCanvas = byId<HTMLCanvasElement>('citymap-canvas');
+  const cityCtx = cityMapCanvas.getContext('2d')!;
+  const CITY_W = cityMapCanvas.width, CITY_H = cityMapCanvas.height;
+  const cityScale = Math.min(CITY_W/WORLD_W, CITY_H/WORLD_H);
+  const cityCenter = { x:WORLD_W/2, y:WORLD_H/2 };
+  let cityMapOpen = false;
+
+  const cityLegend: Array<{ icon: string; label: string; color: string }> = [
+    { icon:'legal',    label:'Your legal business',     color:'#3e7c8c' },
+    { icon:'illegal',  label:'Illegal venture',         color:'#a8394a' },
+    { icon:'corner',   label:'Corner (staffed / open)', color:'#d4a017' },
+    { icon:'home',     label:'Local shop / home',       color:'#7a6fb0' },
+    { icon:'service',  label:'City service',            color:'#d4a017' },
+    { icon:'amenity',  label:'Amenity (courts, shops)', color:'#5fbf8f' },
+    { icon:'person',   label:'Person',                  color:'#f0efe8' },
+    { icon:'gang',     label:'Gang recruit',            color:'#f0efe8' },
+    { icon:'landmark', label:'Landmark',                color:'#e0c860' },
+    { icon:'you',      label:'You',                     color:'#e8e6de' },
+    { icon:'waypoint', label:'Waypoint',                color:'#d4a017' },
+  ];
+  function districtAtWorldX(wx: number): string {
+    let best = 'devlin', bestDist = Infinity;
+    Object.keys(DISTRICT_OFFSETS).forEach(function(id){
+      const d = Math.abs(wx - (DISTRICT_OFFSETS[id] + DISTRICT_W/2));
+      if(d < bestDist){ bestDist = d; best = id; }
+    });
+    return best;
+  }
+  function drawCityMap(){
+    drawMapMinimap({
+      ctx:cityCtx, indoors:false, dragging:false, pan:{x:0,y:0},
+      player, mapObjects, districtOffsets:DISTRICT_OFFSETS, fillerFor, roadNetwork,
+      worldWidth:WORLD_W, worldHeight:WORLD_H, landmarks,
+      waypoint:null,
+      waypoints:[state.waypoints.devlin, state.waypoints.westside, state.waypoints.hub],
+      viewW:CITY_W, viewH:CITY_H, scale:cityScale, center:cityCenter, glyphScale:1.9,
+      districtNames:[{ x:DISTRICT_W/2, name:'Devlin' }, { x:2000+DISTRICT_W/2, name:'West Side' }, { x:4000+DISTRICT_W/2, name:'The Hub' }],
+    });
+  }
+  function openCityMap(){
+    cityMapOpen = true;
+    const el = byIdOrNull('citymap-legend');
+    if(el) el.innerHTML = `<div class="citymap-legend-title">Legend</div>` + cityLegend.map(function(item){
+      return `<div class="citymap-legend-row"><span class="lg-ico lg-${item.icon}" style="--c:${item.color}"></span>${item.label}</div>`;
+    }).join('');
+    byId('citymap-overlay').classList.remove('hidden');
+    drawCityMap();
+  }
+  function closeCityMap(){ cityMapOpen = false; byId('citymap-overlay').classList.add('hidden'); }
+  byId('citymap-open').addEventListener('click', openCityMap);
+  byId('citymap-close').addEventListener('click', closeCityMap);
+  byId('citymap-overlay').addEventListener('click', function(e){ if(e.target === this) closeCityMap(); });
+  cityMapCanvas.addEventListener('click', function(e){
+    if(state.currentInterior) return;
+    const rect = cityMapCanvas.getBoundingClientRect();
+    const px = (e.clientX-rect.left) * (CITY_W/rect.width);
+    const py = (e.clientY-rect.top) * (CITY_H/rect.height);
+    const wx = Math.max(0, Math.min(WORLD_W, cityCenter.x + (px-CITY_W/2)/cityScale));
+    const wy = Math.max(0, Math.min(WORLD_H, cityCenter.y + (py-CITY_H/2)/cityScale));
+    const dist = districtAtWorldX(wx);
+    state.waypoints[dist] = { x:wx, y:wy };
+    rebuildWaypointBeacon();
+    byId('minimap-clear').classList.add('show');
+    if(dist !== state.currentDistrict) log(`📍 Waypoint set in ${districtDisplayName(dist)} — head there to follow it.`);
+    drawCityMap();
+    scheduleSave();
+  });
+
   // LEGAL: ================= INTERIOR (lightweight 2D scene) =================
   const interiorCanvas = byId<HTMLCanvasElement>('interior-canvas');
   const ictx = interiorCanvas.getContext('2d')!;
@@ -3834,11 +3908,12 @@ import type * as ThreeNamespace from 'three';
       d.control = Math.max(0, Math.min(100, d.control + drift.netDrift*dt));
     });
 
-    // LEGAL: Heat settles toward a level set by current activity: a proportional
-    // LEGAL: cooldown means light rackets plateau COLD/NOTICED while a heavy, sprawling
-    // LEGAL: operation pins hot. Heat no longer just marches uniformly to a cliff.
+    // LEGAL: Heat settles toward a level set by current activity. The cooldown grows
+    // LEGAL: with the SQUARE of current heat, giving a concave curve: even light rackets
+    // LEGAL: register (Noticed), moderate operations climb into HEAT, and only a heavy,
+    // LEGAL: sprawling operation pins the top — instead of marching uniformly to a cliff.
     const gen = heatGenPerSec();
-    const cool = 0.5 + state.heat*0.065 + (state.layingLow ? 4 : 0);
+    const cool = 0.25 + state.heat*state.heat*0.001 + (state.layingLow ? 4 : 0);
     state.heat = Math.max(0, Math.min(100, state.heat + (gen - cool) * dt));
 
     // LEGAL: Sustained HEAT/RAID tiers build the federal case; backing off cools it,

@@ -148,10 +148,15 @@ export const roadNetwork: { vertical: VerticalRoad[]; horizontal: HorizontalRoad
     { y: 600, w: 74, name: 'Roosevelt Road' },
     { y: 900, w: 74, name: 'Cermak Road' },
   ],
+  // LEGAL: Diagonals used sparingly and only WITHIN a single district: every endpoint
+  // LEGAL: is a real grid intersection (vertical x by horizontal y), so they never
+  // LEGAL: dead-end, and each route was chosen to thread between the hand-placed fixed
+  // LEGAL: buildings and to stay on the district's land (never spanning a canal).
+  // LEGAL: Devlin's grid is too dense to route one cleanly, so it has none.
   diagonal: [
-    { x1: 165, y1: 1035, x2: 1130, y2: 300, w: 54, name: 'Ridgeway Cut' },
-    { x1: 1130, y1: 900, x2: 2270, y2: 300, w: 58, name: 'Devlin Canal Cut' },
-    { x1: 2220, y1: 900, x2: 3130, y2: 300, w: 58, name: 'Canal Bend Road' },
-    { x1: 4250, y1: 900, x2: 5150, y2: 300, w: 60, name: 'Lake Shore Cut' },
+    // LEGAL: Westside: (Cicero & Cermak) -> (Canal Yard & Grand); passes empty cells at ~(2485,750) & (2915,450).
+    { x1: 2270, y1: 900, x2: 3130, y2: 300, w: 56, name: 'Canal Bend Road' },
+    // LEGAL: Hub: (Wabash & Cermak) -> (Lakefront & Roosevelt); short cut through the open ~(4915,750) block.
+    { x1: 4700, y1: 900, x2: 5130, y2: 600, w: 54, name: 'Lake Shore Cut' },
   ],
 };

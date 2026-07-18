@@ -1,5 +1,4 @@
 import type { Solid } from '../config/types';
-import { distancePointToSegment } from './layout';
 import { WORLD_H, WORLD_W, roadNetwork } from './world';
 
 export function actorRadius(inVehicle: boolean): number {
@@ -19,9 +18,10 @@ export function isWaterBlocked(x: number, y: number, radius: number): boolean {
   const inCanal1 = x > 1530 - radius && x < 1970 + radius;
   const inCanal2 = x > 3530 - radius && x < 3970 + radius;
   if(!inCanal1 && !inCanal2) return false;
+  // LEGAL: Canals are crossed ONLY on the horizontal road bridge decks. Diagonals stay
+  // LEGAL: on district land and never span water, so they can't act as water crossings.
   const onBridge = roadNetwork.horizontal.some(r => Math.abs(y - r.y) <= r.w/2 - Math.min(radius, 18));
-  const onDiagonalBridge = roadNetwork.diagonal.some(r => distancePointToSegment(x, y, r.x1, r.y1, r.x2, r.y2) <= r.w/2 - Math.min(radius, 12));
-  return !onBridge && !onDiagonalBridge;
+  return !onBridge;
 }
 
 export function canMoveTo(x: number, y: number, solids: Solid[], inVehicle: boolean): boolean {

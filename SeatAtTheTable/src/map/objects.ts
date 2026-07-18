@@ -3,6 +3,11 @@ import type { MapBuilding, MapNpc } from './markers';
 
 export type MapObjectKind = 'building' | 'service' | 'local' | 'amenity' | 'corner' | 'npc' | 'gangnpc';
 
+// LEGAL: Icon category for the minimap / city map, so each thing on the map reads with
+// LEGAL: a consistent GTA-style symbol (square = legal business, triangle = illegal
+// LEGAL: venture, house = home/local shop, etc.) explained by the on-screen legend.
+export type MinimapIcon = 'legal' | 'illegal' | 'home' | 'service' | 'amenity' | 'corner' | 'person' | 'gang';
+
 export type MapObjectRef = MapBuilding | ServiceBuilding | LocalBusiness | MapAmenity | Corner | MapNpc | GangRecruit;
 
 export interface MapBounds extends Solid {}
@@ -17,6 +22,7 @@ export interface MapObject<TKind extends MapObjectKind = MapObjectKind, TRef ext
   interactRadius: number;
   minimapColor: string;
   minimapSize: number;
+  minimapIcon?: MinimapIcon;
   ref: TRef;
 }
 

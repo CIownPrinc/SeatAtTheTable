@@ -148,10 +148,23 @@ describe('map layout helpers', function () {
     expect(isWaterBlocked(1700, 600, carRadius)).toBe(false);
   });
 
-  it('allows diagonal roads to act as bridge corridors across water', function () {
+  it('crosses canals only on horizontal bridge decks, never via diagonals over water', function () {
     const carRadius = actorRadius(true);
 
-    expect(isWaterBlocked(1775, 560, carRadius)).toBe(false);
+    // LEGAL: On the horizontal bridge deck spanning the canal: passable.
+    expect(isWaterBlocked(1775, 600, carRadius)).toBe(false);
+    // LEGAL: Between bridges, mid-canal: blocked — no diagonal jumps the water.
+    expect(isWaterBlocked(1775, 560, carRadius)).toBe(true);
+
+    // LEGAL: Structural guarantee: no diagonal road's x-span overlaps a canal channel.
+    const canals = [{ lo: 1530, hi: 1970 }, { lo: 3530, hi: 3970 }];
+    roadNetwork.diagonal.forEach(function (road) {
+      const loX = Math.min(road.x1, road.x2);
+      const hiX = Math.max(road.x1, road.x2);
+      canals.forEach(function (c) {
+        expect(hiX < c.lo || loX > c.hi).toBe(true);
+      });
+    });
   });
 
   it('uses vehicle radius for world bounds and solid collision', function () {

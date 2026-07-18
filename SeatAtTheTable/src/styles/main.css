@@ -147,9 +147,9 @@ body.quiet .card-flavor, body.quiet .pillar-desc, body.quiet .modal-body p.flavo
 .drift-breakdown{display:grid;gap:4px;margin:10px 0;padding:10px;background:rgba(255,255,255,.03);border:1px solid var(--line);}
 @keyframes pulse { from { opacity:1; box-shadow: 0 0 8px var(--red-hot); } to { opacity:0.5; box-shadow: none; } }
 .wanted-label{font-family:var(--font-display);font-weight:700;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);margin-top:3px;line-height:1;}
-.inv-row{display:none;align-items:center;gap:5px;margin-top:4px;}
-.inv-tag{font-family:var(--font-display);font-size:8px;font-weight:700;letter-spacing:0.1em;color:var(--text-dim);}
-.inv-bar{flex:1;height:5px;background:var(--bg);overflow:hidden;border:1px solid var(--line);border-radius:3px;}
+.inv-row{display:none;align-items:center;gap:6px;margin-top:5px;}
+.inv-tag{font-family:var(--font-display);font-size:8.5px;font-weight:700;letter-spacing:0.08em;color:#9a7fd6;white-space:nowrap;flex-shrink:0;}
+.inv-bar{flex:1;height:4px;background:var(--bg);overflow:hidden;border:1px solid var(--line);border-radius:3px;}
 .inv-fill{height:100%;width:0%;background:linear-gradient(90deg,#7a4fd1,#e11d1d);transition:width .4s ease-out;}
 /* Windhaven Wire — player-contextual city news feed (separate from the RCN market ticker) */
 .wire-feed{background:var(--bg-panel);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:6px;padding:10px 14px;margin-bottom:20px;}
@@ -161,6 +161,31 @@ body.quiet .card-flavor, body.quiet .pillar-desc, body.quiet .modal-body p.flavo
 .wire-item-new{color:var(--text);}
 .wire-item-empty{color:var(--text-faint);font-style:italic;}
 .wire-item-empty::before{content:'';}
+/* City Map overlay (full-world GTA-style map with icon legend + click-to-waypoint) */
+.citymap-overlay{position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;background:rgba(4,6,10,0.82);padding:20px;}
+.citymap-overlay.hidden{display:none;}
+.citymap-panel{background:var(--bg-panel);border:1px solid var(--line-bright);border-radius:10px;max-width:min(1000px,96vw);width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.6);overflow:hidden;}
+.citymap-head{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--line);font-family:var(--font-display);font-weight:700;font-size:16px;color:var(--gold);letter-spacing:0.04em;}
+.citymap-close{background:none;border:1px solid var(--line);color:var(--text-dim);width:30px;height:30px;border-radius:6px;cursor:pointer;font-size:15px;}
+.citymap-close:hover{color:var(--text);border-color:var(--line-bright);}
+.citymap-body{display:flex;gap:16px;padding:16px 18px;flex-wrap:wrap;}
+.citymap-canvas-wrap{flex:1;min-width:280px;background:#0b0d13;border:1px solid var(--line);border-radius:6px;overflow:hidden;}
+#citymap-canvas{width:100%;height:auto;display:block;cursor:crosshair;}
+.citymap-legend{width:210px;flex-shrink:0;display:flex;flex-direction:column;gap:7px;}
+.citymap-legend-title{font-family:var(--font-display);font-weight:700;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-faint);margin-bottom:2px;}
+.citymap-legend-row{display:flex;align-items:center;gap:9px;font-family:var(--font-body);font-size:12.5px;color:var(--text-dim);}
+.lg-ico{display:inline-block;width:12px;height:12px;flex-shrink:0;background:var(--c);}
+.lg-illegal{clip-path:polygon(50% 0,100% 100%,0 100%);}
+.lg-home{clip-path:polygon(50% 0,100% 38%,100% 100%,0 100%,0 38%);}
+.lg-corner,.lg-amenity{transform:rotate(45deg);}
+.lg-service{background:transparent;border:2px solid var(--c);border-radius:50%;}
+.lg-person{border-radius:50%;}
+.lg-gang{border-radius:50%;box-shadow:0 0 0 2px #d4a017;}
+.lg-landmark{background:#e0c860;transform:rotate(45deg);}
+.lg-you{clip-path:polygon(0 0,100% 50%,0 100%);}
+.lg-waypoint{background:transparent;border:2px solid var(--c);border-radius:50%;position:relative;}
+.lg-waypoint::after{content:'';position:absolute;inset:3px;background:var(--c);border-radius:50%;}
+.citymap-hint{padding:10px 18px;border-top:1px solid var(--line);font-family:var(--font-mono);font-size:11px;color:var(--text-faint);}
 .prestige-btn{font-family:var(--font-display);text-transform:uppercase;letter-spacing:0.06em;font-size:12px;font-weight:700;background:rgba(242, 186, 24, 0.1);border:2px solid var(--gold);color:var(--gold);padding:8px 16px;cursor:pointer;white-space:nowrap;margin-left:14px;border-radius:6px;transition: all 0.2s;}
 .prestige-btn:hover:not(:disabled){background:var(--gold);color:#000;box-shadow:0 4px 12px rgba(242,186,24,0.4);}
 .prestige-btn:disabled{opacity:0.4;cursor:not-allowed;}
