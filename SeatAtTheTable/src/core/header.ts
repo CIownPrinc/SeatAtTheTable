@@ -1260,6 +1260,93 @@ import type * as ThreeNamespace from 'three';
       <span class="legend-item">Walk into any building's door to go inside</span>
     `;
   }
+
+  type DistrictLocation = {
+    id: string;
+    label: string;
+    kind: string;
+    x: number;
+    y: number;
+    distance: number;
+    interactable: boolean;
+    status: string;
+  };
+  function locationKindLabel(kind: string): string {
+    if(kind === 'building') return 'Venture';
+    if(kind === 'service') return 'Service';
+    if(kind === 'local') return 'Local Business';
+    if(kind === 'corner') return 'Corner';
+    if(kind === 'npc') return 'Named NPC';
+    return 'Gang Recruit';
+  }
+  function locationName(object: MapObject): string {
+    if(object.kind === 'building') return (object as MapObject<'building', typeof mapBuildings[number]>).ref.biz.name;
+    return (object as MapObject<'service' | 'local' | 'amenity' | 'corner' | 'npc' | 'gangnpc', ServiceBuilding | LocalBusiness | Corner | typeof mapNpcs[number] | GangRecruit>).ref.name;
+  }
+  function locationStatus(object: MapObject): string {
+    if(object.kind === 'building') return (object as MapObject<'building', typeof mapBuildings[number]>).ref.biz.level > 0 ? 'Open' : 'Not opened';
+    if(object.kind === 'local') return (object as MapObject<'local', LocalBusiness>).ref.extorted ? 'Paying' : 'Independent';
+    if(object.kind === 'corner') {
+      const corner = (object as MapObject<'corner', Corner>).ref;
+      return corner.busted ? 'Busted' : (corner.dealer ? 'Staffed' : 'Open');
+    }
+    if(object.kind === 'gangnpc') return (object as MapObject<'gangnpc', GangRecruit>).ref.inducted ? 'In crew' : 'Available';
+    if(object.kind === 'npc') return (object as MapObject<'npc', typeof mapNpcs[number]>).ref.type === 'named' ? 'Named' : 'Local';
+    return (object as MapObject<'service', ServiceBuilding>).ref.kind;
+  }
+  function districtLocations(): DistrictLocation[] {
+    return mapObjects
+      .filter(function(object){
+        if(object.district !== state.currentDistrict) return false;
+        if(object.kind === 'amenity') return false;
+        if(object.kind === 'npc' && (object as MapObject<'npc', typeof mapNpcs[number]>).ref.type !== 'named') return false;
+        return true;
+      })
+      .map(function(object){
+        const distance = Math.hypot(player.x - object.x, player.y - object.y);
+        return {
+          id: `${object.kind}:${object.id}`,
+          label: locationName(object),
+          kind: locationKindLabel(object.kind),
+          x: object.x,
+          y: object.y,
+          distance,
+          interactable: !state.currentInterior && !state.inVehicle && distance <= object.interactRadius,
+          status: locationStatus(object),
+        };
+      })
+      .sort(function(a, b){ return a.distance - b.distance; });
+  }
+  function renderDistrictLocationsPanel(){
+    const wrap = byId('district-locations-panel');
+    if(!wrap) return;
+    const district = districts.find(function(d){ return d.id === state.currentDistrict; });
+    const locations = districtLocations();
+    wrap.innerHTML = `
+      <div class="district-locations-head">
+        <div>
+          <div class="district-locations-title">${district ? district.name : 'Current District'}</div>
+          <div class="district-locations-sub">${locations.length} important locations nearby</div>
+        </div>
+        <div class="district-locations-key"><span class="status-pill active">Interactable</span><span class="status-pill">Waypoint</span></div>
+      </div>
+      <div class="district-locations-list">
+        ${locations.map(function(location){
+          return `<div class="district-location-row ${location.interactable ? 'is-interactable' : ''}">
+            <div class="district-location-main">
+              <div class="district-location-name">${location.label}</div>
+              <div class="district-location-meta">${location.kind} · ${Math.round(location.distance)}m · ${location.status}</div>
+            </div>
+            <div class="district-location-actions">
+              <span class="status-pill ${location.interactable ? 'active' : ''}">${location.interactable ? 'Interactable' : 'Out of range'}</span>
+              <button class="mini-btn" data-location-waypoint="${location.id}">Waypoint</button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    `;
+  }
+
   function renderTerritoryPanel(){
     const wrap = byId('territory-panel');
     if(!wrap) return;
@@ -1647,6 +1734,21 @@ import type * as ThreeNamespace from 'three';
     else if(target.id === 'withdraw-input') withdrawAmount(target.value);
   }
 
+
+  function handleDistrictLocationsAction(e: Event){
+    const btn = (e.target as HTMLElement).closest('[data-location-waypoint]');
+    if(!btn) return;
+    const id = btn.getAttribute('data-location-waypoint')!;
+    const location = districtLocations().find(function(item){ return item.id === id; });
+    if(!location) return;
+    state.waypoints[state.currentDistrict] = { x:location.x, y:location.y };
+    rebuildWaypointBeacon();
+    byId('minimap-clear').classList.add('show');
+    log(`<i class="ph-duotone ph-map-pin"></i> Waypoint set to ${location.label}.`);
+    scheduleSave();
+    renderDistrictLocationsPanel();
+  }
+
   function handleTerritoryAction(e: Event){
     const btn = (e.target as HTMLElement).closest('[data-push]');
     if(!btn) return;
@@ -1706,6 +1808,7 @@ import type * as ThreeNamespace from 'three';
     byId('politics-panel').addEventListener('click', handlePoliticsAction);
     byId('gang-panel').addEventListener('click', handleGangAction);
     byId('district-bar').addEventListener('click', handleDistrictAction);
+    byId('district-locations-panel').addEventListener('click', handleDistrictLocationsAction);
   }
 
   // LEGAL: ================= RENDER: STREET PANEL =================
@@ -1816,6 +1919,7 @@ import type * as ThreeNamespace from 'three';
     renderAssetsPanel();
     renderDistrictBar();
     renderLegend();
+    renderDistrictLocationsPanel();
     renderTerritoryPanel();
     renderPoliticsPanel();
     renderGangPanel();
@@ -3024,6 +3128,7 @@ import type * as ThreeNamespace from 'three';
       byId('minimap-clear').classList.remove('show');
       scheduleSave();
     }
+    renderDistrictLocationsPanel();
     if(near){
       let label = '';
       if(near.type==='door') label='Exit';
