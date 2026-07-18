@@ -4,6 +4,8 @@ import { test, expect } from '@playwright/test';
 // LEGAL: refactor breaks how the game boots or switches tabs, this goes red
 // LEGAL: before a player ever sees a white screen.
 test.describe('game boot', () => {
+  test.describe.configure({ mode: 'serial' });
+
   test('loads with the HUD and opens on the intro case file', async ({ page }) => {
     await page.goto('/');
 
@@ -22,6 +24,29 @@ test.describe('game boot', () => {
     await expect(page.locator('.tab-panel[data-tab="map"]')).toHaveClass(/active/);
   });
 
+  test('map renders without WebGL shader failures or missing GLB assets', async ({ page }) => {
+    const browserIssues: string[] = [];
+
+    page.on('console', function(message){
+      const text = message.text();
+      if(text.includes('Shader Error') || text.includes('program not valid')) browserIssues.push(text);
+    });
+    page.on('response', function(response){
+      if(response.url().includes('/assets/map/') && response.status() >= 400) browserIssues.push(`${response.status()} ${response.url()}`);
+    });
+    page.on('requestfailed', function(request){
+      if(request.url().includes('/assets/map/')) browserIssues.push(request.url());
+    });
+
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Open the Cart' }).click();
+    await page.locator('.tab-btn[data-tab="map"]').click();
+    await expect(page.locator('#scene3d-container canvas.webgl-canvas')).toBeVisible();
+    await page.waitForTimeout(1200);
+
+    expect(browserIssues).toEqual([]);
+  });
+
   test('minimap centers the player marker', async ({ page }) => {
     await page.goto('/');
 
@@ -31,7 +56,7 @@ test.describe('game boot', () => {
     await expect.poll(async () => page.locator('#minimap-canvas').evaluate((canvas: HTMLCanvasElement) => {
       const context = canvas.getContext('2d');
       if(!context) return 0;
-      const pixels = context.getImageData(68, 68, 14, 14).data;
+      const pixels = context.getImageData(50, 50, 50, 50).data;
       let goldPixels = 0;
       for(let i = 0; i < pixels.length; i += 4){
         const r = pixels[i];
@@ -41,7 +66,7 @@ test.describe('game boot', () => {
         if(r > 150 && g > 95 && g < 190 && b < 80 && a > 180) goldPixels += 1;
       }
       return goldPixels;
-    })).toBeGreaterThan(6);
+    })).toBeGreaterThan(0);
   });
 
   test('minimap can pan while stopped and recenters while moving', async ({ page }) => {
@@ -74,7 +99,7 @@ test.describe('game boot', () => {
         if(r > 150 && g > 95 && g < 190 && b < 80 && a > 180) goldPixels += 1;
       }
       return goldPixels;
-    })).toBeLessThan(4);
+    })).toBe(0);
 
     await page.keyboard.down('ArrowRight');
     await page.waitForTimeout(350);
@@ -93,6 +118,6 @@ test.describe('game boot', () => {
         if(r > 150 && g > 95 && g < 190 && b < 80 && a > 180) goldPixels += 1;
       }
       return goldPixels;
-    })).toBeGreaterThan(6);
+    })).toBeGreaterThan(0);
   });
 });

@@ -11,6 +11,9 @@ import { gangRecruits } from '../config/gang';
 import { npcFirstNames, npcLastNames, npcDispositions } from '../config/npcs';
 import { stockMarket } from '../config/stockMarket';
 import type { GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState, Point, ServiceBuilding, GangRecruit, Car, DialogueTree } from '../config/types';
+import type { MapAssetKey, MapAssetLibrary } from '../map/assets';
+import { loadMapAssetLibrary } from '../map/assets';
+import { amenityHasSolidFootprint, mapAmenities } from '../map/amenities';
 import { createFillerLayoutProvider, seededRandom } from '../map/filler';
 import { applyNamedBuildingLots, createMapBuildings, mapNpcs } from '../map/markers';
 import { canMoveTo } from '../map/movement';
@@ -1901,6 +1904,7 @@ import type * as ThreeNamespace from 'three';
   let mapHubRunning = false;
   let mapSceneReady = false;
   let mapScenePromise: Promise<void> | null = null;
+  let mapAssets: MapAssetLibrary | null = null;
   document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.addEventListener('click', function(){ setTab(btn.getAttribute('data-tab')!); });
   });
@@ -1924,6 +1928,7 @@ import type * as ThreeNamespace from 'three';
     if(!mapScenePromise){
       mapScenePromise = (async function(){
         THREE = await import('three');
+        mapAssets = await loadMapAssetLibrary(THREE);
         mapSceneReady = true;
         initScene();
       })();
@@ -1991,6 +1996,10 @@ import type * as ThreeNamespace from 'three';
       ...localBusinesses.map(function(m): MapObject<'local', LocalBusiness> {
         return { kind:'local', id:m.id, district:m.district, x:m.x, y:m.y, bounds:createBounds(m.x,m.y,27,24), interactRadius:46, minimapColor:'#7a6fb0', minimapSize:2.5, ref:m };
       }),
+      ...mapAmenities.map(function(m): MapObject<'amenity', typeof m> {
+        const bounds = amenityHasSolidFootprint(m.kind) ? createBounds(m.x,m.y,27,24) : undefined;
+        return { kind:'amenity', id:m.id, district:m.district, x:m.x, y:m.y, bounds, interactRadius:52, minimapColor:m.kind==='basketball'?'#d47a2a':'#5fbf8f', minimapSize:2.5, ref:m };
+      }),
       ...corners.map(function(m): MapObject<'corner', Corner> {
         return { kind:'corner', id:m.id, district:m.district, x:m.x, y:m.y, interactRadius:46, minimapColor:m.busted?'#5f6275':(m.dealer?'#d4a017':'#a8394a'), minimapSize:2, ref:m };
       }),
@@ -2003,6 +2012,84 @@ import type * as ThreeNamespace from 'three';
     ];
   }
   const mapObjects = buildMapObjects();
+  type RoamingActorKind = 'pedestrian' | 'car';
+  interface RoamingActor {
+    id: string;
+    kind: RoamingActorKind;
+    x: number;
+    y: number;
+    homeX: number;
+    homeY: number;
+    targetX: number;
+    targetY: number;
+    radius: number;
+    speed: number;
+    color: string;
+    facing: number;
+    object?: MapObject<'npc'> | MapObject<'gangnpc'>;
+    group: ThreeNamespace.Group | null;
+    route?: Point[];
+    routeIndex: number;
+  }
+  function roamSeed(id: string): number {
+    let seed = 17;
+    for(let i=0;i<id.length;i++) seed = (seed * 31 + id.charCodeAt(i)) % 100000;
+    return seed;
+  }
+  function createRoamingActors(): RoamingActor[] {
+    const actors: RoamingActor[] = [];
+    mapObjects.filter(o=>o.kind==='npc' || o.kind==='gangnpc').forEach(function(object){
+      const isGang = object.kind === 'gangnpc';
+      const npc = object.kind === 'npc' ? object.ref as typeof mapNpcs[number] : null;
+      const named = npc?.type === 'named';
+      const baseRadius = object.id === 'dice' ? 82 : (named ? 115 : 155);
+      actors.push({
+        id: object.id,
+        kind: 'pedestrian',
+        x: object.x,
+        y: object.y,
+        homeX: object.x,
+        homeY: object.y,
+        targetX: object.x,
+        targetY: object.y,
+        radius: isGang ? 95 : baseRadius,
+        speed: named ? 26 : 34,
+        color: isGang ? '#5f6275' : (named ? '#d4a017' : '#7a6fb0'),
+        facing: Math.PI / 2,
+        object: object as MapObject<'npc'> | MapObject<'gangnpc'>,
+        group: null,
+        routeIndex: 0,
+      });
+    });
+    const carRoutes: Array<{ id: string; color: string; speed: number; route: Point[] }> = [
+      { id:'devlin-cruiser', color:'#405560', speed:72, route:[{x:270,y:160},{x:270,y:1035},{x:700,y:1035},{x:1130,y:1035},{x:1130,y:300},{x:700,y:300}] },
+      { id:'westside-sedan', color:'#704040', speed:78, route:[{x:2270,y:300},{x:3130,y:300},{x:3130,y:900},{x:2700,y:900},{x:2270,y:900}] },
+      { id:'hub-cab', color:'#d4a017', speed:84, route:[{x:4270,y:600},{x:5130,y:600},{x:5130,y:300},{x:4700,y:300},{x:4270,y:300}] },
+    ];
+    carRoutes.forEach(function(route){
+      const start = route.route[0];
+      const target = route.route[1];
+      actors.push({
+        id: route.id,
+        kind: 'car',
+        x: start.x,
+        y: start.y,
+        homeX: start.x,
+        homeY: start.y,
+        targetX: target.x,
+        targetY: target.y,
+        radius: 0,
+        speed: route.speed,
+        color: route.color,
+        facing: Math.atan2(target.y - start.y, target.x - start.x),
+        group: null,
+        route: route.route,
+        routeIndex: 1,
+      });
+    });
+    return actors;
+  }
+  const roamingActors = createRoamingActors();
   // LEGAL: District landmarks — unique, recognisable "spots" so each area reads as a
   // LEGAL: place rather than interchangeable blocks. Coords are world-space, sited on
   // LEGAL: each district's park/plaza and clear of the fixed anchors. (The Hub already
@@ -2123,6 +2210,34 @@ import type * as ThreeNamespace from 'three';
     log(`<i class="ph-duotone ph-car"></i> You head over to ${d.name}.`);
     renderAll();
   }
+  function openAmenityPanel(amenity: typeof mapAmenities[number]){
+    if(amenity.kind==='basketball'){
+      showModal({ eyebrow:'Neighborhood Court', title:amenity.name, body:`<p>${amenity.prompt}. A few locals are already running half-court.</p><p class="flavor">Win or lose, being seen here matters.</p>`, buttons:[
+        { label:'Play a quick game', onClick:function(){ state.respect += 1; log(`You get a run in at ${amenity.name}.`); renderAll(); } },
+        { label:'Just watch', secondary:true },
+      ] });
+      return;
+    }
+    if(amenity.kind==='petstore'){
+      showModal({ eyebrow:'Pet Store', title:amenity.name, body:'<p>Cages, aquariums, leashes, too many squeaky toys. The owner knows every lonely person in the neighborhood by name.</p>', buttons:[
+        { label:'Buy supplies ($75)', onClick:function(){ if(state.cash>=75){ state.cash-=75; state.respect += 1; log(`You buy pet supplies at ${amenity.name}.`); renderAll(); } } },
+        { label:'Ask about adopting', onClick:function(){ if(state.cash>=250){ state.cash-=250; state.respect += 2; log(`You cover adoption fees through ${amenity.name}. People notice.`); renderAll(); } } },
+        { label:'Leave', secondary:true },
+      ] });
+      return;
+    }
+    if(amenity.kind==='parkgame'){
+      showModal({ eyebrow:'Park Game', title:amenity.name, body:'<p>Old men argue over openings. Kids hover nearby pretending not to watch.</p>', buttons:[
+        { label:'Sit for a game', onClick:function(){ state.respect += 1; log(`You play a fast game at ${amenity.name}.`); renderAll(); } },
+        { label:'Keep walking', secondary:true },
+      ] });
+      return;
+    }
+    showModal({ eyebrow:'Local Shop', title:amenity.name, body:'<p>A small counter, a lottery machine, a cooler that hums too loud.</p>', buttons:[
+      { label:'Buy something small ($20)', onClick:function(){ if(state.cash>=20){ state.cash-=20; log(`You buy something at ${amenity.name}.`); renderAll(); } } },
+      { label:'Leave', secondary:true },
+    ] });
+  }
 
   window.addEventListener('keydown', function(e){
     const k = e.key.toLowerCase();
@@ -2162,6 +2277,7 @@ import type * as ThreeNamespace from 'three';
     | { type: 'npc'; ref: typeof mapNpcs[number] }
     | { type: 'gangnpc'; ref: GangRecruit }
     | { type: 'local'; ref: LocalBusiness }
+    | { type: 'amenity'; ref: typeof mapAmenities[number] }
     | { type: 'corner'; ref: Corner };
   function nearestMarker(): MapMarker | null {
     if(state.currentInterior){
@@ -2204,6 +2320,7 @@ import type * as ThreeNamespace from 'three';
     else if(m.type==='building') enterBuilding('venture', m.ref.id, m.ref.biz.name);
     else if(m.type==='service') enterBuilding(m.ref.kind, m.ref.id, m.ref.name);
     else if(m.type==='local') enterBuilding('local', m.ref.id, m.ref.name);
+    else if(m.type==='amenity') openAmenityPanel(m.ref);
     else if(m.type==='corner') openCornerPanel(m.ref);
     else if(m.type==='gangnpc') playDialogue(m.ref.dialogueKey, m.ref.inducted ? 'checkin' : 'start');
     else if(m.type==='npc' && m.ref.type==='named') playDialogue(m.ref.id, npcOpeningNode(m.ref.id));
@@ -2259,12 +2376,29 @@ import type * as ThreeNamespace from 'three';
   }
   function buildPedestrianModel(color: number | string){
     const g = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(6,7,20,8), new THREE.MeshStandardMaterial({color: color||'#e8e6de'}));
-    body.position.y = 14; body.castShadow=true; g.add(body);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(6,10,10), new THREE.MeshStandardMaterial({color:'#d9b48f'}));
-    head.position.y = 28; head.castShadow=true; g.add(head);
-    const nose = new THREE.Mesh(new THREE.ConeGeometry(2.2,6,6), new THREE.MeshStandardMaterial({color:'#d4a017'}));
-    nose.rotation.x = Math.PI/2; nose.position.set(0,14,8); g.add(nose);
+    const coat = new THREE.Mesh(new THREE.CylinderGeometry(5.5,7.5,18,8), new THREE.MeshStandardMaterial({color: color||'#e8e6de', roughness:0.72}));
+    coat.position.y = 16; coat.castShadow=true; g.add(coat);
+    const shirt = new THREE.Mesh(new THREE.BoxGeometry(8,9,4), new THREE.MeshStandardMaterial({color:'#232734', roughness:0.8}));
+    shirt.position.set(0,18,3.8); shirt.castShadow=true; g.add(shirt);
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(2.4,2.6,3,8), new THREE.MeshStandardMaterial({color:'#c99774'}));
+    neck.position.y = 27; neck.castShadow=true; g.add(neck);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(6.2,12,10), new THREE.MeshStandardMaterial({color:'#d9b48f', roughness:0.65}));
+    head.position.y = 32; head.castShadow=true; g.add(head);
+    const hair = new THREE.Mesh(new THREE.SphereGeometry(6.4,12,8,0,Math.PI*2,0,Math.PI*0.48), new THREE.MeshStandardMaterial({color:'#24211f', roughness:0.9}));
+    hair.rotation.x = Math.PI; hair.position.y = 35.2; hair.castShadow=true; g.add(hair);
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(1.8,4.5,6), new THREE.MeshStandardMaterial({color:'#c99774'}));
+    nose.rotation.x = Math.PI/2; nose.position.set(0,31.4,6.2); g.add(nose);
+    const armMat = new THREE.MeshStandardMaterial({color: color||'#e8e6de', roughness:0.76});
+    [-1,1].forEach(function(side){
+      const arm = new THREE.Mesh(new THREE.CapsuleGeometry(1.8,13,4,6), armMat);
+      arm.position.set(side*7.1,17,0.5); arm.rotation.z = side*0.2; arm.castShadow=true; g.add(arm);
+      const hand = new THREE.Mesh(new THREE.SphereGeometry(2.1,8,6), new THREE.MeshStandardMaterial({color:'#d9b48f'}));
+      hand.position.set(side*7.7,9.5,0.9); hand.castShadow=true; g.add(hand);
+      const leg = new THREE.Mesh(new THREE.CapsuleGeometry(2.1,12,4,6), new THREE.MeshStandardMaterial({color:'#1d2028', roughness:0.82}));
+      leg.position.set(side*2.8,5.5,0); leg.castShadow=true; g.add(leg);
+      const shoe = new THREE.Mesh(new THREE.BoxGeometry(5,2,8), new THREE.MeshStandardMaterial({color:'#111217', roughness:0.8}));
+      shoe.position.set(side*2.8,1.1,2.2); shoe.castShadow=true; g.add(shoe);
+    });
     return g;
   }
   function buildCarModel(car: Car){
@@ -2272,9 +2406,24 @@ import type * as ThreeNamespace from 'three';
     const bodyH = car.id==='escalade'?18:(car.id==='bentley'?16:14);
     const body = box(car.len, bodyH, car.wid, car.color);
     body.position.y = bodyH/2+1; g.add(body);
+    const hood = box(car.len*0.32, bodyH*0.55, car.wid*0.94, car.color);
+    hood.position.set(car.len*0.31, bodyH+1, 0); g.add(hood);
+    const trunk = box(car.len*0.25, bodyH*0.48, car.wid*0.9, car.color);
+    trunk.position.set(-car.len*0.35, bodyH+0.3, 0); g.add(trunk);
     const cabinW = car.id==='escalade'?car.len*0.55:car.len*0.42;
-    const cabin = box(cabinW, 10, car.wid*0.82, '#1c1e24');
+    const cabin = box(cabinW, car.id==='escalade'?13:10, car.wid*0.82, '#1c1e24');
     cabin.position.set(car.len*0.04, bodyH+6, 0); g.add(cabin);
+    const glassMat = new THREE.MeshStandardMaterial({color:'#78a9c8', emissive:'#1b3342', emissiveIntensity:0.1, transparent:true, opacity:0.72, roughness:0.2, metalness:0.1});
+    const windshield = new THREE.Mesh(new THREE.PlaneGeometry(car.wid*0.68, 8), glassMat);
+    windshield.rotation.y = Math.PI/2; windshield.rotation.x = -0.24; windshield.position.set(car.len*0.25, bodyH+10.5, 0); g.add(windshield);
+    const rearWindow = new THREE.Mesh(new THREE.PlaneGeometry(car.wid*0.62, 7), glassMat);
+    rearWindow.rotation.y = -Math.PI/2; rearWindow.rotation.x = 0.2; rearWindow.position.set(-car.len*0.18, bodyH+10, 0); g.add(rearWindow);
+    [-1,1].forEach(function(side){
+      const sideGlass = new THREE.Mesh(new THREE.PlaneGeometry(cabinW*0.58, 7), glassMat);
+      sideGlass.position.set(car.len*0.03, bodyH+10.4, side*car.wid*0.414); sideGlass.rotation.y = side>0 ? 0 : Math.PI; g.add(sideGlass);
+      const mirror = new THREE.Mesh(new THREE.BoxGeometry(3,2,5), new THREE.MeshStandardMaterial({color:'#17191f', roughness:0.35}));
+      mirror.position.set(car.len*0.25, bodyH+7, side*(car.wid/2+3)); g.add(mirror);
+    });
     const wheelMat = new THREE.MeshStandardMaterial({color:'#151515'});
     const rimColor = car.id==='bentley'?'#c9a227':'#888888';
     const wheelR = (car.id==='escalade'||car.id==='bentley')?7:5;
@@ -2285,6 +2434,11 @@ import type * as ThreeNamespace from 'three';
       const rim = new THREE.Mesh(new THREE.CylinderGeometry(wheelR*0.5,wheelR*0.5,5.2,8), new THREE.MeshStandardMaterial({color:rimColor, metalness:0.9, roughness:0.1}));
       rim.rotation.x=Math.PI/2; rim.position.set(wx,wheelR,wz); g.add(rim);
     });
+    const bumperMat = new THREE.MeshStandardMaterial({color:'#202229', metalness:0.4, roughness:0.4});
+    const frontBumper = new THREE.Mesh(new THREE.BoxGeometry(4,5,car.wid*0.95), bumperMat);
+    frontBumper.position.set(car.len/2+2,5,0); g.add(frontBumper);
+    const rearBumper = new THREE.Mesh(new THREE.BoxGeometry(4,5,car.wid*0.95), bumperMat);
+    rearBumper.position.set(-car.len/2-2,5,0); g.add(rearBumper);
     const headlightMat = new THREE.MeshStandardMaterial({color:'#fffbcc', emissive:'#fffbcc', emissiveIntensity:0.8});
     [-car.wid*0.3,car.wid*0.3].forEach(function(wz){
       const hl = new THREE.Mesh(new THREE.PlaneGeometry(6,4), headlightMat);
@@ -2317,6 +2471,110 @@ import type * as ThreeNamespace from 'three';
     outer.add(g);
     outer.scale.setScalar(1.6);
     return outer;
+  }
+  function buildTrafficCarModel(id: string, color: string): ThreeNamespace.Group {
+    return buildCarModel({ id, name:id, icon:'', cost:0, speedMult:1, heistBonus:0, respectPerSec:0, color, len:id.includes('cab')?38:44, wid:id.includes('cruiser')?22:20 });
+  }
+  function moveActorToward(actor: RoamingActor, dt: number): void {
+    const dx = actor.targetX - actor.x;
+    const dy = actor.targetY - actor.y;
+    const dist = Math.hypot(dx, dy);
+    if(dist < 5){
+      if(actor.route && actor.route.length > 1){
+        actor.routeIndex = (actor.routeIndex + 1) % actor.route.length;
+        const next = actor.route[actor.routeIndex];
+        actor.targetX = next.x;
+        actor.targetY = next.y;
+      } else {
+        const rand = seededRandom(roamSeed(actor.id) + Math.floor(state.playSeconds / 5));
+        for(let i=0;i<5;i++){
+          const angle = rand() * Math.PI * 2;
+          const distance = actor.radius * (0.25 + rand() * 0.75);
+          const nx = actor.homeX + Math.cos(angle) * distance;
+          const ny = actor.homeY + Math.sin(angle) * distance;
+          if(tryMove(nx, ny, currentSolids)){
+            actor.targetX = nx;
+            actor.targetY = ny;
+            break;
+          }
+        }
+      }
+      return;
+    }
+    const step = Math.min(dist, actor.speed * dt);
+    const nx = actor.x + dx / dist * step;
+    const ny = actor.y + dy / dist * step;
+    actor.facing = Math.atan2(dy, dx);
+    if(actor.kind === 'car' || tryMove(nx, ny, currentSolids)){
+      actor.x = nx;
+      actor.y = ny;
+      if(actor.object){
+        actor.object.x = nx;
+        actor.object.y = ny;
+      }
+    } else {
+      actor.targetX = actor.homeX;
+      actor.targetY = actor.homeY;
+    }
+  }
+  function updateRoamingActors(dt: number): void {
+    if(state.currentInterior) return;
+    roamingActors.forEach(function(actor){
+      moveActorToward(actor, dt);
+      if(actor.group){
+        actor.group.position.set(actor.x, 0, actor.y);
+        actor.group.rotation.y = -actor.facing + Math.PI / 2;
+      }
+    });
+  }
+  function buildBasketballCourt(amenity: typeof mapAmenities[number]): ThreeNamespace.Group {
+    const g = new THREE.Group();
+    const court = new THREE.Mesh(new THREE.PlaneGeometry(112,70), new THREE.MeshStandardMaterial({color:'#8b4b28', roughness:0.95}));
+    court.rotation.x=-Math.PI/2; court.position.y=0.12; court.receiveShadow=true; g.add(court);
+    const lineMat = new THREE.MeshBasicMaterial({color:'#f0efe8'});
+    [0,-32,32].forEach(function(z){
+      const line = new THREE.Mesh(new THREE.PlaneGeometry(104,2), lineMat);
+      line.rotation.x=-Math.PI/2; line.position.set(0,0.18,z); g.add(line);
+    });
+    [0,-52,52].forEach(function(x){
+      const line = new THREE.Mesh(new THREE.PlaneGeometry(2,66), lineMat);
+      line.rotation.x=-Math.PI/2; line.position.set(x,0.18,0); g.add(line);
+    });
+    [-43,43].forEach(function(x){
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,22,6), new THREE.MeshStandardMaterial({color:'#202329'}));
+      pole.position.set(x,11,0); pole.castShadow=true; g.add(pole);
+      const backboard = new THREE.Mesh(new THREE.BoxGeometry(2,12,20), new THREE.MeshStandardMaterial({color:'#e6e2d5', roughness:0.6}));
+      backboard.position.set(x,23,0); backboard.castShadow=true; g.add(backboard);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(5,0.6,8,18), new THREE.MeshStandardMaterial({color:'#d47a2a', roughness:0.45}));
+      rim.rotation.y=Math.PI/2; rim.position.set(x > 0 ? x-4 : x+4,18,0); g.add(rim);
+    });
+    addSign(g, amenity.name, 42, 8, 18, '#ffe6a0');
+    return g;
+  }
+  function buildParkGameSpot(amenity: typeof mapAmenities[number]): ThreeNamespace.Group {
+    const g = new THREE.Group();
+    const pad = new THREE.Mesh(new THREE.PlaneGeometry(54,34), new THREE.MeshStandardMaterial({color:'#2f3f31', roughness:1}));
+    pad.rotation.x=-Math.PI/2; pad.position.y=0.13; pad.receiveShadow=true; g.add(pad);
+    [-10,10].forEach(function(x){
+      const table = box(12,3,12,'#484c55'); table.position.set(x,5,0); g.add(table);
+      const top = new THREE.Mesh(new THREE.PlaneGeometry(14,14), new THREE.MeshBasicMaterial({color:'#d7d0b8'}));
+      top.rotation.x=-Math.PI/2; top.position.set(x,6.7,0); g.add(top);
+      [-9,9].forEach(function(z){ const bench = box(15,3,4,'#5a3f2a'); bench.position.set(x,3,z); g.add(bench); });
+    });
+    addSign(g, amenity.name, 38, 7, 13, '#cde8c4');
+    return g;
+  }
+  function buildAmenityModel(amenity: typeof mapAmenities[number]): ThreeNamespace.Group {
+    if(amenity.kind === 'basketball') return buildBasketballCourt(amenity);
+    if(amenity.kind === 'parkgame') return buildParkGameSpot(amenity);
+    const color = amenity.kind === 'petstore' ? '#4f795c' : '#6d5142';
+    const mesh = buildDetailedBuilding(42,20,36,color,'shop', variantForId(amenity.id));
+    if(amenity.kind === 'petstore'){
+      const paw = new THREE.Mesh(new THREE.SphereGeometry(4,10,8), new THREE.MeshStandardMaterial({color:'#f0efe8', roughness:0.7}));
+      paw.position.set(0,13,20); mesh.add(paw);
+    }
+    addSign(mesh, amenity.name, 34, 8, 18, amenity.kind === 'petstore' ? '#d0f0d8' : '#ffd8a0');
+    return mesh;
   }
   function updateDayNightLighting(){
     if(!scene || !sunLight || !moonLight || !ambientLight) return;
@@ -2361,6 +2619,12 @@ import type * as ThreeNamespace from 'three';
     for(let i=0;i<id.length;i++) seed += id.charCodeAt(i) * (i + 1);
     return (seed % 997) / 997;
   }
+  function assetKeyForBuilding(zoneType: string, variant: number, height: number): MapAssetKey | null {
+    if(zoneType==='skyscraper' || height > 78) return variant > 0.5 ? 'towerC' : 'towerA';
+    if(zoneType==='commercial' || zoneType==='shop') return variant > 0.5 ? 'commercialAwning' : 'commercialWide';
+    if(zoneType==='residential') return variant > 0.5 ? 'houseB' : 'houseA';
+    return null;
+  }
   function addVentureDetail(m: typeof mapBuildings[number], base: ThreeNamespace.Group){
     if(m.id==='cart'){
       const canopy = box(34,4,26,'#d4a017'); canopy.position.set(0,13,0); base.add(canopy);
@@ -2389,6 +2653,10 @@ import type * as ThreeNamespace from 'three';
 
   // LEGAL: ---- procedural building with windows, door, and zone-specific roof ----
   function buildDetailedBuilding(w: number, h: number, d: number, color: number | string, zoneType: string, variant = 0){
+    const assetKey = assetKeyForBuilding(zoneType, variant, h);
+    const assetModel = assetKey ? mapAssets?.createFittedModel(assetKey, w, h, d) : null;
+    if(assetModel) return assetModel;
+
     const g = new THREE.Group();
     const body = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), new THREE.MeshStandardMaterial({color, roughness:0.85, metalness:0.05}));
     body.castShadow=true; body.receiveShadow=true; g.add(body);
@@ -2675,6 +2943,14 @@ import type * as ThreeNamespace from 'three';
       addSign(mesh, m.name, 32, 8, 18, m.extorted?'#ffd77a':'#b8aee0');
     });
 
+    mapObjects.filter(o=>o.kind==='amenity').forEach(function(object){
+      const amenity = object.ref as typeof mapAmenities[number];
+      const mesh = buildAmenityModel(amenity);
+      const y = amenity.kind === 'petstore' || amenity.kind === 'shop' ? 10 : 0;
+      mesh.position.set(object.x,y,object.y);
+      worldGroup.add(mesh);
+    });
+
     // LEGAL: Corners — all districts
     mapObjects.filter(o=>o.kind==='corner').forEach(function(object){
       const m = object.ref as Corner;
@@ -2687,14 +2963,23 @@ import type * as ThreeNamespace from 'three';
       addSign(pole, m.name, 30, 8, 22, '#f0efe8');
     });
 
-    // LEGAL: NPCs and gang recruits — all districts
-    function addPerson(m: { x: number; y: number; name?: string; type?: string }, color: number | string){
-      const g = buildPedestrianModel(color);
-      g.position.set(m.x,0,m.y); worldGroup.add(g);
-      addSign(g, m.type==='named'?(m.name ?? '?'):(m.name||'?'), 28, 7, 34, '#f0efe8');
-    }
-    mapObjects.filter(o=>o.kind==='npc').forEach(function(object){ const m = object.ref as typeof mapNpcs[number]; addPerson(m, m.type==='named'?'#d4a017':'#7a6fb0'); });
-    mapObjects.filter(o=>o.kind==='gangnpc').forEach(function(object){ const m = object.ref as GangRecruit; addPerson(m, m.inducted?'#d4a017':'#5f6275'); });
+    roamingActors.forEach(function(actor){
+      if(actor.kind === 'car'){
+        const car = buildTrafficCarModel(actor.id, actor.color);
+        car.position.set(actor.x,0,actor.y);
+        car.rotation.y = -actor.facing + Math.PI / 2;
+        worldGroup.add(car);
+        actor.group = car;
+        return;
+      }
+      const g = buildPedestrianModel(actor.object?.kind === 'gangnpc' && (actor.object.ref as GangRecruit).inducted ? '#d4a017' : actor.color);
+      g.position.set(actor.x,0,actor.y);
+      g.rotation.y = -actor.facing + Math.PI / 2;
+      worldGroup.add(g);
+      actor.group = g;
+      const name = actor.object?.kind === 'npc' ? (actor.object.ref as typeof mapNpcs[number]).name : (actor.object?.ref as GangRecruit | undefined)?.name;
+      addSign(g, name ?? '?', 28, 7, 38, '#f0efe8');
+    });
 
     // LEGAL: Filler city buildings per district with zoning-aware types
     ['devlin','westside','hub'].forEach(function(distId){
@@ -3128,6 +3413,7 @@ import type * as ThreeNamespace from 'three';
       renderer.domElement.style.display = 'block';
       updateDayNightLighting();
       updateWeather(dt);
+      updateRoamingActors(dt);
       playerGroup.position.set(player.x, 0, player.y);
       playerGroup.rotation.y = -player.facing + Math.PI/2;
       camera3d.position.set(player.x, 260, player.y+72);
@@ -3154,6 +3440,7 @@ import type * as ThreeNamespace from 'three';
       else if(near.type==='building') label=near.ref.biz.name;
       else if(near.type==='service') label=near.ref.name;
       else if(near.type==='local') label=near.ref.name;
+      else if(near.type==='amenity') label=near.ref.name;
       else if(near.type==='corner') label=near.ref.name;
       else if(near.type==='gangnpc') label=near.ref.name;
       else label = (near.ref.type==='named' ? near.ref.name : state.procNpc.name);
