@@ -480,10 +480,25 @@ import type * as ThreeNamespace from 'three';
   function bribeUpkeep(){ return state.bribeOn ? rawTotalIncome()*0.12 : 0; }
   function netIncome(){ return rawTotalIncome() - bribeUpkeep(); }
   function respectPerSec(){ const car=getEquippedCar(); return (state.muscleCount*0.6 + (car?car.respectPerSec:0)) * (grandmotherActive()?1.25:1); }
+  function heatBreakdown(){
+    const muscleHeat = state.muscleCount*0.5;
+    const streetVentureHeat = businesses.filter(b=>b.category==='street').reduce((s,b)=> s+(b.heatPerLevel||0)*b.level, 0);
+    const extortionHeat = localBusinesses.filter(b=>b.extorted).reduce((s,b)=> s+b.extortHeat, 0);
+    const cornerHeat = cornerHeatPerSec();
+    const modifier = heatMult() * (state.campaignActive ? 2.5 : 1);
+    const decayOffset = -0.5;
+    const generatedHeat = (muscleHeat + streetVentureHeat + extortionHeat + cornerHeat) * modifier;
+    return { muscleHeat, streetVentureHeat, extortionHeat, cornerHeat, modifier, decayOffset, generatedHeat, netHeat: generatedHeat + decayOffset };
+  }
   function heatGenPerSec(){
-    const streetHeat = businesses.filter(b=>b.category==='street').reduce((s,b)=> s+(b.heatPerLevel||0)*b.level, 0);
-    const extortHeat = localBusinesses.filter(b=>b.extorted).reduce((s,b)=> s+b.extortHeat, 0);
-    return (state.muscleCount*0.5 + streetHeat + extortHeat + cornerHeatPerSec()) * heatMult() * (state.campaignActive ? 2.5 : 1);
+    return heatBreakdown().generatedHeat;
+  }
+  function districtDriftBreakdown(d: District){
+    const musclePresence = state.muscleCount*0.15;
+    const cornerPresence = corners.filter(c=>c.district===d.id && c.dealer && !c.busted).length * 1.2;
+    const venturePresence = d.id==='devlin' ? businesses.filter(b=>b.researched && b.level>0).length*0.3 : 0;
+    const rivalPressure = d.homeTurf ? 0.15 : 0.35;
+    return { musclePresence, cornerPresence, venturePresence, rivalPressure, netDrift: musclePresence + cornerPresence + venturePresence - rivalPressure };
   }
   function currentRank(){ let r=ranks[0]; for(const rk of ranks){ if(state.respect>=rk.respect) r=rk; } return r.title; }
   function isUnlocked(b: Business){
@@ -1260,6 +1275,15 @@ import type * as ThreeNamespace from 'three';
         </div>
         <div class="data-expanded">
           <div class="flavor-note">${bonusText[d.id]}</div>
+          <div class="drift-breakdown">
+            ${(()=>{ const drift = districtDriftBreakdown(d); return `
+              <div class="drift-breakdown-row"><span>Muscle presence</span><strong>+${drift.musclePresence.toFixed(2)}/s</strong></div>
+              <div class="drift-breakdown-row"><span>Corner presence</span><strong>+${drift.cornerPresence.toFixed(2)}/s</strong></div>
+              <div class="drift-breakdown-row"><span>Venture presence</span><strong>+${drift.venturePresence.toFixed(2)}/s</strong></div>
+              <div class="drift-breakdown-row"><span>Rival pressure</span><strong>-${drift.rivalPressure.toFixed(2)}/s</strong></div>
+              <div class="drift-breakdown-row"><span>Current drift</span><strong>${drift.netDrift>=0?'+':''}${drift.netDrift.toFixed(2)}/s</strong></div>
+            `; })()}
+          </div>
           <div class="control-track"><div class="control-fill" data-control-bar="${d.id}" style="width:${Math.round(d.control)}%"></div></div>
           <div class="btn-row"><button class="mini-btn" ${canPush?'':'disabled'} data-push="${d.id}">PUSH <span class="cost">${pushCost(d)} resp</span></button></div>
         </div>
@@ -1316,6 +1340,26 @@ import type * as ThreeNamespace from 'three';
           `}
         </div>
       </div>
+    `;
+  }
+
+  function renderHeatHudDetails(){
+    const warning = byId('hud-heat-warning');
+    const panel = byId('heat-breakdown');
+    const fill = byId('heat-fill');
+    const heat = Math.round(state.heat);
+    const breakdown = heatBreakdown();
+    fill.classList.toggle('critical', state.heat >= 100);
+    warning.className = state.heat >= 100 ? 'stat-sub heat-warning critical' : (state.heat >= 70 ? 'stat-sub heat-warning' : 'stat-sub');
+    warning.textContent = state.heat >= 100 ? 'Raid imminent at 100+ heat' : (state.heat >= 70 ? 'Warning: corner bust risk at 70+ heat' : `${heat}% heat`);
+    panel.innerHTML = `
+      <div class="heat-breakdown-row"><span>Muscle heat</span><strong>+${breakdown.muscleHeat.toFixed(2)}/s</strong></div>
+      <div class="heat-breakdown-row"><span>Street venture heat</span><strong>+${breakdown.streetVentureHeat.toFixed(2)}/s</strong></div>
+      <div class="heat-breakdown-row"><span>Extortion heat</span><strong>+${breakdown.extortionHeat.toFixed(2)}/s</strong></div>
+      <div class="heat-breakdown-row"><span>Corner heat</span><strong>+${breakdown.cornerHeat.toFixed(2)}/s</strong></div>
+      <div class="heat-breakdown-row"><span>Bribe/politician/recruit modifiers</span><strong>x${breakdown.modifier.toFixed(2)}</strong></div>
+      <div class="heat-breakdown-row"><span>Current decay/offset</span><strong>${breakdown.decayOffset.toFixed(2)}/s</strong></div>
+      <div class="heat-breakdown-row"><span>Net heat change</span><strong>${breakdown.netHeat>=0?'+':''}${breakdown.netHeat.toFixed(2)}/s</strong></div>
     `;
   }
 
@@ -1781,6 +1825,7 @@ import type * as ThreeNamespace from 'three';
     byId('hud-rank').textContent = currentRank();
     byId('hud-respect').textContent = `${fmtR(state.respect)} respect`;
     byId('heat-fill').style.width = Math.min(100, state.heat) + '%';
+    renderHeatHudDetails();
     byId('hud-crew').textContent = `${crewUsedGlobal()} / ${crewCapGlobal()}`;
 
     const prestigeBtn = byId<HTMLButtonElement>('prestige-btn');
@@ -1807,6 +1852,7 @@ import type * as ThreeNamespace from 'three';
     byId('hud-rank').textContent = rank;
     byId('hud-respect').textContent = `${fmtR(state.respect)} respect`;
     byId('heat-fill').style.width = Math.min(100, state.heat) + '%';
+    renderHeatHudDetails();
     byId('hud-crew').textContent = `${crewUsedGlobal()} / ${crewCapGlobal()}`;
 
     if(rank === 'Local Boss') triggerMilestone('local_boss');
@@ -3270,11 +3316,8 @@ import type * as ThreeNamespace from 'three';
 
     // LEGAL: Territory drifts toward whoever's actually maintaining a presence there.
     districts.forEach(d=>{
-      const cornerPresence = corners.filter(c=>c.district===d.id && c.dealer && !c.busted).length * 1.2;
-      const venturePresence = d.id==='devlin' ? businesses.filter(b=>b.researched && b.level>0).length*0.3 : 0;
-      const presence = state.muscleCount*0.15 + cornerPresence + venturePresence;
-      const pressure = d.homeTurf ? 0.15 : 0.35;
-      d.control = Math.max(0, Math.min(100, d.control + (presence-pressure)*dt));
+      const drift = districtDriftBreakdown(d);
+      d.control = Math.max(0, Math.min(100, d.control + drift.netDrift*dt));
     });
 
     const gen = heatGenPerSec();
