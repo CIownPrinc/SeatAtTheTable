@@ -508,6 +508,62 @@ import type * as ThreeNamespace from 'three';
     if(b.unlock.type==='family') return hasFamilyTier(b.unlock.value) || b.level>0 || b.researched;
     return false;
   }
+
+  type AdvisorTab = 'empire' | 'map' | 'bank' | 'politics' | 'gang' | 'assets' | 'settings';
+  type AdvisorMessage = { text: string; tab: AdvisorTab; action: string; priority: number };
+
+  function getAdvisorMessages(): AdvisorMessage[] {
+    const messages: AdvisorMessage[] = [];
+    const cart = businesses.find(b=>b.id==='cart');
+    const cornerStore = businesses.find(b=>b.id==='store');
+    const openedVentures = businesses.filter(b=>b.researched && b.level>0);
+    const understaffed = openedVentures.find(b=>!b.manager && crewNeeded(b)>0 && b.crew<crewNeeded(b));
+    const openedCorners = activeCorners();
+    const unopenedVenture = businesses.find(b=>isUnlocked(b) && b.researched && b.level===0);
+
+    if(cart && cart.level>0 && !cart.manager && cart.crew<crewNeeded(cart)) {
+      messages.push({ text:'Your cart is understaffed; hire crew to restore efficiency.', tab:'empire', action:'Assign crew', priority:100 });
+    } else if(understaffed) {
+      messages.push({ text:`${understaffed.name} is understaffed; hire crew to restore efficiency.`, tab:'empire', action:'Assign crew', priority:95 });
+    }
+
+    if(state.heat>70) {
+      messages.push({ text:'Heat is above 70; consider bribes or informants.', tab:'empire', action:'Reduce heat', priority:90 });
+    }
+
+    if(cornerStore && isUnlocked(cornerStore) && !cornerStore.researched && state.cash>=researchCostFor(cornerStore)) {
+      messages.push({ text:'You can research Corner Store.', tab:'empire', action:'Research it', priority:85 });
+    }
+
+    if(unopenedVenture) {
+      messages.push({ text:`${unopenedVenture.name} is unlocked but not opened.`, tab:'empire', action:'Open venture', priority:75 });
+    }
+
+    if(state.product>=productCap() && openedCorners.length<corners.filter(c=>!c.busted).length) {
+      messages.push({ text:'Product is full; post dealers on the map.', tab:'map', action:'Open map', priority:70 });
+    }
+
+    if(openedCorners.length>0 && state.product<=0) {
+      messages.push({ text:'Corners are staffed but product is empty; upgrade the Lab.', tab:'empire', action:'Upgrade Lab', priority:65 });
+    }
+
+    if(messages.length===0) {
+      messages.push({ text:'No urgent issues. Expand a venture, claim turf, or build cash for the next unlock.', tab:'empire', action:'Review empire', priority:10 });
+    }
+
+    return messages.sort((a,b)=>b.priority-a.priority).slice(0,4);
+  }
+
+  function renderAdvisorPanel(): void {
+    const wrap = byId('advisor-list');
+    const messages = getAdvisorMessages().slice(0,4);
+    wrap.innerHTML = messages.map(m=>`
+      <div class="advisor-item">
+        <div class="advisor-message">${m.text}</div>
+        <button class="advisor-action" data-advisor-tab="${m.tab}">${m.action}</button>
+      </div>
+    `).join('');
+  }
   function log(msg: string){
     const wrap = byId('ticker');
     const item = document.createElement('div');
@@ -1796,7 +1852,14 @@ import type * as ThreeNamespace from 'three';
 
   // LEGAL: Wire all delegation listeners exactly once at boot. Stable containers
   // LEGAL: never get destroyed so each handler accumulates at exactly 1 per container.
+  function handleAdvisorAction(e: Event): void {
+    const btn = (e.target as HTMLElement).closest('[data-advisor-tab]');
+    if(!btn) return;
+    setTab(btn.getAttribute('data-advisor-tab')!);
+  }
+
   function wireDelegation(){
+    byId('advisor-list').addEventListener('click', handleAdvisorAction);
     byId('grid-legit').addEventListener('click', handleCardAction);
     byId('grid-street').addEventListener('click', handleCardAction);
     byId('assets-cars').addEventListener('click', handleAssetAction);
@@ -1923,6 +1986,7 @@ import type * as ThreeNamespace from 'three';
     renderTerritoryPanel();
     renderPoliticsPanel();
     renderGangPanel();
+    renderAdvisorPanel();
 
     byId('hud-cash').textContent = fmt(state.cash);
     byId('hud-income').textContent = (netIncome()>=0?'+':'') + fmt(netIncome()) + '/s';
