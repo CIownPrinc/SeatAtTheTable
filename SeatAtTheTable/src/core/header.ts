@@ -557,6 +557,16 @@ import type * as ThreeNamespace from 'three';
   function bribeUpkeep(){ return state.bribeOn ? rawTotalIncome()*0.12 : 0; }
   function netIncome(){ return rawTotalIncome() - bribeUpkeep(); }
   function respectPerSec(){ const car=getEquippedCar(); return (state.muscleCount*0.6 + (car?car.respectPerSec:0)) * (grandmotherActive()?1.25:1); }
+  function heatBreakdown(){
+    const muscleHeat = state.muscleCount*0.5;
+    const streetVentureHeat = businesses.filter(b=>b.category==='street').reduce((s,b)=> s+(b.heatPerLevel||0)*b.level, 0);
+    const extortionHeat = localBusinesses.filter(b=>b.extorted).reduce((s,b)=> s+b.extortHeat, 0);
+    const cornerHeat = cornerHeatPerSec();
+    const modifier = heatMult() * (state.campaignActive ? 2.5 : 1);
+    const decayOffset = -0.5;
+    const generatedHeat = (muscleHeat + streetVentureHeat + extortionHeat + cornerHeat) * modifier;
+    return { muscleHeat, streetVentureHeat, extortionHeat, cornerHeat, modifier, decayOffset, generatedHeat, netHeat: generatedHeat + decayOffset };
+  }
   function heatGenPerSec(){
     const streetHeat = businesses.filter(b=>b.category==='street').reduce((s,b)=> s+(b.heatPerLevel||0)*b.level, 0);
     const extortHeat = localBusinesses.filter(b=>b.extorted).reduce((s,b)=> s+b.extortHeat, 0);
@@ -566,6 +576,14 @@ import type * as ThreeNamespace from 'three';
     const waveMult = crackdownActive() ? 2.2 : 1;
     const lowMult = state.layingLow ? 0.2 : 1;
     return base * heatMult() * (state.campaignActive ? 2.5 : 1) * waveMult * lowMult;
+    return heatBreakdown().generatedHeat;
+  }
+  function districtDriftBreakdown(d: District){
+    const musclePresence = state.muscleCount*0.15;
+    const cornerPresence = corners.filter(c=>c.district===d.id && c.dealer && !c.busted).length * 1.2;
+    const venturePresence = d.id==='devlin' ? businesses.filter(b=>b.researched && b.level>0).length*0.3 : 0;
+    const rivalPressure = d.homeTurf ? 0.15 : 0.35;
+    return { musclePresence, cornerPresence, venturePresence, rivalPressure, netDrift: musclePresence + cornerPresence + venturePresence - rivalPressure };
   }
   function currentRank(){ let r=ranks[0]; for(const rk of ranks){ if(state.respect>=rk.respect) r=rk; } return r.title; }
   function isUnlocked(b: Business){
@@ -574,6 +592,62 @@ import type * as ThreeNamespace from 'three';
     if(b.unlock.type==='respect') return state.respect>=b.unlock.value || b.level>0 || b.researched;
     if(b.unlock.type==='family') return hasFamilyTier(b.unlock.value) || b.level>0 || b.researched;
     return false;
+  }
+
+  type AdvisorTab = 'empire' | 'map' | 'bank' | 'politics' | 'gang' | 'assets' | 'settings';
+  type AdvisorMessage = { text: string; tab: AdvisorTab; action: string; priority: number };
+
+  function getAdvisorMessages(): AdvisorMessage[] {
+    const messages: AdvisorMessage[] = [];
+    const cart = businesses.find(b=>b.id==='cart');
+    const cornerStore = businesses.find(b=>b.id==='store');
+    const openedVentures = businesses.filter(b=>b.researched && b.level>0);
+    const understaffed = openedVentures.find(b=>!b.manager && crewNeeded(b)>0 && b.crew<crewNeeded(b));
+    const openedCorners = activeCorners();
+    const unopenedVenture = businesses.find(b=>isUnlocked(b) && b.researched && b.level===0);
+
+    if(cart && cart.level>0 && !cart.manager && cart.crew<crewNeeded(cart)) {
+      messages.push({ text:'Your cart is understaffed; hire crew to restore efficiency.', tab:'empire', action:'Assign crew', priority:100 });
+    } else if(understaffed) {
+      messages.push({ text:`${understaffed.name} is understaffed; hire crew to restore efficiency.`, tab:'empire', action:'Assign crew', priority:95 });
+    }
+
+    if(state.heat>70) {
+      messages.push({ text:'Heat is above 70; consider bribes or informants.', tab:'empire', action:'Reduce heat', priority:90 });
+    }
+
+    if(cornerStore && isUnlocked(cornerStore) && !cornerStore.researched && state.cash>=researchCostFor(cornerStore)) {
+      messages.push({ text:'You can research Corner Store.', tab:'empire', action:'Research it', priority:85 });
+    }
+
+    if(unopenedVenture) {
+      messages.push({ text:`${unopenedVenture.name} is unlocked but not opened.`, tab:'empire', action:'Open venture', priority:75 });
+    }
+
+    if(state.product>=productCap() && openedCorners.length<corners.filter(c=>!c.busted).length) {
+      messages.push({ text:'Product is full; post dealers on the map.', tab:'map', action:'Open map', priority:70 });
+    }
+
+    if(openedCorners.length>0 && state.product<=0) {
+      messages.push({ text:'Corners are staffed but product is empty; upgrade the Lab.', tab:'empire', action:'Upgrade Lab', priority:65 });
+    }
+
+    if(messages.length===0) {
+      messages.push({ text:'No urgent issues. Expand a venture, claim turf, or build cash for the next unlock.', tab:'empire', action:'Review empire', priority:10 });
+    }
+
+    return messages.sort((a,b)=>b.priority-a.priority).slice(0,4);
+  }
+
+  function renderAdvisorPanel(): void {
+    const wrap = byId('advisor-list');
+    const messages = getAdvisorMessages().slice(0,4);
+    wrap.innerHTML = messages.map(m=>`
+      <div class="advisor-item">
+        <div class="advisor-message">${m.text}</div>
+        <button class="advisor-action" data-advisor-tab="${m.tab}">${m.action}</button>
+      </div>
+    `).join('');
   }
   function log(msg: string){
     const wrap = byId('ticker');
@@ -1502,6 +1576,93 @@ import type * as ThreeNamespace from 'three';
       <span class="legend-item">Walk into any building's door to go inside</span>
     `;
   }
+
+  type DistrictLocation = {
+    id: string;
+    label: string;
+    kind: string;
+    x: number;
+    y: number;
+    distance: number;
+    interactable: boolean;
+    status: string;
+  };
+  function locationKindLabel(kind: string): string {
+    if(kind === 'building') return 'Venture';
+    if(kind === 'service') return 'Service';
+    if(kind === 'local') return 'Local Business';
+    if(kind === 'corner') return 'Corner';
+    if(kind === 'npc') return 'Named NPC';
+    return 'Gang Recruit';
+  }
+  function locationName(object: MapObject): string {
+    if(object.kind === 'building') return (object as MapObject<'building', typeof mapBuildings[number]>).ref.biz.name;
+    return (object as MapObject<'service' | 'local' | 'amenity' | 'corner' | 'npc' | 'gangnpc', ServiceBuilding | LocalBusiness | Corner | typeof mapNpcs[number] | GangRecruit>).ref.name;
+  }
+  function locationStatus(object: MapObject): string {
+    if(object.kind === 'building') return (object as MapObject<'building', typeof mapBuildings[number]>).ref.biz.level > 0 ? 'Open' : 'Not opened';
+    if(object.kind === 'local') return (object as MapObject<'local', LocalBusiness>).ref.extorted ? 'Paying' : 'Independent';
+    if(object.kind === 'corner') {
+      const corner = (object as MapObject<'corner', Corner>).ref;
+      return corner.busted ? 'Busted' : (corner.dealer ? 'Staffed' : 'Open');
+    }
+    if(object.kind === 'gangnpc') return (object as MapObject<'gangnpc', GangRecruit>).ref.inducted ? 'In crew' : 'Available';
+    if(object.kind === 'npc') return (object as MapObject<'npc', typeof mapNpcs[number]>).ref.type === 'named' ? 'Named' : 'Local';
+    return (object as MapObject<'service', ServiceBuilding>).ref.kind;
+  }
+  function districtLocations(): DistrictLocation[] {
+    return mapObjects
+      .filter(function(object){
+        if(object.district !== state.currentDistrict) return false;
+        if(object.kind === 'amenity') return false;
+        if(object.kind === 'npc' && (object as MapObject<'npc', typeof mapNpcs[number]>).ref.type !== 'named') return false;
+        return true;
+      })
+      .map(function(object){
+        const distance = Math.hypot(player.x - object.x, player.y - object.y);
+        return {
+          id: `${object.kind}:${object.id}`,
+          label: locationName(object),
+          kind: locationKindLabel(object.kind),
+          x: object.x,
+          y: object.y,
+          distance,
+          interactable: !state.currentInterior && !state.inVehicle && distance <= object.interactRadius,
+          status: locationStatus(object),
+        };
+      })
+      .sort(function(a, b){ return a.distance - b.distance; });
+  }
+  function renderDistrictLocationsPanel(){
+    const wrap = byId('district-locations-panel');
+    if(!wrap) return;
+    const district = districts.find(function(d){ return d.id === state.currentDistrict; });
+    const locations = districtLocations();
+    wrap.innerHTML = `
+      <div class="district-locations-head">
+        <div>
+          <div class="district-locations-title">${district ? district.name : 'Current District'}</div>
+          <div class="district-locations-sub">${locations.length} important locations nearby</div>
+        </div>
+        <div class="district-locations-key"><span class="status-pill active">Interactable</span><span class="status-pill">Waypoint</span></div>
+      </div>
+      <div class="district-locations-list">
+        ${locations.map(function(location){
+          return `<div class="district-location-row ${location.interactable ? 'is-interactable' : ''}">
+            <div class="district-location-main">
+              <div class="district-location-name">${location.label}</div>
+              <div class="district-location-meta">${location.kind} · ${Math.round(location.distance)}m · ${location.status}</div>
+            </div>
+            <div class="district-location-actions">
+              <span class="status-pill ${location.interactable ? 'active' : ''}">${location.interactable ? 'Interactable' : 'Out of range'}</span>
+              <button class="mini-btn" data-location-waypoint="${location.id}">Waypoint</button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    `;
+  }
+
   function renderTerritoryPanel(){
     const wrap = byId('territory-panel');
     if(!wrap) return;
@@ -1517,6 +1678,15 @@ import type * as ThreeNamespace from 'three';
         </div>
         <div class="data-expanded">
           <div class="flavor-note">${bonusText[d.id]}</div>
+          <div class="drift-breakdown">
+            ${(()=>{ const drift = districtDriftBreakdown(d); return `
+              <div class="drift-breakdown-row"><span>Muscle presence</span><strong>+${drift.musclePresence.toFixed(2)}/s</strong></div>
+              <div class="drift-breakdown-row"><span>Corner presence</span><strong>+${drift.cornerPresence.toFixed(2)}/s</strong></div>
+              <div class="drift-breakdown-row"><span>Venture presence</span><strong>+${drift.venturePresence.toFixed(2)}/s</strong></div>
+              <div class="drift-breakdown-row"><span>Rival pressure</span><strong>-${drift.rivalPressure.toFixed(2)}/s</strong></div>
+              <div class="drift-breakdown-row"><span>Current drift</span><strong>${drift.netDrift>=0?'+':''}${drift.netDrift.toFixed(2)}/s</strong></div>
+            `; })()}
+          </div>
           <div class="control-track"><div class="control-fill" data-control-bar="${d.id}" style="width:${Math.round(d.control)}%"></div></div>
           <div class="btn-row"><button class="mini-btn" ${canPush?'':'disabled'} data-push="${d.id}">PUSH <span class="cost">${pushCost(d)} resp</span></button></div>
         </div>
@@ -1573,6 +1743,26 @@ import type * as ThreeNamespace from 'three';
           `}
         </div>
       </div>
+    `;
+  }
+
+  function renderHeatHudDetails(){
+    const warning = byId('hud-heat-warning');
+    const panel = byId('heat-breakdown');
+    const fill = byId('heat-fill');
+    const heat = Math.round(state.heat);
+    const breakdown = heatBreakdown();
+    fill.classList.toggle('critical', state.heat >= 100);
+    warning.className = state.heat >= 100 ? 'stat-sub heat-warning critical' : (state.heat >= 70 ? 'stat-sub heat-warning' : 'stat-sub');
+    warning.textContent = state.heat >= 100 ? 'Raid imminent at 100+ heat' : (state.heat >= 70 ? 'Warning: corner bust risk at 70+ heat' : `${heat}% heat`);
+    panel.innerHTML = `
+      <div class="heat-breakdown-row"><span>Muscle heat</span><strong>+${breakdown.muscleHeat.toFixed(2)}/s</strong></div>
+      <div class="heat-breakdown-row"><span>Street venture heat</span><strong>+${breakdown.streetVentureHeat.toFixed(2)}/s</strong></div>
+      <div class="heat-breakdown-row"><span>Extortion heat</span><strong>+${breakdown.extortionHeat.toFixed(2)}/s</strong></div>
+      <div class="heat-breakdown-row"><span>Corner heat</span><strong>+${breakdown.cornerHeat.toFixed(2)}/s</strong></div>
+      <div class="heat-breakdown-row"><span>Bribe/politician/recruit modifiers</span><strong>x${breakdown.modifier.toFixed(2)}</strong></div>
+      <div class="heat-breakdown-row"><span>Current decay/offset</span><strong>${breakdown.decayOffset.toFixed(2)}/s</strong></div>
+      <div class="heat-breakdown-row"><span>Net heat change</span><strong>${breakdown.netHeat>=0?'+':''}${breakdown.netHeat.toFixed(2)}/s</strong></div>
     `;
   }
 
@@ -1874,6 +2064,21 @@ import type * as ThreeNamespace from 'three';
     else if(target.id === 'withdraw-input') withdrawAmount(target.value);
   }
 
+
+  function handleDistrictLocationsAction(e: Event){
+    const btn = (e.target as HTMLElement).closest('[data-location-waypoint]');
+    if(!btn) return;
+    const id = btn.getAttribute('data-location-waypoint')!;
+    const location = districtLocations().find(function(item){ return item.id === id; });
+    if(!location) return;
+    state.waypoints[state.currentDistrict] = { x:location.x, y:location.y };
+    rebuildWaypointBeacon();
+    byId('minimap-clear').classList.add('show');
+    log(`<i class="ph-duotone ph-map-pin"></i> Waypoint set to ${location.label}.`);
+    scheduleSave();
+    renderDistrictLocationsPanel();
+  }
+
   function handleTerritoryAction(e: Event){
     const btn = (e.target as HTMLElement).closest('[data-push]');
     if(!btn) return;
@@ -1928,7 +2133,14 @@ import type * as ThreeNamespace from 'three';
 
   // LEGAL: Wire all delegation listeners exactly once at boot. Stable containers
   // LEGAL: never get destroyed so each handler accumulates at exactly 1 per container.
+  function handleAdvisorAction(e: Event): void {
+    const btn = (e.target as HTMLElement).closest('[data-advisor-tab]');
+    if(!btn) return;
+    setTab(btn.getAttribute('data-advisor-tab')!);
+  }
+
   function wireDelegation(){
+    byId('advisor-list').addEventListener('click', handleAdvisorAction);
     byId('grid-legit').addEventListener('click', handleCardAction);
     byId('grid-street').addEventListener('click', handleCardAction);
     byId('assets-cars').addEventListener('click', handleAssetAction);
@@ -1940,6 +2152,7 @@ import type * as ThreeNamespace from 'three';
     byId('politics-panel').addEventListener('click', handlePoliticsAction);
     byId('gang-panel').addEventListener('click', handleGangAction);
     byId('district-bar').addEventListener('click', handleDistrictAction);
+    byId('district-locations-panel').addEventListener('click', handleDistrictLocationsAction);
   }
 
   // LEGAL: ================= RENDER: STREET PANEL =================
@@ -2076,16 +2289,20 @@ import type * as ThreeNamespace from 'three';
     renderAssetsPanel();
     renderDistrictBar();
     renderLegend();
+    renderDistrictLocationsPanel();
     renderTerritoryPanel();
     renderPoliticsPanel();
     renderGangPanel();
     renderCityNews();
+    renderAdvisorPanel();
 
     byId('hud-cash').textContent = fmt(state.cash);
     byId('hud-income').textContent = (netIncome()>=0?'+':'') + fmt(netIncome()) + '/s';
     byId('hud-rank').textContent = currentRank();
     byId('hud-respect').textContent = `${fmtR(state.respect)} respect`;
     updateHeatHud();
+    byId('heat-fill').style.width = Math.min(100, state.heat) + '%';
+    renderHeatHudDetails();
     byId('hud-crew').textContent = `${crewUsedGlobal()} / ${crewCapGlobal()}`;
 
     const prestigeBtn = byId<HTMLButtonElement>('prestige-btn');
@@ -2131,6 +2348,8 @@ import type * as ThreeNamespace from 'three';
     byId('hud-rank').textContent = rank;
     byId('hud-respect').textContent = `${fmtR(state.respect)} respect`;
     updateHeatHud();
+    byId('heat-fill').style.width = Math.min(100, state.heat) + '%';
+    renderHeatHudDetails();
     byId('hud-crew').textContent = `${crewUsedGlobal()} / ${crewCapGlobal()}`;
 
     if(rank === 'Local Boss') triggerMilestone('local_boss');
@@ -3303,6 +3522,7 @@ import type * as ThreeNamespace from 'three';
       byId('minimap-clear').classList.remove('show');
       scheduleSave();
     }
+    renderDistrictLocationsPanel();
     if(near){
       let label = '';
       if(near.type==='door') label='Exit';
@@ -3610,11 +3830,8 @@ import type * as ThreeNamespace from 'three';
 
     // LEGAL: Territory drifts toward whoever's actually maintaining a presence there.
     districts.forEach(d=>{
-      const cornerPresence = corners.filter(c=>c.district===d.id && c.dealer && !c.busted).length * 1.2;
-      const venturePresence = d.id==='devlin' ? businesses.filter(b=>b.researched && b.level>0).length*0.3 : 0;
-      const presence = state.muscleCount*0.15 + cornerPresence + venturePresence;
-      const pressure = d.homeTurf ? 0.15 : 0.35;
-      d.control = Math.max(0, Math.min(100, d.control + (presence-pressure)*dt));
+      const drift = districtDriftBreakdown(d);
+      d.control = Math.max(0, Math.min(100, d.control + drift.netDrift*dt));
     });
 
     // LEGAL: Heat settles toward a level set by current activity: a proportional
