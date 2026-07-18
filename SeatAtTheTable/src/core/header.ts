@@ -13,12 +13,15 @@ import { stockMarket } from '../config/stockMarket';
 import type { GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState, Point, ServiceBuilding, GangRecruit, Car, DialogueTree } from '../config/types';
 import type { MapAssetKey, MapAssetLibrary } from '../map/assets';
 import { loadMapAssetLibrary } from '../map/assets';
-import { amenityHasSolidFootprint, mapAmenities } from '../map/amenities';
+import { amenityHasSolidFootprint, createAmenityModal, mapAmenities } from '../map/amenities';
+import { buildAmenityModel as buildMapAmenityModel } from '../map/amenityRendering';
 import { createFillerLayoutProvider, seededRandom } from '../map/filler';
 import { applyNamedBuildingLots, createMapBuildings, mapNpcs } from '../map/markers';
 import { canMoveTo } from '../map/movement';
+import { drawMinimap as drawMapMinimap, MINIMAP_SCALE } from '../map/minimap';
 import type { MapObject } from '../map/objects';
 import { createBounds, nearestMapObject, solidsFromObjects } from '../map/objects';
+import { actorDisplayName, createRoamingActors, updateRoamingActors } from '../map/roaming';
 import { DISTRICT_OFFSETS, VIEW_H, VIEW_W, WORLD_H, WORLD_W, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { renderZoneType } from '../map/zoning';
 import type * as ThreeNamespace from 'three';
@@ -2012,84 +2015,7 @@ import type * as ThreeNamespace from 'three';
     ];
   }
   const mapObjects = buildMapObjects();
-  type RoamingActorKind = 'pedestrian' | 'car';
-  interface RoamingActor {
-    id: string;
-    kind: RoamingActorKind;
-    x: number;
-    y: number;
-    homeX: number;
-    homeY: number;
-    targetX: number;
-    targetY: number;
-    radius: number;
-    speed: number;
-    color: string;
-    facing: number;
-    object?: MapObject<'npc'> | MapObject<'gangnpc'>;
-    group: ThreeNamespace.Group | null;
-    route?: Point[];
-    routeIndex: number;
-  }
-  function roamSeed(id: string): number {
-    let seed = 17;
-    for(let i=0;i<id.length;i++) seed = (seed * 31 + id.charCodeAt(i)) % 100000;
-    return seed;
-  }
-  function createRoamingActors(): RoamingActor[] {
-    const actors: RoamingActor[] = [];
-    mapObjects.filter(o=>o.kind==='npc' || o.kind==='gangnpc').forEach(function(object){
-      const isGang = object.kind === 'gangnpc';
-      const npc = object.kind === 'npc' ? object.ref as typeof mapNpcs[number] : null;
-      const named = npc?.type === 'named';
-      const baseRadius = object.id === 'dice' ? 82 : (named ? 115 : 155);
-      actors.push({
-        id: object.id,
-        kind: 'pedestrian',
-        x: object.x,
-        y: object.y,
-        homeX: object.x,
-        homeY: object.y,
-        targetX: object.x,
-        targetY: object.y,
-        radius: isGang ? 95 : baseRadius,
-        speed: named ? 26 : 34,
-        color: isGang ? '#5f6275' : (named ? '#d4a017' : '#7a6fb0'),
-        facing: Math.PI / 2,
-        object: object as MapObject<'npc'> | MapObject<'gangnpc'>,
-        group: null,
-        routeIndex: 0,
-      });
-    });
-    const carRoutes: Array<{ id: string; color: string; speed: number; route: Point[] }> = [
-      { id:'devlin-cruiser', color:'#405560', speed:72, route:[{x:270,y:160},{x:270,y:1035},{x:700,y:1035},{x:1130,y:1035},{x:1130,y:300},{x:700,y:300}] },
-      { id:'westside-sedan', color:'#704040', speed:78, route:[{x:2270,y:300},{x:3130,y:300},{x:3130,y:900},{x:2700,y:900},{x:2270,y:900}] },
-      { id:'hub-cab', color:'#d4a017', speed:84, route:[{x:4270,y:600},{x:5130,y:600},{x:5130,y:300},{x:4700,y:300},{x:4270,y:300}] },
-    ];
-    carRoutes.forEach(function(route){
-      const start = route.route[0];
-      const target = route.route[1];
-      actors.push({
-        id: route.id,
-        kind: 'car',
-        x: start.x,
-        y: start.y,
-        homeX: start.x,
-        homeY: start.y,
-        targetX: target.x,
-        targetY: target.y,
-        radius: 0,
-        speed: route.speed,
-        color: route.color,
-        facing: Math.atan2(target.y - start.y, target.x - start.x),
-        group: null,
-        route: route.route,
-        routeIndex: 1,
-      });
-    });
-    return actors;
-  }
-  const roamingActors = createRoamingActors();
+  const roamingActors = createRoamingActors(mapObjects);
   // LEGAL: District landmarks — unique, recognisable "spots" so each area reads as a
   // LEGAL: place rather than interchangeable blocks. Coords are world-space, sited on
   // LEGAL: each district's park/plaza and clear of the fixed anchors. (The Hub already
@@ -2211,32 +2137,12 @@ import type * as ThreeNamespace from 'three';
     renderAll();
   }
   function openAmenityPanel(amenity: typeof mapAmenities[number]){
-    if(amenity.kind==='basketball'){
-      showModal({ eyebrow:'Neighborhood Court', title:amenity.name, body:`<p>${amenity.prompt}. A few locals are already running half-court.</p><p class="flavor">Win or lose, being seen here matters.</p>`, buttons:[
-        { label:'Play a quick game', onClick:function(){ state.respect += 1; log(`You get a run in at ${amenity.name}.`); renderAll(); } },
-        { label:'Just watch', secondary:true },
-      ] });
-      return;
-    }
-    if(amenity.kind==='petstore'){
-      showModal({ eyebrow:'Pet Store', title:amenity.name, body:'<p>Cages, aquariums, leashes, too many squeaky toys. The owner knows every lonely person in the neighborhood by name.</p>', buttons:[
-        { label:'Buy supplies ($75)', onClick:function(){ if(state.cash>=75){ state.cash-=75; state.respect += 1; log(`You buy pet supplies at ${amenity.name}.`); renderAll(); } } },
-        { label:'Ask about adopting', onClick:function(){ if(state.cash>=250){ state.cash-=250; state.respect += 2; log(`You cover adoption fees through ${amenity.name}. People notice.`); renderAll(); } } },
-        { label:'Leave', secondary:true },
-      ] });
-      return;
-    }
-    if(amenity.kind==='parkgame'){
-      showModal({ eyebrow:'Park Game', title:amenity.name, body:'<p>Old men argue over openings. Kids hover nearby pretending not to watch.</p>', buttons:[
-        { label:'Sit for a game', onClick:function(){ state.respect += 1; log(`You play a fast game at ${amenity.name}.`); renderAll(); } },
-        { label:'Keep walking', secondary:true },
-      ] });
-      return;
-    }
-    showModal({ eyebrow:'Local Shop', title:amenity.name, body:'<p>A small counter, a lottery machine, a cooler that hums too loud.</p>', buttons:[
-      { label:'Buy something small ($20)', onClick:function(){ if(state.cash>=20){ state.cash-=20; log(`You buy something at ${amenity.name}.`); renderAll(); } } },
-      { label:'Leave', secondary:true },
-    ] });
+    showModal(createAmenityModal(amenity, {
+      addRespect:function(amount){ state.respect += amount; },
+      spendCash:function(amount){ if(state.cash < amount) return false; state.cash -= amount; return true; },
+      log,
+      renderAll,
+    }));
   }
 
   window.addEventListener('keydown', function(e){
@@ -2375,6 +2281,8 @@ import type * as ThreeNamespace from 'three';
     parent.add(sprite);
   }
   function buildPedestrianModel(color: number | string){
+    const asset = mapAssets?.createFittedModel(assetKeyForPedestrian(color), 15, 38, 15);
+    if(asset) return asset;
     const g = new THREE.Group();
     const coat = new THREE.Mesh(new THREE.CylinderGeometry(5.5,7.5,18,8), new THREE.MeshStandardMaterial({color: color||'#e8e6de', roughness:0.72}));
     coat.position.y = 16; coat.castShadow=true; g.add(coat);
@@ -2402,6 +2310,8 @@ import type * as ThreeNamespace from 'three';
     return g;
   }
   function buildCarModel(car: Car){
+    const asset = mapAssets?.createFittedModel(assetKeyForCar(car), car.len * 1.6, 32, car.wid * 1.6);
+    if(asset) return asset;
     const g = new THREE.Group();
     const bodyH = car.id==='escalade'?18:(car.id==='bentley'?16:14);
     const body = box(car.len, bodyH, car.wid, car.color);
@@ -2475,106 +2385,8 @@ import type * as ThreeNamespace from 'three';
   function buildTrafficCarModel(id: string, color: string): ThreeNamespace.Group {
     return buildCarModel({ id, name:id, icon:'', cost:0, speedMult:1, heistBonus:0, respectPerSec:0, color, len:id.includes('cab')?38:44, wid:id.includes('cruiser')?22:20 });
   }
-  function moveActorToward(actor: RoamingActor, dt: number): void {
-    const dx = actor.targetX - actor.x;
-    const dy = actor.targetY - actor.y;
-    const dist = Math.hypot(dx, dy);
-    if(dist < 5){
-      if(actor.route && actor.route.length > 1){
-        actor.routeIndex = (actor.routeIndex + 1) % actor.route.length;
-        const next = actor.route[actor.routeIndex];
-        actor.targetX = next.x;
-        actor.targetY = next.y;
-      } else {
-        const rand = seededRandom(roamSeed(actor.id) + Math.floor(state.playSeconds / 5));
-        for(let i=0;i<5;i++){
-          const angle = rand() * Math.PI * 2;
-          const distance = actor.radius * (0.25 + rand() * 0.75);
-          const nx = actor.homeX + Math.cos(angle) * distance;
-          const ny = actor.homeY + Math.sin(angle) * distance;
-          if(tryMove(nx, ny, currentSolids)){
-            actor.targetX = nx;
-            actor.targetY = ny;
-            break;
-          }
-        }
-      }
-      return;
-    }
-    const step = Math.min(dist, actor.speed * dt);
-    const nx = actor.x + dx / dist * step;
-    const ny = actor.y + dy / dist * step;
-    actor.facing = Math.atan2(dy, dx);
-    if(actor.kind === 'car' || tryMove(nx, ny, currentSolids)){
-      actor.x = nx;
-      actor.y = ny;
-      if(actor.object){
-        actor.object.x = nx;
-        actor.object.y = ny;
-      }
-    } else {
-      actor.targetX = actor.homeX;
-      actor.targetY = actor.homeY;
-    }
-  }
-  function updateRoamingActors(dt: number): void {
-    if(state.currentInterior) return;
-    roamingActors.forEach(function(actor){
-      moveActorToward(actor, dt);
-      if(actor.group){
-        actor.group.position.set(actor.x, 0, actor.y);
-        actor.group.rotation.y = -actor.facing + Math.PI / 2;
-      }
-    });
-  }
-  function buildBasketballCourt(amenity: typeof mapAmenities[number]): ThreeNamespace.Group {
-    const g = new THREE.Group();
-    const court = new THREE.Mesh(new THREE.PlaneGeometry(112,70), new THREE.MeshStandardMaterial({color:'#8b4b28', roughness:0.95}));
-    court.rotation.x=-Math.PI/2; court.position.y=0.12; court.receiveShadow=true; g.add(court);
-    const lineMat = new THREE.MeshBasicMaterial({color:'#f0efe8'});
-    [0,-32,32].forEach(function(z){
-      const line = new THREE.Mesh(new THREE.PlaneGeometry(104,2), lineMat);
-      line.rotation.x=-Math.PI/2; line.position.set(0,0.18,z); g.add(line);
-    });
-    [0,-52,52].forEach(function(x){
-      const line = new THREE.Mesh(new THREE.PlaneGeometry(2,66), lineMat);
-      line.rotation.x=-Math.PI/2; line.position.set(x,0.18,0); g.add(line);
-    });
-    [-43,43].forEach(function(x){
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,22,6), new THREE.MeshStandardMaterial({color:'#202329'}));
-      pole.position.set(x,11,0); pole.castShadow=true; g.add(pole);
-      const backboard = new THREE.Mesh(new THREE.BoxGeometry(2,12,20), new THREE.MeshStandardMaterial({color:'#e6e2d5', roughness:0.6}));
-      backboard.position.set(x,23,0); backboard.castShadow=true; g.add(backboard);
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(5,0.6,8,18), new THREE.MeshStandardMaterial({color:'#d47a2a', roughness:0.45}));
-      rim.rotation.y=Math.PI/2; rim.position.set(x > 0 ? x-4 : x+4,18,0); g.add(rim);
-    });
-    addSign(g, amenity.name, 42, 8, 18, '#ffe6a0');
-    return g;
-  }
-  function buildParkGameSpot(amenity: typeof mapAmenities[number]): ThreeNamespace.Group {
-    const g = new THREE.Group();
-    const pad = new THREE.Mesh(new THREE.PlaneGeometry(54,34), new THREE.MeshStandardMaterial({color:'#2f3f31', roughness:1}));
-    pad.rotation.x=-Math.PI/2; pad.position.y=0.13; pad.receiveShadow=true; g.add(pad);
-    [-10,10].forEach(function(x){
-      const table = box(12,3,12,'#484c55'); table.position.set(x,5,0); g.add(table);
-      const top = new THREE.Mesh(new THREE.PlaneGeometry(14,14), new THREE.MeshBasicMaterial({color:'#d7d0b8'}));
-      top.rotation.x=-Math.PI/2; top.position.set(x,6.7,0); g.add(top);
-      [-9,9].forEach(function(z){ const bench = box(15,3,4,'#5a3f2a'); bench.position.set(x,3,z); g.add(bench); });
-    });
-    addSign(g, amenity.name, 38, 7, 13, '#cde8c4');
-    return g;
-  }
   function buildAmenityModel(amenity: typeof mapAmenities[number]): ThreeNamespace.Group {
-    if(amenity.kind === 'basketball') return buildBasketballCourt(amenity);
-    if(amenity.kind === 'parkgame') return buildParkGameSpot(amenity);
-    const color = amenity.kind === 'petstore' ? '#4f795c' : '#6d5142';
-    const mesh = buildDetailedBuilding(42,20,36,color,'shop', variantForId(amenity.id));
-    if(amenity.kind === 'petstore'){
-      const paw = new THREE.Mesh(new THREE.SphereGeometry(4,10,8), new THREE.MeshStandardMaterial({color:'#f0efe8', roughness:0.7}));
-      paw.position.set(0,13,20); mesh.add(paw);
-    }
-    addSign(mesh, amenity.name, 34, 8, 18, amenity.kind === 'petstore' ? '#d0f0d8' : '#ffd8a0');
-    return mesh;
+    return buildMapAmenityModel(THREE, amenity, { box, addSign, buildDetailedBuilding, variantForId });
   }
   function updateDayNightLighting(){
     if(!scene || !sunLight || !moonLight || !ambientLight) return;
@@ -2624,6 +2436,23 @@ import type * as ThreeNamespace from 'three';
     if(zoneType==='commercial' || zoneType==='shop') return variant > 0.5 ? 'commercialAwning' : 'commercialWide';
     if(zoneType==='residential') return variant > 0.5 ? 'houseB' : 'houseA';
     return null;
+  }
+  function assetKeyForPedestrian(color: number | string): MapAssetKey {
+    if(color === '#d4a017') return 'characterK';
+    if(color === '#5f6275') return 'characterN';
+    if(color === '#7a6fb0') return 'characterH';
+    if(color === '#f0efe8') return 'characterA';
+    return variantForId(String(color)) > 0.5 ? 'characterC' : 'characterE';
+  }
+  function assetKeyForCar(car: Car): MapAssetKey {
+    if(car.id==='bentley') return 'carLuxurySuv';
+    if(car.id==='escalade') return 'carSuv';
+    if(car.id==='impala') return 'carSport';
+    if(car.id.includes('cab')) return 'carTaxi';
+    if(car.id.includes('cruiser')) return 'carPolice';
+    if(car.id.includes('delivery')) return 'carDelivery';
+    if(car.id.includes('van')) return 'carVan';
+    return 'carSedan';
   }
   function addVentureDetail(m: typeof mapBuildings[number], base: ThreeNamespace.Group){
     if(m.id==='cart'){
@@ -2977,8 +2806,7 @@ import type * as ThreeNamespace from 'three';
       g.rotation.y = -actor.facing + Math.PI / 2;
       worldGroup.add(g);
       actor.group = g;
-      const name = actor.object?.kind === 'npc' ? (actor.object.ref as typeof mapNpcs[number]).name : (actor.object?.ref as GangRecruit | undefined)?.name;
-      addSign(g, name ?? '?', 28, 7, 38, '#f0efe8');
+      addSign(g, actorDisplayName(actor), 28, 7, 38, '#f0efe8');
     });
 
     // LEGAL: Filler city buildings per district with zoning-aware types
@@ -3193,8 +3021,6 @@ import type * as ThreeNamespace from 'three';
   const minimapCanvas = byId<HTMLCanvasElement>('minimap-canvas');
   const mctx = minimapCanvas.getContext('2d')!;
   const minimapPan = { x:0, y:0 };
-  // LEGAL: Scale tuned for 5500-wide world so minimap shows local neighbourhood
-  const MINIMAP_SCALE = 150/600;
   let minimapDragging=false, minimapDragStart: { clientX: number; clientY: number; panX: number; panY: number } | null =null, minimapDragMoved=false;
 
   minimapCanvas.addEventListener('mousedown', function(e){
@@ -3230,72 +3056,22 @@ import type * as ThreeNamespace from 'three';
   });
 
   function drawMinimap(){
-    mctx.fillStyle = '#12141c'; mctx.fillRect(0,0,150,150);
-    if(state.currentInterior){
-      mctx.fillStyle='#6c7080'; mctx.font='10px IBM Plex Mono, monospace'; mctx.textAlign='center'; mctx.textBaseline='middle';
-      mctx.fillText('Indoors', 75, 75);
-      mctx.strokeStyle='rgba(212,160,23,0.5)'; mctx.strokeRect(0.5,0.5,149,149);
-      return;
-    }
-    if(!minimapDragging && Math.hypot(player.vx, player.vy) > 5){
-      minimapPan.x = 0;
-      minimapPan.y = 0;
-    }
-    const centerX = player.x + minimapPan.x, centerY = player.y + minimapPan.y;
-    const proj = function(wx: number, wy: number){ return { x:75+(wx-centerX)*MINIMAP_SCALE, y:75+(wy-centerY)*MINIMAP_SCALE }; };
-    const onMap = function(p: {x:number;y:number}){ return p.x>=-8 && p.x<=158 && p.y>=-8 && p.y<=158; };
-    // LEGAL: Filler city + parks + rough-edge skyline, drawn under the roads so the
-    // LEGAL: minimap matches the actual layout you see in the 3D view.
-    ['devlin','westside','hub'].forEach(function(distId){
-      const off = DISTRICT_OFFSETS[distId];
-      fillerFor(distId).forEach(function(f){
-        if(f.kind==='building' || f.kind==='edge'){
-          const p = proj(f.x+off, f.y);
-          if(!onMap(p)) return;
-          const bw = Math.max(1.5, f.w*MINIMAP_SCALE), bd = Math.max(1.5, f.d*MINIMAP_SCALE);
-          mctx.fillStyle = f.kind==='edge' ? 'rgba(84,90,104,0.5)' : 'rgba(120,126,142,0.72)';
-          mctx.fillRect(p.x-bw/2, p.y-bd/2, bw, bd);
-        } else if(f.kind==='park'){
-          const p = proj((f.x0+f.x1)/2+off,(f.y0+f.y1)/2);
-          if(!onMap(p)) return;
-          const w=(f.x1-f.x0)*MINIMAP_SCALE, d=(f.y1-f.y0)*MINIMAP_SCALE;
-          mctx.fillStyle='rgba(58,108,68,0.55)'; mctx.fillRect(p.x-w/2,p.y-d/2,w,d);
-        }
-      });
+    drawMapMinimap({
+      ctx:mctx,
+      indoors:!!state.currentInterior,
+      dragging:minimapDragging,
+      pan:minimapPan,
+      player,
+      mapObjects,
+      districtOffsets:DISTRICT_OFFSETS,
+      fillerFor,
+      roadNetwork,
+      worldWidth:WORLD_W,
+      worldHeight:WORLD_H,
+      landmarks,
+      waypoint:state.waypoints[state.currentDistrict],
     });
-    mctx.strokeStyle='rgba(120,120,135,0.4)'; mctx.lineWidth=3;
-    roadNetwork.vertical.forEach(function(r){ const p1=proj(r.x,0), p2=proj(r.x,WORLD_H); mctx.beginPath(); mctx.moveTo(p1.x,p1.y); mctx.lineTo(p2.x,p2.y); mctx.stroke(); });
-    roadNetwork.horizontal.forEach(function(r){ const p1=proj(0,r.y), p2=proj(WORLD_W,r.y); mctx.beginPath(); mctx.moveTo(p1.x,p1.y); mctx.lineTo(p2.x,p2.y); mctx.stroke(); });
-    const dot = function(wx: number, wy: number, color: string, size: number){ const p=proj(wx,wy); if(p.x<-6||p.x>156||p.y<-6||p.y>156) return; mctx.beginPath(); mctx.arc(p.x,p.y,size,0,Math.PI*2); mctx.fillStyle=color; mctx.fill(); };
-    const objectColor = function(object: MapObject): string {
-      if(object.kind==='corner'){
-        const corner = object.ref as Corner;
-        return corner.busted?'#5f6275':(corner.dealer?'#d4a017':'#a8394a');
-      }
-      return object.minimapColor;
-    };
-    mapObjects.forEach(function(object){ dot(object.x, object.y, objectColor(object), object.minimapSize); });
-    // LEGAL: Landmark markers — small gold diamonds for the district "spots".
-    landmarks.forEach(function(lm){
-      const p = proj(lm.x, lm.y);
-      if(!onMap(p)) return;
-      mctx.save(); mctx.translate(p.x,p.y); mctx.rotate(Math.PI/4);
-      mctx.fillStyle='#e0c860'; mctx.fillRect(-3,-3,6,6); mctx.restore();
-    });
-    const wp = state.waypoints[state.currentDistrict];
-    if(wp){
-      const p = proj(wp.x,wp.y);
-      mctx.strokeStyle='#d4a017'; mctx.lineWidth=2;
-      mctx.beginPath(); mctx.moveTo(p.x-6,p.y); mctx.lineTo(p.x+6,p.y); mctx.moveTo(p.x,p.y-6); mctx.lineTo(p.x,p.y+6); mctx.stroke();
-      mctx.beginPath(); mctx.arc(p.x,p.y,7,0,Math.PI*2); mctx.stroke();
-    }
-    const pp = proj(player.x,player.y);
-    mctx.save(); mctx.translate(pp.x,pp.y); mctx.rotate(player.facing);
-    mctx.beginPath(); mctx.moveTo(6,0); mctx.lineTo(-4,-4); mctx.lineTo(-4,4); mctx.closePath();
-    mctx.fillStyle='#d4a017'; mctx.fill(); mctx.restore();
-    mctx.strokeStyle='rgba(212,160,23,0.5)'; mctx.lineWidth=1; mctx.strokeRect(0.5,0.5,149,149);
   }
-
   // LEGAL: ================= INTERIOR (lightweight 2D scene) =================
   const interiorCanvas = byId<HTMLCanvasElement>('interior-canvas');
   const ictx = interiorCanvas.getContext('2d')!;
@@ -3413,7 +3189,7 @@ import type * as ThreeNamespace from 'three';
       renderer.domElement.style.display = 'block';
       updateDayNightLighting();
       updateWeather(dt);
-      updateRoamingActors(dt);
+      updateRoamingActors(roamingActors, { dt, playSeconds:state.playSeconds, indoors:!!state.currentInterior, canMove:function(x,y){ return tryMove(x,y,currentSolids); } });
       playerGroup.position.set(player.x, 0, player.y);
       playerGroup.rotation.y = -player.facing + Math.PI/2;
       camera3d.position.set(player.x, 260, player.y+72);

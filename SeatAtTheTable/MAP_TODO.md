@@ -6,8 +6,11 @@
 - In progress: Split map code out of `header.ts`.
 - Done: Delete the dead legacy district scene builder body. A compatibility wrapper remains for saved-game boot paths.
 - Mostly done: Shared map data for objects, bounds, collisions, interactions, minimap, filler layout, movement, zoning, and amenity markers.
-- In progress: GLB/GLTF asset loading. Kenney CC0 Modular Buildings assets, downloaded from OpenGameArt, are now mirrored in `public/assets/map/kenney-modular-buildings` and used for residential, commercial, and tower building variants.
+- In progress: GLB/GLTF asset loading. Kenney CC0 Modular Buildings, Car Kit, and Blocky Characters assets are mirrored under `public/assets/map` and loaded through the shared map asset library.
 - Started: Immersion systems on top of shared map objects. Basketball courts, pet stores, shops, park-game spots, moving notable NPCs, gang recruits, pedestrians, and ambient traffic now exist in the map scene.
+- Done: Roaming actor logic is extracted to `src/map/roaming.ts`.
+- Done: Minimap rendering is extracted to `src/map/minimap.ts`.
+- Done: Amenity data, interaction modal construction, and amenity model rendering are extracted to map modules.
 - Deferred: Pathfinding/physics until product direction requires it.
 
 ## Asset And System Rule
@@ -17,9 +20,8 @@ When a new library, asset pack, or map system is added, future map work should a
 ## Next Steps
 
 - Use the existing GLB loader for more city props after choosing exact CC0 sources: street furniture, parking details, docks/logistics props, and residential details.
-- Continue extracting scene-building code from `header.ts` into typed modules.
-- Extract roaming actor logic into a typed module, then expand it with road-aware traffic rules and district-safe pedestrian destinations.
-- Add or mirror CC0 car and character asset packs before replacing the improved procedural car/person models with external meshes.
-- Extract minimap drawing and interaction into a typed module.
+- Continue extracting `buildCityScene` from `header.ts` into a typed scene-building module. Keep the first pass focused on roads, water, bridges, parks, lots, and filler buildings before moving player/interior-specific code.
+- Expand roaming with lane-aware traffic rules and more believable pedestrian destination tables.
+- Use the mirrored CC0 car and character assets for more roles, keeping procedural fallbacks.
 - Add a visual regression e2e check for the 3D map canvas so shader/render failures are caught before manual testing.
 - Replace more handmade primitives only where the asset fits the Chicago-parody city style and location.
