@@ -86,17 +86,35 @@ import type * as ThreeNamespace from 'three';
   function hubInterestMult(){ return districtStatus('hub')==='yours' ? 1.5 : 1; }
   function hubHeistBonus(){ return districtStatus('hub')==='yours' ? 0.10 : 0; }
   function pushCost(d: District){ return Math.ceil(20 * Math.pow(1.6, d.pushCount)); }
+  function pushCashCost(d: District){ return Math.ceil(300 * Math.pow(1.5, d.pushCount) * discountMult()); }
   function pushDistrict(id: string){
     const d = districts.find(x=>x.id===id);
     if(!d) return;
     if(state.playSeconds < d.nextPushAt) return;
-    const cost = pushCost(d);
-    if(state.respect < cost) return;
-    state.respect -= cost;
-    d.control = Math.min(100, d.control + 12);
+    const respCost = pushCost(d), cashCost = pushCashCost(d);
+    if(state.respect < respCost || state.cash < cashCost) return;
+    state.respect -= respCost;
+    state.cash -= cashCost;
+    // LEGAL: Muscle and guns behind the claim make the push land harder.
+    const backing = Math.min(6, state.muscleCount*0.4 + Math.min(state.guns, 20)*0.15);
+    d.control = Math.min(100, d.control + 10 + backing);
     d.pushCount += 1;
     d.nextPushAt = state.playSeconds + 90;
-    log(`<i class="ph-duotone ph-map-pin"></i> You put weight behind your claim on ${d.name}. Turf control now ${Math.round(d.control)}%.`);
+    state.heat = Math.min(100, state.heat + 6);
+    let note = `<i class="ph-duotone ph-map-pin"></i> You bankroll a hard push on ${d.name}. Turf control now ${Math.round(d.control)}%.`;
+    // LEGAL: Pushing openly can draw a police response or cost you a corner.
+    if(Math.random() < 0.18){
+      state.investigation = Math.min(100, state.investigation + 6);
+      const dealt = corners.filter(c=>c.district===d.id && c.dealer && !c.busted);
+      if(dealt.length && Math.random() < 0.5){
+        const c = dealt[Math.floor(Math.random()*dealt.length)];
+        c.busted = true; c.dealer = false; c.bustCooldownAt = state.playSeconds + 180;
+        note += ` Cops move on the noise — ${c.name} gets rolled up.`;
+      } else {
+        note += ` The open show of force puts you on the department's radar.`;
+      }
+    }
+    log(note);
     renderAll();
   }
 
@@ -121,6 +139,7 @@ import type * as ThreeNamespace from 'three';
   function gangStrength(){
     const car = getEquippedCar();
     let s = state.muscleCount*1 + gangRecruits.filter(g=>g.inducted).length*3;
+    s += Math.min(state.guns, 40)*0.4; // LEGAL: firepower, capped so guns can't fully replace bodies
     if(car) s += car.heistBonus*10;
     if(gangRecruits.find(g=>g.id==='les')!.inducted) s *= 1.08;
     return s;
@@ -129,6 +148,9 @@ import type * as ThreeNamespace from 'three';
     const ws = districts.find(d=>d.id==='westside')!;
     return 20 + (100-ws.control)*0.3;
   }
+  // LEGAL: Black-market arms. Bought in packs; price climbs as you stockpile.
+  const GUN_PACK = 5;
+  function gunPackCost(){ return Math.ceil(1500 * Math.pow(1.14, Math.floor(state.guns/GUN_PACK)) * discountMult()); }
 
   // LEGAL: ================= DIALOGUE ENGINE =================
   // LEGAL: Reusable branching conversation tree. Any future NPC/mission/politics/gang
@@ -238,9 +260,21 @@ import type * as ThreeNamespace from 'three';
       nodes: {
         start: { text:"Dice's people aren't going to hand West Side over. If you want it, you take it — the question is how loud you're willing to be about it.",
           choices: [
-            { label:'Full assault — bigger swing, more heat', next:'result', effect:function(){ resolveWar('assault'); } },
-            { label:'Targeted hits — smaller swing, safer', next:'result', effect:function(){ resolveWar('targeted'); } },
+            { label:'Full assault — needs 8 guns · $4,000', next:'assault_prep', effect:function(){} },
+            { label:'Targeted hits — needs 4 guns · $1,800', next:'targeted_prep', effect:function(){} },
             { label:'Not tonight', next:null },
+          ]},
+        assault_prep: { text:"Your guys are geared up and rolling out when a squad car swings onto the block — the shooting's already started and it's loud. There's a beat cop who can be reached, for a price.",
+          choices: [
+            { label:'Pay off the responding patrol (−$2,500)', next:'result', effect:function(){ resolveWar('assault', true); } },
+            { label:'Push through — eat the heat', next:'result', effect:function(){ resolveWar('assault', false); } },
+            { label:'Stand down', next:null },
+          ]},
+        targeted_prep: { text:"You keep it tight — a couple of cars, in and out. Still, a patrol is circling the area and someone's going to notice the muzzle flashes.",
+          choices: [
+            { label:'Grease the patrol to look away (−$1,200)', next:'result', effect:function(){ resolveWar('targeted', true); } },
+            { label:'Run it clean and fast — eat the heat', next:'result', effect:function(){ resolveWar('targeted', false); } },
+            { label:'Stand down', next:null },
           ]},
         result: { text:'', choices:[ { label:'Leave', next:null } ] },
       }
@@ -372,8 +406,9 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: ================= STATE =================
   const state: GameState = {
     cash: 47, respect: 0, heat: 0,
+    investigation: 0, layingLow: false, crackdownUntil: 0, nextCrackdownAt: 360,
     territoryTier: 0, negotiateTier: 0,
-    muscleCount: 0, ratCount: 0, bribeOn: false,
+    muscleCount: 0, guns: 0, ratCount: 0, bribeOn: false,
     prestigeCount: 0, seenMilestones: new Set<string>(),
     started: false, lastTick: Date.now(), nextEventAt: 110 + Math.random()*60,
     playSeconds: 0, investorPenalty: 0,
@@ -389,6 +424,7 @@ import type * as ThreeNamespace from 'three';
     portfolio: {}, marketPrices: {}, marketHistory: {}, nextMarketTickAt: 0,
     financeView: 'vault', activeStock: null,
     currentNews: [], newsQueue: [], nextNewsAt: 0,
+    cityNews: [], nextCityNewsAt: 150,
   };
 
   // LEGAL: ================= HELPERS =================
@@ -418,13 +454,48 @@ import type * as ThreeNamespace from 'three';
   function deepakActive(){ return hasFamilyTier(3); }
   function grandmotherActive(){ return hasFamilyTier(4); }
   function discountMult(){ return Math.pow(0.93, state.negotiateTier); }
-  function globalIncomeMult(){ return Math.max(0.1, (brotherActive()?1.5:1) * (1 - (state.investorPenalty||0))); }
+  // LEGAL: PROGRESSION_BOOST is a small global income nudge to ease pacing.
+  const PROGRESSION_BOOST = 1.06;
+  function globalIncomeMult(){ return Math.max(0.1, PROGRESSION_BOOST * (brotherActive()?1.5:1) * (1 - (state.investorPenalty||0))); }
   function nadiaInducted(){ return gangRecruits.find(g=>g.id==='nadia')!.inducted; }
   function chinoInducted(){ return gangRecruits.find(g=>g.id==='chino')!.inducted; }
   function birdInducted(){ return gangRecruits.find(g=>g.id==='bird')!.inducted; }
   function whitmoreMult(){ return whitmoreActive() ? 0.7 : 1; }
   function researchCostFor(b: Business){ return Math.ceil(b.researchCost * discountMult() * (coleActive()?0.9:1)); }
   function heatMult(){ return Math.max(0.3, (state.bribeOn?0.4:1) * (motherActive()?0.65:1) * (boyleActive()?0.8:1) * (nadiaInducted()?0.9:1)); }
+
+  // LEGAL: ================= HEAT / WANTED / INVESTIGATION =================
+  // LEGAL: Heat is a fast gauge that maps to a GTA-style WANTED ladder (0-4). Each
+  // LEGAL: tier escalates ongoing consequences. Sustained high tiers feed the slow,
+  // LEGAL: sticky INVESTIGATION gauge, and it — not heat — is what triggers the raid.
+  const WANTED_TIERS = [
+    { min: 0,  label: 'COLD',      color: '#4a7c59' },
+    { min: 25, label: 'NOTICED',   color: '#c9a227' },
+    { min: 50, label: 'WATCHED',   color: '#d98324' },
+    { min: 70, label: 'HEAT',      color: '#d14e3b' },
+    { min: 90, label: 'RAID RISK', color: '#e11d1d' },
+  ];
+  function wantedTier(){ let t = 0; for(let i=0;i<WANTED_TIERS.length;i++){ if(state.heat >= WANTED_TIERS[i].min) t = i; } return t; }
+  function crackdownActive(){ return state.playSeconds < state.crackdownUntil; }
+  // LEGAL: Every simultaneous illegal front (street venture, working corner, extorted
+  // LEGAL: shop) adds a little conspicuousness; a sprawling operation draws
+  // LEGAL: disproportionately more attention than a single quiet racket.
+  function illegalFrontCount(){
+    const street = businesses.filter(b=>b.category==='street' && b.level>0).length;
+    const cornerFronts = corners.filter(c=>c.dealer && !c.busted).length;
+    const extortFronts = localBusinesses.filter(b=>b.extorted).length;
+    return street + cornerFronts + extortFronts;
+  }
+  function illegalIncomePerSec(){
+    const streetLow = state.layingLow ? 0.4 : 1;
+    const street = businesses.filter(b=>b.category==='street').reduce((s,b)=> s+incomeFor(b), 0) * streetLow;
+    return (street * globalIncomeMult()) + cornerIncomePerSec() * (state.layingLow?0.4:1) + localBizIncome() * (state.layingLow?0.4:1);
+  }
+  function topStreetVenture(){ return businesses.filter(b=>b.category==='street' && b.level>0).sort((a,b)=>b.level-a.level)[0] || null; }
+  function flagshipLegit(){ return businesses.filter(b=>b.category==='legit' && b.level>0).sort((a,b)=>incomeFor(b)-incomeFor(a))[0] || null; }
+  function districtDisplayName(id: string){ const d = districts.find(x=>x.id===id); return d ? d.name : 'the city'; }
+  function investigationBuildMult(){ return (state.bribeOn?0.7:1) * (motherActive()?0.85:1) * (whitmoreActive()?0.8:1); }
+  function counselCost(){ return Math.ceil((900 + illegalIncomePerSec()*45) * (1 + state.investigation/35) * discountMult()); }
   function crewCapGlobal(){ return 6 + state.territoryTier*4 + (sisterActive()?6:0); }
   function crewUsedGlobal(){ return businesses.reduce((s,b)=> s + (b.manager?0:b.crew), 0); }
   function crewNeeded(b: Business){ return b.level<=0 ? 0 : Math.ceil(b.level/5); }
@@ -476,14 +547,25 @@ import type * as ThreeNamespace from 'three';
   function labCost(){ return Math.ceil(400 * Math.pow(1.22, state.productLevel) * discountMult()); }
   function productCap(){ return 200 + state.productLevel*20; }
   function electedOfficeIncome(){ return state.electedOffice ? (5 + Math.min(state.prestigeCount, familyTiers.length)*2) : 0; }
-  function rawTotalIncome(){ return (businesses.reduce((s,b)=> s+incomeFor(b), 0)*devlinIncomeBonus() + propertiesIncome() + localBizIncome() + cornerIncomePerSec() + electedOfficeIncome()) * globalIncomeMult(); }
+  function rawTotalIncome(){
+    // LEGAL: While laying low, the illegal side (street ventures, corners, extortion)
+    // LEGAL: runs at a fraction; the legit empire and rents are unaffected.
+    const low = state.layingLow ? 0.4 : 1;
+    const venturesIncome = businesses.reduce((s,b)=> s + incomeFor(b) * (b.category==='street' ? low : 1), 0) * devlinIncomeBonus();
+    return (venturesIncome + propertiesIncome() + localBizIncome()*low + cornerIncomePerSec()*low + electedOfficeIncome()) * globalIncomeMult();
+  }
   function bribeUpkeep(){ return state.bribeOn ? rawTotalIncome()*0.12 : 0; }
   function netIncome(){ return rawTotalIncome() - bribeUpkeep(); }
   function respectPerSec(){ const car=getEquippedCar(); return (state.muscleCount*0.6 + (car?car.respectPerSec:0)) * (grandmotherActive()?1.25:1); }
   function heatGenPerSec(){
     const streetHeat = businesses.filter(b=>b.category==='street').reduce((s,b)=> s+(b.heatPerLevel||0)*b.level, 0);
     const extortHeat = localBusinesses.filter(b=>b.extorted).reduce((s,b)=> s+b.extortHeat, 0);
-    return (state.muscleCount*0.5 + streetHeat + extortHeat + cornerHeatPerSec()) * heatMult() * (state.campaignActive ? 2.5 : 1);
+    // LEGAL: Beyond a few fronts, sprawl draws superlinear attention.
+    const conspicuous = Math.max(0, illegalFrontCount()-3) * 0.35;
+    const base = state.muscleCount*0.5 + streetHeat + extortHeat + cornerHeatPerSec() + conspicuous;
+    const waveMult = crackdownActive() ? 2.2 : 1;
+    const lowMult = state.layingLow ? 0.2 : 1;
+    return base * heatMult() * (state.campaignActive ? 2.5 : 1) * waveMult * lowMult;
   }
   function currentRank(){ let r=ranks[0]; for(const rk of ranks){ if(state.respect>=rk.respect) r=rk; } return r.title; }
   function isUnlocked(b: Business){
@@ -560,6 +642,123 @@ import type * as ThreeNamespace from 'three';
       eyebrow:'A Decision Has to Be Made', title: ev.title, body: ev.body,
       buttons: ev.choices.map(c=> ({ label: `${c.label} (${c.sub})`, onClick: function(){ c.run(); renderAll(); } })),
     });
+  }
+
+  // LEGAL: ================= THE RAID (investigation culmination) =================
+  // LEGAL: HYBRID enforcement — hit the illegal FOOTPRINT (product, corners, top street
+  // LEGAL: venture) plus a SMALL, CAPPED cash fine tied to illegal income, never net
+  // LEGAL: worth. Legit ventures and banked cash are untouched, so laundering into them
+  // LEGAL: is what breaks the old flat-tax wealth cap.
+  function triggerRaid(){
+    const w = whitmoreMult();
+    state.product = 0;
+    const active = corners.filter(c=>c.dealer && !c.busted);
+    const bustN = Math.min(active.length, 2 + (Math.random()<0.5?1:0));
+    for(let i=0;i<bustN;i++){ const c=active[i]; c.busted=true; c.dealer=false; c.bustCooldownAt=state.playSeconds+180; }
+    const top = topStreetVenture();
+    if(top) top.level = Math.max(0, top.level-1);
+    const fine = Math.min(state.cash*0.08, illegalIncomePerSec()*35) * w;
+    state.cash = Math.max(0, state.cash - fine);
+    state.respect = Math.max(0, state.respect-5);
+    state.heat = 20;
+    state.investigation = 45; // LEGAL: sticky — you beat this case, but the file stays open
+    triggerMilestone('raid');
+    let campaignNote = '';
+    if(state.campaignActive){ state.campaignActive = false; state.nextCampaignAt = state.playSeconds + 900; campaignNote = ' The scandal kills your political campaign.'; }
+    const target = top ? top.name : (active.length ? active[0].name : 'your operation');
+    pushCityNews(`FEDERAL AGENTS RAID ${target.toUpperCase()}; ASSETS SEIZED`, true);
+    log(`<i class="ph-duotone ph-warning"></i> The case lands. Agents hit ${target} — product gone, corners rolled up, ${fmt(fine)} in fines.${campaignNote}`);
+    const extortedList = localBusinesses.filter(b=>b.extorted);
+    if(extortedList.length && Math.random()<0.4){
+      const victim = extortedList[Math.floor(Math.random()*extortedList.length)];
+      victim.extorted = false;
+      log(`🐀 ${victim.owner} stops paying after the raid. Word is they went to the cops.`);
+    }
+  }
+
+  // LEGAL: ================= THE WINDHAVEN WIRE (city news broadcasts) =================
+  // LEGAL: A SEPARATE feed from the RCN stock ticker. These headlines react to the
+  // LEGAL: player's own operations and most carry a gameplay effect (heat, the case,
+  // LEGAL: business, PR). Surfaced in a dedicated Empire-tab card and the activity log.
+  interface Broadcast { id: string; alert?: boolean; when: () => boolean; headline: () => string; effect?: () => void; }
+  const broadcastPool: Broadcast[] = [
+    { id:'expose', alert:true,
+      when:()=> wantedTier()>=3 && !!topStreetVenture(),
+      headline:()=> `TRIBUNE EXPOSÉ: IS "${topStreetVenture()!.name.toUpperCase()}" A FRONT FOR THE MOB?`,
+      effect:()=>{ state.investigation = Math.min(100, state.investigation+10); state.heat = Math.min(100, state.heat+5); } },
+    { id:'grandjury', alert:true,
+      when:()=> state.investigation>35,
+      headline:()=> `GRAND JURY CONVENES OVER "A MAJOR WINDHAVEN FIGURE"`,
+      effect:()=>{ state.investigation = Math.min(100, state.investigation+8); } },
+    { id:'informant', alert:true,
+      when:()=> wantedTier()>=2 && corners.some(c=>c.dealer && !c.busted),
+      headline:()=> `POLICE TOUT NEW STREET INFORMANT PROGRAM ACROSS ${districtDisplayName(state.currentDistrict).toUpperCase()}`,
+      effect:()=>{ state.heat = Math.min(100, state.heat+7); const act = corners.filter(c=>c.dealer && !c.busted); if(act.length && Math.random()<0.5){ const c=act[Math.floor(Math.random()*act.length)]; c.busted=true; c.dealer=false; c.bustCooldownAt=state.playSeconds+180; } } },
+    { id:'dockcheck', alert:true,
+      when:()=> { const b=businesses.find(x=>x.id==='syndicate_logistics'); return !!b && b.level>0; },
+      headline:()=> `HARBOR PATROL DOUBLES CONTAINER INSPECTIONS AT THE WEST SIDE DOCKS`,
+      effect:()=>{ state.heat = Math.min(100, state.heat+6); } },
+    { id:'review',
+      when:()=> !!flagshipLegit(),
+      headline:()=> `HERALD CRITIC RAVES: "${flagshipLegit()!.name.toUpperCase()} IS THE BEST TABLE IN WINDHAVEN"`,
+      effect:()=>{ applyTempMult('legit', 1.25, 60); } },
+    { id:'festival',
+      when:()=> businesses.some(b=>b.category==='legit' && b.level>0),
+      headline:()=> `WINDHAVEN STREET FESTIVAL DRAWS RECORD CROWDS TO ${districtDisplayName(state.currentDistrict).toUpperCase()}`,
+      effect:()=>{ applyTempMult('legit', 1.15, 45); } },
+    { id:'charity',
+      when:()=> state.respect>=60,
+      headline:()=> `CITY HONORS ${currentRank().toUpperCase()} FOR "NEIGHBORHOOD REVITALIZATION"`,
+      effect:()=>{ state.respect += 8; state.heat = Math.max(0, state.heat-6); } },
+    { id:'propboom',
+      when:()=> state.ownedProperties.length>0,
+      headline:()=> `WEST SIDE PROPERTY VALUES SURGE ON REDEVELOPMENT BUZZ`,
+      effect:()=>{ const windfall = Math.max(500, propertiesIncome()*40); state.cash += windfall; } },
+    { id:'rival',
+      when:()=> districts.some(d=>districtStatus(d.id)==='rival'),
+      headline:()=> { const d=districts.find(x=>districtStatus(x.id)==='rival')!; return `RIVAL SYNDICATE FLEXES OPENLY IN ${d.name.toUpperCase()}`; },
+      effect:()=>{ const d=districts.find(x=>districtStatus(x.id)==='rival'); if(d) d.control = Math.max(0, d.control-5); } },
+    { id:'quiet',
+      when:()=> wantedTier()<=1 && illegalFrontCount()>0,
+      headline:()=> `POLICE REPORT A "HISTORIC LULL" IN ORGANIZED-CRIME ACTIVITY`,
+      effect:()=>{ state.heat = Math.max(0, state.heat-3); } },
+  ];
+  const cityFillerPool = [
+    "WINDHAVEN TRANSIT DELAYS THE BLUE LINE AGAIN.",
+    "MAYOR CUTS RIBBON ON THE NEW DEVLIN STREET UNDERPASS.",
+    "COLD SNAP GRIPS THE WEST SIDE; SHELTERS OVER CAPACITY.",
+    "HUB HIGH TITANS WIN THE CITY BASKETBALL CHAMPIONSHIP.",
+    "POTHOLE SEASON ARRIVES EARLY ACROSS THE CITY.",
+    "RIVER CLEANUP VOLUNTEERS GATHER ALONG THE CANALS.",
+  ];
+  let lastBroadcastId = '';
+  function pushCityNews(text: string, alert: boolean){
+    if(!state.cityNews) state.cityNews = [];
+    state.cityNews.unshift((alert?'⚠ ':'') + text);
+    if(state.cityNews.length > 4) state.cityNews.pop();
+    renderCityNews();
+  }
+  function renderCityNews(){
+    const el = byIdOrNull('wire-items');
+    if(!el) return;
+    el.innerHTML = (state.cityNews && state.cityNews.length)
+      ? state.cityNews.map((n,i)=> `<div class="wire-item${i===0?' wire-item-new':''}">${n}</div>`).join('')
+      : `<div class="wire-item wire-item-empty">Quiet on the wire tonight.</div>`;
+  }
+  function tickCityNews(){
+    const eligible = broadcastPool.filter(b=> b.id !== lastBroadcastId && b.when());
+    if(eligible.length && Math.random() < 0.7){
+      const b = eligible[Math.floor(Math.random()*eligible.length)];
+      lastBroadcastId = b.id;
+      const text = b.headline();
+      if(b.effect) b.effect();
+      pushCityNews(text, !!b.alert);
+      log(`📺 <strong>Windhaven Wire —</strong> ${text}`);
+    } else {
+      lastBroadcastId = '';
+      pushCityNews(cityFillerPool[Math.floor(Math.random()*cityFillerPool.length)], false);
+    }
+    state.nextCityNewsAt = state.playSeconds + 80 + Math.random()*70;
   }
 
   // LEGAL: ================= VENTURE QUICK PANEL (used by the map) =================
@@ -735,6 +934,15 @@ import type * as ThreeNamespace from 'three';
 
   }
 
+  // LEGAL: Company badge for the market UI. Shows the designed logo from /public;
+  // LEGAL: falls back to a two-letter lettermark if the image is missing (FWT/HLG have
+  // LEGAL: no artwork yet), so the row never renders a broken image.
+  function stockBadgeHtml(s: typeof stockMarket[number], size: number){
+    const letters = s.symbol.substring(0, 2);
+    return `<div style="width:${size}px;height:${size}px;border-radius:8px;overflow:hidden;background:var(--bg-row);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--gold);font-family:var(--font-mono);font-weight:700;font-size:${Math.round(size*0.34)}px;flex-shrink:0;">`
+      + `<img src="/${s.logo}" alt="${s.name}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.remove();this.parentElement.textContent='${letters}';"></div>`;
+  }
+
   function renderBankPanel(){
     const wrap = byId('bank-panel');
     if(!wrap) return;
@@ -862,9 +1070,7 @@ import type * as ThreeNamespace from 'three';
             const sign = pct >= 0 ? '+' : '';
             return `<div class="rcn-stock-row lcn-stock-btn" data-sym="${s.symbol}" style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px; background:var(--bg-panel); border:1px solid var(--line); border-radius:6px; transition: all 0.15s; cursor:pointer;">
               <div style="display:flex; align-items:center; gap:16px;">
-                <div style="background:var(--bg-row); color:var(--gold); font-family:var(--font-mono); font-weight:700; width:44px; height:44px; border-radius:6px; display:flex; align-items:center; justify-content:center; border:1px solid var(--line); font-size:16px;">
-                  ${s.symbol.substring(0, 2)}
-                </div>
+                ${stockBadgeHtml(s, 44)}
                 <div>
                   <div style="font-family:var(--font-display); font-size:15px; font-weight:700; color:var(--text);">${s.symbol}</div>
                   <div style="font-family:var(--font-body); font-size:12px; color:var(--text-dim);">${s.name}</div>
@@ -892,6 +1098,7 @@ import type * as ThreeNamespace from 'three';
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid var(--line); padding-bottom:10px;">
           <h3 style="font-size:20px; color:var(--text); margin:0; display:flex; align-items:center; gap:12px;">
             <button class="mini-btn" id="go-lcn-home" style="padding: 6px 12px; font-size:12px;"><i class="ph-duotone ph-arrow-left"></i> BACK</button>
+            ${stockBadgeHtml(s, 36)}
             <span>${s.symbol} — ${s.name}</span>
           </h3>
         </div>
@@ -1193,31 +1400,81 @@ import type * as ThreeNamespace from 'three';
     log(`<i class="ph-duotone ph-handshake"></i> ${g.name} joins the crew for real. ${g.bonus}`);
     renderAll();
   }
-  function resolveWar(style: string){
+  function warReqGuns(style: string){ return style==='assault' ? 8 : 4; }
+  function warCashCost(style: string){ return style==='assault' ? 4000 : 1800; }
+  // LEGAL: A real operation now: it needs arms and a war chest, spends and loses guns,
+  // LEGAL: takes casualties (crew, inducted members, corner dealers), and brings the
+  // LEGAL: police down on you (heat + the federal case, and possibly a sweep). `payoff`
+  // LEGAL: is the mid-war money-sink decision resolved in the dialogue.
+  function resolveWar(style: string, payoff: boolean){
     const ws = districts.find(d=>d.id==='westside')!;
-    const cost = style==='assault' ? 4000 : 1800;
-    if(state.cash < cost){
+    const reqGuns = warReqGuns(style), cashCost = warCashCost(style);
+    if(state.guns < reqGuns){
+      dialogues.gangwar.nodes.result.text = `You can't put ${reqGuns} guns on the street tonight — you're holding ${state.guns}. Arm up first.`;
+      renderAll(); return;
+    }
+    if(state.cash < cashCost){
       dialogues.gangwar.nodes.result.text = "You don't have the cash to back this up tonight. Come back when you do.";
       renderAll(); return;
     }
-    state.cash -= cost;
+    state.cash -= cashCost;
     state.nextWarAt = state.playSeconds + 300;
+
+    // LEGAL: The money-sink situation — pay off the patrol, or eat the police attention.
+    let heatAdd = style==='assault' ? 22 : 10;
+    let invAdd = style==='assault' ? 12 : 6;
+    let payNote = '';
+    if(payoff){
+      const bribe = Math.min(state.cash, style==='assault' ? 2500 : 1200);
+      state.cash -= bribe;
+      heatAdd = Math.round(heatAdd*0.4); invAdd = Math.round(invAdd*0.4);
+      payNote = ` You grease the responding patrol (${fmt(bribe)}) and the report comes out thin.`;
+    } else {
+      heatAdd = Math.round(heatAdd*1.4); invAdd = Math.round(invAdd*1.6);
+      payNote = ` A patrol catches the muzzle flashes — nobody paid them to forget it.`;
+    }
+    state.heat = Math.min(100, state.heat + heatAdd);
+    state.investigation = Math.min(100, state.investigation + invAdd);
+
     const gs = gangStrength(), rs = rivalStrength();
     const chance = Math.min(0.85, Math.max(0.15, gs/(gs+rs)));
     const win = Math.random() < chance;
     const swing = style==='assault' ? 30 : 15;
-    const heatAdd = style==='assault' ? 22 : 10;
-    state.heat = Math.min(100, state.heat + heatAdd);
+
+    // LEGAL: Casualties — guns are spent/lost either way; a loss also costs bodies.
+    let gunsLost = (style==='assault' ? 4 : 2) + Math.floor(Math.random()*(style==='assault'?4:3));
+    const casualties: string[] = [];
+    let muscleLost = 0; let memberLost: string | null = null; let dealerLost = 0;
     if(win){
       ws.control = Math.min(100, ws.control + swing);
       state.respect += style==='assault' ? 40 : 20;
-      dialogues.gangwar.nodes.result.text = `It goes your way. West Side control climbs to ${Math.round(ws.control)}%. Dice's people fall back — for now.`;
-      log(`<i class="ph-duotone ph-swords"></i> You push West Side control to ${Math.round(ws.control)}% after tonight.`);
+      if(state.muscleCount>0 && Math.random() < (style==='assault'?0.5:0.3)) muscleLost = 1;
     } else {
       ws.control = Math.max(0, ws.control - Math.round(swing/2));
       state.respect = Math.max(0, state.respect - 15);
-      dialogues.gangwar.nodes.result.text = `It doesn't go your way. You pull back before it gets worse — West Side control drops to ${Math.round(ws.control)}%.`;
-      log(`<i class="ph-duotone ph-swords"></i> The push on West Side fails. Control slips to ${Math.round(ws.control)}%.`);
+      gunsLost += 2;
+      if(state.muscleCount>0) muscleLost = 1 + (Math.random()<0.4?1:0);
+      const inducted = gangRecruits.filter(g=>g.inducted);
+      if(inducted.length && Math.random() < 0.35){ const g = inducted[Math.floor(Math.random()*inducted.length)]; g.inducted = false; memberLost = g.name; }
+      const wsCorners = corners.filter(c=>c.district==='westside' && c.dealer && !c.busted);
+      const hit = Math.min(wsCorners.length, 1 + (Math.random()<0.5?1:0));
+      for(let i=0;i<hit;i++){ const c=wsCorners[i]; c.busted=true; c.dealer=false; c.bustCooldownAt=state.playSeconds+180; dealerLost++; }
+    }
+    if(muscleLost>0){ state.muscleCount = Math.max(0, state.muscleCount - muscleLost); casualties.push(`${muscleLost} of your crew`); }
+    if(memberLost) casualties.push(memberLost);
+    if(dealerLost>0) casualties.push(`${dealerLost} corner dealer${dealerLost>1?'s':''}`);
+    state.guns = Math.max(0, state.guns - gunsLost);
+    const casNote = casualties.length ? ` You lost ${casualties.join(', ')}, and ${gunsLost} guns.` : ` ${gunsLost} guns spent in the exchange.`;
+
+    if(win){
+      dialogues.gangwar.nodes.result.text = `It goes your way. West Side control climbs to ${Math.round(ws.control)}%. Dice's people fall back — for now.${payNote}${casNote}`;
+      log(`<i class="ph-duotone ph-swords"></i> You take ground on the West Side — control ${Math.round(ws.control)}%.${casualties.length?' It cost you '+casualties.join(', ')+'.':''}`);
+      pushCityNews(`GANGLAND SHOOTOUT ROCKS THE WEST SIDE OVERNIGHT`, true);
+    } else {
+      dialogues.gangwar.nodes.result.text = `It doesn't go your way. You pull back before it gets worse — West Side control drops to ${Math.round(ws.control)}%.${payNote}${casNote}`;
+      log(`<i class="ph-duotone ph-swords"></i> The war on the West Side turns against you — control ${Math.round(ws.control)}%.${casualties.length?' You lost '+casualties.join(', ')+'.':''}`);
+      pushCityNews(`POLICE FLOOD THE WEST SIDE AFTER A DEADLY GANG CLASH`, true);
+      if(!payoff && state.heat > 60 && !crackdownActive()) state.crackdownUntil = state.playSeconds + 75;
     }
     renderAll();
   }
@@ -1334,7 +1591,19 @@ import type * as ThreeNamespace from 'three';
           <div class="col-status">INFO</div>
         </div>
         <div class="data-expanded">
-          <div class="flavor-note">Muscle headcount plus every inducted member, weighed against West Side's defense.</div>
+          <div class="flavor-note">Muscle headcount plus every inducted member and your firepower, weighed against West Side's defense.</div>
+        </div>
+      </div>
+      <div class="data-row">
+        <div class="data-main">
+          <div class="col-id"><i class="ph-duotone ph-crosshair"></i> ${ICONS.badge}</div>
+          <div class="col-name">The Armory</div>
+          <div class="col-stat">GUNS: ${state.guns}</div>
+          <div class="col-status">BLACK MARKET</div>
+        </div>
+        <div class="data-expanded">
+          <div class="flavor-note">Crates off a West Side freighter, no serial numbers. Guns arm your crew for pushes and wars — and they get spent and lost in the fighting.</div>
+          <div class="btn-row"><button class="mini-btn" ${state.cash>=gunPackCost()?'':'disabled'} id="buy-guns">BUY ${GUN_PACK} GUNS <span class="cost">${fmt(gunPackCost())}</span></button></div>
         </div>
       </div>
       ${gangRecruits.map(g=>{
@@ -1363,10 +1632,10 @@ import type * as ThreeNamespace from 'three';
           <div class="col-id"><i class="ph-duotone ph-swords"></i> ${ICONS.fist}</div>
           <div class="col-name">West Side War</div>
           <div class="col-stat">CONTROL: ${Math.round(districts.find(d=>d.id==='westside')!.control)}%</div>
-          <div class="col-status">ACTIVE</div>
+          <div class="col-status">${canWar?(state.guns>=4?'READY':'UNARMED'):'COOLING'}</div>
         </div>
         <div class="data-expanded">
-          <div class="flavor-note">Declare on Dice's people directly — a bigger, faster swing on control than pushing alone, backed by your actual Gang Strength.</div>
+          <div class="flavor-note">Declare on Dice's people directly — a bigger, faster swing on control than pushing alone, but it burns cash and guns and gets people hurt. Needs at least 4 guns (8 for a full assault).${canWar?'':` Regrouping — ${Math.max(0,Math.ceil(state.nextWarAt-state.playSeconds))}s.`}</div>
           <div class="btn-row"><button class="mini-btn" ${canWar?'':'disabled'} id="declare-war">DECLARE WAR</button></div>
         </div>
       </div>
@@ -1525,6 +1794,8 @@ import type * as ThreeNamespace from 'three';
     if(btn.id === 'upgrade-lab'){ upgradeLab(); }
     else if(btn.id === 'hire-muscle'){ if(state.cash<muscleCost()) return; state.cash -= muscleCost(); state.muscleCount += 1; renderAll(); }
     else if(btn.id === 'toggle-bribe'){ state.bribeOn = !state.bribeOn; log(state.bribeOn ? '👮 You put the beat cops on the payroll.' : '👮 You cut the cops off. Heat will build faster.'); renderAll(); }
+    else if(btn.id === 'toggle-laylow'){ state.layingLow = !state.layingLow; log(state.layingLow ? '🤫 Word goes out — everything goes quiet. Income drops while the heat bleeds off.' : '💼 Back to business. The operation spins up again.'); renderAll(); }
+    else if(btn.id === 'retain-counsel'){ const cost = counselCost(); if(state.investigation<=5 || state.cash<cost) return; state.cash -= cost; state.investigation = Math.max(0, state.investigation-45); log(`⚖️ Your lawyer goes to work. The case cools — for now. (${fmt(cost)})`); renderAll(); }
     else if(btn.id === 'hire-rat'){ if(state.cash<ratsCashCost() || state.respect<ratsRespectCost()) return; state.cash -= ratsCashCost(); state.respect -= ratsRespectCost(); state.ratCount += 1; renderAll(); }
     else if(btn.id === 'buy-territory'){ if(state.respect<territoryCost()) return; state.respect -= territoryCost(); state.territoryTier += 1; log(`🗺️ New blocks fall under your control. Crew capacity is now ${crewCapGlobal()}.`); renderAll(); }
     else if(btn.id === 'buy-negotiate'){ if(state.respect<negotiateCost()) return; state.respect -= negotiateCost(); state.negotiateTier += 1; log(`<i class="ph-duotone ph-handshake"></i> You've got leverage now. Everyone's prices just got friendlier.`); renderAll(); }
@@ -1631,7 +1902,14 @@ import type * as ThreeNamespace from 'three';
     if(initiateBtn){ const g = gangRecruits.find(x=>x.id===initiateBtn.getAttribute('data-initiate')); if(g) playDialogue(g.dialogueKey, 'start'); return; }
     const btn = target.closest('button');
     if(!btn) return;
-    if(btn.id === 'declare-war'){ if(state.playSeconds < state.nextWarAt) return; playDialogue('gangwar', 'start'); }
+    if(btn.id === 'buy-guns'){ const c = gunPackCost(); if(state.cash < c) return; state.cash -= c; state.guns += GUN_PACK; log(`<i class="ph-duotone ph-crosshair"></i> A crate of ${GUN_PACK} comes off the docks. You're holding ${state.guns} guns now.`); renderAll(); }
+    else if(btn.id === 'declare-war'){
+      if(state.playSeconds < state.nextWarAt) return;
+      const gs = gangStrength(), rs = rivalStrength();
+      const odds = Math.round(Math.min(0.85, Math.max(0.15, gs/(gs+rs)))*100);
+      dialogues.gangwar.nodes.start.text = `Dice's people aren't handing over West Side. You're holding ${state.guns} guns; your strength reads ${gs.toFixed(1)} to their ${rs.toFixed(1)} — call it ${odds}% odds tonight. The question is how loud you're willing to be.`;
+      playDialogue('gangwar', 'start');
+    }
   }
 
   function handleDistrictAction(e: Event){
@@ -1694,6 +1972,32 @@ import type * as ThreeNamespace from 'three';
         <div class="data-expanded">
           <div class="flavor-note">Pay 12% of total income continuously to cut heat generation sharply.</div>
           <div class="btn-row"><button class="mini-btn" id="toggle-bribe">${state.bribeOn?'STOP PAYING':'START PAYING'}</button></div>
+        </div>
+      </div>
+      <div class="data-row">
+        <div class="data-main">
+          <div class="col-id">${ICONS.badge}</div>
+          <div class="col-name">Lay Low</div>
+          <div class="col-stat">Wanted: ${WANTED_TIERS[wantedTier()].label}</div>
+          <div class="col-stat" style="color:var(--green);">-HEAT · -CASE</div>
+          <div class="col-status">${state.layingLow?'QUIET':'ACTIVE OPS'}</div>
+        </div>
+        <div class="data-expanded">
+          <div class="flavor-note">Go to ground: heat and the federal case bleed off fast — but your illegal income (street ventures, corners, extortion) runs at 40% until you resume.</div>
+          <div class="btn-row"><button class="mini-btn" id="toggle-laylow">${state.layingLow?'RESUME OPERATIONS':'LAY LOW'}</button></div>
+        </div>
+      </div>
+      <div class="data-row">
+        <div class="data-main">
+          <div class="col-id">${ICONS.badge}</div>
+          <div class="col-name">Retain Counsel</div>
+          <div class="col-stat">Case: ${Math.round(state.investigation)}%</div>
+          <div class="col-stat" style="color:var(--green);">-CASE</div>
+          <div class="col-status">${state.investigation>5?'AVAILABLE':'NO CASE'}</div>
+        </div>
+        <div class="data-expanded">
+          <div class="flavor-note">Buy the right lawyer and bury the investigation before it culminates in a raid. Cost scales with how deep the case has dug.</div>
+          <div class="btn-row"><button class="mini-btn" ${state.investigation>5 && state.cash>=counselCost()?'':'disabled'} id="retain-counsel">RETAIN <span class="cost">${fmt(counselCost())}</span></button></div>
         </div>
       </div>
       <div class="data-row">
@@ -1775,12 +2079,13 @@ import type * as ThreeNamespace from 'three';
     renderTerritoryPanel();
     renderPoliticsPanel();
     renderGangPanel();
+    renderCityNews();
 
     byId('hud-cash').textContent = fmt(state.cash);
     byId('hud-income').textContent = (netIncome()>=0?'+':'') + fmt(netIncome()) + '/s';
     byId('hud-rank').textContent = currentRank();
     byId('hud-respect').textContent = `${fmtR(state.respect)} respect`;
-    byId('heat-fill').style.width = Math.min(100, state.heat) + '%';
+    updateHeatHud();
     byId('hud-crew').textContent = `${crewUsedGlobal()} / ${crewCapGlobal()}`;
 
     const prestigeBtn = byId<HTMLButtonElement>('prestige-btn');
@@ -1800,13 +2105,32 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: user action — never on a timer, or a click can land mid-rebuild and get
   // LEGAL: silently swallowed by the browser. This function is what the game hub
   // LEGAL: calls every 250ms instead.
+  // LEGAL: Paints the Heat gauge in its current WANTED-tier colour, the tier label,
+  // LEGAL: and the Investigation sub-bar (hidden until a case actually opens).
+  function updateHeatHud(){
+    const t = wantedTier();
+    const info = WANTED_TIERS[t];
+    const fill = byIdOrNull('heat-fill');
+    if(fill){
+      fill.style.width = Math.min(100, state.heat) + '%';
+      fill.style.background = info.color;
+      fill.classList.toggle('critical', t >= 4);
+    }
+    const label = byIdOrNull('wanted-label');
+    if(label){ label.textContent = crackdownActive() ? info.label + ' · SWEEP' : info.label; label.style.color = info.color; }
+    const invRow = byIdOrNull('inv-row');
+    if(invRow) invRow.style.display = state.investigation > 2 ? 'flex' : 'none';
+    const invFill = byIdOrNull('inv-fill');
+    if(invFill) invFill.style.width = Math.min(100, state.investigation) + '%';
+  }
+
   function refreshHUD(){
     const rank = currentRank();
     byId('hud-cash').textContent = fmt(state.cash);
     byId('hud-income').textContent = (netIncome()>=0?'+':'') + fmt(netIncome()) + '/s';
     byId('hud-rank').textContent = rank;
     byId('hud-respect').textContent = `${fmtR(state.respect)} respect`;
-    byId('heat-fill').style.width = Math.min(100, state.heat) + '%';
+    updateHeatHud();
     byId('hud-crew').textContent = `${crewUsedGlobal()} / ${crewCapGlobal()}`;
 
     if(rank === 'Local Boss') triggerMilestone('local_boss');
@@ -1894,7 +2218,8 @@ import type * as ThreeNamespace from 'three';
       body:`<p><strong>${tier.name}</strong> is cleared at customs. ${tier.desc}</p><p class="flavor">Setting them up in Chicago requires transferring almost every dollar on hand to clear their debts and secure their paper trail. Your active fronts will close down temporarily, and muscle on the street will scatter until the dust settles. Hired managers and research dossiers remain yours.</p>`,
       buttons:[
         {label:"Make the transfer", onClick:function(){
-          state.cash = 47; state.heat = 0; state.muscleCount = 0; state.ratCount = 0;
+          state.cash = 47; state.heat = 0; state.muscleCount = 0; state.guns = 0; state.ratCount = 0;
+          state.investigation = 0; state.layingLow = false; state.crackdownUntil = 0; state.nextCrackdownAt = state.playSeconds + 360;
           businesses.forEach(b=>{ b.level=0; b.crew=0; b.reinvestedIncome=0; });
           state.prestigeCount += 1;
           log(`✈️ ${tier.name} lands in Chicago. ${tier.desc}`);
@@ -3112,7 +3437,7 @@ import type * as ThreeNamespace from 'three';
     return {
       cash: state.cash, respect: state.respect, heat: state.heat,
       territoryTier: state.territoryTier, negotiateTier: state.negotiateTier,
-      muscleCount: state.muscleCount, ratCount: state.ratCount, bribeOn: state.bribeOn,
+      muscleCount: state.muscleCount, guns: state.guns, ratCount: state.ratCount, bribeOn: state.bribeOn,
       prestigeCount: state.prestigeCount, seenMilestones: Array.from(state.seenMilestones),
       playSeconds: state.playSeconds, investorPenalty: state.investorPenalty,
       started: state.started, procNpc: state.procNpc, lastTick: state.lastTick,
@@ -3134,7 +3459,10 @@ import type * as ThreeNamespace from 'three';
       inVehicle: state.inVehicle, waypoints: state.waypoints, parkedCarPos: state.parkedCarPos,
       marketPrices: state.marketPrices, portfolio: state.portfolio, marketHistory: state.marketHistory,
       financeView: state.financeView, activeStock: state.activeStock,
-      currentNews: state.currentNews, newsQueue: state.newsQueue, nextNewsAt: state.nextNewsAt
+      currentNews: state.currentNews, newsQueue: state.newsQueue, nextNewsAt: state.nextNewsAt,
+      cityNews: state.cityNews, nextCityNewsAt: state.nextCityNewsAt,
+      investigation: state.investigation, layingLow: state.layingLow,
+      crackdownUntil: state.crackdownUntil, nextCrackdownAt: state.nextCrackdownAt
     };
   }
   let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -3167,7 +3495,7 @@ import type * as ThreeNamespace from 'three';
         const d = JSON.parse(res);
         state.cash=d.cash; state.respect=d.respect; state.heat=d.heat;
         state.territoryTier=d.territoryTier; state.negotiateTier=d.negotiateTier;
-        state.muscleCount=d.muscleCount; state.ratCount=d.ratCount; state.bribeOn=d.bribeOn;
+        state.muscleCount=d.muscleCount; state.guns=Math.max(0, Number(d.guns)||0); state.ratCount=d.ratCount; state.bribeOn=d.bribeOn;
         state.prestigeCount=Math.max(0, Math.min(familyTiers.length, Number(d.prestigeCount)||0)); state.seenMilestones = new Set((d.seenMilestones||[]).map((x: any)=>String(x)));
         state.playSeconds=d.playSeconds||0; state.investorPenalty=Math.min(0.5, d.investorPenalty||0);
         state.started = d.started; if(d.procNpc) state.procNpc = d.procNpc;
@@ -3199,6 +3527,12 @@ import type * as ThreeNamespace from 'three';
         state.currentNews = d.currentNews || [];
         state.newsQueue = d.newsQueue || [];
         state.nextNewsAt = d.nextNewsAt || 0;
+        state.cityNews = d.cityNews || [];
+        state.nextCityNewsAt = d.nextCityNewsAt || (state.playSeconds + 90);
+        state.investigation = Math.max(0, Math.min(100, Number(d.investigation)||0));
+        state.layingLow = !!d.layingLow;
+        state.crackdownUntil = Number(d.crackdownUntil)||0;
+        state.nextCrackdownAt = Number(d.nextCrackdownAt) || (state.playSeconds + 360);
         // LEGAL: Initialize any missing stocks in the market
         stockMarket.forEach(s => {
           if(!state.marketPrices[s.symbol]) state.marketPrices[s.symbol] = s.basePrice;
@@ -3253,10 +3587,11 @@ import type * as ThreeNamespace from 'three';
       state.product = Math.max(0, state.product - cornerDemandPerSec()*dt);
     }
 
-    // LEGAL: Corners can get busted independently of the big citywide raid once heat
-    // LEGAL: runs hot — an earlier, smaller warning that the street layer is exposed.
-    if(state.heat >= 70){
-      const bustRoll = (state.heat-70)/30 * 0.02 * dt * (chinoInducted() ? 0.85 : 1);
+    // LEGAL: Escalating WANTED-tier consequences. WATCHED+ (tier 2) starts busting
+    // LEGAL: corners; HEAT+ (tier 3) risks stash-house seizures. Crackdowns worsen both.
+    const tier = wantedTier();
+    if(tier >= 2){
+      const bustRoll = (tier-1) * 0.009 * dt * (chinoInducted() ? 0.85 : 1) * (crackdownActive() ? 1.8 : 1);
       corners.forEach(c=>{
         if(c.dealer && !c.busted && Math.random() < bustRoll){
           c.busted = true; c.dealer = false; c.bustCooldownAt = state.playSeconds + 180;
@@ -3265,6 +3600,11 @@ import type * as ThreeNamespace from 'three';
           log(`<i class="ph-duotone ph-siren"></i> ${c.name} gets hit. Dealer's gone, some product's gone with it.`);
         }
       });
+    }
+    if(tier >= 3 && state.product > 0 && Math.random() < 0.02*dt){
+      const seized = state.product * 0.25 * whitmoreMult();
+      state.product = Math.max(0, state.product - seized);
+      log(`<i class="ph-duotone ph-package"></i> A stash house gets tossed — ${Math.round(seized)} product seized.`);
     }
     corners.forEach(c=>{ if(c.busted && state.playSeconds >= c.bustCooldownAt) c.busted = false; });
 
@@ -3277,33 +3617,38 @@ import type * as ThreeNamespace from 'three';
       d.control = Math.max(0, Math.min(100, d.control + (presence-pressure)*dt));
     });
 
+    // LEGAL: Heat settles toward a level set by current activity: a proportional
+    // LEGAL: cooldown means light rackets plateau COLD/NOTICED while a heavy, sprawling
+    // LEGAL: operation pins hot. Heat no longer just marches uniformly to a cliff.
     const gen = heatGenPerSec();
-    state.heat += (gen - 0.5) * dt;
-    if(state.heat < 0) state.heat = 0;
+    const cool = 0.5 + state.heat*0.065 + (state.layingLow ? 4 : 0);
+    state.heat = Math.max(0, Math.min(100, state.heat + (gen - cool) * dt));
 
-    if(state.heat >= 100){
-      const lossPct = Math.max(0.05, 0.15 - state.ratCount*0.01) * whitmoreMult();
-      const loss = state.cash * lossPct;
-      state.cash -= loss; state.respect = Math.max(0, state.respect-5); state.heat = 30;
-      triggerMilestone('raid');
-      
-      let campaignNote = '';
-      if(state.campaignActive) {
-        state.campaignActive = false; // LEGAL: Campaign instantly dies if raided
-        state.nextCampaignAt = state.playSeconds + 900;
-        campaignNote = ' The scandal of the raid completely kills your political campaign.';
+    // LEGAL: Sustained HEAT/RAID tiers build the federal case; backing off cools it,
+    // LEGAL: but far slower than it built (hysteresis — the walls close in).
+    const tierNow = wantedTier();
+    let invDelta;
+    if(tierNow >= 4)       invDelta = 1.4;
+    else if(tierNow === 3) invDelta = 0.7;
+    else if(tierNow === 2) invDelta = 0.15;
+    else                   invDelta = -(state.layingLow ? 1.2 : 0.35);
+    if(invDelta > 0){ invDelta *= investigationBuildMult(); if(crackdownActive()) invDelta *= 1.8; }
+    state.investigation = Math.max(0, Math.min(100, state.investigation + invDelta * dt));
+
+    // LEGAL: Crackdown waves — periodic citywide sweeps that spike heat and busts.
+    if(state.playSeconds >= state.nextCrackdownAt){
+      if(illegalFrontCount() > 0 && !crackdownActive()){
+        state.crackdownUntil = state.playSeconds + 75;
+        pushCityNews(`POLICE COMMISSIONER ORDERS CITYWIDE SWEEP OF ${districtDisplayName(state.currentDistrict).toUpperCase()}`, true);
+        log(`🚨 <strong>Citywide crackdown.</strong> Heat runs hot and busts spike for a while — consider laying low.`);
       }
-      
-      log(`<i class="ph-duotone ph-warning"></i> Someone official-looking cleans out ${fmt(loss)} "in fines."${campaignNote}`);
-      const extortedList = localBusinesses.filter(b=>b.extorted);
-      if(extortedList.length && Math.random()<0.4){
-        const victim = extortedList[Math.floor(Math.random()*extortedList.length)];
-        victim.extorted = false;
-        log(`🐀 ${victim.owner} stops paying after the heat. Word is they went to the cops.`);
-      }
+      state.nextCrackdownAt = state.playSeconds + 300 + Math.random()*300;
     }
 
+    if(state.investigation >= 100) triggerRaid();
 
+
+    if(state.playSeconds >= state.nextCityNewsAt) tickCityNews();
     maybeTriggerEvent();
     refreshHUD();
     refreshAffordability();

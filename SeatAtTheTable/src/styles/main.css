@@ -138,6 +138,21 @@ body.quiet .card-flavor, body.quiet .pillar-desc, body.quiet .modal-body p.flavo
 .heat-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--red));width:0%;transition:width .3s ease-out;}
 .heat-fill.critical {background:var(--red-hot);animation:pulse 0.7s infinite alternate;}
 @keyframes pulse { from { opacity:1; box-shadow: 0 0 8px var(--red-hot); } to { opacity:0.5; box-shadow: none; } }
+.wanted-label{font-family:var(--font-display);font-weight:700;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);margin-top:3px;line-height:1;}
+.inv-row{display:none;align-items:center;gap:5px;margin-top:4px;}
+.inv-tag{font-family:var(--font-display);font-size:8px;font-weight:700;letter-spacing:0.1em;color:var(--text-dim);}
+.inv-bar{flex:1;height:5px;background:var(--bg);overflow:hidden;border:1px solid var(--line);border-radius:3px;}
+.inv-fill{height:100%;width:0%;background:linear-gradient(90deg,#7a4fd1,#e11d1d);transition:width .4s ease-out;}
+/* Windhaven Wire — player-contextual city news feed (separate from the RCN market ticker) */
+.wire-feed{background:var(--bg-panel);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:6px;padding:10px 14px;margin-bottom:20px;}
+.wire-head{font-family:var(--font-display);font-weight:700;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:8px;}
+.wire-live{margin-left:auto;font-size:9px;letter-spacing:0.1em;color:var(--red-hot);}
+.wire-items{margin-top:8px;display:flex;flex-direction:column;gap:4px;}
+.wire-item{font-family:var(--font-mono);font-size:12px;color:var(--text-dim);line-height:1.35;padding-left:14px;position:relative;}
+.wire-item::before{content:'»';position:absolute;left:0;color:var(--gold);}
+.wire-item-new{color:var(--text);}
+.wire-item-empty{color:var(--text-faint);font-style:italic;}
+.wire-item-empty::before{content:'';}
 .prestige-btn{font-family:var(--font-display);text-transform:uppercase;letter-spacing:0.06em;font-size:12px;font-weight:700;background:rgba(242, 186, 24, 0.1);border:2px solid var(--gold);color:var(--gold);padding:8px 16px;cursor:pointer;white-space:nowrap;margin-left:14px;border-radius:6px;transition: all 0.2s;}
 .prestige-btn:hover:not(:disabled){background:var(--gold);color:#000;box-shadow:0 4px 12px rgba(242,186,24,0.4);}
 .prestige-btn:disabled{opacity:0.4;cursor:not-allowed;}

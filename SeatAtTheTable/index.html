@@ -16,7 +16,7 @@
   <div class="hud-stats">
     <div class="stat"><div class="stat-label">Cash</div><div class="stat-value" id="hud-cash">$47</div><div class="stat-sub" id="hud-income">+$0/s</div></div>
     <div class="stat"><div class="stat-label">Standing<span class="info-icon" data-tooltip="Your street standing in Windhaven. Higher standing unlocks better territory, larger crews, and cuts costs across the board.">?</span></div><div class="stat-value teal" id="hud-rank">Nobody</div><div class="stat-sub" id="hud-respect">0 respect</div></div>
-    <div class="stat"><div class="stat-label">Heat<span class="info-icon" data-tooltip="Police attention. Fills as you run illegal operations. At 100%, you get raided, losing a massive cut of cash and Respect.">?</span></div><div class="heat-bar"><div class="heat-fill" id="heat-fill"></div></div></div>
+    <div class="stat"><div class="stat-label">Heat<span class="info-icon" data-tooltip="Police attention (your WANTED level). Fills with active illegal operations and settles at a level set by how much you're running. Sustained high heat builds a federal CASE — and that, not heat itself, is what gets you raided. Lay low or bribe to cool off.">?</span></div><div class="heat-bar"><div class="heat-fill" id="heat-fill"></div></div><div class="wanted-label" id="wanted-label">COLD</div><div class="inv-row" id="inv-row" style="display:none;"><span class="inv-tag">CASE</span><div class="inv-bar"><div class="inv-fill" id="inv-fill"></div></div></div></div>
     <div class="stat" style="border-right:none;"><div class="stat-label">Crew<span class="info-icon" data-tooltip="Manpower in your pocket. Acquire territory to raise the limit. Crew must be assigned to run legitimate fronts or street operations; idle hands earn nothing.">?</span></div><div class="stat-value violet" id="hud-crew" style="font-size:15px;">0 / 6</div></div>
     <button class="prestige-btn" id="prestige-btn" style="display:none;"></button>
   </div>
@@ -35,6 +35,10 @@
 <main>
 
   <div class="tab-panel active" data-tab="empire">
+    <div class="wire-feed">
+      <div class="wire-head"><i class="ph-duotone ph-broadcast"></i> Windhaven Wire<span class="wire-live">● LIVE</span></div>
+      <div class="wire-items" id="wire-items"><div class="wire-item wire-item-empty">Quiet on the wire tonight.</div></div>
+    </div>
     <div class="section-eyebrow">Legitimate Ventures — Cash &amp; Fronts</div>
     <p class="pillar-desc">Legitimate fronts for laundering. Capital expands them, but they generate zero return without assigned crew to handle operations.</p>
     <div id="grid-legit" class="data-table"></div>

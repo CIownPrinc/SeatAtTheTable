@@ -244,9 +244,22 @@ export interface GameState {
   cash: number;
   respect: number;
   heat: number;
+  // LEGAL: The slow, sticky federal case. Fills under sustained high heat and
+  // LEGAL: decays slowly (hysteresis); at 100 it triggers the raid, not `heat`.
+  investigation: number;
+  // LEGAL: Player-controlled "keep operations quiet" toggle: bleeds heat and
+  // LEGAL: investigation fast at the cost of illegal income.
+  layingLow: boolean;
+  // LEGAL: playSeconds until which a citywide crackdown wave is active (0 = none).
+  crackdownUntil: number;
+  // LEGAL: playSeconds when the next crackdown wave may begin.
+  nextCrackdownAt: number;
   territoryTier: number;
   negotiateTier: number;
   muscleCount: number;
+  // LEGAL: Firearms stockpile. Required to wage war and back a territory push; armed
+  // LEGAL: crew fight harder (Gang Strength) and guns are consumed/lost in the fighting.
+  guns: number;
   ratCount: number;
   bribeOn: boolean;
   prestigeCount: number;
@@ -286,4 +299,9 @@ export interface GameState {
   currentNews: string[];
   newsQueue: string[];
   nextNewsAt: number;
+  // LEGAL: The Windhaven Wire — a SEPARATE, player-contextual city-news feed (distinct
+  // LEGAL: from the RCN stock-market ticker above). Broadcasts react to the player's
+  // LEGAL: own operations and can affect heat, income, and the market.
+  cityNews: string[];
+  nextCityNewsAt: number;
 }
