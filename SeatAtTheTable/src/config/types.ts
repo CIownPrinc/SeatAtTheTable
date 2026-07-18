@@ -185,7 +185,7 @@ export type MapZoneType = 'smallBusiness' | 'residential' | 'industrial' | 'corp
 export type FillerItem =
   | { kind: 'park'; name: string; x0: number; y0: number; x1: number; y1: number }
   | { kind: 'lot'; x0: number; y0: number; x1: number; y1: number }
-  | { kind: 'building'; zone: MapZoneType; x: number; y: number; w: number; d: number; h: number; hue: number; rot: number }
+  | { kind: 'building'; zone: MapZoneType; x: number; y: number; w: number; d: number; h: number; hue: number; rot: number; style?: 'apartment' }
   // LEGAL: 'edge' = cheap background block forming the city's rough outer skyline.
   | { kind: 'edge'; x: number; y: number; w: number; d: number; h: number; hue: number; rot: number };
 

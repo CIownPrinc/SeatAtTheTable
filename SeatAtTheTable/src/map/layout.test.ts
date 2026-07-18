@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { businesses } from '../config/ventures';
 import { amenityHasSolidFootprint, mapAmenities } from './amenities';
-import { buildableBands, localXForDistrict, rectsOverlap, rotatedHalfExtents } from './layout';
+import { createFillerLayoutProvider } from './filler';
+import { buildableBands, distancePointToSegment, localXForDistrict, rectsOverlap, rotatedHalfExtents } from './layout';
 import { createMapBuildings } from './markers';
 import { actorRadius, canMoveTo, isWaterBlocked } from './movement';
-import { districtParkSlots, namedBuildingLots, roadNetwork, ventureDistricts, ventureLots, ventureMapLots } from './world';
+import { DISTRICT_OFFSETS, districtParkSlots, namedBuildingLots, roadNetwork, ventureDistricts, ventureLots, ventureMapLots } from './world';
 import { zoneForDistrictBlock } from './zoning';
 
 describe('map layout helpers', function () {
@@ -153,6 +154,39 @@ describe('map layout helpers', function () {
     expect(canMoveTo(18, 600, [], true)).toBe(false);
     expect(canMoveTo(245, 200, solids, true)).toBe(true);
     expect(canMoveTo(243, 200, solids, true)).toBe(false);
+  });
+
+  it('keeps filler buildings large enough and off diagonal roads', function () {
+    const markers = createMapBuildings(businesses);
+    const provider = createFillerLayoutProvider(markers.map(function(marker){
+      return { kind:'building' as const, id:marker.id, district:marker.district, x:marker.x, y:marker.y, bounds:{x:marker.x,y:marker.y,hw:40,hd:34}, interactRadius:46, minimapColor:'#fff', minimapSize:3, ref:marker };
+    }));
+
+    ['devlin','westside','hub'].forEach(function(districtId){
+      provider.fillerFor(districtId).forEach(function(filler){
+        if(filler.kind !== 'building') return;
+        expect(filler.w).toBeGreaterThanOrEqual(34);
+        expect(filler.d).toBeGreaterThanOrEqual(30);
+        expect(filler.h).toBeGreaterThanOrEqual(24);
+        const off = DISTRICT_OFFSETS[districtId];
+        roadNetwork.diagonal.forEach(function(road){
+          const distance = distancePointToSegment(filler.x+off, filler.y, road.x1, road.y1, road.x2, road.y2);
+          expect(distance).toBeGreaterThan(Math.max(filler.w,filler.d)/2 + road.w/2);
+        });
+      });
+    });
+  });
+
+  it('adds apartment buildings to residential filler blocks', function () {
+    const provider = createFillerLayoutProvider([]);
+    const apartments = ['devlin','westside','hub'].flatMap(districtId=>provider.fillerFor(districtId)).filter(f=>f.kind==='building' && f.style==='apartment');
+
+    expect(apartments.length).toBeGreaterThan(0);
+    apartments.forEach(function(apartment){
+      if(apartment.kind !== 'building') return;
+      expect(apartment.zone).toBe('residential');
+      expect(apartment.h).toBeGreaterThanOrEqual(42);
+    });
   });
 
   it('keeps open-space amenities walkable while storefront amenities have collision', function () {
