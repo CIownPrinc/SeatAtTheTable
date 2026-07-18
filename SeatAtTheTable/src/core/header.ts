@@ -527,7 +527,11 @@ import type * as ThreeNamespace from 'three';
   function incomeFor(b: Business){ return b.level * b.baseIncome * efficiency(b) * tempMultActive(b); }
   function getEquippedCar(){ return cars.find(c=>c.id===state.equippedCar) || null; }
   function propertiesIncome(){ return state.ownedProperties.reduce((s,id)=>{ const p=properties.find(x=>x.id===id); return s+(p?p.incomePerSec:0); }, 0); }
-  function localBizIncome(){ return localBusinesses.filter(b=>b.extorted).reduce((s,b)=> s+b.extortIncome, 0); }
+  // LEGAL: Squeeze level 0-3; income/heat scale up with how hard you lean on the owner.
+  const EXTORT_MULT = [0, 1, 2, 3.2];
+  function extortLevel(b: LocalBusiness){ return b.extorted ? Math.max(1, Math.min(3, b.extortTier ?? 1)) : 0; }
+  function extortMult(b: LocalBusiness){ return EXTORT_MULT[extortLevel(b)]; }
+  function localBizIncome(){ return localBusinesses.filter(b=>b.extorted).reduce((s,b)=> s + b.extortIncome*extortMult(b), 0); }
   function activeCorners(){ return corners.filter(c=> c.dealer && !c.busted); }
   function cornerDemandPerSec(){ return activeCorners().reduce((s,c)=> s+c.consumption, 0); }
   function cornerIncomePerSec(){
@@ -563,7 +567,7 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: `cool` is the quadratic cooldown; net > 0 means heat is climbing to its plateau.
   function heatBreakdown(){
     const streetVentureHeat = businesses.filter(b=>b.category==='street').reduce((s,b)=> s+(b.heatPerLevel||0)*b.level, 0);
-    const extortionHeat = localBusinesses.filter(b=>b.extorted).reduce((s,b)=> s+b.extortHeat, 0);
+    const extortionHeat = localBusinesses.filter(b=>b.extorted).reduce((s,b)=> s + b.extortHeat*extortMult(b), 0);
     const muscleHeat = state.muscleCount*0.5;
     const cornerHeat = cornerHeatPerSec();
     // LEGAL: Beyond a few fronts, sprawl draws superlinear attention.
@@ -738,12 +742,11 @@ import type * as ThreeNamespace from 'three';
     const target = top ? top.name : (active.length ? active[0].name : 'your operation');
     pushCityNews(`FEDERAL AGENTS RAID ${target.toUpperCase()}; ASSETS SEIZED`, true);
     log(`<i class="ph-duotone ph-warning"></i> The case lands. Agents hit ${target} — product gone, corners rolled up, ${fmt(fine)} in fines.${campaignNote}`);
+    // LEGAL: A raid rattles everyone you're squeezing — resentment jumps (but they don't
+    // LEGAL: automatically bolt anymore; that's the resentment system's job now).
     const extortedList = localBusinesses.filter(b=>b.extorted);
-    if(extortedList.length && Math.random()<0.4){
-      const victim = extortedList[Math.floor(Math.random()*extortedList.length)];
-      victim.extorted = false;
-      log(`🐀 ${victim.owner} stops paying after the raid. Word is they went to the cops.`);
-    }
+    extortedList.forEach(function(b){ b.resentment = Math.min(100, (b.resentment ?? 0) + 25); });
+    if(extortedList.length) log(`<i class="ph-duotone ph-warning"></i> The raid spooks the owners paying you tribute — they're getting nervous.`);
   }
 
   // LEGAL: ================= THE WINDHAVEN WIRE (city news broadcasts) =================
@@ -933,20 +936,46 @@ import type * as ThreeNamespace from 'three';
     buttons.push({ label:'Walk away', secondary:true });
     showModal({ eyebrow:'Cash Register', title:biz.name, body, buttons });
   }
+  const EXTORT_TIER_NAME = ['', 'Protection', 'Heavy Cut', 'Total Control'];
   function openOwnerPanel(biz: LocalBusiness){
-    let body = `<p>${biz.owner} runs this place. Not part of your operation — yet.</p>`;
-    if(biz.extorted) body += `<p class="flavor">${biz.owner} pays tribute: +${biz.extortIncome.toFixed(1)}/s, +${biz.extortHeat.toFixed(2)} heat/s, ongoing.</p>`;
-    const buttons = [];
+    const buttons: ModalButton[] = [];
+    let body: string;
     if(!biz.extorted){
+      body = `<p>${biz.owner} runs this place. Not part of your operation — yet.</p><p class="flavor">Lean on them for protection money. Push too hard, though, and resentment builds until they stop paying — or go to the cops.</p>`;
       buttons.push({ label:'Extort (needs 30 respect)', onClick:function(){
         if(state.respect<30){ log(`<i class="ph-duotone ph-x-circle"></i> ${biz.owner} laughs you off. You don't have the reputation for this yet.`); renderAll(); return; }
-        biz.extorted = true;
+        biz.extorted = true; biz.extortTier = 1; biz.resentment = 0;
         triggerMilestone('extortion');
-        log(`<i class="ph-duotone ph-handshake"></i> ${biz.owner} agrees to pay, one way or another.`);
+        log(`<i class="ph-duotone ph-handshake"></i> ${biz.owner} agrees to pay for protection.`);
         renderAll();
       }});
     } else {
-      buttons.push({ label:'Let it go', onClick:function(){ biz.extorted=false; log(`<i class="ph-duotone ph-handshake"></i> You cut ${biz.owner} loose.`); renderAll(); } });
+      const tier = extortLevel(biz);
+      const res = Math.round(biz.resentment ?? 0);
+      body = `<p>${biz.owner} is on the hook — <strong>${EXTORT_TIER_NAME[tier]}</strong>.</p>`
+        + `<p class="flavor">Paying +${(biz.extortIncome*extortMult(biz)).toFixed(1)}/s, +${(biz.extortHeat*extortMult(biz)).toFixed(2)} heat/s.</p>`
+        + `<div class="control-track" title="Resentment"><div class="control-fill" style="width:${res}%; background:${res>66?'var(--red)':(res>33?'var(--gold)':'var(--green)')};"></div></div>`
+        + `<p class="flavor">Resentment ${res}%. At 100% they stop paying and drop a dime on you.</p>`;
+      if(tier < 3){
+        buttons.push({ label:'Squeeze harder', onClick:function(){
+          biz.extortTier = tier + 1; biz.resentment = Math.min(100, (biz.resentment ?? 0) + 30); state.heat = Math.min(100, state.heat + 5);
+          log(`<i class="ph-duotone ph-hand-fist"></i> You lean on ${biz.owner} for a bigger cut. They comply — resentfully.`);
+          renderAll();
+        }});
+      }
+      buttons.push({ label:'Ease off (calm them)', onClick:function(){
+        biz.resentment = Math.max(0, (biz.resentment ?? 0) - 40);
+        log(`<i class="ph-duotone ph-handshake"></i> You dial it back with ${biz.owner}. The tension eases.`);
+        renderAll();
+      }});
+      if(state.muscleCount > 0){
+        buttons.push({ label:'Send muscle (keep them in line)', onClick:function(){
+          biz.resentment = Math.max(0, (biz.resentment ?? 0) - 60); state.heat = Math.min(100, state.heat + 6);
+          log(`<i class="ph-duotone ph-boxing-glove"></i> Your crew pays ${biz.owner} a visit. They won't be any trouble for a while.`);
+          renderAll();
+        }});
+      }
+      buttons.push({ label:'Let it go', onClick:function(){ biz.extorted=false; biz.extortTier=0; biz.resentment=0; log(`<i class="ph-duotone ph-handshake"></i> You cut ${biz.owner} loose.`); renderAll(); } });
     }
     buttons.push({ label:'Walk away', secondary:true });
     showModal({ eyebrow:'Business Owner', title:biz.owner, body, buttons });
@@ -1375,7 +1404,8 @@ import type * as ThreeNamespace from 'three';
     if(corner.dealer || corner.busted) return;
     if(state.cash < corner.dealerCost) return;
     state.cash -= corner.dealerCost; corner.dealer = true;
-    log(`<i class="ph-duotone ph-briefcase"></i> A dealer's posted at ${corner.name}.`);
+    spawnDealerArrival(corner);
+    log(`<i class="ph-duotone ph-briefcase"></i> A dealer pulls up and sets up shop at ${corner.name}.`);
     renderAll();
   }
   function fireDealer(corner: Corner){
@@ -3131,6 +3161,7 @@ import type * as ThreeNamespace from 'three';
   function buildCityScene(){
     clearGroup(worldGroup);
     streetLights = [];
+    dealerArrivals.length = 0; // LEGAL: transient dealer walk-ins are re-added as standing figures below
 
     const baseScene = { THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H };
     buildBaseGround(baseScene);
@@ -3186,6 +3217,13 @@ import type * as ThreeNamespace from 'three';
       const orb = new THREE.Mesh(new THREE.SphereGeometry(7,10,10), new THREE.MeshStandardMaterial({color, emissive:color, emissiveIntensity:0.4}));
       orb.position.set(object.x,28,object.y); worldGroup.add(orb);
       addSign(pole, m.name, 30, 8, 22, '#f0efe8');
+      // LEGAL: A posted dealer is a visible figure standing at the corner.
+      if(staffed){
+        const dealer = buildPedestrianModel('#d4a017', 'dealer-'+m.id);
+        dealer.position.set(object.x+12, 0, object.y+9);
+        dealer.rotation.y = Math.PI;
+        worldGroup.add(dealer);
+      }
     });
 
     roamingActors.forEach(function(actor){
@@ -3220,6 +3258,32 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: Historical entry point kept for saved-game boot; the city is unified now.
   function buildDistrictScene(_districtId: string){
     buildCityScene();
+  }
+
+  // LEGAL: Transient "dealer pulling up" animation — a figure walks in from the street
+  // LEGAL: to the corner over ~1.5s when you post a dealer. It is cleared on the next
+  // LEGAL: scene rebuild, which re-adds the dealer as a permanent standing figure.
+  const dealerArrivals: Array<{ group: ThreeNamespace.Group; corner: Corner; sx: number; sy: number; t: number }> = [];
+  function spawnDealerArrival(corner: Corner){
+    if(!mapSceneReady || !worldGroup) return;
+    const sx = corner.x + (Math.random()<0.5 ? -44 : 44);
+    const sy = corner.y + 52;
+    const g = buildPedestrianModel('#d4a017', 'dealer-'+corner.id);
+    g.position.set(sx, 0, sy);
+    worldGroup.add(g);
+    dealerArrivals.push({ group:g, corner, sx, sy, t:0 });
+  }
+  function updateDealerArrivals(dt: number){
+    for(let i=dealerArrivals.length-1; i>=0; i--){
+      const a = dealerArrivals[i];
+      a.t = Math.min(1, a.t + dt/1.5);
+      const tx = a.corner.x + 12, ty = a.corner.y + 9;
+      const x = a.sx + (tx - a.sx) * a.t;
+      const y = a.sy + (ty - a.sy) * a.t;
+      a.group.position.set(x, 0, y);
+      a.group.rotation.y = -Math.atan2(ty - a.sy, tx - a.sx) + Math.PI/2;
+      if(a.t >= 1) dealerArrivals.splice(i, 1);
+    }
   }
 
   function refreshPlayerModel(){
@@ -3568,6 +3632,7 @@ import type * as ThreeNamespace from 'three';
       updateDayNightLighting();
       updateWeather(dt);
       updateRoamingActors(roamingActors, { dt, playSeconds:state.playSeconds, indoors:!!state.currentInterior, canMove:function(x,y){ return tryMove(x,y,currentSolids); } });
+      updateDealerArrivals(dt);
       playerGroup.position.set(player.x, 0, player.y);
       playerGroup.rotation.y = -player.facing + Math.PI/2;
       camera3d.position.set(player.x, 260, player.y+72);
@@ -3731,7 +3796,7 @@ import type * as ThreeNamespace from 'three';
       businesses: businesses.map(b=> ({ id:b.id, level:b.level, crew:b.crew, manager:b.manager, researched:b.researched, reinvestedIncome:b.reinvestedIncome })),
       bank: state.bank, nextHeistAt: state.nextHeistAt,
       ownedCars: state.ownedCars, equippedCar: state.equippedCar, ownedProperties: state.ownedProperties,
-      localBusinesses: localBusinesses.map(b=> ({ id:b.id, extorted:b.extorted, nextRobAt:b.nextRobAt })),
+      localBusinesses: localBusinesses.map(b=> ({ id:b.id, extorted:b.extorted, extortTier:b.extortTier??0, resentment:b.resentment??0, nextRobAt:b.nextRobAt })),
       currentDistrict: state.currentDistrict, product: state.product, productLevel: state.productLevel,
       districts: districts.map(d=> ({ id:d.id, control:d.control, pushCount:d.pushCount, nextPushAt:d.nextPushAt })),
       corners: corners.map(c=> ({ id:c.id, dealer:c.dealer, busted:c.busted, bustCooldownAt:c.bustCooldownAt })),
@@ -3791,7 +3856,7 @@ import type * as ThreeNamespace from 'three';
         if(state.seenMilestones.has('chaat_house')) byId('delhi-theme-row').style.display = 'flex';
         state.bank = d.bank||0; state.nextHeistAt = d.nextHeistAt||0;
         state.ownedCars = d.ownedCars||[]; state.equippedCar = d.equippedCar||null; state.ownedProperties = d.ownedProperties||[];
-        (d.localBusinesses||[]).forEach((sb: any)=>{ const b=localBusinesses.find(x=>x.id===sb.id); if(b){ b.extorted=sb.extorted; b.nextRobAt=sb.nextRobAt; } });
+        (d.localBusinesses||[]).forEach((sb: any)=>{ const b=localBusinesses.find(x=>x.id===sb.id); if(b){ b.extorted=sb.extorted; b.extortTier=Number(sb.extortTier)||0; b.resentment=Number(sb.resentment)||0; b.nextRobAt=sb.nextRobAt; } });
         state.currentDistrict = d.currentDistrict || 'devlin'; state.product = d.product||0; state.productLevel = d.productLevel||0;
         (d.districts||[]).forEach((sd: any)=>{ const dist=districts.find(x=>x.id===sd.id); if(dist){ dist.control=sd.control; dist.pushCount=sd.pushCount; dist.nextPushAt=sd.nextPushAt; } });
         (d.corners||[]).forEach((sc: any)=>{ const c=corners.find(x=>x.id===sc.id); if(c){ c.dealer=sc.dealer; c.busted=sc.busted; c.bustCooldownAt=sc.bustCooldownAt; } });
@@ -3896,6 +3961,20 @@ import type * as ThreeNamespace from 'three';
     districts.forEach(d=>{
       const drift = districtDriftBreakdown(d);
       d.control = Math.max(0, Math.min(100, d.control + drift.netDrift*dt));
+    });
+
+    // LEGAL: Extortion upkeep — resentment climbs (faster the harder you squeeze, slower
+    // LEGAL: with muscle on the street); at 100% the owner quits paying and rats you out.
+    localBusinesses.forEach(function(b){
+      if(!b.extorted) return;
+      const rate = 0.22 * extortLevel(b) * (state.muscleCount>0 ? 0.6 : 1);
+      b.resentment = Math.min(100, (b.resentment ?? 0) + rate*dt);
+      if((b.resentment ?? 0) >= 100){
+        b.extorted = false; b.extortTier = 0; b.resentment = 0;
+        state.heat = Math.min(100, state.heat + 12);
+        state.investigation = Math.min(100, state.investigation + 6);
+        log(`🐀 ${b.owner} has had enough — they stop paying and go to the cops. Heat spikes.`);
+      }
     });
 
     // LEGAL: Heat settles toward a level set by current activity. The cooldown grows

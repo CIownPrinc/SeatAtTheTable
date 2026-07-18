@@ -81,6 +81,11 @@ export interface LocalBusiness {
   x: number;
   y: number;
   extorted: boolean;
+  // LEGAL: Extortion depth: squeeze tier (1-3, bigger cut = more income + heat) and the
+  // LEGAL: owner's resentment (0-100). Unmanaged resentment ends the arrangement and
+  // LEGAL: burns you. Optional so existing saves/config default them at runtime.
+  extortTier?: number;
+  resentment?: number;
   nextRobAt: number;
 }
 
