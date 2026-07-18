@@ -22,7 +22,7 @@ import { drawMinimap as drawMapMinimap, MINIMAP_SCALE } from '../map/minimap';
 import type { MapObject } from '../map/objects';
 import { createBounds, nearestMapObject, solidsFromObjects } from '../map/objects';
 import { actorDisplayName, createRoamingActors, updateRoamingActors } from '../map/roaming';
-import { buildBaseGround, buildCanalBridges, buildCanalWater, buildRoadNetwork } from '../map/sceneBuilding';
+import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, buildLandmarks, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
 import { DISTRICT_OFFSETS, VIEW_H, VIEW_W, WORLD_H, WORLD_W, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { renderZoneType } from '../map/zoning';
 import type * as ThreeNamespace from 'three';
@@ -2389,7 +2389,7 @@ import type * as ThreeNamespace from 'three';
     return outer;
   }
   function buildTrafficCarModel(id: string, color: string): ThreeNamespace.Group {
-    return buildCarModel({ id, name:id, icon:'', cost:0, speedMult:1, heistBonus:0, respectPerSec:0, color, len:id.includes('cab')?38:44, wid:id.includes('cruiser')?22:20 });
+    return buildCarModel({ id, name:id, icon:'', cost:0, speedMult:1, heistBonus:0, respectPerSec:0, color, len:id.includes('cab')?30:34, wid:id.includes('cruiser')?17:15 });
   }
   function buildAmenityModel(amenity: typeof mapAmenities[number]): ThreeNamespace.Group {
     return buildMapAmenityModel(THREE, amenity, { box, addSign, buildDetailedBuilding, variantForId });
@@ -2558,16 +2558,30 @@ import type * as ThreeNamespace from 'three';
     const group = new THREE.Group();
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.9,0.9,18,6), new THREE.MeshStandardMaterial({color:'#c8cad8', roughness:0.4, metalness:0.5}));
     pole.position.set(0,9,0); pole.castShadow=true; group.add(pole);
-    const sign = new THREE.Mesh(new THREE.CylinderGeometry(5.2,5.2,0.8,8), new THREE.MeshStandardMaterial({color:'#b82f2f', roughness:0.45}));
-    sign.rotation.x = Math.PI/2; sign.position.set(0,20,0); sign.castShadow=true; group.add(sign);
+    const signShape = new THREE.Shape();
+    const radius = 5.4;
+    for(let i=0;i<8;i++){
+      const a = Math.PI/8 + i*Math.PI/4;
+      const sx = Math.cos(a)*radius;
+      const sy = Math.sin(a)*radius;
+      if(i===0) signShape.moveTo(sx,sy); else signShape.lineTo(sx,sy);
+    }
+    signShape.closePath();
+    const sign = new THREE.Mesh(new THREE.ExtrudeGeometry(signShape, { depth:0.5, bevelEnabled:false }), new THREE.MeshStandardMaterial({color:'#ad2f2f', roughness:0.5}));
+    sign.position.set(0,20,-0.25); sign.castShadow=true; group.add(sign);
+    const border = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(Array.from({ length:8 }, function(_v,i){
+      const a = Math.PI/8 + i*Math.PI/4;
+      return new THREE.Vector3(Math.cos(a)*4.6, Math.sin(a)*4.6, 0.31);
+    })), new THREE.LineBasicMaterial({color:'#fff8f0'}));
+    border.position.y=20; group.add(border);
     const face = document.createElement('canvas');
     face.width = 256; face.height = 256;
     const fctx = face.getContext('2d')!;
-    fctx.fillStyle = '#b82f2f'; fctx.fillRect(0,0,256,256);
-    fctx.fillStyle = '#fff8f0'; fctx.font = 'bold 58px sans-serif'; fctx.textAlign = 'center'; fctx.textBaseline = 'middle'; fctx.fillText('STOP',128,128);
+    fctx.clearRect(0,0,256,256);
+    fctx.fillStyle = '#fff8f0'; fctx.font = 'bold 58px Arial, sans-serif'; fctx.textAlign = 'center'; fctx.textBaseline = 'middle'; fctx.fillText('STOP',128,132);
     const tex = new THREE.CanvasTexture(face);
-    const label = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, depthTest:false}));
-    label.scale.set(14,14,1); label.position.set(0,20.2,0); group.add(label);
+    const label = new THREE.Mesh(new THREE.PlaneGeometry(9.2,9.2), new THREE.MeshBasicMaterial({map:tex, transparent:true, depthWrite:false}));
+    label.position.set(0,20,0.34); group.add(label);
     group.position.set(x,0,z); group.rotation.y=rot; worldGroup.add(group);
   }
   function buildTrafficLight(x: number, z: number, rot: number){
@@ -2587,38 +2601,6 @@ import type * as ThreeNamespace from 'three';
     buildStreetLight(x + 46, z + 46);
     buildStopSign(x - 42, z + 42, Math.PI / 4);
     if(index % 2 === 0) buildTrafficLight(x + 42, z - 42, -Math.PI / 4);
-  }
-  function buildStreetTree(x: number, z: number, size: number){
-    const group = new THREE.Group();
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(2.2*size,2.8*size,15*size,7), new THREE.MeshStandardMaterial({color:'#4a3624', roughness:0.9}));
-    trunk.position.set(0,7.5*size,0); trunk.castShadow=true; group.add(trunk);
-    const crownMat = new THREE.MeshStandardMaterial({color:size > 1.08 ? '#2f6a3d' : '#365c34', roughness:0.95});
-    const crown = new THREE.Mesh(new THREE.SphereGeometry(12*size,12,9), crownMat);
-    crown.scale.set(1.05,0.9,1); crown.position.set(0,22*size,0); crown.castShadow=true; group.add(crown);
-    const lower = new THREE.Mesh(new THREE.SphereGeometry(8*size,10,8), crownMat);
-    lower.position.set(5*size,17*size,-4*size); lower.castShadow=true; group.add(lower);
-    group.position.set(x,0,z);
-    worldGroup.add(group);
-  }
-  function buildStreetTrees(){
-    ['devlin','westside','hub'].forEach(function(distId){
-      const off = DISTRICT_OFFSETS[distId];
-      const rand = seededRandom(off + 4307);
-      roadNetwork.horizontal.forEach(function(r){
-        for(let x=off+95; x<off+1405; x+=125){
-          if(roadNetwork.vertical.some(v=>Math.abs(x-v.x)<72)) continue;
-          const side = rand() > 0.5 ? -1 : 1;
-          buildStreetTree(x + (rand()-0.5)*18, r.y + side*58 + (rand()-0.5)*14, 0.78 + rand()*0.45);
-        }
-      });
-      roadNetwork.vertical.filter(v=>v.x>off && v.x<off+1500).forEach(function(v){
-        for(let y=95; y<WORLD_H-95; y+=155){
-          if(roadNetwork.horizontal.some(r=>Math.abs(y-r.y)<82)) continue;
-          const side = rand() > 0.5 ? -1 : 1;
-          buildStreetTree(v.x + side*50 + (rand()-0.5)*12, y + (rand()-0.5)*18, 0.72 + rand()*0.38);
-        }
-      });
-    });
   }
   function weatherKindAtTime(): 'clear' | 'rain' | 'snow' {
     const t = state.playSeconds % 360;
@@ -2672,7 +2654,7 @@ import type * as ThreeNamespace from 'three';
     buildBaseGround(baseScene);
     buildCanalWater(baseScene);
     buildRoadNetwork({ ...baseScene, roadNetwork, buildIntersectionFurniture });
-    buildStreetTrees();
+    buildStreetTrees({ ...baseScene, roadNetwork, districtOffsets:DISTRICT_OFFSETS, seededRandom });
     buildCanalBridges(baseScene);
     // LEGAL: Venture buildings — all districts
     mapObjects.filter(o=>o.kind==='building').forEach(function(object){
@@ -2741,98 +2723,9 @@ import type * as ThreeNamespace from 'three';
       addSign(g, actorDisplayName(actor), 28, 7, 38, '#f0efe8');
     });
 
-    // LEGAL: Filler city buildings per district with zoning-aware types
-    ['devlin','westside','hub'].forEach(function(distId){
-      const off = DISTRICT_OFFSETS[distId];
-      fillerFor(distId).forEach(function(f){
-        if(f.kind==='building'){
-          const zoneType = renderZoneType(f.zone);
-          const palette = f.zone==='corporate'
-            ? ['#283247','#33405c','#4d445f','#2f5360','#57515a']
-            : (f.zone==='industrial' || f.zone==='logistics' ? ['#463f34','#55443c','#3f4542','#5c4638','#3d3946'] : (f.zone==='entertainment' ? ['#5a345e','#4a3f68','#6a3d4a','#3c5264'] : ['#394452','#4f463b','#365344','#58414a','#4f5159']));
-          const color = palette[Math.floor(f.hue * palette.length) % palette.length];
-          const mesh = buildDetailedBuilding(f.w,f.h,f.d,color,zoneType,f.hue);
-          mesh.position.set(f.x+off,f.h/2,f.y); mesh.rotation.y = f.rot; worldGroup.add(mesh);
-        } else if(f.kind==='edge'){
-          // LEGAL: Background skyline block — plain shaded box (no windows) for cheap depth.
-          const color = distId==='hub'?(f.hue<0.5?'#22262f':'#2c2a3a'):(distId==='westside'?(f.hue<0.5?'#2c2a24':'#332c26'):(f.hue<0.5?'#2a2e36':'#332e28'));
-          const mesh = box(f.w,f.h,f.d,color);
-          mesh.position.set(f.x+off,f.h/2,f.y); mesh.rotation.y = f.rot; worldGroup.add(mesh);
-        } else if(f.kind==='park'){
-          const cx=(f.x0+f.x1)/2+off, cy=(f.y0+f.y1)/2, w=f.x1-f.x0, d=f.y1-f.y0;
-          const grass = new THREE.Mesh(new THREE.PlaneGeometry(w,d), new THREE.MeshStandardMaterial({color:'#2c4a30', roughness:1}));
-          grass.rotation.x=-Math.PI/2; grass.position.set(cx,0.08,cy); grass.receiveShadow=true; worldGroup.add(grass);
-          const rand = seededRandom(Math.floor(cx*7+cy*13));
-          for(let i=0;i<8;i++){
-            const tx=f.x0+off+20+rand()*(w-40), ty=f.y0+20+rand()*(d-40);
-            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(2,2.5,10,6), new THREE.MeshStandardMaterial({color:'#4a3624'}));
-            trunk.position.set(tx,5,ty); trunk.castShadow=true; worldGroup.add(trunk);
-            const leaves = new THREE.Mesh(new THREE.ConeGeometry(9,20,7), new THREE.MeshStandardMaterial({color:'#2f5c38'}));
-            leaves.position.set(tx,18,ty); leaves.castShadow=true; worldGroup.add(leaves);
-          }
-          if(f.name==='MILLENNIUM PARK'){
-            const potato = new THREE.Mesh(new THREE.SphereGeometry(20,24,18), new THREE.MeshStandardMaterial({color:'#c9c9d4', metalness:1, roughness:0.08}));
-            potato.scale.set(1.6,0.85,1); potato.position.set(cx,22,cy); potato.castShadow=true; potato.receiveShadow=true; worldGroup.add(potato);
-            addSign(potato,'THE POTATO',44,10,34,'#e8e6de');
-          } else {
-            addSign(grass,f.name,44,9,4,'#a8d0a8');
-          }
-        } else if(f.kind==='lot'){
-          const cx=(f.x0+f.x1)/2+off, cy=(f.y0+f.y1)/2, w=f.x1-f.x0, d=f.y1-f.y0;
-          const lot = new THREE.Mesh(new THREE.PlaneGeometry(w,d), new THREE.MeshStandardMaterial({color:'#26282e', roughness:1}));
-          lot.rotation.x=-Math.PI/2; lot.position.set(cx,0.08,cy); lot.receiveShadow=true; worldGroup.add(lot);
-          const stripeMat = new THREE.MeshBasicMaterial({color:'#d9d2b8', transparent:true, opacity:0.5});
-          for(let sx=f.x0+off+18; sx<f.x1+off-18; sx+=24){
-            const stripe = new THREE.Mesh(new THREE.PlaneGeometry(2,d-24), stripeMat);
-            stripe.rotation.x=-Math.PI/2; stripe.position.set(sx,0.11,cy); worldGroup.add(stripe);
-          }
-          const curb = box(w,2,3,'#565a63'); curb.position.set(cx,1,f.y0+8); worldGroup.add(curb);
-          const rand = seededRandom(Math.floor(cx*11+cy*17));
-          const carColors=['#556070','#704040','#405560','#606050'];
-          for(let i=0;i<10;i++){
-            const px=f.x0+off+18+rand()*(w-36), py=f.y0+18+rand()*(d-36);
-            const c=box(20,9,11,carColors[Math.floor(rand()*carColors.length)]);
-            c.position.set(px,4.5,py); c.rotation.y=Math.round(rand()*1)*Math.PI/2; worldGroup.add(c);
-          }
-        }
-      });
-    });
-
-    // LEGAL: District landmarks — a domed civic hall in Devlin, an industrial water
-    // LEGAL: tower in the West Side (the Hub's Potato is built with its park above).
-    landmarks.forEach(function(lm){
-      if(lm.id==='devlinHall'){
-        const base = box(70,26,70,'#6a5b3e'); base.position.set(lm.x,13,lm.y); worldGroup.add(base);
-        const steps = box(84,6,84,'#565049'); steps.position.set(lm.x,3,lm.y); worldGroup.add(steps);
-        const dome = new THREE.Mesh(new THREE.SphereGeometry(30,20,14,0,Math.PI*2,0,Math.PI/2), new THREE.MeshStandardMaterial({color:'#c9a227', metalness:0.6, roughness:0.3}));
-        dome.position.set(lm.x,26,lm.y); dome.castShadow=true; worldGroup.add(dome);
-        const finial = new THREE.Mesh(new THREE.ConeGeometry(3,14,8), new THREE.MeshStandardMaterial({color:'#e0c860', metalness:0.7, roughness:0.2}));
-        finial.position.set(lm.x,52,lm.y); worldGroup.add(finial);
-        addSign(base,lm.name,44,9,36,'#ffe6a0');
-      } else if(lm.id==='ciceroWorks'){
-        const legMat = new THREE.MeshStandardMaterial({color:'#3a3d47', roughness:0.7});
-        const tankMat = new THREE.MeshStandardMaterial({color:'#7a3b32', roughness:0.8});
-        [[-16,-16],[16,-16],[-16,16],[16,16]].forEach(function(p){
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(2.4,2.4,60,6), legMat);
-          leg.position.set(lm.x+p[0],30,lm.y+p[1]); leg.castShadow=true; worldGroup.add(leg);
-        });
-        const tank = new THREE.Mesh(new THREE.CylinderGeometry(24,24,30,14), tankMat);
-        tank.position.set(lm.x,74,lm.y); tank.castShadow=true; worldGroup.add(tank);
-        const cap = new THREE.Mesh(new THREE.ConeGeometry(26,14,14), tankMat);
-        cap.position.set(lm.x,95,lm.y); worldGroup.add(cap);
-        addSign(tank,lm.name,44,9,28,'#f0c0a0');
-      }
-    });
-
-    // LEGAL: El-train track — west side east edge
-    const rail = new THREE.Mesh(new THREE.PlaneGeometry(40,WORLD_H), new THREE.MeshStandardMaterial({color:'#2a2a2e', roughness:1}));
-    rail.rotation.x=-Math.PI/2; rail.position.set(3470,0.06,WORLD_H/2); rail.receiveShadow=true; worldGroup.add(rail);
-    for(let ty=20;ty<WORLD_H;ty+=26){ const tie=box(36,2,4,'#3a3530'); tie.position.set(3470,1,ty); worldGroup.add(tie); }
-
-    // LEGAL: Chicago River — hub north edge
-    const river = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W,46), new THREE.MeshStandardMaterial({color:'#1c3a52', roughness:0.3, metalness:0.3}));
-    river.rotation.x=-Math.PI/2; river.position.set(WORLD_W/2,0.06,20); river.receiveShadow=true; worldGroup.add(river);
-
+    buildFillerCity({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, districtOffsets:DISTRICT_OFFSETS, fillerFor, helpers:{ box, addSign, buildDetailedBuilding, renderZoneType, seededRandom } });
+    buildLandmarks({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, landmarks, helpers:{ box, addSign } });
+    buildRailAndRiver(baseScene);
     currentSolids = buildAllSolids();
     // LEGAL: Block the landmark footprints so you can't walk through them.
     currentSolids.push({x:125,y:820,hw:44,hd:44}, {x:2125,y:850,hw:26,hd:26});

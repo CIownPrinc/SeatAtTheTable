@@ -21,7 +21,7 @@ export interface MinimapRenderOptions {
   mapObjects: MapObject[];
   districtOffsets: Record<string, number>;
   fillerFor: (districtId: string) => FillerItem[];
-  roadNetwork: { vertical: Array<{ x: number }>; horizontal: Array<{ y: number }> };
+  roadNetwork: { vertical: Array<{ x: number }>; horizontal: Array<{ y: number }>; diagonal: Array<{ x1: number; y1: number; x2: number; y2: number }> };
   worldWidth: number;
   worldHeight: number;
   landmarks: Array<{ x: number; y: number }>;
@@ -75,11 +75,20 @@ export function drawMinimap(options: MinimapRenderOptions): void {
         if(!isOnMap(p)) return;
         const w=(f.x1-f.x0)*MINIMAP_SCALE;
         const d=(f.y1-f.y0)*MINIMAP_SCALE;
-        mctx.fillStyle='rgba(58,108,68,0.55)';
-        mctx.fillRect(p.x-w/2,p.y-d/2,w,d);
+    mctx.fillStyle='rgba(58,108,68,0.55)';
+    mctx.fillRect(p.x-w/2,p.y-d/2,w,d);
       }
     });
   });
+  const beachA = proj(4000,48);
+  const beachB = proj(5500,118);
+  mctx.fillStyle='rgba(185,167,119,0.55)';
+  mctx.beginPath();
+  mctx.moveTo(beachA.x, beachA.y);
+  mctx.quadraticCurveTo(proj(4750,150).x, proj(4750,150).y, beachB.x, beachB.y);
+  mctx.lineTo(proj(5500,48).x, proj(5500,48).y);
+  mctx.lineTo(beachA.x, beachA.y);
+  mctx.fill();
   mctx.strokeStyle='rgba(120,120,135,0.4)';
   mctx.lineWidth=3;
   options.roadNetwork.vertical.forEach(function(r){
@@ -90,6 +99,11 @@ export function drawMinimap(options: MinimapRenderOptions): void {
   options.roadNetwork.horizontal.forEach(function(r){
     const p1=proj(0,r.y);
     const p2=proj(options.worldWidth,r.y);
+    mctx.beginPath(); mctx.moveTo(p1.x,p1.y); mctx.lineTo(p2.x,p2.y); mctx.stroke();
+  });
+  options.roadNetwork.diagonal.forEach(function(r){
+    const p1=proj(r.x1,r.y1);
+    const p2=proj(r.x2,r.y2);
     mctx.beginPath(); mctx.moveTo(p1.x,p1.y); mctx.lineTo(p2.x,p2.y); mctx.stroke();
   });
   const dot = function(wx: number, wy: number, color: string, size: number){

@@ -38,6 +38,12 @@ function roamSeed(id: string): number {
   return seed;
 }
 
+export const trafficCarRoutes: Array<{ id: string; color: string; speed: number; route: Point[] }> = [
+  { id:'devlin-cruiser', color:'#405560', speed:72, route:[{x:270,y:300},{x:270,y:900},{x:700,y:900},{x:1130,y:900},{x:1130,y:300},{x:700,y:300}] },
+  { id:'westside-sedan', color:'#704040', speed:78, route:[{x:2270,y:300},{x:3130,y:300},{x:3130,y:900},{x:2700,y:900},{x:2270,y:900}] },
+  { id:'hub-cab', color:'#d4a017', speed:84, route:[{x:4270,y:600},{x:5130,y:600},{x:5130,y:300},{x:4700,y:300},{x:4270,y:300}] },
+];
+
 export function createRoamingActors(mapObjects: MapObject[]): RoamingActor[] {
   const actors: RoamingActor[] = [];
   mapObjects.filter(o=>o.kind==='npc' || o.kind==='gangnpc').forEach(function(object){
@@ -63,12 +69,7 @@ export function createRoamingActors(mapObjects: MapObject[]): RoamingActor[] {
       routeIndex: 0,
     });
   });
-  const carRoutes: Array<{ id: string; color: string; speed: number; route: Point[] }> = [
-    { id:'devlin-cruiser', color:'#405560', speed:72, route:[{x:270,y:160},{x:270,y:1035},{x:700,y:1035},{x:1130,y:1035},{x:1130,y:300},{x:700,y:300}] },
-    { id:'westside-sedan', color:'#704040', speed:78, route:[{x:2270,y:300},{x:3130,y:300},{x:3130,y:900},{x:2700,y:900},{x:2270,y:900}] },
-    { id:'hub-cab', color:'#d4a017', speed:84, route:[{x:4270,y:600},{x:5130,y:600},{x:5130,y:300},{x:4700,y:300},{x:4270,y:300}] },
-  ];
-  carRoutes.forEach(function(route){
+  trafficCarRoutes.forEach(function(route){
     const start = route.route[0];
     const target = route.route[1];
     actors.push({

@@ -11,7 +11,7 @@
 - Done: Roaming actor logic is extracted to `src/map/roaming.ts`.
 - Done: Minimap rendering is extracted to `src/map/minimap.ts`.
 - Done: Amenity data, interaction modal construction, and amenity model rendering are extracted to map modules.
-- Started: Scene building extraction. Base ground, district tints, canals, roads, intersections, and bridge geometry live in `src/map/sceneBuilding.ts`.
+- Started: Scene building extraction. Base ground, district tints, canals, roads, intersections, bridge geometry, filler buildings, parks, lots, landmarks, rail, river, and beach geometry live in `src/map/sceneBuilding.ts`.
 - Deferred: Pathfinding/physics until product direction requires it.
 
 ## Asset And System Rule
@@ -21,8 +21,9 @@ When a new library, asset pack, or map system is added, future map work should a
 ## Next Steps
 
 - Use the existing GLB loader for more city props after choosing exact CC0 sources: street furniture, parking details, docks/logistics props, and residential details.
-- Continue extracting `buildCityScene` from `header.ts` into a typed scene-building module. Next pass should move parks, parking lots, street trees, river/rail details, and landmarks.
+- Continue extracting `buildCityScene` from `header.ts` into typed modules. Next pass should move traffic signs/lights/streetlights and named business/service/corner rendering.
 - Expand roaming with lane-aware traffic rules and more believable pedestrian destination tables.
+- Continue replacing strict grid feel with tested road geometry: diagonal streets are data-backed now; curves should next become collision/minimap/path-aware instead of decorative only.
 - Evaluate the mirrored CC0 car and character assets role by role. Keep procedural cars as the current primary look, and only use external actor meshes where they look better than the procedural model.
 - Add a visual regression e2e check for the 3D map canvas so shader/render failures are caught before manual testing.
 - Replace more handmade primitives only where the asset fits the Chicago-parody city style and location.

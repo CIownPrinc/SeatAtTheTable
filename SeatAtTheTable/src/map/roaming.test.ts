@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { GangRecruit } from '../config/types';
 import type { MapNpc } from './markers';
 import type { MapObject } from './objects';
-import { createRoamingActors, updateRoamingActors } from './roaming';
+import { createRoamingActors, trafficCarRoutes, updateRoamingActors } from './roaming';
+import { roadNetwork } from './world';
 
 function npcObject(id: string, type: MapNpc['type']): MapObject<'npc', MapNpc> {
   const ref: MapNpc = { id, name:id, district:id==='dice'?'westside':'hub', x:100, y:100, type };
@@ -50,5 +51,20 @@ describe('roaming actors', function () {
     updateRoamingActors([actor], { dt:1, playSeconds:10, indoors:true, canMove:function(){ return true; } });
 
     expect(actor.x).toBe(100);
+  });
+
+  it('keeps traffic car routes on road centers with no diagonal shortcuts', function () {
+    const verticalRoads = new Set(roadNetwork.vertical.map(r=>r.x));
+    const horizontalRoads = new Set(roadNetwork.horizontal.map(r=>r.y));
+
+    trafficCarRoutes.forEach(function(route){
+      route.route.forEach(function(point, index){
+        expect(verticalRoads.has(point.x) || horizontalRoads.has(point.y)).toBe(true);
+        const next = route.route[(index + 1) % route.route.length];
+        expect(point.x === next.x || point.y === next.y).toBe(true);
+        if(point.x === next.x) expect(verticalRoads.has(point.x)).toBe(true);
+        if(point.y === next.y) expect(horizontalRoads.has(point.y)).toBe(true);
+      });
+    });
   });
 });

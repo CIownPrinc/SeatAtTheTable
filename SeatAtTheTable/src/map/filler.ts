@@ -1,12 +1,15 @@
 import type { FillerItem, MapZoneType, Solid } from '../config/types';
 import type { MapObject } from './objects';
-import { buildableBands, localXForDistrict, rectsOverlap, rotatedHalfExtents } from './layout';
+import { buildableBands, distancePointToSegment, localXForDistrict, rectsOverlap, rotatedHalfExtents } from './layout';
 import { DISTRICT_OFFSETS, DISTRICT_W, WORLD_H, districtParkSlots, districtSeeds, landmarks, roadNetwork } from './world';
 import { zoneForDistrictBlock } from './zoning';
 
 const ROAD_VISUAL_CLEARANCE_X = 56;
 const ROAD_VISUAL_CLEARANCE_Y = 66;
 const BUILDING_GAP = 14;
+const MIN_FILLER_BUILDING_W = 34;
+const MIN_FILLER_BUILDING_D = 30;
+const MIN_FILLER_BUILDING_H = 24;
 
 export interface FillerLayoutProvider {
   fillerFor(districtId: string): FillerItem[];
@@ -51,13 +54,19 @@ export function createFillerLayoutProvider(mapObjects: MapObject[]): FillerLayou
       if(candidate.y-candidate.hd < 8 || candidate.y+candidate.hd > WORLD_H-8) return false;
       if(localRoadXs.some(x=> Math.abs(candidate.x-x) < candidate.hw+ROAD_VISUAL_CLEARANCE_X)) return false;
       if(roadNetwork.horizontal.some(r=> Math.abs(candidate.y-r.y) < candidate.hd+ROAD_VISUAL_CLEARANCE_Y)) return false;
+      if(roadNetwork.diagonal.some(r=> {
+        const x1 = localXForDistrict(districtId, r.x1, DISTRICT_OFFSETS);
+        const x2 = localXForDistrict(districtId, r.x2, DISTRICT_OFFSETS);
+        if((x1 < -200 && x2 < -200) || (x1 > DISTRICT_W+200 && x2 > DISTRICT_W+200)) return false;
+        return distancePointToSegment(candidate.x, candidate.y, x1, r.y1, x2, r.y2) < Math.max(candidate.hw,candidate.hd)+r.w/2+18;
+      })) return false;
       return !placed.some(s=>rectsOverlap(candidate, s, BUILDING_GAP));
     };
-    const pushBuilding = function(zone: MapZoneType, x: number, y: number, w: number, d: number, h: number, hue: number, rot: number): void {
+    const pushBuilding = function(zone: MapZoneType, x: number, y: number, w: number, d: number, h: number, hue: number, rot: number, style?: 'apartment'): void {
       const ext = rotatedHalfExtents(w, d, rot);
       const solid = { x, y, hw:ext.hw, hd:ext.hd };
       if(!fitsSolid(solid)) return;
-      filler.push({kind:'building', zone, x, y, w, d, h, hue, rot});
+      filler.push({kind:'building', zone, x, y, w, d, h, hue, rot, style});
       placed.push(solid);
     };
     const pushEdge = function(x: number, y: number, w: number, d: number, h: number, hue: number, rot: number): void {
@@ -80,19 +89,21 @@ export function createFillerLayoutProvider(mapObjects: MapObject[]): FillerLayou
         if(parkSlot && !blockHasAnchor){ filler.push({kind:'park', name:parkSlot.name, x0,y0,x1,y1}); placed.push(blockSolid); continue; }
         if((xi===lotBand.xi && yi===lotBand.yi || (districtId!=='hub' && xi===0 && yi===1) || (districtId==='hub' && xi===2 && yi===2)) && !blockHasAnchor){ filler.push({kind:'lot', x0,y0,x1,y1}); placed.push(blockSolid); continue; }
         const bw = x1-x0, bd = y1-y0;
-        const cols = 1 + Math.floor(rand()*2);
-        const rows = 1 + Math.floor(rand()*2);
+        const cols = 2 + Math.floor(rand()*2);
+        const rows = 1 + Math.floor(rand()*3);
         const cellW = bw/cols, cellD = bd/rows;
         for(let ci=0; ci<cols; ci++){
           for(let ri=0; ri<rows; ri++){
-            if(rand()<0.18) continue;
-            const w = cellW*(0.55+rand()*0.35);
-            const d = cellD*(0.55+rand()*0.35);
-            const h = districtId==='hub' && yi < 2 ? 70 + rand()*rand()*210 : 14 + rand()*rand()*90;
+            if(rand()<0.08) continue;
+            const zone = zoneForDistrictBlock(districtId, xi, yi);
+            const apartment = zone === 'residential' && rand() > 0.55;
+            const w = Math.max(MIN_FILLER_BUILDING_W, cellW*(apartment ? 0.72+rand()*0.18 : 0.58+rand()*0.28));
+            const d = Math.max(MIN_FILLER_BUILDING_D, cellD*(apartment ? 0.68+rand()*0.2 : 0.58+rand()*0.28));
+            const h = apartment ? 42 + rand()*48 : (districtId==='hub' && yi < 2 ? 70 + rand()*rand()*210 : MIN_FILLER_BUILDING_H + rand()*rand()*82);
             const px = x0 + ci*cellW + (cellW-w)/2 + jit()*cellW*0.2;
             const py = y0 + ri*cellD + (cellD-d)/2 + jit()*cellD*0.2;
             const rot = jit()*0.18 + (rand()<0.12 ? jit()*0.6 : 0);
-            pushBuilding(zoneForDistrictBlock(districtId, xi, yi), px+w/2, py+d/2, w, d, h, rand(), rot);
+            pushBuilding(zone, px+w/2, py+d/2, w, d, h, rand(), rot, apartment ? 'apartment' : undefined);
           }
         }
       }
@@ -113,6 +124,8 @@ export function createFillerLayoutProvider(mapObjects: MapObject[]): FillerLayou
       }
     }
     skylineRow(58, 34, districtId==='hub'?1.4:0.8);
+    skylineRow(145, 38, districtId==='hub'?1.2:0.65);
+    skylineRow(1010, 42, districtId==='hub'?1.3:0.75);
     skylineRow(1090, 55, districtId==='hub'?1.6:1.0);
     return filler;
   }

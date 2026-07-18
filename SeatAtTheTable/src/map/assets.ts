@@ -53,6 +53,8 @@ const ASSET_PATHS: Record<MapAssetKey, string> = {
   characterN: `${CHARACTER_ASSET_BASE}character-n.glb`,
 };
 
+const EAGER_ASSET_KEYS: MapAssetKey[] = ['houseA', 'houseB', 'towerA', 'towerC', 'commercialAwning', 'commercialWide'];
+
 function cloneScene(THREE: typeof ThreeNamespace, scene: ThreeNamespace.Group): ThreeNamespace.Group {
   const clone = scene.clone(true);
 
@@ -83,8 +85,8 @@ function fitToBox(THREE: typeof ThreeNamespace, group: ThreeNamespace.Group, wid
 export async function loadMapAssetLibrary(THREE: typeof ThreeNamespace): Promise<MapAssetLibrary> {
   const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
   const loader = new GLTFLoader();
-  const entries = await Promise.all(Object.entries(ASSET_PATHS).map(async function(entry){
-    const [key, path] = entry as [MapAssetKey, string];
+  const entries = await Promise.all(EAGER_ASSET_KEYS.map(async function(key){
+    const path = ASSET_PATHS[key];
     try {
       const gltf = await loader.loadAsync(path);
       return [key, gltf.scene] as const;
