@@ -150,6 +150,7 @@ export const roadNetwork: { vertical: VerticalRoad[]; horizontal: HorizontalRoad
   ],
   diagonal: [
     { x1: 165, y1: 1035, x2: 1130, y2: 300, w: 54, name: 'Ridgeway Cut' },
+    { x1: 1130, y1: 900, x2: 2270, y2: 300, w: 58, name: 'Devlin Canal Cut' },
     { x1: 2220, y1: 900, x2: 3130, y2: 300, w: 58, name: 'Canal Bend Road' },
     { x1: 4250, y1: 900, x2: 5150, y2: 300, w: 60, name: 'Lake Shore Cut' },
   ],

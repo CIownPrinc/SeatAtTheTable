@@ -12,6 +12,8 @@
 - Done: Minimap rendering is extracted to `src/map/minimap.ts`.
 - Done: Amenity data, interaction modal construction, and amenity model rendering are extracted to map modules.
 - Started: Scene building extraction. Base ground, district tints, canals, roads, intersections, bridge geometry, filler buildings, parks, lots, landmarks, rail, river, and beach geometry live in `src/map/sceneBuilding.ts`.
+- Done: Street furniture rendering for streetlights, stop signs, traffic lights, and intersection furniture is extracted to `src/map/streetFurniture.ts`.
+- Started: Non-grid road support. Diagonal streets render in scene/minimap, affect road labels, keep filler off their footprint, and can act as canal bridge corridors where the road data crosses water.
 - Deferred: Pathfinding/physics until product direction requires it.
 
 ## Asset And System Rule
@@ -21,7 +23,7 @@ When a new library, asset pack, or map system is added, future map work should a
 ## Next Steps
 
 - Use the existing GLB loader for more city props after choosing exact CC0 sources: street furniture, parking details, docks/logistics props, and residential details.
-- Continue extracting `buildCityScene` from `header.ts` into typed modules. Next pass should move traffic signs/lights/streetlights and named business/service/corner rendering.
+- Continue extracting `buildCityScene` from `header.ts` into typed modules. Next pass should move named business/service/corner rendering.
 - Expand roaming with lane-aware traffic rules and more believable pedestrian destination tables.
 - Continue replacing strict grid feel with tested road geometry: diagonal streets are data-backed now; curves should next become collision/minimap/path-aware instead of decorative only.
 - Evaluate the mirrored CC0 car and character assets role by role. Keep procedural cars as the current primary look, and only use external actor meshes where they look better than the procedural model.

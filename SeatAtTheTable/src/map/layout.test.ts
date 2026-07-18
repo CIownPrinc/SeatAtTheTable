@@ -148,6 +148,12 @@ describe('map layout helpers', function () {
     expect(isWaterBlocked(1700, 600, carRadius)).toBe(false);
   });
 
+  it('allows diagonal roads to act as bridge corridors across water', function () {
+    const carRadius = actorRadius(true);
+
+    expect(isWaterBlocked(1775, 560, carRadius)).toBe(false);
+  });
+
   it('uses vehicle radius for world bounds and solid collision', function () {
     const solids = [{ x: 200, y: 200, hw: 20, hd: 20 }];
 
