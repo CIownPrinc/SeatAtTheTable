@@ -1,4 +1,5 @@
 import type { Solid } from '../config/types';
+import { distancePointToSegment } from './layout';
 import { WORLD_H, WORLD_W, roadNetwork } from './world';
 
 export function actorRadius(inVehicle: boolean): number {
@@ -19,7 +20,8 @@ export function isWaterBlocked(x: number, y: number, radius: number): boolean {
   const inCanal2 = x > 3530 - radius && x < 3970 + radius;
   if(!inCanal1 && !inCanal2) return false;
   const onBridge = roadNetwork.horizontal.some(r => Math.abs(y - r.y) <= r.w/2 - Math.min(radius, 18));
-  return !onBridge;
+  const onDiagonalBridge = roadNetwork.diagonal.some(r => distancePointToSegment(x, y, r.x1, r.y1, r.x2, r.y2) <= r.w/2 - Math.min(radius, 12));
+  return !onBridge && !onDiagonalBridge;
 }
 
 export function canMoveTo(x: number, y: number, solids: Solid[], inVehicle: boolean): boolean {
