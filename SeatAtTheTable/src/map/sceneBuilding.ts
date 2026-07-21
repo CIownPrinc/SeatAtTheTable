@@ -1,5 +1,5 @@
 import type { DiagonalRoad, HorizontalRoad, Landmark, VerticalRoad } from './world';
-import { WINDHAVEN_LANDMASS } from './world';
+import { CANAL_CHANNELS, LAKEFRONT_BEACH, NORTH_RIVER, WINDHAVEN_LANDMASS } from './world';
 import type { FillerItem, MapZoneType } from '../config/types';
 import type * as ThreeNamespace from 'three';
 
@@ -49,38 +49,57 @@ export interface LandmarkSceneOptions extends BaseSceneOptions {
   helpers: SceneRenderHelpers;
 }
 
+function shapeFromPoints(THREE: typeof ThreeNamespace, points: Array<{ x: number; y: number }>): ThreeNamespace.Shape {
+  const shape = new THREE.Shape();
+  points.forEach(function(point, index){
+    if(index === 0) shape.moveTo(point.x, point.y);
+    else shape.lineTo(point.x, point.y);
+  });
+  shape.closePath();
+  return shape;
+}
+
+function addGroundShape(options: BaseSceneOptions, points: Array<{ x: number; y: number }>, color: string, height: number, roughness: number): ThreeNamespace.Mesh {
+  const { THREE, worldGroup } = options;
+  const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPoints(THREE, points)), new THREE.MeshStandardMaterial({color, roughness, metalness:0.08}));
+  mesh.rotation.x=-Math.PI/2;
+  mesh.position.y=height;
+  mesh.receiveShadow=true;
+  worldGroup.add(mesh);
+  return mesh;
+}
+
+function addGroundLine(options: BaseSceneOptions, points: Array<{ x: number; y: number }>, color: string, opacity: number, height: number): void {
+  const { THREE, worldGroup } = options;
+  const material = new THREE.LineBasicMaterial({ color, transparent:true, opacity });
+  const vectors = points.map(point => new THREE.Vector3(point.x, height, point.y));
+  const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(vectors), material);
+  worldGroup.add(line);
+}
+
 export function buildBaseGround(options: BaseSceneOptions): void {
   const { THREE, worldGroup, worldWidth, worldHeight } = options;
-  const waterBase = new THREE.Mesh(new THREE.PlaneGeometry(worldWidth + 260, worldHeight + 260), new THREE.MeshStandardMaterial({color:'#17364b', roughness:0.35, metalness:0.2}));
-  waterBase.rotation.x=-Math.PI/2; waterBase.position.set(worldWidth/2, -0.03, worldHeight/2); waterBase.receiveShadow=true; worldGroup.add(waterBase);
-  const landShape = new THREE.Shape();
-  WINDHAVEN_LANDMASS.forEach(function(point, index){
-    if(index === 0) landShape.moveTo(point.x, point.y);
-    else landShape.lineTo(point.x, point.y);
-  });
-  landShape.closePath();
-  const land = new THREE.Mesh(new THREE.ShapeGeometry(landShape), new THREE.MeshStandardMaterial({color:'#303438', roughness:1}));
-  land.rotation.x=-Math.PI/2; land.position.y=0; land.receiveShadow=true; worldGroup.add(land);
+  const waterBase = new THREE.Mesh(new THREE.PlaneGeometry(worldWidth + 920, worldHeight + 620), new THREE.MeshStandardMaterial({color:'#17364b', roughness:0.42, metalness:0.18}));
+  waterBase.rotation.x=-Math.PI/2; waterBase.position.set(worldWidth/2, -0.04, worldHeight/2); waterBase.receiveShadow=true; worldGroup.add(waterBase);
+  addGroundShape(options, WINDHAVEN_LANDMASS, '#303438', 0, 1);
+  addGroundLine(options, WINDHAVEN_LANDMASS, '#c7d7d0', 0.34, 0.13);
+  addGroundLine(options, WINDHAVEN_LANDMASS.filter(function(_point, index){ return index % 2 === 0; }), '#d9d2b8', 0.16, 0.14);
   [
-    { points:[{x:65,y:160},{x:320,y:100},{x:820,y:86},{x:1420,y:78},{x:1510,y:126},{x:1510,y:1090},{x:1020,y:1128},{x:480,y:1106},{x:84,y:1026}] },
-    { points:[{x:1990,y:118},{x:2360,y:90},{x:2990,y:82},{x:3490,y:124},{x:3490,y:1098},{x:3000,y:1128},{x:2420,y:1108},{x:1990,y:1144}] },
-    { points:[{x:3990,y:94},{x:4500,y:84},{x:5030,y:96},{x:5328,y:150},{x:5430,y:300},{x:5380,y:1080},{x:4960,y:1128},{x:4410,y:1112},{x:3990,y:1144}] },
-  ].forEach(function(dg){
-    const shape = new THREE.Shape();
-    dg.points.forEach(function(point, index){ if(index === 0) shape.moveTo(point.x, point.y); else shape.lineTo(point.x, point.y); });
-    shape.closePath();
-    const tint = new THREE.Mesh(new THREE.ShapeGeometry(shape), new THREE.MeshStandardMaterial({color:'#303438', roughness:1}));
-    tint.rotation.x=-Math.PI/2; tint.position.y=0.01; tint.receiveShadow=true; worldGroup.add(tint);
+    [{x:-220,y:118},{x:520,y:84},{x:1220,y:112},{x:2060,y:84},{x:2760,y:112},{x:3580,y:88},{x:4420,y:118},{x:5360,y:92}],
+    [{x:-180,y:142},{x:680,y:116},{x:1540,y:136},{x:2380,y:112},{x:3320,y:142},{x:4210,y:118},{x:5480,y:148}],
+  ].forEach(function(points, index){
+    addGroundLine(options, points, index === 0 ? '#8fb6c2' : '#e4efe8', index === 0 ? 0.2 : 0.12, 0.12 + index*0.01);
   });
 }
 
 export function buildCanalWater(options: BaseSceneOptions): void {
   const { THREE, worldGroup, worldHeight } = options;
   const canalMat = new THREE.MeshStandardMaterial({color:'#1c3a52', roughness:0.2, metalness:0.4});
-  [[1500,500],[3500,500]].forEach(function(pair){
-    const cx=pair[0], cw=pair[1];
-    const canal = new THREE.Mesh(new THREE.PlaneGeometry(cw,worldHeight), canalMat);
-    canal.rotation.x=-Math.PI/2; canal.position.set(cx+cw/2,0.04,worldHeight/2); worldGroup.add(canal);
+  CANAL_CHANNELS.forEach(function(channel){
+    const canal = new THREE.Mesh(new THREE.PlaneGeometry(channel.width,worldHeight + 180), canalMat);
+    canal.rotation.x=-Math.PI/2; canal.position.set(channel.x+channel.width/2,0.04,worldHeight/2); worldGroup.add(canal);
+    addGroundLine(options, [{x:channel.x+18,y:0},{x:channel.x+34,y:260},{x:channel.x+12,y:620},{x:channel.x+30,y:980},{x:channel.x+18,y:worldHeight}], '#c7d7d0', 0.2, 0.13);
+    addGroundLine(options, [{x:channel.x+channel.width-18,y:0},{x:channel.x+channel.width-34,y:320},{x:channel.x+channel.width-12,y:680},{x:channel.x+channel.width-30,y:1030},{x:channel.x+channel.width-18,y:worldHeight}], '#c7d7d0', 0.2, 0.13);
   });
 }
 
@@ -130,8 +149,8 @@ export function buildCanalBridges(options: BaseSceneOptions): void {
   const { THREE, worldGroup } = options;
   const deckMat = new THREE.MeshStandardMaterial({color:'#3a3d47', roughness:0.7});
   const railMat = new THREE.MeshStandardMaterial({color:'#555a68', roughness:0.6});
-  [[1500,500],[3500,500]].forEach(function(pair){
-    const cx=pair[0], cw=pair[1];
+  CANAL_CHANNELS.forEach(function(channel){
+    const cx=channel.x, cw=channel.width;
     [300,600,900].forEach(function(ry){
       const deck = new THREE.Mesh(new THREE.BoxGeometry(cw,4,74), deckMat);
       deck.position.set(cx+cw/2,2,ry); worldGroup.add(deck);
@@ -281,18 +300,8 @@ export function buildRailAndRiver(options: BaseSceneOptions): void {
     const tie = new THREE.Mesh(new THREE.BoxGeometry(36,2,4), new THREE.MeshStandardMaterial({color:'#3a3530', roughness:0.85, metalness:0.05}));
     tie.castShadow=true; tie.receiveShadow=true; tie.position.set(3470,1,ty); worldGroup.add(tie);
   }
-  const river = new THREE.Mesh(new THREE.PlaneGeometry(worldWidth,46), new THREE.MeshStandardMaterial({color:'#1c3a52', roughness:0.3, metalness:0.3}));
-  river.rotation.x=-Math.PI/2; river.position.set(worldWidth/2,0.06,20); river.receiveShadow=true; worldGroup.add(river);
-  const beachShape = new THREE.Shape();
-  beachShape.moveTo(4000,48);
-  beachShape.bezierCurveTo(4250,88,4550,58,4820,96);
-  beachShape.bezierCurveTo(5100,136,5350,96,5500,118);
-  beachShape.lineTo(5500,48);
-  beachShape.lineTo(4000,48);
-  beachShape.closePath();
-  const beach = new THREE.Mesh(new THREE.ShapeGeometry(beachShape), new THREE.MeshStandardMaterial({color:'#b9a777', roughness:1}));
-  beach.rotation.x=-Math.PI/2;
-  beach.position.y=0.09;
-  beach.receiveShadow=true;
-  worldGroup.add(beach);
+  addGroundShape(options, NORTH_RIVER, '#1c3a52', 0.06, 0.28);
+  addGroundShape(options, LAKEFRONT_BEACH, '#b9a777', 0.09, 1);
+  addGroundLine(options, NORTH_RIVER.slice(2), '#e4efe8', 0.18, 0.14);
+  addGroundLine(options, LAKEFRONT_BEACH, '#d9d2b8', 0.22, 0.15);
 }

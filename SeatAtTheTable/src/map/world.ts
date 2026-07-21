@@ -29,6 +29,12 @@ export interface Landmark {
   y: number;
 }
 
+export interface CanalChannel {
+  x: number;
+  width: number;
+  name: string;
+}
+
 export interface VentureMapLot extends Point {
   district: string;
   zone: MapZoneType;
@@ -85,6 +91,41 @@ export const WINDHAVEN_LANDMASS: Point[] = [
   { x: -252, y: 600 },
   { x: -96, y: 366 },
   { x: -210, y: 64 },
+];
+
+export const CANAL_CHANNELS: CanalChannel[] = [
+  { x: 1500, width: 500, name: 'South Branch Canal' },
+  { x: 3500, width: 500, name: 'Lakefront Cut' },
+];
+
+export const NORTH_RIVER: Point[] = [
+  { x: -260, y: -140 },
+  { x: 5780, y: -140 },
+  { x: 5780, y: 118 },
+  { x: 5400, y: 88 },
+  { x: 5050, y: 110 },
+  { x: 4630, y: 72 },
+  { x: 4210, y: 96 },
+  { x: 3790, y: 70 },
+  { x: 3340, y: 92 },
+  { x: 2890, y: 64 },
+  { x: 2440, y: 84 },
+  { x: 1960, y: 60 },
+  { x: 1510, y: 86 },
+  { x: 1040, y: 62 },
+  { x: 610, y: 82 },
+  { x: 190, y: 58 },
+  { x: -260, y: 102 },
+];
+
+export const LAKEFRONT_BEACH: Point[] = [
+  { x: 3970, y: 52 },
+  { x: 4240, y: 88 },
+  { x: 4560, y: 64 },
+  { x: 4860, y: 104 },
+  { x: 5180, y: 86 },
+  { x: 5520, y: 124 },
+  { x: 5520, y: 52 },
 ];
 
 export const DISTRICT_OFFSETS: Record<string, number> = {

@@ -116,15 +116,15 @@ export function createFillerLayoutProvider(mapObjects: MapObject[]): FillerLayou
         const cxLocal = x + w/2;
         const y = yBase + jit()*yJit;
         if(rand()>0.15){
-          const d = 40 + rand()*70;
+          const d = 28 + rand()*42;
           const h = 34 + rand()*rand()*170*tallBias;
           pushEdge(cxLocal, y, w, d, h, rand(), jit()*0.25);
         }
         x += w + gap;
       }
     }
-    skylineRow(58, 34, districtId==='hub'?1.4:0.8);
-    skylineRow(145, 38, districtId==='hub'?1.2:0.65);
+    skylineRow(165, 28, districtId==='hub'?1.15:0.65);
+    skylineRow(230, 32, districtId==='hub'?1.1:0.6);
     skylineRow(1010, 42, districtId==='hub'?1.3:0.75);
     skylineRow(1090, 55, districtId==='hub'?1.6:1.0);
     return filler;

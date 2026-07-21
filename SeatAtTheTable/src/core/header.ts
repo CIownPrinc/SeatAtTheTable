@@ -3773,8 +3773,8 @@ import type * as ThreeNamespace from 'three';
     const px = (e.clientX-rect.left) * (CITY_W/rect.width);
     const py = (e.clientY-rect.top) * (CITY_H/rect.height);
     return {
-      x: Math.max(0, Math.min(WORLD_W, cityCenter.x + (px-CITY_W/2)/cityScale)),
-      y: Math.max(0, Math.min(WORLD_H, cityCenter.y + (py-CITY_H/2)/cityScale)),
+      x: Math.max(landMinX, Math.min(landMaxX, cityCenter.x + (px-CITY_W/2)/cityScale)),
+      y: Math.max(landMinY, Math.min(landMaxY, cityCenter.y + (py-CITY_H/2)/cityScale)),
     };
   }
   function cityMapObjectName(object: MapObject): string {

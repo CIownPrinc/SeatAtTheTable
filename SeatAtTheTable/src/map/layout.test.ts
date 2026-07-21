@@ -170,7 +170,8 @@ describe('map layout helpers', function () {
   it('uses vehicle radius for world bounds and solid collision', function () {
     const solids = [{ x: 200, y: 200, hw: 20, hd: 20 }];
 
-    expect(canMoveTo(18, 600, [], true)).toBe(false);
+    expect(canMoveTo(18, 600, [], true)).toBe(true);
+    expect(canMoveTo(-280, 600, [], false)).toBe(false);
     expect(canMoveTo(245, 200, solids, true)).toBe(true);
     expect(canMoveTo(243, 200, solids, true)).toBe(false);
   });

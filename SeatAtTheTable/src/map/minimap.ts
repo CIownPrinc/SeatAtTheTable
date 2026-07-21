@@ -1,5 +1,6 @@
 import type { Corner, FillerItem, Point } from '../config/types';
 import type { MapObject, MinimapIcon } from './objects';
+import { CANAL_CHANNELS, LAKEFRONT_BEACH, NORTH_RIVER } from './world';
 
 export const MINIMAP_SIZE = 150;
 export const MINIMAP_SCALE = MINIMAP_SIZE / 600;
@@ -140,6 +141,35 @@ export function drawMinimap(options: MinimapRenderOptions): void {
   const centerX = options.center ? options.center.x : options.player.x + options.pan.x;
   const centerY = options.center ? options.center.y : options.player.y + options.pan.y;
   const proj = function(wx: number, wy: number){ return { x: halfX + (wx-centerX)*scale, y: halfY + (wy-centerY)*scale }; };
+  const drawPolygon = function(points: Point[], fill: string, stroke: string | null, lineWidth: number): void {
+    if(points.length < 3) return;
+    mctx.beginPath();
+    points.forEach(function(point, index){
+      const p = proj(point.x, point.y);
+      if(index === 0) mctx.moveTo(p.x, p.y);
+      else mctx.lineTo(p.x, p.y);
+    });
+    mctx.closePath();
+    mctx.fillStyle = fill;
+    mctx.fill();
+    if(stroke){
+      mctx.strokeStyle = stroke;
+      mctx.lineWidth = lineWidth;
+      mctx.stroke();
+    }
+  };
+  const drawPolyline = function(points: Point[], stroke: string, lineWidth: number): void {
+    if(points.length < 2) return;
+    mctx.beginPath();
+    points.forEach(function(point, index){
+      const p = proj(point.x, point.y);
+      if(index === 0) mctx.moveTo(p.x, p.y);
+      else mctx.lineTo(p.x, p.y);
+    });
+    mctx.strokeStyle = stroke;
+    mctx.lineWidth = lineWidth;
+    mctx.stroke();
+  };
 
   mctx.save();
   if(options.landmass.length){
@@ -158,22 +188,17 @@ export function drawMinimap(options: MinimapRenderOptions): void {
     mctx.clip();
   }
 
-  [[1500,500],[3500,500]].forEach(function(pair){
-    const x0 = pair[0], x1 = pair[0] + pair[1];
-    const a = proj(x0, 0);
-    const b = proj(x1, options.worldHeight);
+  CANAL_CHANNELS.forEach(function(channel){
+    const x0 = channel.x, x1 = channel.x + channel.width;
+    const a = proj(x0, -90);
+    const b = proj(x1, options.worldHeight + 90);
     mctx.fillStyle = '#1c3a52';
     mctx.fillRect(a.x, a.y, b.x - a.x, b.y - a.y);
+    drawPolyline([{x:x0+18,y:0},{x:x0+34,y:260},{x:x0+12,y:620},{x:x0+30,y:980},{x:x0+18,y:options.worldHeight}], 'rgba(228,239,232,0.28)', Math.max(1, 1.1*glyphScale));
+    drawPolyline([{x:x1-18,y:0},{x:x1-34,y:320},{x:x1-12,y:680},{x:x1-30,y:1030},{x:x1-18,y:options.worldHeight}], 'rgba(228,239,232,0.28)', Math.max(1, 1.1*glyphScale));
   });
 
-  const riverA = proj(0, 20);
-  const riverB = proj(options.worldWidth, 20);
-  mctx.strokeStyle = '#1c3a52';
-  mctx.lineWidth = Math.max(8, 46*scale);
-  mctx.beginPath();
-  mctx.moveTo(riverA.x, riverA.y);
-  mctx.lineTo(riverB.x, riverB.y);
-  mctx.stroke();
+  drawPolygon(NORTH_RIVER, '#1c3a52', 'rgba(228,239,232,0.22)', Math.max(1, 1.2*glyphScale));
 
   ['devlin','westside','hub'].forEach(function(distId){
     const off = options.districtOffsets[distId];
@@ -199,15 +224,7 @@ export function drawMinimap(options: MinimapRenderOptions): void {
     });
   });
 
-  const beachA = proj(4000,48);
-  const beachB = proj(5500,118);
-  mctx.fillStyle='rgba(185,167,119,0.55)';
-  mctx.beginPath();
-  mctx.moveTo(beachA.x, beachA.y);
-  mctx.quadraticCurveTo(proj(4750,150).x, proj(4750,150).y, beachB.x, beachB.y);
-  mctx.lineTo(proj(5500,48).x, proj(5500,48).y);
-  mctx.lineTo(beachA.x, beachA.y);
-  mctx.fill();
+  drawPolygon(LAKEFRONT_BEACH, 'rgba(185,167,119,0.55)', 'rgba(217,210,184,0.34)', Math.max(1, 1*glyphScale));
 
   const drawRoad = function(points: Point[], width: number){
     mctx.strokeStyle='rgba(22,24,31,0.95)';
@@ -231,8 +248,8 @@ export function drawMinimap(options: MinimapRenderOptions): void {
     drawRoad([{x:r.x1,y:r.y1},{x:r.x2,y:r.y2}], r.w ?? 54);
   });
 
-  [[1500,500],[3500,500]].forEach(function(pair){
-    const cx=pair[0], cw=pair[1];
+  CANAL_CHANNELS.forEach(function(channel){
+    const cx=channel.x, cw=channel.width;
     [300,600,900].forEach(function(ry){
       const a=proj(cx, ry);
       const b=proj(cx+cw, ry);

@@ -1,5 +1,5 @@
 import type { Solid } from '../config/types';
-import { WORLD_H, WORLD_W, roadNetwork } from './world';
+import { CANAL_CHANNELS, WINDHAVEN_LANDMASS, roadNetwork } from './world';
 
 export function actorRadius(inVehicle: boolean): number {
   return inVehicle ? 24 : 8;
@@ -9,15 +9,32 @@ export function collidesSolid(x: number, y: number, solids: Solid[], padding: nu
   return solids.some(s=> Math.abs(x-s.x)<s.hw+padding && Math.abs(y-s.y)<s.hd+padding);
 }
 
+function pointInPolygon(x: number, y: number, polygon: Array<{ x: number; y: number }>): boolean {
+  let inside = false;
+  for(let i = 0, j = polygon.length - 1; i < polygon.length; j = i++){
+    const pi = polygon[i];
+    const pj = polygon[j];
+    const intersects = ((pi.y > y) !== (pj.y > y)) && x < ((pj.x - pi.x) * (y - pi.y)) / (pj.y - pi.y) + pi.x;
+    if(intersects) inside = !inside;
+  }
+  return inside;
+}
+
 export function isInsideWorld(x: number, y: number, radius: number): boolean {
-  return x>=16+radius && x<=WORLD_W-16-radius && y>=16+radius && y<=WORLD_H-16-radius;
+  const checks = [
+    { x, y },
+    { x: x - radius, y },
+    { x: x + radius, y },
+    { x, y: y - radius },
+    { x, y: y + radius },
+  ];
+  return checks.every(point => pointInPolygon(point.x, point.y, WINDHAVEN_LANDMASS));
 }
 
 export function isWaterBlocked(x: number, y: number, radius: number): boolean {
-  if(y < 46 + radius) return true;
-  const inCanal1 = x > 1530 - radius && x < 1970 + radius;
-  const inCanal2 = x > 3530 - radius && x < 3970 + radius;
-  if(!inCanal1 && !inCanal2) return false;
+  if(y < 56 + radius) return true;
+  const inCanal = CANAL_CHANNELS.some(channel => x > channel.x + 30 - radius && x < channel.x + channel.width - 30 + radius);
+  if(!inCanal) return false;
   // LEGAL: Canals are crossed ONLY on the horizontal road bridge decks. Diagonals stay
   // LEGAL: on district land and never span water, so they can't act as water crossings.
   const onBridge = roadNetwork.horizontal.some(r => Math.abs(y - r.y) <= r.w/2 - Math.min(radius, 18));
