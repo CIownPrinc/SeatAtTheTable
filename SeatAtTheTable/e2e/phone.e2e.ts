@@ -13,19 +13,26 @@ test.describe('phone / Windhaven OS device', () => {
     await expect(page.locator('.tab-btn[data-tab="bank"]')).toHaveCount(0);
     await expect(page.locator('.tab-btn[data-tab="assets"]')).toHaveCount(0);
 
-    // LEGAL: Open the phone → home screen with the app grid.
+    // LEGAL: Open the phone → it's a Pomello handset showing the home screen app grid.
     await page.locator('#phone-btn').click();
     await expect(page.locator('#device-overlay')).not.toHaveClass(/hidden/);
     await expect(page.locator('#device-home')).toBeVisible();
+    await expect(page.locator('.device-brand')).toHaveText('Pomello');
 
-    // LEGAL: Bank app → finance screen with a populated bank panel.
+    // LEGAL: Bank app → finance screen listing all banks; robbing is NOT on the phone.
     await page.locator('.device-app[data-app="bank"]').click();
     await expect(page.locator('.device-screen[data-screen="finance"]')).toBeVisible();
     await expect(page.locator('#finance-appbar-title')).toHaveText('Bank');
-    await expect(page.locator('#bank-panel')).not.toBeEmpty();
+    await expect(page.locator('#bank-panel [data-bank-select]')).toHaveCount(3);
+    await expect(page.locator('#bank-panel #start-heist')).toHaveCount(0);
 
-    // LEGAL: Back to home, then AutoMart → the cars catalogue is populated.
-    await page.locator('.device-screen[data-screen="finance"] .device-back').click();
+    // LEGAL: Selecting a different bank marks it SELECTED and shows its deposit form.
+    await page.locator('#bank-panel [data-bank-select="lakeside-offshore"]').click();
+    await expect(page.locator('#bank-panel [data-bank-select="lakeside-offshore"] .col-status')).toHaveText('SELECTED');
+    await expect(page.locator('#deposit-input')).toBeVisible();
+
+    // LEGAL: The home button returns to the app grid, then AutoMart's cars populate.
+    await page.locator('#device-home-btn').click();
     await expect(page.locator('#device-home')).toBeVisible();
     await page.locator('.device-app[data-app="automart"]').click();
     await expect(page.locator('.device-screen[data-screen="automart"]')).toBeVisible();

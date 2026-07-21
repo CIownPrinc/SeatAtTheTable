@@ -10,6 +10,7 @@ import { politicians } from '../config/politics';
 import { gangRecruits } from '../config/gang';
 import { npcFirstNames, npcLastNames, npcDispositions } from '../config/npcs';
 import { stockMarket } from '../config/stockMarket';
+import { banks, DEFAULT_BANK_ID } from '../config/banks';
 import type { GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState, Point, ServiceBuilding, GangRecruit, Car, DialogueTree } from '../config/types';
 import type { MapAssetKey, MapAssetLibrary } from '../map/assets';
 import { loadMapAssetLibrary } from '../map/assets';
@@ -415,7 +416,7 @@ import type * as ThreeNamespace from 'three';
     started: false, lastTick: Date.now(), nextEventAt: 110 + Math.random()*60,
     playSeconds: 0, investorPenalty: 0,
     procNpc: generateNPC(),
-    bank: 0, nextHeistAt: 0,
+    bankAccounts: {}, selectedBank: DEFAULT_BANK_ID, nextHeistAt: 0,
     ownedCars: [], equippedCar: null, ownedProperties: [],
     currentDistrict: 'devlin', product: 0, productLevel: 0, currentInterior: null,
     inVehicle: false,
@@ -859,20 +860,27 @@ import type * as ThreeNamespace from 'three';
   }
 
   // LEGAL: ================= BANK =================
-  function depositAmount(rawAmt: string | undefined){
+  // LEGAL: Per-bank account helpers. `bankedTotal` sums every account (that's the
+  // LEGAL: raid-safe pile the rest of the game reads); `bankBalance`/`addToBank` operate
+  // LEGAL: on one bank by id, clamped at zero.
+  function bankBalance(id: string){ return state.bankAccounts[id] ?? 0; }
+  function bankedTotal(){ return Object.values(state.bankAccounts).reduce((sum, v)=> sum + (v || 0), 0); }
+  function addToBank(id: string, delta: number){ state.bankAccounts[id] = Math.max(0, (state.bankAccounts[id] ?? 0) + delta); }
+  function bankName(id: string){ return banks.find(b=>b.id===id)?.name ?? 'the bank'; }
+  function depositAmount(bankId: string, rawAmt: string | undefined){
     const amt = Math.floor(Number(rawAmt));
     if(!isFinite(amt) || amt<=0){ log('<i class="ph-duotone ph-bank"></i> Enter a valid amount to deposit.'); return; }
     if(amt > state.cash){ log(`<i class="ph-duotone ph-vault"></i> You don't have ${fmt(amt)} on hand to deposit.`); return; }
-    state.cash -= amt; state.bank += amt;
-    log(`<i class="ph-duotone ph-vault"></i> You deposit ${fmt(amt)}. Safe from raids in there.`);
+    state.cash -= amt; addToBank(bankId, amt);
+    log(`<i class="ph-duotone ph-vault"></i> You deposit ${fmt(amt)} at ${bankName(bankId)}. Safe from raids in there.`);
     renderAll();
   }
-  function withdrawAmount(rawAmt: string | undefined){
+  function withdrawAmount(bankId: string, rawAmt: string | undefined){
     const amt = Math.floor(Number(rawAmt));
     if(!isFinite(amt) || amt<=0){ log('<i class="ph-duotone ph-bank"></i> Enter a valid amount to withdraw.'); return; }
-    if(amt > state.bank){ log(`<i class="ph-duotone ph-vault"></i> There's only ${fmt(state.bank)} banked.`); return; }
-    state.bank -= amt; state.cash += amt;
-    log(`<i class="ph-duotone ph-vault"></i> You withdraw ${fmt(amt)}.`);
+    if(amt > bankBalance(bankId)){ log(`<i class="ph-duotone ph-vault"></i> There's only ${fmt(bankBalance(bankId))} at ${bankName(bankId)}.`); return; }
+    addToBank(bankId, -amt); state.cash += amt;
+    log(`<i class="ph-duotone ph-vault"></i> You withdraw ${fmt(amt)} from ${bankName(bankId)}.`);
     renderAll();
   }
   function resolveHeist(approach: string){
@@ -1048,21 +1056,21 @@ import type * as ThreeNamespace from 'three';
     if(!wrap) return;
     
     if(state.financeView === 'vault') {
-      const canHeist = state.playSeconds >= state.nextHeistAt;
-      const cooldownLeft = Math.max(0, Math.ceil(state.nextHeistAt - state.playSeconds));
-      wrap.innerHTML = `
-        <div class="data-table">
-          <div class="data-row vault-card">
-            <div class="data-main">
-              <div class="col-id"><i class="ph-duotone ph-bank"></i> ${ICONS.bank}</div>
-              <div class="col-name">Vault Balance</div>
-              <div class="col-status">ACTIVE</div>
-            </div>
+      // LEGAL: Multi-bank accounts. One row per bank; the selected one expands to show its
+      // LEGAL: deposit/withdraw form (reusing the deposit-input/withdraw-input ids, which
+      // LEGAL: stay unique because only the selected bank renders a form). Robbing a bank
+      // LEGAL: is in person only — no heist button lives on the phone.
+      if(!banks.some(b=>b.id===state.selectedBank)) state.selectedBank = DEFAULT_BANK_ID;
+      const bankRows = banks.map(function(bank){
+        const bal = bankBalance(bank.id);
+        const isSel = bank.id === state.selectedBank;
+        const form = isSel ? `
             <div class="data-expanded">
-              <div class="flavor-note">Cash in the bank is safe from raids and earns slow interest. Cash on hand is what actually buys things.</div>
-              <div class="bank-balances-row" style="display:flex; gap:24px; margin-bottom:12px; font-family:var(--font-mono); font-size:14px; flex-wrap:wrap;">
-                <div><span style="color:var(--text-faint);">BANKED:</span> <strong id="bank-banked-value" style="color:var(--green); font-size:16px;">${fmt(state.bank)}</strong></div>
-                <div><span style="color:var(--text-faint);">ON HAND:</span> <strong id="bank-onhand-value" style="color:var(--text); font-size:16px;">${fmt(state.cash)}</strong></div>
+              <div class="flavor-note">${bank.blurb}</div>
+              <div class="bank-balances-row" style="display:flex; gap:20px; margin:8px 0 12px; font-family:var(--font-mono); font-size:13px; flex-wrap:wrap;">
+                <div><span style="color:var(--text-faint);">HERE:</span> <strong style="color:var(--green);">${fmt(bal)}</strong></div>
+                <div><span style="color:var(--text-faint);">INTEREST:</span> <strong>${bank.rateLabel}</strong></div>
+                <div><span style="color:var(--text-faint);">VAULT:</span> <strong>${bank.security}</strong></div>
               </div>
               <div style="display:flex; gap:24px; flex-wrap:wrap; border-top:1px dashed var(--line); padding-top:14px;">
                 <div class="bank-form" style="flex:1; min-width:200px; border-top:none; padding-top:0; margin-top:0;">
@@ -1090,30 +1098,33 @@ import type * as ThreeNamespace from 'three';
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </div>` : '';
+        return `<div class="data-row">
+            <div class="data-main" data-bank-select="${bank.id}" style="cursor:pointer;">
+              <div class="col-id"><i class="ph-duotone ph-bank"></i></div>
+              <div class="col-name">${bank.name}</div>
+              <div class="col-inc">${fmt(bal)}</div>
+              <div class="col-status">${isSel ? 'SELECTED' : 'TAP TO OPEN'}</div>
+            </div>${form}
+          </div>`;
+      }).join('');
+      wrap.innerHTML = `
+        <div class="data-table">
           <div class="data-row">
             <div class="data-main">
-              <div class="col-id">${ICONS.store}</div>
-              <div class="col-name">RCN Exchange</div>
-              <div class="col-status">TERMINAL</div>
+              <div class="col-id"><i class="ph-duotone ph-vault"></i></div>
+              <div class="col-name">Accounts</div>
+              <div class="col-status">RAID-SAFE</div>
             </div>
             <div class="data-expanded">
-              <div class="flavor-note">The Rentport City National Exchange. Buy, sell, and short your way to the top. Just remember: the house always wins.</div>
-              <div class="btn-row"><button class="mini-btn" id="go-lcn">ACCESS TERMINAL</button></div>
+              <div class="flavor-note">Banked cash is safe from raids and earns interest; cash on hand is what buys things. Spread it around — a bank you bank at can still be robbed by rivals, and you can rob theirs in person.</div>
+              <div class="bank-balances-row" style="display:flex; gap:24px; margin-top:8px; font-family:var(--font-mono); font-size:14px; flex-wrap:wrap;">
+                <div><span style="color:var(--text-faint);">TOTAL BANKED:</span> <strong id="bank-banked-value" style="color:var(--green); font-size:16px;">${fmt(bankedTotal())}</strong></div>
+                <div><span style="color:var(--text-faint);">ON HAND:</span> <strong id="bank-onhand-value" style="color:var(--text); font-size:16px;">${fmt(state.cash)}</strong></div>
+              </div>
             </div>
           </div>
-          <div class="data-row">
-            <div class="data-main">
-              <div class="col-id">${ICONS.box}</div>
-              <div class="col-name">First Windhaven Trust</div>
-              <div class="col-status" id="heist-status-value">${canHeist ? 'READY' : 'COOLDOWN'}</div>
-            </div>
-            <div class="data-expanded">
-              <div class="flavor-note">A rival bank across town. A bigger score, and a bigger risk, than shaking down a corner shop.</div>
-              <div class="btn-row"><button class="mini-btn" ${canHeist?'':'disabled'} id="start-heist">CASE THE VAULT ${canHeist?'':`(${cooldownLeft}s)`}</button></div>
-            </div>
-          </div>
+          ${bankRows}
         </div>
       `;
     } else if(state.financeView === 'lcn-home') {
@@ -2009,7 +2020,13 @@ import type * as ThreeNamespace from 'three';
     const quickWithdraw = target.closest('[data-withdraw-quick]');
     if(quickWithdraw){
       const inp = byId('withdraw-input') as HTMLInputElement;
-      if(inp) inp.value = String(Math.floor(state.bank * Number(quickWithdraw.getAttribute('data-withdraw-quick'))));
+      if(inp) inp.value = String(Math.floor(bankBalance(state.selectedBank) * Number(quickWithdraw.getAttribute('data-withdraw-quick'))));
+      return;
+    }
+    const bankSelect = target.closest('[data-bank-select]');
+    if(bankSelect){
+      state.selectedBank = bankSelect.getAttribute('data-bank-select')!;
+      renderBankPanel();
       return;
     }
     const stockRow = target.closest('.lcn-stock-btn');
@@ -2055,20 +2072,17 @@ import type * as ThreeNamespace from 'three';
       state.financeView = 'lcn-home'; renderBankPanel();
     } else if(btn.id === 'deposit-go'){
       const inp = byId('deposit-input') as HTMLInputElement;
-      depositAmount(inp?.value);
+      depositAmount(state.selectedBank, inp?.value);
     } else if(btn.id === 'withdraw-go'){
       const inp = byId('withdraw-input') as HTMLInputElement;
-      withdrawAmount(inp?.value);
-    } else if(btn.id === 'start-heist'){
-      if(state.playSeconds < state.nextHeistAt) return;
-      playDialogue('bankheist', 'start');
+      withdrawAmount(state.selectedBank, inp?.value);
     }
   }
   function handleBankKeydown(e: KeyboardEvent){
     if((e as KeyboardEvent).key !== 'Enter') return;
     const target = e.target as HTMLInputElement;
-    if(target.id === 'deposit-input') depositAmount(target.value);
-    else if(target.id === 'withdraw-input') withdrawAmount(target.value);
+    if(target.id === 'deposit-input') depositAmount(state.selectedBank, target.value);
+    else if(target.id === 'withdraw-input') withdrawAmount(state.selectedBank, target.value);
   }
 
 
@@ -2422,7 +2436,7 @@ import type * as ThreeNamespace from 'three';
     document.querySelectorAll<HTMLButtonElement>('[data-car-buy]').forEach(btn=>{ const c=cars.find(x=>x.id===btn.getAttribute('data-car-buy')); if(c) btn.disabled = state.cash<c.cost; });
     document.querySelectorAll<HTMLButtonElement>('[data-prop-buy]').forEach(btn=>{ const p=properties.find(x=>x.id===btn.getAttribute('data-prop-buy')); if(p) btn.disabled = state.cash<p.cost; });
     const heistBtn=byId<HTMLButtonElement>('start-heist'); if(heistBtn) heistBtn.disabled = state.playSeconds<state.nextHeistAt;
-    const bankedEl=byId('bank-banked-value'); if(bankedEl) bankedEl.textContent=fmt(state.bank);
+    const bankedEl=byId('bank-banked-value'); if(bankedEl) bankedEl.textContent=fmt(bankedTotal());
     const onhandEl=byId('bank-onhand-value'); if(onhandEl) onhandEl.textContent=fmt(state.cash);
     const heistStatusEl=byId('heist-status-value');
     if(heistStatusEl){
@@ -2539,6 +2553,7 @@ import type * as ThreeNamespace from 'three';
   }
   byId('phone-btn').addEventListener('click', openDevice);
   byId('device-close').addEventListener('click', closeDevice);
+  byId('device-home-btn').addEventListener('click', showDeviceHome); // LEGAL: home button → app grid
   byId('device-overlay').addEventListener('click', function(e){
     const target = e.target as HTMLElement;
     if(target.id === 'device-overlay'){ closeDevice(); return; } // LEGAL: click backdrop to close
@@ -2748,7 +2763,7 @@ import type * as ThreeNamespace from 'three';
       spots.push({ id:'teller', x:ROOM_W/2, y:80, label:'Teller Window', icon:'🏦', action:()=> openDeviceApp('bank') });
       spots.push({ id:'notices', x:AMBIENT_X, y:AMBIENT_Y, label:'Notices', icon:'📄', action:()=>
         showRoomBrief('Lobby Notices', 'First Windhaven', 'Rate sheets and fine print. Whatever is banked here stays out of reach when the feds come knocking.',
-          briefRow('Banked (raid-safe)', fmt(state.bank))) });
+          briefRow('Banked (raid-safe)', fmt(bankedTotal()))) });
     } else if(kind==='heist'){
       spots.push({ id:'vault', x:ROOM_W/2, y:75, label:'Vault Door', icon:'🔐', action:function(){
         if(state.playSeconds < state.nextHeistAt){ log("🔒 The vault's not worth trying yet. Give it time."); return; }
@@ -3934,7 +3949,7 @@ import type * as ThreeNamespace from 'three';
       light: document.body.classList.contains('theme-light'),
       delhi: document.body.classList.contains('theme-delhi'),
       businesses: businesses.map(b=> ({ id:b.id, level:b.level, crew:b.crew, manager:b.manager, researched:b.researched, reinvestedIncome:b.reinvestedIncome })),
-      bank: state.bank, nextHeistAt: state.nextHeistAt,
+      bankAccounts: state.bankAccounts, selectedBank: state.selectedBank, nextHeistAt: state.nextHeistAt,
       ownedCars: state.ownedCars, equippedCar: state.equippedCar, ownedProperties: state.ownedProperties,
       localBusinesses: localBusinesses.map(b=> ({ id:b.id, extorted:b.extorted, extortTier:b.extortTier??0, resentment:b.resentment??0, nextRobAt:b.nextRobAt })),
       currentDistrict: state.currentDistrict, product: state.product, productLevel: state.productLevel,
@@ -3994,7 +4009,12 @@ import type * as ThreeNamespace from 'three';
         if(d.light){ document.body.classList.add('theme-light'); byId<HTMLInputElement>('theme-toggle').checked = true; }
         if(d.delhi){ document.body.classList.add('theme-delhi'); byId<HTMLInputElement>('delhi-theme-toggle').checked = true; }
         if(state.seenMilestones.has('chaat_house')) byId('delhi-theme-row').style.display = 'flex';
-        state.bank = d.bank||0; state.nextHeistAt = d.nextHeistAt||0;
+        // LEGAL: Multi-bank accounts, migrating an old single `bank` balance (pre-Phase-2
+        // LEGAL: saves) into the default bank. Guard selectedBank against a stale id.
+        state.bankAccounts = (d.bankAccounts && typeof d.bankAccounts === 'object') ? d.bankAccounts : {};
+        if(!d.bankAccounts && d.bank) state.bankAccounts[DEFAULT_BANK_ID] = Number(d.bank) || 0;
+        state.selectedBank = banks.some(b=>b.id===d.selectedBank) ? d.selectedBank : DEFAULT_BANK_ID;
+        state.nextHeistAt = d.nextHeistAt||0;
         state.ownedCars = d.ownedCars||[]; state.equippedCar = d.equippedCar||null; state.ownedProperties = d.ownedProperties||[];
         (d.localBusinesses||[]).forEach((sb: any)=>{ const b=localBusinesses.find(x=>x.id===sb.id); if(b){ b.extorted=sb.extorted; b.extortTier=Number(sb.extortTier)||0; b.resentment=Number(sb.resentment)||0; b.nextRobAt=sb.nextRobAt; } });
         state.currentDistrict = d.currentDistrict || 'devlin'; state.product = d.product||0; state.productLevel = d.productLevel||0;
@@ -4059,7 +4079,12 @@ import type * as ThreeNamespace from 'three';
       });
     }
     state.respect += respectPerSec()*dt;
-    state.bank += state.bank * 0.00035 * hubInterestMult() * dt;
+    // LEGAL: Interest accrues per account at that bank's own rate (hub bonus still global).
+    const interestMult = hubInterestMult();
+    banks.forEach(function(b){
+      const bal = state.bankAccounts[b.id] ?? 0;
+      if(bal > 0) state.bankAccounts[b.id] = bal + bal * b.interestRate * interestMult * dt;
+    });
     checkMilestones();
 
     if (state.playSeconds > state.nextMarketTickAt) {

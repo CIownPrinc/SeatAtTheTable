@@ -361,11 +361,21 @@ main{max-width:1240px;margin:0 auto;padding:26px 24px 60px;}
 .phone-btn:active{transform:scale(0.94);}
 .device-overlay{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(4,6,10,0.82);backdrop-filter:blur(4px);padding:24px;}
 .device-overlay.hidden{display:none;}
-.device-frame{width:min(760px,96vw);height:min(88vh,900px);background:var(--bg-panel);border:2px solid var(--line-bright);border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,0.7);display:flex;flex-direction:column;overflow:hidden;animation:fadeModal .22s cubic-bezier(.4,0,.2,1);}
-.device-topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--bg-row);border-bottom:1px solid var(--line);}
-.device-os{font-family:var(--font-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:700;}
-.device-close{background:none;border:none;color:var(--text-faint);font-size:18px;cursor:pointer;line-height:1;padding:4px 8px;border-radius:6px;}
-.device-close:hover{color:var(--text);background:var(--bg-panel);}
+/* An older Pomello handset — chunky body, top/bottom bezels, a round home button. */
+.device-body{width:min(720px,94vw);height:min(90vh,940px);background:linear-gradient(#17181d,#0c0d11);border:1px solid #2a2d36;border-radius:40px;box-shadow:0 30px 70px rgba(0,0,0,0.75), inset 0 0 0 2px rgba(255,255,255,0.02);display:flex;flex-direction:column;overflow:hidden;animation:fadeModal .22s cubic-bezier(.4,0,.2,1);}
+.device-bezel{background:#0b0c0f;flex-shrink:0;position:relative;display:flex;align-items:center;justify-content:center;gap:10px;}
+.device-bezel-top{height:48px;}
+.device-bezel-bottom{height:68px;}
+.device-earpiece{width:54px;height:6px;border-radius:3px;background:#23262e;box-shadow:inset 0 1px 1px rgba(0,0,0,0.6);}
+.device-cam{width:7px;height:7px;border-radius:50%;background:#1b1e25;box-shadow:inset 0 0 2px rgba(120,160,220,0.4);}
+.device-brand{position:absolute;left:50%;bottom:5px;transform:translateX(-50%);font-family:var(--font-mono);font-size:9px;letter-spacing:.34em;text-transform:uppercase;color:#4a4e59;}
+.device-screen-wrap{flex:1;min-height:0;margin:0 10px;background:var(--bg-panel);border-radius:4px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 0 0 1px rgba(0,0,0,0.5);}
+.device-home-btn{width:46px;height:46px;border-radius:50%;background:radial-gradient(circle at 50% 38%,#1d2029,#0e1015);border:1px solid #2f333d;cursor:pointer;position:relative;transition:transform .1s,border-color .15s;}
+.device-home-btn::after{content:'';position:absolute;inset:14px;border:1.5px solid #3a3f4a;border-radius:7px;}
+.device-home-btn:hover{border-color:var(--gold);}
+.device-home-btn:active{transform:scale(0.93);}
+.device-close{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-faint);font-size:16px;cursor:pointer;line-height:1;padding:4px 8px;border-radius:6px;z-index:2;}
+.device-close:hover{color:var(--text);background:rgba(255,255,255,0.06);}
 .device-home{flex:1;display:flex;flex-direction:column;padding:28px;gap:22px;overflow-y:auto;}
 .device-home.hidden,.device-screen.hidden{display:none;}
 .device-home-hint{font-size:12px;color:var(--text-faint);line-height:1.5;max-width:460px;}

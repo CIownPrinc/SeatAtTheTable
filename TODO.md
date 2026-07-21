@@ -72,10 +72,18 @@ A roster of banks, each a distinct entity with tradeoffs. **No passive theft** �
    redirected to the phone. Map input (movement + E) freezes while the phone is open;
    Escape / backdrop closes it. Verified by `e2e/phone.e2e.ts`. Empire stays the landing
    tab (not moved). *Bank app still single-balance — multi-bank is Phase 2.*
-2. **Multi-bank model** — per-bank accounts + save migration; Bank app lists banks;
-   interest + per-bank heist exposure. (Rework the teller redirect into real in-person
-   banking here / Phase 3.)
-3. **In-person banking + per-bank heist** — teller interactions at each bank building.
+2. **Multi-bank model — DONE.** `config/banks.ts` roster (First Windhaven / Rentport City
+   National / Lakeside Offshore) differing by interest rate + heist profile. `state.bank`
+   → `state.bankAccounts` (per-bank) + `state.selectedBank`; interest accrues per account
+   at each bank's rate; `bankedTotal()` is the raid-safe pile everything reads. Saved games
+   migrate the old single balance into the default bank. Bank app lists banks (tap to
+   select → deposit/withdraw that account); the heist card + stocks card are gone from the
+   phone (robbing is in person; stocks have their own app). Also: the phone is now a
+   **Pomello** handset (bezels, earpiece, home button that returns to the app grid).
+   Verified by `e2e/phone.e2e.ts`. Per-bank *heist payout* wiring is Phase 3.
+3. **In-person banking + per-bank heist** — teller interactions at each bank building;
+   wire each bank's `heistPayoutMult`/security into the heist. Replace the interim teller
+   → phone redirect with a real in-person teller.
 4. **Per-business unique interactions** — haggle set, territory gating, unique
    inventories; garage store/detail/dealer-only cars.
 5. Retire remaining redundant tabs (Politics/Gang → in-person) + polish.

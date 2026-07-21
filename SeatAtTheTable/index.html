@@ -153,11 +153,14 @@
 <!-- The phone: online-only services (Bank, Stocks, AutoMart). Opened from the HUD phone
      button; freezes map input while up. Physical actions happen in person on the map. -->
 <div class="device-overlay hidden" id="device-overlay">
-  <div class="device-frame">
-    <div class="device-topbar">
-      <span class="device-os">Windhaven OS</span>
+  <div class="device-body">
+    <div class="device-bezel device-bezel-top">
+      <span class="device-earpiece"></span>
+      <span class="device-cam"></span>
+      <span class="device-brand">Pomello</span>
       <button class="device-close" id="device-close" title="Close phone">✕</button>
     </div>
+    <div class="device-screen-wrap">
 
     <div class="device-home" id="device-home">
       <div class="device-home-hint">Online services. Everything physical — storing cars, robbing banks, buying dealer-only stock — happens in person.</div>
@@ -185,6 +188,10 @@
         <p class="pillar-desc">Hands-off commercial holdings that yield clean, steady income without crew supervision.</p>
         <div id="assets-buildings" class="data-table"></div>
       </div>
+    </div>
+    </div>
+    <div class="device-bezel device-bezel-bottom">
+      <button class="device-home-btn" id="device-home-btn" title="Home"></button>
     </div>
   </div>
 </div>

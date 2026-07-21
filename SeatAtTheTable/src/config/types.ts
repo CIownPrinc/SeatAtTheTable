@@ -170,6 +170,20 @@ export interface Stock {
   vol: number;
 }
 
+// LEGAL: A bank the player can hold accounts at. Banks differ by interest and by their
+// LEGAL: heist profile — no passive theft, the "risk" is only about robbery: you can rob
+// LEGAL: a bank in person for a payout, and deposits sit exposed if a rival robs it.
+export interface Bank {
+  id: string;
+  name: string;
+  short: string;
+  interestRate: number;    // LEGAL: per-second fraction, before the hub multiplier & dt
+  rateLabel: string;       // LEGAL: display bucket — 'Low' | 'Moderate' | 'High'
+  heistPayoutMult: number; // LEGAL: scales what a heist here nets (wired in Phase 3)
+  security: string;        // LEGAL: display bucket — 'Hardened' | 'Standard' | 'Soft'
+  blurb: string;
+}
+
 export interface Point {
   x: number;
   y: number;
@@ -275,7 +289,10 @@ export interface GameState {
   playSeconds: number;
   investorPenalty: number;
   procNpc: ProceduralNPC;
-  bank: number;
+  // LEGAL: Per-bank balances (see config/banks). Replaces the old single `bank` number;
+  // LEGAL: saved games migrate the old balance into the default bank on load.
+  bankAccounts: Record<string, number>;
+  selectedBank: string;
   nextHeistAt: number;
   ownedCars: string[];
   equippedCar: string | null;
