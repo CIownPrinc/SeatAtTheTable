@@ -18,30 +18,49 @@ export interface AmenityActionHandlers {
   spendCash: (amount: number) => boolean;
   log: (message: string) => void;
   renderAll: () => void;
+  // LEGAL: Launches the amenity's skill minigame (see map/minigames), for the two
+  // LEGAL: amenities that are actually games (a court, a chess table). Header owns the
+  // LEGAL: overlay lifecycle and applies the reward — this module only wires the button.
+  // LEGAL: Shops (pet store, newsstand) are plain buy modals and never call this.
+  playGame: (amenity: MapAmenity) => void;
+}
+
+// LEGAL: A shop line item: buy it if you can afford it, then bank a little standing and
+// LEGAL: log some flavour. Keeps the pet store / newsstand purchase buttons uniform.
+function buyButton(actions: AmenityActionHandlers, label: string, cost: number, respect: number, line: string) {
+  return { label:`${label} ($${cost})`, onClick:function(){
+    if(actions.spendCash(cost)){ if(respect) actions.addRespect(respect); actions.log(line); actions.renderAll(); }
+  } };
 }
 
 export function createAmenityModal(amenity: MapAmenity, actions: AmenityActionHandlers): ModalOptions {
   if(amenity.kind==='basketball'){
-    return { eyebrow:'Neighborhood Court', title:amenity.name, body:`<p>${amenity.prompt}. A few locals are already running half-court.</p><p class="flavor">Win or lose, being seen here matters.</p>`, buttons:[
-      { label:'Play a quick game', onClick:function(){ actions.addRespect(1); actions.log(`You get a run in at ${amenity.name}.`); actions.renderAll(); } },
+    return { eyebrow:'Neighborhood Court', title:amenity.name, body:`<p>${amenity.prompt}. A few locals are already running half-court.</p><p class="flavor">Win or lose, being seen here matters. Best of five from the line.</p>`, buttons:[
+      { label:'Shoot around', onClick:function(){ actions.playGame(amenity); } },
       { label:'Just watch', secondary:true },
     ] };
   }
-  if(amenity.kind==='petstore'){
-    return { eyebrow:'Pet Store', title:amenity.name, body:'<p>Cages, aquariums, leashes, too many squeaky toys. The owner knows every lonely person in the neighborhood by name.</p>', buttons:[
-      { label:'Buy supplies ($75)', onClick:function(){ if(actions.spendCash(75)){ actions.addRespect(1); actions.log(`You buy pet supplies at ${amenity.name}.`); actions.renderAll(); } } },
-      { label:'Ask about adopting', onClick:function(){ if(actions.spendCash(250)){ actions.addRespect(2); actions.log(`You cover adoption fees through ${amenity.name}. People notice.`); actions.renderAll(); } } },
-      { label:'Leave', secondary:true },
-    ] };
-  }
   if(amenity.kind==='parkgame'){
-    return { eyebrow:'Park Game', title:amenity.name, body:'<p>Old men argue over openings. Kids hover nearby pretending not to watch.</p>', buttons:[
-      { label:'Sit for a game', onClick:function(){ actions.addRespect(1); actions.log(`You play a fast game at ${amenity.name}.`); actions.renderAll(); } },
+    return { eyebrow:'Park Game', title:amenity.name, body:'<p>Old men argue over openings. Kids hover nearby pretending not to watch. Somebody slides a board your way.</p>', buttons:[
+      { label:'Sit for a game', onClick:function(){ actions.playGame(amenity); } },
       { label:'Keep walking', secondary:true },
     ] };
   }
-  return { eyebrow:'Local Shop', title:amenity.name, body:'<p>A small counter, a lottery machine, a cooler that hums too loud.</p>', buttons:[
-    { label:'Buy something small ($20)', onClick:function(){ if(actions.spendCash(20)){ actions.log(`You buy something at ${amenity.name}.`); actions.renderAll(); } } },
+  if(amenity.kind==='petstore'){
+    // LEGAL: A real pet shop — a small catalogue you can buy from. No game, just buying
+    // LEGAL: animals/supplies; each purchase reads as goodwill on the block (respect).
+    return { eyebrow:'Pet Store', title:amenity.name, body:'<p>Cages, aquariums, leashes, too many squeaky toys. The owner knows every lonely person in the neighborhood by name.</p><p class="flavor">Buy an animal a home and word travels — folks remember who looks out.</p>', buttons:[
+      buyButton(actions, 'Buy a goldfish', 40, 1, `You pick up a goldfish from ${amenity.name}.`),
+      buyButton(actions, 'Take home a puppy', 450, 3, `You walk out of ${amenity.name} with a puppy. People smile.`),
+      buyButton(actions, 'Buy a guard dog', 1500, 4, `You buy a trained guard dog from ${amenity.name}.`),
+      buyButton(actions, 'Stock up on supplies', 75, 1, `You buy pet supplies at ${amenity.name}.`),
+      { label:'Leave', secondary:true },
+    ] };
+  }
+  return { eyebrow:'Local Shop', title:amenity.name, body:'<p>A small counter, a lottery machine, a cooler that hums too loud. Racks of papers and magazines out front.</p>', buttons:[
+    buyButton(actions, 'Buy the morning paper', 5, 0, `You grab a paper at ${amenity.name} and catch up on the city.`),
+    buyButton(actions, 'Grab a snack & a soda', 20, 0, `You buy something at ${amenity.name}.`),
+    buyButton(actions, 'Buy a lottery ticket', 50, 1, `You buy a lottery ticket at ${amenity.name}. The owner wishes you luck.`),
     { label:'Leave', secondary:true },
   ] };
 }

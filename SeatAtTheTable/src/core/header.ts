@@ -14,6 +14,7 @@ import type { GameState, Business, ModalOptions, ModalButton, Solid, District, L
 import type { MapAssetKey, MapAssetLibrary } from '../map/assets';
 import { loadMapAssetLibrary } from '../map/assets';
 import { amenityHasSolidFootprint, createAmenityModal, mapAmenities } from '../map/amenities';
+import { minigameOpen, playMinigame, type MinigameResult } from '../map/minigames';
 import { buildAmenityModel as buildMapAmenityModel } from '../map/amenityRendering';
 import { createFillerLayoutProvider, seededRandom } from '../map/filler';
 import { distancePointToSegment } from '../map/layout';
@@ -27,6 +28,7 @@ import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, b
 import { buildIntersectionFurniture as buildMapIntersectionFurniture } from '../map/streetFurniture';
 import { DISTRICT_OFFSETS, DISTRICT_W, VIEW_H, VIEW_W, WORLD_H, WORLD_W, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { renderZoneType } from '../map/zoning';
+import { drawInteriorRoom } from '../map/interiorScene';
 import type * as ThreeNamespace from 'three';
 
   const eventPool = [
@@ -577,7 +579,6 @@ import type * as ThreeNamespace from 'three';
     const cool = 0.25 + state.heat*state.heat*0.001 + (state.layingLow ? 4 : 0);
     return { muscleHeat, streetVentureHeat, extortionHeat, cornerHeat, conspicuousHeat, modifier, gen, cool, net: gen - cool };
   }
-  function heatGenPerSec(){ return heatBreakdown().gen; }
   function districtDriftBreakdown(d: District){
     const musclePresence = state.muscleCount*0.15;
     const cornerPresence = corners.filter(c=>c.district===d.id && c.dealer && !c.busted).length * 1.2;
@@ -1339,8 +1340,8 @@ import type * as ThreeNamespace from 'three';
       }
     }
     
-    const activeTab = document.querySelector('.tab-btn.active');
-    if (activeTab && activeTab.getAttribute('data-tab') === 'bank') {
+    // LEGAL: Live in-place price ticks only while the phone's Stocks screen is showing.
+    if (deviceOpen()) {
       if(state.financeView === 'lcn-home') {
         stockMarket.forEach(s => {
           const price = state.marketPrices[s.symbol];
@@ -2142,7 +2143,11 @@ import type * as ThreeNamespace from 'three';
   function handleAdvisorAction(e: Event): void {
     const btn = (e.target as HTMLElement).closest('[data-advisor-tab]');
     if(!btn) return;
-    setTab(btn.getAttribute('data-advisor-tab')!);
+    // LEGAL: Bank/Assets no longer have flat tabs — route those advisor jumps to the phone.
+    const advisorTab = btn.getAttribute('data-advisor-tab')!;
+    if(advisorTab==='bank') openDeviceApp('bank');
+    else if(advisorTab==='assets') openDeviceApp('automart');
+    else setTab(advisorTab);
   }
 
   function wireDelegation(){
@@ -2346,7 +2351,16 @@ import type * as ThreeNamespace from 'three';
     const invTag = byIdOrNull('inv-tag');
     if(invTag) invTag.textContent = `FED. CASE ${Math.round(state.investigation)}%`;
     const panel = byIdOrNull('heat-breakdown');
-    if(panel){
+    // LEGAL: The breakdown lives in a collapsed <details>. Rebuilding its innerHTML
+    // LEGAL: every 250ms tick (11 rows re-parsed) is wasted work while it's closed,
+    // LEGAL: so skip it unless the panel is actually open. A one-time toggle listener
+    // LEGAL: forces an immediate repaint the moment the user expands it.
+    const details = panel ? panel.closest('details') : null;
+    if(details && !details.dataset.heatToggleWired){
+      details.dataset.heatToggleWired = '1';
+      details.addEventListener('toggle', ()=>{ if(details.open) updateHeatHud(); });
+    }
+    if(panel && (!details || details.open)){
       const hb = heatBreakdown();
       const rows: string[] = [];
       const push = function(lbl: string, val: string){ rows.push(`<div class="heat-breakdown-row"><span>${lbl}</span><strong>${val}</strong></div>`); };
@@ -2488,6 +2502,51 @@ import type * as ThreeNamespace from 'three';
       void startMapLoop();
     }
   }
+
+  // LEGAL: ---- the phone: online-only services (Bank / Stocks / AutoMart) in a device
+  // LEGAL: overlay you can open anywhere. Freezes map input while up (see deviceOpen()).
+  // LEGAL: Bank and Stocks share the one #bank-panel (relocated here from the old Finance
+  // LEGAL: tab); the icons just preset state.financeView. AutoMart hosts the old Assets
+  // LEGAL: containers. All three are refreshed every tick by renderAll(), untouched.
+  function deviceOpen(){ return !byId('device-overlay').classList.contains('hidden'); }
+  function showDeviceHome(){
+    byId('device-home').classList.remove('hidden');
+    document.querySelectorAll<HTMLElement>('.device-screen').forEach(s=> s.classList.add('hidden'));
+  }
+  function openDevice(){
+    byId('device-overlay').classList.remove('hidden');
+    showDeviceHome();
+    Object.keys(keys).forEach(k=> keys[k]=false); // LEGAL: drop held movement keys
+  }
+  function closeDevice(){
+    byId('device-overlay').classList.add('hidden');
+    lastFrame2 = Date.now(); // LEGAL: avoid a dt spike when the map loop resumes
+  }
+  function openDeviceApp(app: string){
+    byId('device-overlay').classList.remove('hidden');
+    byId('device-home').classList.add('hidden');
+    document.querySelectorAll<HTMLElement>('.device-screen').forEach(s=> s.classList.add('hidden'));
+    Object.keys(keys).forEach(k=> keys[k]=false);
+    if(app==='automart'){
+      document.querySelector<HTMLElement>('.device-screen[data-screen="automart"]')!.classList.remove('hidden');
+      renderAssetsPanel();
+    } else {
+      state.financeView = app==='stocks' ? 'lcn-home' : 'vault';
+      byId('finance-appbar-title').textContent = app==='stocks' ? 'Stocks' : 'Bank';
+      document.querySelector<HTMLElement>('.device-screen[data-screen="finance"]')!.classList.remove('hidden');
+      renderBankPanel();
+    }
+  }
+  byId('phone-btn').addEventListener('click', openDevice);
+  byId('device-close').addEventListener('click', closeDevice);
+  byId('device-overlay').addEventListener('click', function(e){
+    const target = e.target as HTMLElement;
+    if(target.id === 'device-overlay'){ closeDevice(); return; } // LEGAL: click backdrop to close
+    const app = target.closest<HTMLElement>('[data-app]');
+    if(app){ openDeviceApp(app.getAttribute('data-app')!); return; }
+    if(target.closest('[data-back]')) showDeviceHome();
+  });
+
   async function startMapLoop(): Promise<void> {
     await ensureMapScene();
     if(!mapActive || mapHubRunning) return;
@@ -2513,6 +2572,11 @@ import type * as ThreeNamespace from 'three';
   const player = { x:700, y:600, facing:Math.PI/2, vx:0, vy:0 };
   const keys: Record<string, boolean> = {};
   let lastFrame2 = Date.now();
+  // LEGAL: Throttles the district-locations panel rebuild inside the ~60fps map loop.
+  // LEGAL: Its contents (distances/interactability) only need a few updates per second,
+  // LEGAL: and rebuilding its innerHTML every frame also destroys/recreates the Waypoint
+  // LEGAL: buttons, which can swallow a click landing mid-rebuild.
+  let lastLocPanelAt = 0;
 
   // LEGAL: Apply district offsets to all relative coordinates dynamically
   localBusinesses.forEach(b => {
@@ -2609,9 +2673,6 @@ import type * as ThreeNamespace from 'three';
     const district = districts.find(function(d){return d.id===state.currentDistrict;})?.name ?? 'Windhaven';
     return `${road.name}, ${district}`;
   }
-  // LEGAL: Unified world — all markers always in scene
-  function inDistrict(){ return true; }
-
   const fillerLayout = createFillerLayoutProvider(mapObjects);
   function fillerFor(districtId: string){
     return fillerLayout.fillerFor(districtId);
@@ -2621,39 +2682,94 @@ import type * as ThreeNamespace from 'three';
     list.push(...fillerLayout.fillerSolids());
     return list;
   }
-  function buildingSolids(districtId: string){
-    return buildAllSolids();
-  }
   let currentSolids: Solid[] = [];
 
   // LEGAL: ---- interiors: a small generic room per building, with 1-2 physical hotspots ----
   const ROOM_W = 480, ROOM_H = 280, ROOM_OX = (VIEW_W-ROOM_W)/2, ROOM_OY = (VIEW_H-ROOM_H)/2 - 10;
   const DOOR_LOCAL = { x: ROOM_W/2, y: ROOM_H-6 };
 
-  function hotspotsFor(interior: InteriorState | null){
+  type HotSpot = { id: string; x: number; y: number; label: string; icon: string; action: () => void };
+
+  // LEGAL: A single status row for the "read the room" briefs below.
+  function briefRow(label: string, value: string, color?: string){
+    return `<div style="display:flex;justify-content:space-between;gap:12px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;">`
+      + `<span style="color:var(--text-faint,#8a90a0);">${label}</span>`
+      + `<strong${color?` style="color:${color};"`:''}>${value}</strong></div>`;
+  }
+  // LEGAL: The wanted / fed-case / turf numbers the HUD shows, rebuilt as modal rows so a
+  // LEGAL: player can check standing from inside a building instead of leaving the scene.
+  function statusRows(){
+    const tier = WANTED_TIERS[wantedTier()];
+    const d = districts.find(x=>x.id===state.currentDistrict);
+    let rows = briefRow('Wanted', `${tier.label} · ${Math.round(state.heat)}%`, tier.color)
+      + briefRow('Fed case', `${Math.round(state.investigation)}%`);
+    if(d){
+      const st = districtStatus(d.id);
+      const lbl = st==='yours' ? 'held' : (st==='rival' ? 'rival ground' : 'contested');
+      rows += briefRow(d.name, `${Math.round(d.control)}% · ${lbl}`);
+    }
+    return rows;
+  }
+  // LEGAL: Opens a small in-world brief: a line of flavour, the shared status rows, then
+  // LEGAL: any type-specific rows. Defaults to a single dismiss button.
+  function showRoomBrief(eyebrow: string, title: string, lead: string, extraRows: string, buttons?: ModalOptions['buttons']){
+    showModal({ eyebrow, title,
+      body:`<p class="flavor">${lead}</p><div style="margin-top:10px;">${statusRows()}${extraRows}</div>`,
+      buttons: buttons ?? [{ label:'Step back' }] });
+  }
+  // LEGAL: Shared placement for the secondary "ambient" hotspot so it never collides with
+  // LEGAL: the primary counter (top-centre) or the door (bottom-centre).
+  const AMBIENT_X = ROOM_W*0.85, AMBIENT_Y = ROOM_H*0.55;
+
+  function hotspotsFor(interior: InteriorState | null): HotSpot[] {
     if(!interior) return [];
-    if(interior.kind==='venture'){
+    const spots: HotSpot[] = [];
+    const kind = interior.kind;
+    if(kind==='venture'){
       const b = businesses.find(x=>x.id===interior.refId);
       if(!b) return [];
-      return [{ id:'counter', x:ROOM_W/2, y:80, label:'Counter', icon:'🧾', action:()=> openVentureQuickPanel(b) }];
-    }
-    if(interior.kind==='local'){
+      spots.push({ id:'counter', x:ROOM_W/2, y:80, label:'Counter', icon:'🧾', action:()=> openVentureQuickPanel(b) });
+      spots.push({ id:'backoffice', x:AMBIENT_X, y:AMBIENT_Y, label:'Back Office', icon:'🗄️', action:()=>
+        showRoomBrief('Back Office', b.name, 'You slip into the back and take stock of how much attention the operation is pulling.', '') });
+    } else if(kind==='local'){
       const biz = localBusinesses.find(x=>x.id===interior.refId);
       if(!biz) return [];
-      return [
-        { id:'register', x:ROOM_W*0.32, y:80, label:'Register', icon:'💵', action:()=> openTillPanel(biz) },
-        { id:'owner', x:ROOM_W*0.68, y:80, label:biz.owner, icon:'🙂', action:()=> openOwnerPanel(biz) },
-      ];
+      spots.push({ id:'register', x:ROOM_W*0.32, y:80, label:'Register', icon:'💵', action:()=> openTillPanel(biz) });
+      spots.push({ id:'owner', x:ROOM_W*0.68, y:80, label:biz.owner, icon:'🙂', action:()=> openOwnerPanel(biz) });
+      spots.push({ id:'board', x:AMBIENT_X, y:AMBIENT_Y, label:'Community Board', icon:'📌', action:()=>
+        showRoomBrief('Community Board', biz.name, 'Flyers for lost cats, a rent notice, a block party nobody has funded yet.',
+          briefRow('Your respect', fmtR(state.respect)),
+          [{ label:'Sponsor the block party ($200)', onClick:function(){
+              if(state.cash>=200){ state.cash-=200; state.respect+=3; log(`<i class="ph-duotone ph-confetti"></i> You quietly cover the block party at ${biz.name}. The neighborhood notices.`); renderAll(); }
+              else { log('Not enough cash to sponsor the block party.'); }
+            } },
+           { label:'Step back', secondary:true }]) });
+    } else if(kind==='bankHome'){
+      spots.push({ id:'teller', x:ROOM_W/2, y:80, label:'Teller Window', icon:'🏦', action:()=> openDeviceApp('bank') });
+      spots.push({ id:'notices', x:AMBIENT_X, y:AMBIENT_Y, label:'Notices', icon:'📄', action:()=>
+        showRoomBrief('Lobby Notices', 'First Windhaven', 'Rate sheets and fine print. Whatever is banked here stays out of reach when the feds come knocking.',
+          briefRow('Banked (raid-safe)', fmt(state.bank))) });
+    } else if(kind==='heist'){
+      spots.push({ id:'vault', x:ROOM_W/2, y:75, label:'Vault Door', icon:'🔐', action:function(){
+        if(state.playSeconds < state.nextHeistAt){ log("🔒 The vault's not worth trying yet. Give it time."); return; }
+        playDialogue('bankheist','start');
+      } });
+    } else if(kind==='garage'){
+      spots.push({ id:'dealer', x:ROOM_W/2, y:80, label:'Sales Desk', icon:'🔑', action:()=> openDeviceApp('automart') });
+      spots.push({ id:'showroom', x:AMBIENT_X, y:AMBIENT_Y, label:'Showroom Floor', icon:'🚗', action:()=>
+        showRoomBrief('Showroom Floor', 'Motor Row', 'Chrome under the lights. You walk the floor and look over what you keep in the garage.',
+          briefRow('Cars owned', String(state.ownedCars.length))) });
+    } else if(kind==='realty'){
+      spots.push({ id:'agent', x:ROOM_W/2, y:80, label:"Agent's Desk", icon:'📋', action:()=> openDeviceApp('automart') });
+      spots.push({ id:'listings', x:AMBIENT_X, y:AMBIENT_Y, label:'Listings Wall', icon:'🏠', action:()=>
+        showRoomBrief('Listings Wall', 'Windhaven Realty', 'Framed listings and SOLD stickers. You scan the wall and tally what you already hold.',
+          briefRow('Properties owned', String(state.ownedProperties.length))) });
+    } else if(kind==='cityhall'){
+      spots.push({ id:'clerk', x:ROOM_W/2, y:80, label:"Clerk's Window", icon:'🏛️', action:()=> setTab('politics') });
+      spots.push({ id:'notices', x:AMBIENT_X, y:AMBIENT_Y, label:'Public Notices', icon:'📢', action:()=>
+        showRoomBrief('Public Notices', 'City Hall', 'Permit hearings, zoning appeals, a re-election banner. The civic temperature, if you know how to read it.', '') });
     }
-    if(interior.kind==='bankHome') return [{ id:'teller', x:ROOM_W/2, y:80, label:'Teller Window', icon:'🏦', action:()=> setTab('bank') }];
-    if(interior.kind==='heist') return [{ id:'vault', x:ROOM_W/2, y:75, label:'Vault Door', icon:'🔐', action:function(){
-      if(state.playSeconds < state.nextHeistAt){ log("🔒 The vault's not worth trying yet. Give it time."); return; }
-      playDialogue('bankheist','start');
-    } }];
-    if(interior.kind==='garage') return [{ id:'dealer', x:ROOM_W/2, y:80, label:'Sales Desk', icon:'🔑', action:()=> setTab('assets') }];
-    if(interior.kind==='realty') return [{ id:'agent', x:ROOM_W/2, y:80, label:"Agent's Desk", icon:'📋', action:()=> setTab('assets') }];
-    if(interior.kind==='cityhall') return [{ id:'clerk', x:ROOM_W/2, y:80, label:"Clerk's Window", icon:'🏛️', action:()=> setTab('politics') }];
-    return [];
+    return spots;
   }
 
   function enterBuilding(kind: string, refId: string, name: string){
@@ -2710,17 +2826,34 @@ import type * as ThreeNamespace from 'three';
     log(`<i class="ph-duotone ph-car"></i> You head over to ${d.name}.`);
     renderAll();
   }
+  // LEGAL: Launches the amenity's skill minigame overlay and, once it resolves, applies
+  // LEGAL: the suggested reward to game state. The minigame module owns presentation and
+  // LEGAL: input only; all cash/respect mutation and persistence stays here.
+  function runAmenityMinigame(amenity: typeof mapAmenities[number]){
+    // LEGAL: Only the court and the chess tables are skill games; shops wire their own
+    // LEGAL: buy modals and never call playGame. Narrows amenity.kind to a MinigameKind.
+    if(amenity.kind !== 'basketball' && amenity.kind !== 'parkgame') return;
+    void playMinigame(amenity.kind, amenity.name).then(function(res: MinigameResult){
+      if(res.reward.cash) state.cash += res.reward.cash;
+      if(res.reward.respect) state.respect += res.reward.respect;
+      if(res.message) log(res.message);
+      renderAll();
+      scheduleSave();
+    });
+  }
   function openAmenityPanel(amenity: typeof mapAmenities[number]){
     showModal(createAmenityModal(amenity, {
       addRespect:function(amount){ state.respect += amount; },
       spendCash:function(amount){ if(state.cash < amount) return false; state.cash -= amount; return true; },
       log,
       renderAll,
+      playGame:runAmenityMinigame,
     }));
   }
 
   window.addEventListener('keydown', function(e){
     const k = e.key.toLowerCase();
+    if(k==='escape' && deviceOpen()){ closeDevice(); return; }
     keys[k] = true;
     if(k==='e') tryInteract();
   });
@@ -2787,6 +2920,9 @@ import type * as ThreeNamespace from 'three';
   }
   function tryInteract(){
     if(!mapActive) return;
+    // LEGAL: A minigame or the phone owns all input while it's up — don't trigger the
+    // LEGAL: door/hotspot/amenity behind it (the overlay also stops Space at capture).
+    if(minigameOpen() || deviceOpen()) return;
     if(state.currentInterior){
       const m = nearestMarker();
       if(!m) return;
@@ -3546,9 +3682,9 @@ import type * as ThreeNamespace from 'three';
     ictx.clearRect(0,0,VIEW_W,VIEW_H);
     ictx.fillStyle='#101116'; ictx.fillRect(0,0,VIEW_W,VIEW_H);
     const ox=ROOM_OX, oy=ROOM_OY;
-    ictx.fillStyle='#232734'; ictx.fillRect(ox,oy,ROOM_W,ROOM_H);
-    ictx.strokeStyle='rgba(255,255,255,0.04)'; ictx.lineWidth=1;
-    for(let fx=0; fx<ROOM_W; fx+=28){ ictx.beginPath(); ictx.moveTo(ox+fx,oy); ictx.lineTo(ox+fx,oy+ROOM_H); ictx.stroke(); }
+    // LEGAL: Per-building-type floor + furniture (see map/interiorScene). Falls back to
+    // LEGAL: a generic front for unknown kinds. Drawn under the walls/door/hotspots/player.
+    drawInteriorRoom(ictx, state.currentInterior ? state.currentInterior.kind : 'venture', { ox, oy, w:ROOM_W, h:ROOM_H });
     ictx.strokeStyle='#454a5c'; ictx.lineWidth=6; ictx.strokeRect(ox,oy,ROOM_W,ROOM_H);
     ictx.fillStyle='#101116'; ictx.fillRect(ox+DOOR_LOCAL.x-26, oy+ROOM_H-4, 52, 10);
     ictx.fillStyle='rgba(212,160,23,0.7)'; ictx.font='9px IBM Plex Mono, monospace'; ictx.textAlign='center'; ictx.textBaseline='middle';
@@ -3577,10 +3713,14 @@ import type * as ThreeNamespace from 'three';
     lastFrame2 = now;
 
     let dx=0, dy=0;
-    if(keys['arrowup']||keys['w']) dy -= 1;
-    if(keys['arrowdown']||keys['s']) dy += 1;
-    if(keys['arrowleft']||keys['a']) dx -= 1;
-    if(keys['arrowright']||keys['d']) dx += 1;
+    // LEGAL: Freeze movement input while a minigame or the phone overlay is up so the
+    // LEGAL: player token doesn't drift under it; the loop keeps running to hold the scene.
+    if(!minigameOpen() && !deviceOpen()){
+      if(keys['arrowup']||keys['w']) dy -= 1;
+      if(keys['arrowdown']||keys['s']) dy += 1;
+      if(keys['arrowleft']||keys['a']) dx -= 1;
+      if(keys['arrowright']||keys['d']) dx += 1;
+    }
     // LEGAL: Target velocity from input, then ease the actual velocity toward it so
     // LEGAL: movement accelerates and coasts instead of snapping on/off. Cars are
     // LEGAL: heavier (slower to respond and to turn) than the player on foot.
@@ -3651,7 +3791,7 @@ import type * as ThreeNamespace from 'three';
       byId('minimap-clear').classList.remove('show');
       scheduleSave();
     }
-    renderDistrictLocationsPanel();
+    if(now - lastLocPanelAt >= 250){ lastLocPanelAt = now; renderDistrictLocationsPanel(); }
     if(near){
       let label = '';
       if(near.type==='door') label='Exit';
@@ -4119,10 +4259,10 @@ import type * as ThreeNamespace from 'three';
       return;
     }
 
-    // LEGAL: Tab switching (1-6)
-    const tabs = ['empire', 'map', 'bank', 'politics', 'gang', 'settings'];
+    // LEGAL: Tab switching (1-5) — Finance/Assets moved to the phone, no longer tabs.
+    const tabs = ['empire', 'map', 'politics', 'gang', 'settings'];
     const key = parseInt(e.key);
-    if (!isNaN(key) && key >= 1 && key <= 6) {
+    if (!isNaN(key) && key >= 1 && key <= tabs.length) {
       e.preventDefault();
       const targetTab = tabs[key - 1];
       const tabBtn = document.querySelector(`.tab-btn[data-tab="${targetTab}"]`) as HTMLElement;

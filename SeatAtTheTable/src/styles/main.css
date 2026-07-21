@@ -353,6 +353,33 @@ main{max-width:1240px;margin:0 auto;padding:26px 24px 60px;}
 /* ---------- MODAL ---------- */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:10001;padding:24px; backdrop-filter: blur(4px);}
 .modal-overlay.hidden{display:none;}
+
+/* The phone / "Windhaven OS" device — houses the online-only services. z-index sits just
+   below .modal-overlay so trade/confirm modals opened from an app still render on top. */
+.phone-btn{background:var(--bg-row);border:1px solid var(--line-bright);color:var(--gold);width:44px;height:44px;border-radius:12px;font-size:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s,transform .1s;flex-shrink:0;}
+.phone-btn:hover{background:rgba(212,160,23,0.16);}
+.phone-btn:active{transform:scale(0.94);}
+.device-overlay{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(4,6,10,0.82);backdrop-filter:blur(4px);padding:24px;}
+.device-overlay.hidden{display:none;}
+.device-frame{width:min(760px,96vw);height:min(88vh,900px);background:var(--bg-panel);border:2px solid var(--line-bright);border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,0.7);display:flex;flex-direction:column;overflow:hidden;animation:fadeModal .22s cubic-bezier(.4,0,.2,1);}
+.device-topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--bg-row);border-bottom:1px solid var(--line);}
+.device-os{font-family:var(--font-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:700;}
+.device-close{background:none;border:none;color:var(--text-faint);font-size:18px;cursor:pointer;line-height:1;padding:4px 8px;border-radius:6px;}
+.device-close:hover{color:var(--text);background:var(--bg-panel);}
+.device-home{flex:1;display:flex;flex-direction:column;padding:28px;gap:22px;overflow-y:auto;}
+.device-home.hidden,.device-screen.hidden{display:none;}
+.device-home-hint{font-size:12px;color:var(--text-faint);line-height:1.5;max-width:460px;}
+.device-apps{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:16px;}
+.device-app{display:flex;flex-direction:column;align-items:center;gap:10px;padding:20px 12px;background:var(--bg-row);border:1px solid var(--line);border-radius:16px;cursor:pointer;color:var(--text);transition:background .15s,border-color .15s,transform .1s;}
+.device-app:hover{background:var(--bg-panel);border-color:var(--line-bright);transform:translateY(-2px);}
+.device-app-ico{font-size:34px;line-height:1;}
+.device-app-name{font-family:var(--font-mono);font-size:12px;letter-spacing:.04em;}
+.device-screen{flex:1;display:flex;flex-direction:column;min-height:0;}
+.device-appbar{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--bg-row);}
+.device-back{background:none;border:none;color:var(--blue);font-family:var(--font-mono);font-size:13px;cursor:pointer;display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:6px;}
+.device-back:hover{background:var(--bg-panel);}
+.device-appbar-title{font-family:var(--font-display);font-size:16px;color:var(--text);}
+.device-scroll{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px;}
 .modal{background:var(--bg-panel);border:2px solid var(--line-bright);box-shadow:0 16px 32px rgba(0,0,0,0.9);max-width:560px;width:100%;padding:0;overflow:hidden;animation:fadeModal 0.2s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 12px;}
 @keyframes fadeModal{from{opacity:0; transform: translateY(15px) scale(0.97);}to{opacity:1; transform: translateY(0) scale(1);}}
 .modal-header{border-bottom:1px solid var(--line);padding:24px 28px 20px;position:relative;background:var(--bg-row);}
