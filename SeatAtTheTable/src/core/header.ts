@@ -3827,6 +3827,11 @@ import type * as ThreeNamespace from 'three';
   let cityMapHoverPlace: MapPlaceRecord | null = null;
   let cityMapFilter: MapPlaceCategory | 'all' = 'all';
   let cityMapSearchTerm = '';
+  function escapeHtml(value: string): string {
+    return value.replace(/[&<>"']/g, function(char): string {
+      return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[char] ?? char;
+    });
+  }
 
   const cityLegend: Array<{ icon: string; label: string; color: string; ph?: string }> = [
     { icon:'legal',    label:'Owned business',          color:'#3e7c8c', ph:'ph-storefront' },
@@ -3873,7 +3878,7 @@ import type * as ThreeNamespace from 'three';
   function renderCityMapSearch(): void {
     cityMapFilters.innerHTML = cityMapFiltersList.map(function(filter){
       const active = filter.id === cityMapFilter ? ' active' : '';
-      return `<button class="citymap-filter-btn${active}" data-citymap-filter="${filter.id}" type="button">${filter.label}</button>`;
+      return `<button class="citymap-filter-btn${active}" data-citymap-filter="${escapeHtml(filter.id)}" type="button">${escapeHtml(filter.label)}</button>`;
     }).join('');
 
     const results = cityFilteredPlaces().slice(0, 18);
@@ -3881,7 +3886,7 @@ import type * as ThreeNamespace from 'three';
       const active = place.id === cityMapHoverPlace?.id ? ' active' : '';
       const icon = place.icon && place.icon !== 'landmark' ? place.icon : 'landmark';
       const category = mapPlaceCategoryLabel(place);
-      return `<button class="citymap-result${active}" data-citymap-place="${place.id}" type="button"><span class="lg-ico lg-${icon}" style="--c:#d4a017"></span><span><span class="citymap-result-name">${place.name}</span><span class="citymap-result-meta">${category} - ${districtDisplayName(place.district)}</span></span><span class="citymap-result-waypoint" data-citymap-waypoint="${place.id}" title="Set waypoint"><i class="ph-duotone ph-crosshair"></i></span></button>`;
+      return `<button class="citymap-result${active}" data-citymap-place="${escapeHtml(place.id)}" type="button"><span class="lg-ico lg-${escapeHtml(icon)}" style="--c:#d4a017"></span><span><span class="citymap-result-name">${escapeHtml(place.name)}</span><span class="citymap-result-meta">${escapeHtml(category)} - ${escapeHtml(districtDisplayName(place.district))}</span></span><span class="citymap-result-waypoint" data-citymap-waypoint="${escapeHtml(place.id)}" title="Set waypoint"><i class="ph-duotone ph-crosshair"></i></span></button>`;
     }).join('') : '<div class="citymap-result-empty">No places match that search.</div>';
   }
   function drawCityMap(){
@@ -3902,7 +3907,7 @@ import type * as ThreeNamespace from 'three';
     const el = byIdOrNull('citymap-legend');
     if(el) el.innerHTML = `<div class="citymap-legend-title">Legend</div>` + cityLegend.map(function(item){
       const iconHtml = item.ph ? `<i class="ph-duotone ${item.ph} lg-ph" style="color:${item.color}"></i>` : `<span class="lg-ico lg-${item.icon}" style="--c:${item.color}"></span>`;
-      return `<div class="citymap-legend-row">${iconHtml}${item.label}</div>`;
+      return `<div class="citymap-legend-row">${iconHtml}${escapeHtml(item.label)}</div>`;
     }).join('');
     cityMapSearch.value = cityMapSearchTerm;
     renderCityMapSearch();
