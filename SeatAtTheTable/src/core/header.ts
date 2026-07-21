@@ -2539,7 +2539,7 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: ================= TABS =================
   let mapActive = false;
   let mapHubRunning = false;
-  let mapSceneReady = false;
+  let sceneInitialized = false;
   let mapScenePromise: Promise<void> | null = null;
   let mapAssets: MapAssetLibrary | null = null;
   document.querySelectorAll('.tab-btn').forEach(btn=>{
@@ -2609,13 +2609,18 @@ import type * as ThreeNamespace from 'three';
     requestAnimationFrame(mapHub);
   }
   async function ensureMapScene(): Promise<void> {
-    if(mapSceneReady) return;
+    if(sceneInitialized) return;
     if(!mapScenePromise){
       mapScenePromise = (async function(){
         THREE = await import('three');
         mapAssets = await loadMapAssetLibrary(THREE);
-        mapSceneReady = true;
-        initScene();
+        if(!sceneInitialized){
+          initScene();
+          sceneInitialized = true;
+          refreshPlayerModel();
+          updateParkedCarMesh();
+          rebuildWaypointBeacon();
+        }
       })();
     }
     await mapScenePromise;
@@ -3447,6 +3452,7 @@ import type * as ThreeNamespace from 'three';
 
   // LEGAL: Historical entry point kept for saved-game boot; the city is unified now.
   function buildDistrictScene(_districtId: string){
+    if(!sceneInitialized || !worldGroup) return;
     buildCityScene();
   }
 
@@ -3455,7 +3461,7 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: scene rebuild, which re-adds the dealer as a permanent standing figure.
   const dealerArrivals: Array<{ group: ThreeNamespace.Group; corner: Corner; sx: number; sy: number; t: number }> = [];
   function spawnDealerArrival(corner: Corner){
-    if(!mapSceneReady || !worldGroup) return;
+    if(!sceneInitialized || !worldGroup) return;
     const sx = corner.x + (Math.random()<0.5 ? -44 : 44);
     const sy = corner.y + 52;
     const g = buildPedestrianModel('#d4a017', 'dealer-'+corner.id);
@@ -3477,7 +3483,7 @@ import type * as ThreeNamespace from 'three';
   }
 
   function refreshPlayerModel(){
-    if(!mapSceneReady) return;
+    if(!sceneInitialized || !playerGroup) return;
     clearGroup(playerGroup);
     if(state.inVehicle){ const car=getEquippedCar(); if(car) playerGroup.add(buildCarModel(car)); }
     else playerGroup.add(buildPedestrianModel('#f0efe8', 'arjun'));
@@ -3489,7 +3495,7 @@ import type * as ThreeNamespace from 'three';
     return { x: s.x + 70, y: s.y };
   }
   function updateParkedCarMesh(){
-    if(!mapSceneReady) return;
+    if(!sceneInitialized || !worldGroup) return;
     if(parkedCarMesh){ worldGroup.remove(parkedCarMesh); parkedCarMesh.traverse(disposeObj); parkedCarMesh=null; }
     const car = getEquippedCar();
     if(car && !state.inVehicle){
@@ -3516,7 +3522,7 @@ import type * as ThreeNamespace from 'three';
     return dots.slice(0,40);
   }
   function rebuildWaypointBeacon(){
-    if(!mapSceneReady) return;
+    if(!sceneInitialized || !worldGroup) return;
     if(waypointBeacon){ worldGroup.remove(waypointBeacon); waypointBeacon.traverse(disposeObj); waypointBeacon=null; }
     const wp = state.waypoints[state.currentDistrict];
     if(!wp) return;
@@ -3575,7 +3581,6 @@ import type * as ThreeNamespace from 'three';
     playerGroup = new THREE.Group(); scene.add(playerGroup);
 
     buildCityScene();
-    refreshPlayerModel();
   }
 
   // LEGAL: ================= MINIMAP (simple 2D, pannable, waypoints) =================
@@ -4256,8 +4261,10 @@ import type * as ThreeNamespace from 'three';
 
       const spawn = spawnPoints[state.currentDistrict] || {x:700,y:460};
       player.x = spawn.x; player.y = spawn.y;
-      buildDistrictScene(state.currentDistrict);
-      refreshPlayerModel();
+      if(sceneInitialized){
+        buildDistrictScene(state.currentDistrict);
+        refreshPlayerModel();
+      }
       renderAll();
       log('Picked up right where you left off.');
       return;
