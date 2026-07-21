@@ -25,7 +25,8 @@ import { drawMinimap as drawMapMinimap, MINIMAP_SCALE } from '../map/minimap';
 import type { MapObject } from '../map/objects';
 import { solidsFromObjects } from '../map/objects';
 import { buildMapObjects, ventureFootprint } from '../map/objectFactory';
-import { createMapPlaceRecords, mapPlaceCategoryLabel, nearestMapPlace, type MapPlaceRecord } from '../map/places';
+import { createMapPlaceRecords, mapPlaceCategoryLabel, type MapPlaceRecord } from '../map/places';
+import { mapPointContext, nearestPlaceAtPoint } from '../map/queries';
 import { actorDisplayName, createRoamingActors, updateRoamingActors } from '../map/roaming';
 import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, buildLandmarks, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
 import { createMapSceneMaterials } from '../map/scenePerformance';
@@ -2976,7 +2977,7 @@ import type * as ThreeNamespace from 'three';
       const d = Math.hypot(player.x-parked.x, player.y-parked.y);
       if(d<bestDist){ bestDist=d; best={type:'car', ref:parked}; }
     }
-    const place = nearestMapPlace(mapPlaces, { x: player.x, y: player.y }, bestDist);
+    const place = nearestPlaceAtPoint(mapPlaces, { x: player.x, y: player.y }, bestDist);
     if(place?.sourceObject) best = { type:place.sourceObject.kind, ref:place.sourceObject.ref } as MapMarker;
     return best;
   }
@@ -3881,16 +3882,14 @@ import type * as ThreeNamespace from 'three';
     const py = (e.clientY-rect.top) * (CITY_H/rect.height);
     return clampPointToBounds(screenToWorld(cityViewport, { x:px, y:py }), cityViewport.bounds);
   }
-  function nearestCityMapPlace(point: Point): MapPlaceRecord | null {
-    return nearestMapPlace(mapPlaces, point, 42);
-  }
   cityMapCanvas.addEventListener('mousemove', function(e){
     const point = cityMapWorldPoint(e);
-    const dist = districts.find(function(d){ return d.id === districtIdAtPlayablePoint(point, 0); });
-    const place = nearestCityMapPlace(point);
+    const context = mapPointContext(point, mapPlaces, { placeMaxDistance:42 });
+    const dist = districts.find(function(d){ return d.id === context.districtId; });
+    const place = context.nearestPlace;
     cityMapHoverPlace = place;
     if(!dist){
-      cityMapHint.textContent = 'Water - waypoints must be placed on land';
+      cityMapHint.textContent = context.isWater ? 'Water - waypoints must be placed on land' : 'Waypoint must be placed on district land';
       drawCityMap();
       return;
     }
@@ -3905,9 +3904,10 @@ import type * as ThreeNamespace from 'three';
   cityMapCanvas.addEventListener('click', function(e){
     if(state.currentInterior) return;
     const point = cityMapWorldPoint(e);
-    const dist = districtIdAtPlayablePoint(point, 0);
+    const context = mapPointContext(point, mapPlaces);
+    const dist = context.districtId;
     if(!dist){
-      cityMapHint.textContent = 'Water - waypoints must be placed on land';
+      cityMapHint.textContent = context.isWater ? 'Water - waypoints must be placed on land' : 'Waypoint must be placed on district land';
       drawCityMap();
       return;
     }
