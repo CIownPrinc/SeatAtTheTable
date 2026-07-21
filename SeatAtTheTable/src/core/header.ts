@@ -26,7 +26,7 @@ import type { MapObject } from '../map/objects';
 import { solidsFromObjects } from '../map/objects';
 import { buildMapObjects, ventureFootprint } from '../map/objectFactory';
 import { createMapPlaceRecords, mapPlaceCategoryLabel, type MapPlaceCategory, type MapPlaceRecord } from '../map/places';
-import { mapPointContext, nearestPlaceAtPoint, placesByCategory } from '../map/queries';
+import { mapPointContext, nearestPlaceAtPoint, placesByCategory, routeHintBetween } from '../map/queries';
 import { actorDisplayName, createRoamingActors, updateRoamingActors } from '../map/roaming';
 import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, buildLandmarks, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
 import { createMapSceneMaterials } from '../map/scenePerformance';
@@ -3683,21 +3683,23 @@ import type * as ThreeNamespace from 'three';
       worldGroup.add(parkedCarMesh);
     }
   }
-  function computeRoadGuide(px: number, py: number, wx: number, wy: number){
-    // LEGAL: Simple road-snapped guide: approach nearest horizontal road, traverse to WP X, then descend to WP
-    const nearestRoad = roadNetwork.horizontal.reduce(function(best,r){ return Math.abs(r.y-py)<Math.abs(best.y-py)?r:best; }, roadNetwork.horizontal[0]);
-    const ry = nearestRoad.y;
-    const step = 55;
-    const dots = [];
-    const signY = ry>py?1:-1;
-    for(let y=py+signY*step; signY*(y-ry)<0; y+=signY*step) dots.push({x:px,y});
-    dots.push({x:px,y:ry});
-    const signX = wx>px?1:-1;
-    for(let x=px+signX*step; signX*(x-wx)<0; x+=signX*step) dots.push({x,y:ry});
-    dots.push({x:wx,y:ry});
-    const signY2 = wy>ry?1:-1;
-    for(let y=ry+signY2*step; signY2*(y-wy)<0; y+=signY2*step) dots.push({x:wx,y});
-    return dots.slice(0,40);
+  function sampleRouteGuide(points: Point[], step: number): Point[] {
+    const dots: Point[] = [];
+    points.slice(1).forEach(function(point, index){
+      const previous = points[index];
+      const dx = point.x - previous.x;
+      const dy = point.y - previous.y;
+      const distance = Math.hypot(dx, dy);
+      const count = Math.max(1, Math.floor(distance / step));
+      for(let i = 1; i <= count; i += 1){
+        const t = i / count;
+        dots.push({ x:previous.x + dx*t, y:previous.y + dy*t });
+      }
+    });
+    return dots.slice(0, 48);
+  }
+  function computeRoadGuide(px: number, py: number, wx: number, wy: number): Point[] {
+    return sampleRouteGuide(routeHintBetween({ x:px, y:py }, { x:wx, y:wy }).waypoints, 55);
   }
   function rebuildWaypointBeacon(){
     if(!sceneInitialized || !worldGroup) return;
