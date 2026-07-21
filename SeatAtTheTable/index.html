@@ -11,6 +11,53 @@
 </head>
 <body>
 
+<section class="start-screen hidden" id="start-screen" aria-labelledby="start-title">
+  <div class="start-screen-inner">
+    <div class="start-brand">
+      <img src="/gamelogo.png" alt="Seat at the Table" class="start-logo">
+      <div class="start-kicker">Windhaven</div>
+    </div>
+    <div class="start-copy">
+      <div class="start-eyebrow">Case File - A. Malhotra</div>
+      <h1 id="start-title">Seat at the Table</h1>
+      <p>Forty-seven dollars. A folding cart. One Devlin Street corner nobody wanted badly enough to fight for.</p>
+      <p><strong>Cash buys property. Crew runs the property. Respect takes territory.</strong></p>
+    </div>
+    <div class="start-actions">
+      <div class="start-menu">
+        <button class="start-btn" id="continue-game-btn">Continue</button>
+        <button class="start-btn secondary" id="start-game-btn">Start</button>
+        <button class="start-btn secondary" id="start-settings-btn">Settings</button>
+        <button class="start-btn secondary" id="start-credits-btn">Credits</button>
+      </div>
+      <div class="start-credits">
+        <span>Seat at the Table</span>
+        <span>Map assets: Kenney</span>
+        <span>Icons: Phosphor</span>
+        <span>Fonts: Oswald / IBM Plex</span>
+      </div>
+    </div>
+    <div class="start-panel hidden" id="start-settings-panel">
+      <div class="start-panel-title">Settings</div>
+      <label class="start-check"><input type="checkbox" id="start-quiet-toggle"> Quiet mode</label>
+      <label class="start-check"><input type="checkbox" id="start-light-toggle"> Light mode</label>
+    </div>
+    <div class="start-panel hidden" id="start-credits-panel">
+      <div class="start-panel-title">Credits</div>
+      <div>Design, code, and story direction: Seat at the Table project.</div>
+      <div>Map asset packs: Kenney. Icons: Phosphor. Fonts: Oswald and IBM Plex.</div>
+    </div>
+    <div class="start-panel warning hidden" id="start-new-warning">
+      <div class="start-panel-title">Start a new game?</div>
+      <div>This will erase the saved game on this browser. It cannot be undone.</div>
+      <div class="start-confirm-row">
+        <button class="start-small-btn" id="confirm-new-game-btn">Start New Game</button>
+        <button class="start-small-btn secondary" id="cancel-new-game-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+</section>
+
 <div class="hud">
   <div class="hud-title" style="display:flex; align-items:center;"><img src="/gamelogo.png" alt="Seat at the Table" style="height:88px; width:auto;"></div>
   <div class="hud-stats">
@@ -80,6 +127,7 @@
         <button id="fullscreen-btn" class="minimap-clear-btn show" style="left: 12px; top: 12px; right: auto; background: var(--blue); z-index: 10;"><i class="ph-duotone ph-arrows-out"></i></button>
         <canvas id="interior-canvas" width="760" height="440"></canvas>
         <canvas id="minimap-canvas" width="150" height="150"></canvas>
+        <button class="minimap-expand-btn" id="minimap-expand" title="Expand minimap"><i class="ph-duotone ph-arrows-out-simple"></i></button>
         <button class="minimap-clear-btn" id="minimap-clear" title="Clear waypoint">✕</button>
       </div>
       <div class="map-hint" id="map-hint">&nbsp;</div>
@@ -89,10 +137,6 @@
       </div>
       <div class="map-legend" id="map-legend"></div>
     </div>
-
-    <div class="section-eyebrow" style="margin-top:26px;">District Locations</div>
-    <p class="pillar-desc">Important places and people in your current district. Distance is measured from where you stand on the map; interactable means close enough to press **E** right now.</p>
-    <div id="district-locations-panel" class="district-locations-panel"></div>
 
     <div class="section-eyebrow" style="margin-top:26px;">Territory Control</div>
     <p class="pillar-desc">Turf control depends on active presence. Use **Respect** to claim and secure competitive districts.</p>
@@ -239,10 +283,10 @@
       <button class="citymap-close" id="citymap-close" title="Close">✕</button>
     </div>
     <div class="citymap-body">
-      <div class="citymap-canvas-wrap"><canvas id="citymap-canvas" width="900" height="240"></canvas></div>
+      <div class="citymap-canvas-wrap"><canvas id="citymap-canvas" width="900" height="520"></canvas></div>
       <div class="citymap-legend" id="citymap-legend"></div>
     </div>
-    <div class="citymap-hint">Click the map to drop a waypoint · click again to move it · clear it with ✕ on the minimap</div>
+    <div class="citymap-hint" id="citymap-hint">Click the expanded map to drop a waypoint · hover places to inspect them</div>
   </div>
 </div>
 

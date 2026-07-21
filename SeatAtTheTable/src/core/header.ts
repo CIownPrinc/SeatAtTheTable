@@ -11,6 +11,7 @@ import { gangRecruits } from '../config/gang';
 import { npcFirstNames, npcLastNames, npcDispositions } from '../config/npcs';
 import { stockMarket } from '../config/stockMarket';
 import { banks, DEFAULT_BANK_ID } from '../config/banks';
+import { brandById } from '../config/brands';
 import type { GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState, Point, ServiceBuilding, GangRecruit, Car, DialogueTree } from '../config/types';
 import type { MapAssetKey, MapAssetLibrary } from '../map/assets';
 import { loadMapAssetLibrary } from '../map/assets';
@@ -22,12 +23,12 @@ import { distancePointToSegment } from '../map/layout';
 import { applyNamedBuildingLots, createMapBuildings, mapNpcs } from '../map/markers';
 import { canMoveTo } from '../map/movement';
 import { drawMinimap as drawMapMinimap, MINIMAP_SCALE } from '../map/minimap';
-import type { MapObject } from '../map/objects';
+import type { MapObject, MinimapIcon } from '../map/objects';
 import { createBounds, nearestMapObject, solidsFromObjects } from '../map/objects';
 import { actorDisplayName, createRoamingActors, updateRoamingActors } from '../map/roaming';
 import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, buildLandmarks, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
 import { buildIntersectionFurniture as buildMapIntersectionFurniture } from '../map/streetFurniture';
-import { DISTRICT_OFFSETS, DISTRICT_W, VIEW_H, VIEW_W, WORLD_H, WORLD_W, landmarks, roadNetwork, spawnPoints } from '../map/world';
+import { DISTRICT_OFFSETS, DISTRICT_W, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { renderZoneType } from '../map/zoning';
 import { drawInteriorRoom } from '../map/interiorScene';
 import type * as ThreeNamespace from 'three';
@@ -420,7 +421,7 @@ import type * as ThreeNamespace from 'three';
     ownedCars: [], equippedCar: null, ownedProperties: [],
     currentDistrict: 'devlin', product: 0, productLevel: 0, currentInterior: null,
     inVehicle: false,
-    waypoints: { devlin:null, westside:null, hub:null },
+    waypoints: { devlin:null, westside:null, hub:null, global:null },
     parkedCarPos: { devlin:{x:700,y:660}, westside:{x:2700,y:660}, hub:{x:4700,y:660} },
     influence: 0, influenceBuys: 0, electedOffice: false, nextCampaignAt: 0, nextWarAt: 0,
     campaignActive: false, campaignEndAt: 0, campaignStyle: '',
@@ -681,6 +682,19 @@ import type * as ThreeNamespace from 'three';
       footer.appendChild(btn);
     });
     byId('modal-overlay').classList.remove('hidden');
+  }
+
+  function showStartScreen(hasSavedGame: boolean): void {
+    byId<HTMLButtonElement>('continue-game-btn').disabled = !hasSavedGame;
+    byId('start-game-btn').textContent = hasSavedGame ? 'Start New Game' : 'Start';
+    byId('start-settings-panel').classList.add('hidden');
+    byId('start-credits-panel').classList.add('hidden');
+    byId('start-new-warning').classList.add('hidden');
+    byId('start-screen').classList.remove('hidden');
+  }
+
+  function hideStartScreen(): void {
+    byId('start-screen').classList.add('hidden');
   }
 
   function triggerMilestone(id: string){
@@ -1039,6 +1053,7 @@ import type * as ThreeNamespace from 'three';
     carsWrap.innerHTML = cars.map(c=>{
       const owned = state.ownedCars.includes(c.id);
       const equipped = state.equippedCar === c.id;
+      const brand = brandById(c.brand);
       let btns;
       if(!owned){
         btns = `<div class="btn-row"><button class="mini-btn" ${state.cash>=c.cost?'':'disabled'} data-car-buy="${c.id}">BUY <span class="cost">${fmt(c.cost)}</span></button></div>`;
@@ -1055,6 +1070,7 @@ import type * as ThreeNamespace from 'three';
           <div class="col-status">${equipped?'EQUIPPED':(owned?'GARAGED':'SHOP')}</div>
         </div>
         <div class="data-expanded">
+          ${brand ? `<div class="flavor-note" style="color:var(--gold);">${brand.name}${brand.caveat?` — <span style="color:var(--text-faint);">${brand.caveat}</span>`:''}</div>` : ''}
           <div class="flavor-note">+${Math.round((c.speedMult-1)*100)}% map speed · +${Math.round(c.heistBonus*100)}% heist odds${c.respectPerSec?` · +${c.respectPerSec}/s respect`:''}</div>
           ${btns}
         </div>
@@ -1063,6 +1079,7 @@ import type * as ThreeNamespace from 'three';
 
     propWrap.innerHTML = properties.map(p=>{
       const owned = state.ownedProperties.includes(p.id);
+      const brand = brandById(p.brand);
       const btns = owned
         ? `<div class="btn-row"><button class="mini-btn fire" data-prop-sell="${p.id}">SELL <span class="cost">${fmt(Math.round(p.cost*0.6))}</span></button></div>`
         : `<div class="btn-row"><button class="mini-btn" ${state.cash>=p.cost?'':'disabled'} data-prop-buy="${p.id}">BUY <span class="cost">${fmt(p.cost)}</span></button></div>`;
@@ -1074,6 +1091,7 @@ import type * as ThreeNamespace from 'three';
           <div class="col-status">${owned?'ACTIVE':'SALE'}</div>
         </div>
         <div class="data-expanded">
+          ${brand ? `<div class="flavor-note" style="color:var(--gold);">${brand.name}${brand.caveat?` — <span style="color:var(--text-faint);">${brand.caveat}</span>`:''}</div>` : ''}
           <div class="flavor-note">${owned ? `Owned — earning ${p.incomePerSec}/s, no crew needed` : `Passive rental income: ${p.incomePerSec}/s, no crew needed`}</div>
           ${btns}
         </div>
@@ -1712,7 +1730,7 @@ import type * as ThreeNamespace from 'three';
       .sort(function(a, b){ return a.distance - b.distance; });
   }
   function renderDistrictLocationsPanel(){
-    const wrap = byId('district-locations-panel');
+    const wrap = byIdOrNull('removed-location-panel');
     if(!wrap) return;
     const district = districts.find(function(d){ return d.id === state.currentDistrict; });
     const locations = districtLocations();
@@ -2132,12 +2150,11 @@ import type * as ThreeNamespace from 'three';
     const id = btn.getAttribute('data-location-waypoint')!;
     const location = districtLocations().find(function(item){ return item.id === id; });
     if(!location) return;
-    state.waypoints[state.currentDistrict] = { x:location.x, y:location.y };
+    setGlobalWaypoint({ x:location.x, y:location.y });
     rebuildWaypointBeacon();
     byId('minimap-clear').classList.add('show');
     log(`<i class="ph-duotone ph-map-pin"></i> Waypoint set to ${location.label}.`);
     scheduleSave();
-    renderDistrictLocationsPanel();
   }
 
   function handleTerritoryAction(e: Event){
@@ -2187,7 +2204,7 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: Set a waypoint toward the target and make the player cross on foot/by car.
     const d = districts.find(x=>x.id===id);
     const dest = spawnPoints[id];
-    if(dest) state.waypoints[state.currentDistrict] = { x:dest.x, y:dest.y };
+    if(dest) setGlobalWaypoint({ x:dest.x, y:dest.y });
     rebuildWaypointBeacon();
     log(`<i class="ph-duotone ph-path"></i> Head over to ${d?d.name:'the district'} yourself — follow the marker across the bridges.`);
   }
@@ -2217,7 +2234,6 @@ import type * as ThreeNamespace from 'three';
     byId('politics-panel').addEventListener('click', handlePoliticsAction);
     byId('gang-panel').addEventListener('click', handleGangAction);
     byId('district-bar').addEventListener('click', handleDistrictAction);
-    byId('district-locations-panel').addEventListener('click', handleDistrictLocationsAction);
   }
 
   // LEGAL: ================= RENDER: STREET PANEL =================
@@ -2354,7 +2370,6 @@ import type * as ThreeNamespace from 'three';
     renderAssetsPanel();
     renderDistrictBar();
     renderLegend();
-    renderDistrictLocationsPanel();
     renderTerritoryPanel();
     renderPoliticsPanel();
     renderGangPanel();
@@ -2662,6 +2677,22 @@ import type * as ThreeNamespace from 'three';
   applyNamedBuildingLots(serviceBuildings);
   applyNamedBuildingLots(localBusinesses);
 
+  function serviceMinimapIcon(service: ServiceBuilding): MinimapIcon {
+    if(service.kind === 'bankHome') return 'bank';
+    if(service.kind === 'garage') return 'garage';
+    if(service.kind === 'realty') return 'realty';
+    if(service.kind === 'cityhall') return 'cityhall';
+    if(service.kind === 'heist') return 'heist';
+    return 'service';
+  }
+
+  function localBusinessMinimapIcon(business: LocalBusiness): MinimapIcon {
+    if(business.id === 'bar' || business.id === 'marlowe') return 'bar';
+    if(business.id === 'chopshop') return 'garage';
+    if(business.id === 'jewelers') return 'realty';
+    return 'shop';
+  }
+
   // LEGAL: Businesses spread proportionally across all 3 districts
   // LEGAL: Building lots sit strictly between the road strips. Vertical roads are at
   // LEGAL: rel-x 270/700/1130 (±37) and horizontal roads at y 300/600/900 (±37), so
@@ -2687,10 +2718,10 @@ import type * as ThreeNamespace from 'three';
         return { kind:'building', id:m.id, district:m.district, x:m.x, y:m.y, bounds:ventureBounds(m), interactRadius:46, minimapColor:legit?'#3e7c8c':'#a8394a', minimapSize:3, minimapIcon:legit?'legal':'illegal', ref:m };
       }),
       ...serviceBuildings.map(function(m): MapObject<'service', ServiceBuilding> {
-        return { kind:'service', id:m.id, district:m.district, x:m.x, y:m.y, bounds:createBounds(m.x,m.y,35,31), interactRadius:46, minimapColor:'#d4a017', minimapSize:3, minimapIcon:'service', ref:m };
+        return { kind:'service', id:m.id, district:m.district, x:m.x, y:m.y, bounds:createBounds(m.x,m.y,35,31), interactRadius:46, minimapColor:'#d4a017', minimapSize:3, minimapIcon:serviceMinimapIcon(m), ref:m };
       }),
       ...localBusinesses.map(function(m): MapObject<'local', LocalBusiness> {
-        return { kind:'local', id:m.id, district:m.district, x:m.x, y:m.y, bounds:createBounds(m.x,m.y,27,24), interactRadius:46, minimapColor:'#7a6fb0', minimapSize:2.5, minimapIcon:'home', ref:m };
+        return { kind:'local', id:m.id, district:m.district, x:m.x, y:m.y, bounds:createBounds(m.x,m.y,27,24), interactRadius:46, minimapColor:'#7a6fb0', minimapSize:2.5, minimapIcon:localBusinessMinimapIcon(m), ref:m };
       }),
       ...mapAmenities.map(function(m): MapObject<'amenity', typeof m> {
         const bounds = amenityHasSolidFootprint(m.kind) ? createBounds(m.x,m.y,27,24) : undefined;
@@ -2925,19 +2956,10 @@ import type * as ThreeNamespace from 'three';
     const isFs = container.classList.toggle('fullscreen');
     const btn = byId('fullscreen-btn');
     btn.innerHTML = isFs ? '<i class="ph-duotone ph-arrows-in"></i>' : '<i class="ph-duotone ph-arrows-out"></i>';
-    if(renderer){
-      const w = isFs ? window.innerWidth : VIEW_W;
-      const h = isFs ? window.innerHeight : VIEW_H;
-      renderer.setSize(w, h);
-      if(camera3d){ camera3d.aspect = w/h; camera3d.updateProjectionMatrix(); }
-    }
+    syncRendererSize();
   });
   window.addEventListener('resize', function(){
-    const container = byId('scene3d-container');
-    if(container.classList.contains('fullscreen') && renderer){
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      if(camera3d){ camera3d.aspect = window.innerWidth/window.innerHeight; camera3d.updateProjectionMatrix(); }
-    }
+    syncRendererSize();
   });
 
   type MapMarker =
@@ -3015,12 +3037,24 @@ import type * as ThreeNamespace from 'three';
   type ThreeModule = typeof ThreeNamespace;
   type DisposableMaterial = ThreeNamespace.Material & { map?: ThreeNamespace.Texture };
   let THREE: ThreeModule;
-  let scene: ThreeNamespace.Scene, camera3d: ThreeNamespace.PerspectiveCamera, renderer: ThreeNamespace.WebGLRenderer, worldGroup: ThreeNamespace.Group, playerGroup: ThreeNamespace.Group, ambientLight: ThreeNamespace.AmbientLight, sunLight: ThreeNamespace.DirectionalLight, moonLight: ThreeNamespace.DirectionalLight, waypointBeacon: ThreeNamespace.Group | null = null, parkedCarMesh: ThreeNamespace.Group | null = null;
+  let scene: ThreeNamespace.Scene, camera3d: ThreeNamespace.PerspectiveCamera, renderer: ThreeNamespace.WebGLRenderer, worldGroup: ThreeNamespace.Group, playerGroup: ThreeNamespace.Group, ambientLight: ThreeNamespace.AmbientLight, sunLight: ThreeNamespace.DirectionalLight, moonLight: ThreeNamespace.DirectionalLight, waypointBeacon: ThreeNamespace.Group | null = null, parkedCarMesh: ThreeNamespace.Group | null = null, trainGroup: ThreeNamespace.Group | null = null;
   let streetLights: ThreeNamespace.PointLight[] = [];
   let weatherPoints: ThreeNamespace.Points | null = null;
   let activeWeather: 'clear' | 'rain' | 'snow' = 'clear';
   const MAP_DAY_SECONDS = 240;
   const MAP_START_HOUR = 10;
+
+  function syncRendererSize(): void {
+    if(!renderer || !camera3d) return;
+    const container = byId('scene3d-container');
+    const rect = container.getBoundingClientRect();
+    const fullscreen = container.classList.contains('fullscreen');
+    const width = Math.max(1, Math.round(fullscreen ? window.innerWidth : rect.width));
+    const height = Math.max(1, Math.round(fullscreen ? window.innerHeight : rect.height));
+    renderer.setSize(width, height, false);
+    camera3d.aspect = width / height;
+    camera3d.updateProjectionMatrix();
+  }
 
   function disposeObj(o: ThreeNamespace.Object3D){
     const mesh = o as ThreeNamespace.Mesh;
@@ -3441,6 +3475,7 @@ import type * as ThreeNamespace from 'three';
     buildFillerCity({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, districtOffsets:DISTRICT_OFFSETS, fillerFor, helpers:{ box, addSign, buildDetailedBuilding, renderZoneType, seededRandom } });
     buildLandmarks({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, landmarks, helpers:{ box, addSign } });
     buildRailAndRiver(baseScene);
+    buildTrain();
     currentSolids = buildAllSolids();
     // LEGAL: Block the landmark footprints so you can't walk through them.
     currentSolids.push({x:125,y:820,hw:44,hd:44}, {x:2125,y:850,hw:26,hd:26});
@@ -3459,6 +3494,35 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: Transient "dealer pulling up" animation — a figure walks in from the street
   // LEGAL: to the corner over ~1.5s when you post a dealer. It is cleared on the next
   // LEGAL: scene rebuild, which re-adds the dealer as a permanent standing figure.
+  function buildTrain(): void {
+    if(!worldGroup) return;
+    if(trainGroup){ worldGroup.remove(trainGroup); trainGroup.traverse(disposeObj); }
+    trainGroup = new THREE.Group();
+    const bodyMat = new THREE.MeshStandardMaterial({color:'#9b2f2f', roughness:0.62, metalness:0.12});
+    const roofMat = new THREE.MeshStandardMaterial({color:'#d8c078', roughness:0.45, metalness:0.18});
+    for(let i=0;i<4;i++){
+      const car = new THREE.Mesh(new THREE.BoxGeometry(28,18,58), bodyMat);
+      car.position.set(0,10,-96+i*64);
+      car.castShadow=true; car.receiveShadow=true; trainGroup.add(car);
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(24,4,48), roofMat);
+      roof.position.set(0,21,-96+i*64);
+      roof.castShadow=true; trainGroup.add(roof);
+    }
+    trainGroup.position.set(3470,0,-260);
+    worldGroup.add(trainGroup);
+  }
+
+  function updateTrain(): void {
+    if(!trainGroup) return;
+    const cycle = (Date.now() % 42000) / 42000;
+    if(cycle < 0.14 || cycle > 0.92){
+      trainGroup.visible = false;
+      return;
+    }
+    trainGroup.visible = true;
+    trainGroup.position.z = -220 + ((cycle - 0.14) / 0.78) * (WORLD_H + 440);
+  }
+
   const dealerArrivals: Array<{ group: ThreeNamespace.Group; corner: Corner; sx: number; sy: number; t: number }> = [];
   function spawnDealerArrival(corner: Corner){
     if(!sceneInitialized || !worldGroup) return;
@@ -3524,7 +3588,7 @@ import type * as ThreeNamespace from 'three';
   function rebuildWaypointBeacon(){
     if(!sceneInitialized || !worldGroup) return;
     if(waypointBeacon){ worldGroup.remove(waypointBeacon); waypointBeacon.traverse(disposeObj); waypointBeacon=null; }
-    const wp = state.waypoints[state.currentDistrict];
+    const wp = currentWaypoint();
     if(!wp) return;
     const g = new THREE.Group();
     // LEGAL: Flat cross marker on the ground — no floating tower
@@ -3554,11 +3618,11 @@ import type * as ThreeNamespace from 'three';
 
     camera3d = new THREE.PerspectiveCamera(50, VIEW_W/VIEW_H, 1, 3000);
     renderer = new THREE.WebGLRenderer({antialias:true});
-    renderer.setSize(VIEW_W, VIEW_H);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.domElement.classList.add('webgl-canvas');
     container.insertBefore(renderer.domElement, container.firstChild);
+    syncRendererSize();
 
     ambientLight = new THREE.AmbientLight(0x8891a8, 0.65);
     scene.add(ambientLight);
@@ -3588,6 +3652,12 @@ import type * as ThreeNamespace from 'three';
   const mctx = minimapCanvas.getContext('2d')!;
   const minimapPan = { x:0, y:0 };
   let minimapDragging=false, minimapDragStart: { clientX: number; clientY: number; panX: number; panY: number } | null =null, minimapDragMoved=false;
+  function currentWaypoint(): Point | null {
+    return state.waypoints.global || null;
+  }
+  function setGlobalWaypoint(point: Point | null): void {
+    state.waypoints = { devlin:null, westside:null, hub:null, global:point };
+  }
 
   minimapCanvas.addEventListener('mousedown', function(e){
     minimapDragging = true; minimapDragMoved = false;
@@ -3604,18 +3674,11 @@ import type * as ThreeNamespace from 'three';
     if(!minimapDragging) return;
     minimapDragging = false;
     if(!minimapDragMoved && !state.currentInterior){
-      const rect = minimapCanvas.getBoundingClientRect();
-      const px = e.clientX-rect.left, py = e.clientY-rect.top;
-      const wx = player.x + minimapPan.x + (px-75)/MINIMAP_SCALE;
-      const wy = player.y + minimapPan.y + (py-75)/MINIMAP_SCALE;
-      state.waypoints[state.currentDistrict] = { x:Math.max(0,Math.min(WORLD_W,wx)), y:Math.max(0,Math.min(WORLD_H,wy)) };
-      rebuildWaypointBeacon();
-      byId('minimap-clear').classList.add('show');
-      scheduleSave();
+      openCityMap();
     }
   });
   byId('minimap-clear').addEventListener('click', function(){
-    state.waypoints[state.currentDistrict] = null;
+    setGlobalWaypoint(null);
     rebuildWaypointBeacon();
     this.classList.remove('show');
     scheduleSave();
@@ -3634,8 +3697,9 @@ import type * as ThreeNamespace from 'three';
       roadNetwork,
       worldWidth:WORLD_W,
       worldHeight:WORLD_H,
+      landmass:WINDHAVEN_LANDMASS,
       landmarks,
-      waypoint:state.waypoints[state.currentDistrict],
+      waypoint:currentWaypoint(),
     });
     if(cityMapOpen) drawCityMap();
   }
@@ -3643,23 +3707,33 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: ================= CITY MAP (full-world overlay, GTA-style) =================
   const cityMapCanvas = byId<HTMLCanvasElement>('citymap-canvas');
   const cityCtx = cityMapCanvas.getContext('2d')!;
+  const cityMapHint = byId('citymap-hint');
   const CITY_W = cityMapCanvas.width, CITY_H = cityMapCanvas.height;
-  const cityScale = Math.min(CITY_W/WORLD_W, CITY_H/WORLD_H);
-  const cityCenter = { x:WORLD_W/2, y:WORLD_H/2 };
+  const landMinX = Math.min(...WINDHAVEN_LANDMASS.map(function(point){ return point.x; }));
+  const landMaxX = Math.max(...WINDHAVEN_LANDMASS.map(function(point){ return point.x; }));
+  const landMinY = Math.min(...WINDHAVEN_LANDMASS.map(function(point){ return point.y; }));
+  const landMaxY = Math.max(...WINDHAVEN_LANDMASS.map(function(point){ return point.y; }));
+  const cityScale = Math.min(CITY_W/(landMaxX-landMinX), CITY_H/(landMaxY-landMinY));
+  const cityCenter = { x:(landMinX+landMaxX)/2, y:(landMinY+landMaxY)/2 };
   let cityMapOpen = false;
 
-  const cityLegend: Array<{ icon: string; label: string; color: string }> = [
-    { icon:'legal',    label:'Your legal business',     color:'#3e7c8c' },
-    { icon:'illegal',  label:'Illegal venture',         color:'#a8394a' },
-    { icon:'corner',   label:'Corner (staffed / open)', color:'#d4a017' },
-    { icon:'home',     label:'Local shop / home',       color:'#7a6fb0' },
-    { icon:'service',  label:'City service',            color:'#d4a017' },
-    { icon:'amenity',  label:'Amenity (courts, shops)', color:'#5fbf8f' },
-    { icon:'person',   label:'Person',                  color:'#f0efe8' },
-    { icon:'gang',     label:'Gang recruit',            color:'#f0efe8' },
-    { icon:'landmark', label:'Landmark',                color:'#e0c860' },
-    { icon:'you',      label:'You',                     color:'#e8e6de' },
-    { icon:'waypoint', label:'Waypoint',                color:'#d4a017' },
+  const cityLegend: Array<{ icon: string; label: string; color: string; ph?: string }> = [
+    { icon:'legal',    label:'Owned business',          color:'#3e7c8c', ph:'ph-storefront' },
+    { icon:'illegal',  label:'Underground business',    color:'#a8394a', ph:'ph-mask-happy' },
+    { icon:'bank',     label:'Bank',                    color:'#d4a017', ph:'ph-bank' },
+    { icon:'garage',   label:'Garage / dealer',         color:'#2a87ff', ph:'ph-car-profile' },
+    { icon:'realty',   label:'Real estate office',      color:'#7a6fb0', ph:'ph-house-line' },
+    { icon:'cityhall', label:'City Hall',               color:'#f0efe8', ph:'ph-buildings' },
+    { icon:'heist',    label:'Heist target',            color:'#f04848', ph:'ph-lock-key' },
+    { icon:'shop',     label:'Local shop',              color:'#7a6fb0', ph:'ph-t-shirt' },
+    { icon:'bar',      label:'Bar / club',              color:'#a385ff', ph:'ph-martini' },
+    { icon:'corner',   label:'Street corner',           color:'#d4a017', ph:'ph-map-pin' },
+    { icon:'amenity',  label:'Amenity',                 color:'#5fbf8f', ph:'ph-basketball' },
+    { icon:'person',   label:'Person',                  color:'#f0efe8', ph:'ph-user' },
+    { icon:'gang',     label:'Gang recruit',            color:'#f0efe8', ph:'ph-users-three' },
+    { icon:'landmark', label:'Landmark',                color:'#e0c860', ph:'ph-star' },
+    { icon:'you',      label:'You',                     color:'#e8e6de', ph:'ph-navigation-arrow' },
+    { icon:'waypoint', label:'Waypoint',                color:'#d4a017', ph:'ph-crosshair' },
   ];
   function districtAtWorldX(wx: number): string {
     let best = 'devlin', bestDist = Infinity;
@@ -3673,9 +3747,8 @@ import type * as ThreeNamespace from 'three';
     drawMapMinimap({
       ctx:cityCtx, indoors:false, dragging:false, pan:{x:0,y:0},
       player, mapObjects, districtOffsets:DISTRICT_OFFSETS, fillerFor, roadNetwork,
-      worldWidth:WORLD_W, worldHeight:WORLD_H, landmarks,
-      waypoint:null,
-      waypoints:[state.waypoints.devlin, state.waypoints.westside, state.waypoints.hub],
+      worldWidth:WORLD_W, worldHeight:WORLD_H, landmass:WINDHAVEN_LANDMASS, landmarks,
+      waypoint:currentWaypoint(),
       viewW:CITY_W, viewH:CITY_H, scale:cityScale, center:cityCenter, glyphScale:1.9,
       districtNames:[{ x:DISTRICT_W/2, name:'Devlin' }, { x:2000+DISTRICT_W/2, name:'West Side' }, { x:4000+DISTRICT_W/2, name:'The Hub' }],
     });
@@ -3684,24 +3757,53 @@ import type * as ThreeNamespace from 'three';
     cityMapOpen = true;
     const el = byIdOrNull('citymap-legend');
     if(el) el.innerHTML = `<div class="citymap-legend-title">Legend</div>` + cityLegend.map(function(item){
-      return `<div class="citymap-legend-row"><span class="lg-ico lg-${item.icon}" style="--c:${item.color}"></span>${item.label}</div>`;
+      const iconHtml = item.ph ? `<i class="ph-duotone ${item.ph} lg-ph" style="color:${item.color}"></i>` : `<span class="lg-ico lg-${item.icon}" style="--c:${item.color}"></span>`;
+      return `<div class="citymap-legend-row">${iconHtml}${item.label}</div>`;
     }).join('');
     byId('citymap-overlay').classList.remove('hidden');
     drawCityMap();
   }
   function closeCityMap(){ cityMapOpen = false; byId('citymap-overlay').classList.add('hidden'); }
   byId('citymap-open').addEventListener('click', openCityMap);
+  byId('minimap-expand').addEventListener('click', openCityMap);
   byId('citymap-close').addEventListener('click', closeCityMap);
   byId('citymap-overlay').addEventListener('click', function(e){ if(e.target === this) closeCityMap(); });
-  cityMapCanvas.addEventListener('click', function(e){
-    if(state.currentInterior) return;
+  function cityMapWorldPoint(e: MouseEvent): Point {
     const rect = cityMapCanvas.getBoundingClientRect();
     const px = (e.clientX-rect.left) * (CITY_W/rect.width);
     const py = (e.clientY-rect.top) * (CITY_H/rect.height);
-    const wx = Math.max(0, Math.min(WORLD_W, cityCenter.x + (px-CITY_W/2)/cityScale));
-    const wy = Math.max(0, Math.min(WORLD_H, cityCenter.y + (py-CITY_H/2)/cityScale));
-    const dist = districtAtWorldX(wx);
-    state.waypoints[dist] = { x:wx, y:wy };
+    return {
+      x: Math.max(0, Math.min(WORLD_W, cityCenter.x + (px-CITY_W/2)/cityScale)),
+      y: Math.max(0, Math.min(WORLD_H, cityCenter.y + (py-CITY_H/2)/cityScale)),
+    };
+  }
+  function cityMapObjectName(object: MapObject): string {
+    if(object.kind === 'building') return (object as MapObject<'building', typeof mapBuildings[number]>).ref.biz.name;
+    return (object.ref as { name: string }).name;
+  }
+  function nearestCityMapObject(point: Point): MapObject | null {
+    let best: MapObject | null = null;
+    let bestDist = 42;
+    mapObjects.forEach(function(object){
+      const distance = Math.hypot(object.x - point.x, object.y - point.y);
+      if(distance < bestDist){ bestDist = distance; best = object; }
+    });
+    return best;
+  }
+  cityMapCanvas.addEventListener('mousemove', function(e){
+    const point = cityMapWorldPoint(e);
+    const dist = districts.find(function(d){ return d.id === districtAtWorldX(point.x); });
+    const object = nearestCityMapObject(point);
+    cityMapHint.textContent = object ? `${dist ? dist.name : 'Windhaven'} · ${cityMapObjectName(object)}` : `${dist ? dist.name : 'Windhaven'} · Click to set waypoint`;
+  });
+  cityMapCanvas.addEventListener('mouseleave', function(){
+    cityMapHint.textContent = 'Click the expanded map to drop a waypoint · hover places to inspect them';
+  });
+  cityMapCanvas.addEventListener('click', function(e){
+    if(state.currentInterior) return;
+    const point = cityMapWorldPoint(e);
+    const dist = districtAtWorldX(point.x);
+    setGlobalWaypoint(point);
     rebuildWaypointBeacon();
     byId('minimap-clear').classList.add('show');
     if(dist !== state.currentDistrict) log(`📍 Waypoint set in ${districtDisplayName(dist)} — head there to follow it.`);
@@ -3832,6 +3934,7 @@ import type * as ThreeNamespace from 'three';
       updateWeather(dt);
       updateRoamingActors(roamingActors, { dt, playSeconds:state.playSeconds, indoors:!!state.currentInterior, canMove:function(x,y){ return tryMove(x,y,currentSolids); } });
       updateDealerArrivals(dt);
+      updateTrain();
       playerGroup.position.set(player.x, 0, player.y);
       playerGroup.rotation.y = -player.facing + Math.PI/2;
       camera3d.position.set(player.x, 260, player.y+72);
@@ -3843,14 +3946,13 @@ import type * as ThreeNamespace from 'three';
     const near = nearestMarker();
     const hintEl = byId('map-hint');
     const outdoorStatus = (state.inVehicle ? 'Driving on ' : 'Walking on ') + currentRoadLabel() + ' | ' + mapClockLabel();
-    const wp = state.waypoints[state.currentDistrict];
+    const wp = currentWaypoint();
     if(wp && !state.currentInterior && Math.hypot(player.x-wp.x, player.y-wp.y) < (state.inVehicle ? 42 : 28)){
-      state.waypoints[state.currentDistrict] = null;
+      setGlobalWaypoint(null);
       rebuildWaypointBeacon();
       byId('minimap-clear').classList.remove('show');
       scheduleSave();
     }
-    if(now - lastLocPanelAt >= 250){ lastLocPanelAt = now; renderDistrictLocationsPanel(); }
     if(near){
       let label = '';
       if(near.type==='door') label='Exit';
@@ -4070,7 +4172,7 @@ import type * as ThreeNamespace from 'three';
         (d.politicians||[]).forEach((sp: any)=>{ const p=politicians.find(x=>x.id===sp.id); if(p){ p.favor=sp.favor; p.pocketed=sp.pocketed||false; } });
         (d.gangRecruits||[]).forEach((sg: any)=>{ const g=gangRecruits.find(x=>x.id===sg.id); if(g) g.inducted=sg.inducted; });
         state.inVehicle = d.inVehicle||false;
-        state.waypoints = Object.assign({devlin:null,westside:null,hub:null}, d.waypoints||{});
+        state.waypoints = Object.assign({devlin:null,westside:null,hub:null,global:null}, d.waypoints||{});
         state.parkedCarPos = Object.assign({devlin:{x:700,y:660},westside:{x:2700,y:660},hub:{x:4700,y:660}}, d.parkedCarPos||{});
         state.marketPrices = d.marketPrices || {};
         state.portfolio = d.portfolio || {};
@@ -4250,79 +4352,81 @@ import type * as ThreeNamespace from 'three';
     }
   });
   window.addEventListener('beforeunload', function(){ saveGame(true); });
-
-  // LEGAL: ================= BOOT =================
-  function continueSavedGame(): void {
+  function enterLoadedGame(): void {
+    hideStartScreen();
     applyOfflineProgress(state.lastTick);
     state.lastTick = Date.now();
-
     const spawn = spawnPoints[state.currentDistrict] || {x:700,y:460};
     player.x = spawn.x; player.y = spawn.y;
-    if(sceneInitialized){
-      buildDistrictScene(state.currentDistrict);
-      refreshPlayerModel();
-    }
+    buildDistrictScene(state.currentDistrict);
+    refreshPlayerModel();
     renderAll();
     log('Picked up right where you left off.');
   }
 
-  function showOpeningStory(): void {
-    showModal({
-      eyebrow:'Case File — A. Malhotra', title:'FROM DELHI, RUNNING', stamp:'New Arrival',
-      body:`
-        <p>Six months ago, <strong>Arjun Malhotra</strong> watched two men burn down his uncle's shop in Karol Bagh over a debt that was never really about money. He left Delhi with a duffel bag, four hundred dollars sewn into a jacket lining, and a phone number for a cousin in Windhaven he'd met exactly once, at a wedding, years ago.</p>
-        <p class="flavor">The cousin's couch lasted three weeks. The four hundred dollars lasted six. Now he's got a folding cart, a griddle he doesn't fully own yet, and a corner of Devlin Street nobody wanted badly enough to fight him for.</p>
-        <p><strong>Cash buys property. Crew runs the property. Respect takes territory.</strong> Everything else you'll figure out on the street.</p>
-      `,
-      buttons:[{label:'Open the Cart', onClick:function(){
-        state.started = true; state.lastTick = Date.now(); lastFrame = Date.now();
-        renderAll();
-        log('Day one. Forty-seven dollars and a folding table on Devlin Street.');
-        scheduleSave();
-      }}]
+  function startNewGame(): void {
+    hideStartScreen();
+    state.started = true; state.lastTick = Date.now(); lastFrame = Date.now();
+    renderAll();
+    log('Day one. Forty-seven dollars and a folding table on Devlin Street.');
+    scheduleSave();
+  }
+  function toggleStartPanel(panelId: string): void {
+    ['start-settings-panel','start-credits-panel','start-new-warning'].forEach(function(id){
+      const panel = byId(id);
+      if(id === panelId) panel.classList.toggle('hidden');
+      else panel.classList.add('hidden');
     });
   }
+  byId('continue-game-btn').addEventListener('click', enterLoadedGame);
+  byId('start-game-btn').addEventListener('click', function(){
+    if(state.started) toggleStartPanel('start-new-warning');
+    else startNewGame();
+  });
+  byId('start-settings-btn').addEventListener('click', function(){ toggleStartPanel('start-settings-panel'); });
+  byId('start-credits-btn').addEventListener('click', function(){ toggleStartPanel('start-credits-panel'); });
+  byId('cancel-new-game-btn').addEventListener('click', function(){ byId('start-new-warning').classList.add('hidden'); });
+  byId('confirm-new-game-btn').addEventListener('click', async function(){
+    try{ await storageAdapter.delete('seat-save-v1'); }catch(e){}
+    try{ window.sessionStorage.setItem('seat-start-new-after-reload', '1'); }catch(e){}
+    location.reload();
+  });
+  byId<HTMLInputElement>('start-quiet-toggle').addEventListener('change', function(e){
+    const checked = (e.target as HTMLInputElement).checked;
+    byId<HTMLInputElement>('quiet-toggle').checked = checked;
+    document.body.classList.toggle('quiet', checked);
+    scheduleSave();
+  });
+  byId<HTMLInputElement>('start-light-toggle').addEventListener('change', function(e){
+    const checked = (e.target as HTMLInputElement).checked;
+    byId<HTMLInputElement>('theme-toggle').checked = checked;
+    byId<HTMLInputElement>('delhi-theme-toggle').checked = false;
+    if(checked) document.body.classList.remove('theme-delhi');
+    document.body.classList.toggle('theme-light', checked);
+    scheduleSave();
+  });
 
-  function showStartPanel(): void {
-    showModal({
-      eyebrow:'Seat at the Table', title:'BUILD YOUR WINDHAVEN EMPIRE', stamp:'New Game',
-      body:`
-        <p>Start from a folding cart on Devlin Street and turn cash, crew, and respect into control of the city.</p>
-        <p class="flavor">A clean start shows the setup first, then the opening case file.</p>
-      `,
-      buttons:[{label:'Start New Game', onClick:showOpeningStory}]
-    });
-  }
-
-  function showSavedGamePanel(): void {
-    showModal({
-      eyebrow:'Seat at the Table', title:'RETURN TO WINDHAVEN', stamp:'Save Found',
-      body:`
-        <p>A saved game was found on this device. Continue from the last ledger, start over, or adjust settings before you play.</p>
-      `,
-      buttons:[
-        {label:'Continue', onClick:continueSavedGame},
-        {label:'New Game', secondary:true, onClick:async function(){
-          try{ await storageAdapter.delete('seat-save-v1'); }catch(e){}
-          location.reload();
-        }},
-        {label:'Settings', secondary:true, onClick:function(){
-          continueSavedGame();
-          setTab('settings');
-        }}
-      ]
-    });
-  }
+  // LEGAL: ================= BOOT =================
 
   (async function boot(){
     wireDelegation();
     const loaded = await loadGame();
-    renderAll();
+    byId<HTMLInputElement>('start-quiet-toggle').checked = document.body.classList.contains('quiet');
+    byId<HTMLInputElement>('start-light-toggle').checked = document.body.classList.contains('theme-light');
+    try{
+      if(window.sessionStorage.getItem('seat-start-new-after-reload') === '1'){
+        window.sessionStorage.removeItem('seat-start-new-after-reload');
+        startNewGame();
+        return;
+      }
+    }catch(e){}
     if(loaded && state.started){
-      showSavedGamePanel();
+      renderAll();
+      showStartScreen(true);
       return;
     }
-    showStartPanel();
+    renderAll();
+    showStartScreen(false);
   })();
 
   // LEGAL: ================= TOOLTIPS =================

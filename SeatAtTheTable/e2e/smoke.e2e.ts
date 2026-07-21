@@ -6,18 +6,22 @@ import { test, expect } from '@playwright/test';
 test.describe('game boot', () => {
   test.describe.configure({ mode: 'serial' });
 
-  test('loads with the HUD and opens on the intro case file', async ({ page }) => {
+  test('loads with the full-screen start page', async ({ page }) => {
     await page.goto('/');
 
     await expect(page).toHaveTitle('Seat at the Table');
     await expect(page.locator('#hud-cash')).toHaveText('$47');
-    await expect(page.getByRole('button', { name: 'Open the Cart' })).toBeVisible();
+    await expect(page.locator('#start-screen')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#modal-overlay')).toHaveClass(/hidden/);
+    await expect(page.getByRole('button', { name: 'Start', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Continue' })).toBeDisabled();
   });
 
   test('starting the game and switching to the Map tab works', async ({ page }) => {
     await page.goto('/');
 
-    await page.getByRole('button', { name: 'Open the Cart' }).click();
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    await expect(page.locator('#start-screen')).toHaveClass(/hidden/);
     await expect(page.locator('#modal-overlay')).toHaveClass(/hidden/);
 
     await page.locator('.tab-btn[data-tab="map"]').click();
@@ -39,7 +43,7 @@ test.describe('game boot', () => {
     });
 
     await page.goto('/');
-    await page.getByRole('button', { name: 'Open the Cart' }).click();
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
     await page.locator('.tab-btn[data-tab="map"]').click();
     await expect(page.locator('#scene3d-container canvas.webgl-canvas')).toBeVisible();
     await page.waitForTimeout(1200);
@@ -50,7 +54,7 @@ test.describe('game boot', () => {
   test('minimap centers the player marker', async ({ page }) => {
     await page.goto('/');
 
-    await page.getByRole('button', { name: 'Open the Cart' }).click();
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
     await page.locator('.tab-btn[data-tab="map"]').click();
 
     await expect.poll(async () => page.locator('#minimap-canvas').evaluate((canvas: HTMLCanvasElement) => {
@@ -72,7 +76,7 @@ test.describe('game boot', () => {
   test('minimap can pan while stopped and recenters while moving', async ({ page }) => {
     await page.goto('/');
 
-    await page.getByRole('button', { name: 'Open the Cart' }).click();
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
     await page.locator('.tab-btn[data-tab="map"]').click();
     const minimap = page.locator('#minimap-canvas');
     await expect(minimap).toBeVisible();
@@ -119,5 +123,30 @@ test.describe('game boot', () => {
       }
       return goldPixels;
     })).toBeGreaterThan(0);
+  });
+
+  test('minimap expands before waypoint placement is allowed', async ({ page }) => {
+    await page.goto('/');
+
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    await page.locator('.tab-btn[data-tab="map"]').click();
+    const minimap = page.locator('#minimap-canvas');
+    await expect(minimap).toBeVisible();
+
+    const minimapBox = await minimap.boundingBox();
+    expect(minimapBox).not.toBeNull();
+    if(!minimapBox) return;
+
+    await page.mouse.click(minimapBox.x + 80, minimapBox.y + 80);
+    await expect(page.locator('#citymap-overlay')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#minimap-clear')).not.toHaveClass(/show/);
+
+    const cityMap = page.locator('#citymap-canvas');
+    const cityBox = await cityMap.boundingBox();
+    expect(cityBox).not.toBeNull();
+    if(!cityBox) return;
+
+    await page.mouse.click(cityBox.x + cityBox.width * 0.3, cityBox.y + cityBox.height * 0.55);
+    await expect(page.locator('#minimap-clear')).toHaveClass(/show/);
   });
 });

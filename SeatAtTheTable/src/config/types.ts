@@ -48,6 +48,20 @@ export interface FamilyTier {
   desc: string;
 }
 
+// LEGAL: A retail brand (see config/brands). Vehicles and properties belong to a brand;
+// LEGAL: each brand gets a themed building on the map where its stock is bought in person.
+// LEGAL: `online` items are also orderable from the phone (AutoMart / Realty); the rest
+// LEGAL: are dealer-only. `caveat` is the theme's downside, wired into gameplay later.
+export interface Brand {
+  id: string;
+  name: string;
+  sells: 'vehicle' | 'property';
+  category: string;
+  district: string;
+  blurb: string;
+  caveat?: string;
+}
+
 export interface Car {
   id: string;
   name: string;
@@ -59,6 +73,8 @@ export interface Car {
   color: string;
   len: number;
   wid: number;
+  brand?: string;
+  online?: boolean;
 }
 
 export interface Property {
@@ -67,6 +83,8 @@ export interface Property {
   icon: string;
   cost: number;
   incomePerSec: number;
+  brand?: string;
+  online?: boolean;
 }
 
 export interface LocalBusiness {

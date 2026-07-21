@@ -21,13 +21,12 @@ export interface MinimapRenderOptions {
   mapObjects: MapObject[];
   districtOffsets: Record<string, number>;
   fillerFor: (districtId: string) => FillerItem[];
-  roadNetwork: { vertical: Array<{ x: number }>; horizontal: Array<{ y: number }>; diagonal: Array<{ x1: number; y1: number; x2: number; y2: number }> };
+  roadNetwork: { vertical: Array<{ x: number; w?: number }>; horizontal: Array<{ y: number; w?: number }>; diagonal: Array<{ x1: number; y1: number; x2: number; y2: number; w?: number }> };
   worldWidth: number;
   worldHeight: number;
+  landmass: Point[];
   landmarks: Array<{ x: number; y: number; name?: string }>;
   waypoint: Point | null;
-  // LEGAL: The full City Map passes every district's waypoint so all dropped markers show.
-  waypoints?: Array<Point | null>;
   // LEGAL: Optional overrides. Defaults render the small 150px follow-cam minimap; the
   // LEGAL: full City Map passes viewW/viewH/scale/center to frame the whole world at once.
   size?: number;
@@ -52,21 +51,51 @@ function objectColor(object: MapObject): string {
   return object.minimapColor;
 }
 
-// LEGAL: Consistent GTA-style symbol per category (see the on-screen legend): square =
-// LEGAL: your legal business, triangle = illegal venture, house = local shop/home,
-// LEGAL: ringed dot = city service, diamond = corner/amenity, dot = person.
+// LEGAL: Consistent GTA-style symbol per category, mirrored by the expanded map legend.
 export function drawGlyph(ctx: CanvasRenderingContext2D, p: Point, icon: MinimapIcon | undefined, color: string, s: number): void {
-  ctx.fillStyle = color; ctx.strokeStyle = color;
+  const stroke = Math.max(1.2, s*0.24);
+  ctx.fillStyle = color; ctx.strokeStyle = color; ctx.lineWidth = stroke; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   switch(icon){
     case 'legal':
-      ctx.fillRect(p.x - s, p.y - s, s*2, s*2);
+      ctx.strokeRect(p.x - s*1.05, p.y - s*0.4, s*2.1, s*1.25);
+      ctx.beginPath(); ctx.moveTo(p.x - s*1.15, p.y - s*0.4); ctx.lineTo(p.x - s*0.85, p.y - s*1); ctx.lineTo(p.x + s*0.85, p.y - s); ctx.lineTo(p.x + s*1.15, p.y - s*0.4); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(p.x - s*0.55, p.y + s*0.15); ctx.lineTo(p.x + s*0.55, p.y + s*0.15); ctx.stroke();
       break;
     case 'illegal':
-      ctx.beginPath(); ctx.moveTo(p.x, p.y - s*1.25); ctx.lineTo(p.x + s*1.15, p.y + s); ctx.lineTo(p.x - s*1.15, p.y + s); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.arc(p.x, p.y, s*0.98, 0, Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(p.x - s*0.55, p.y - s*0.15); ctx.lineTo(p.x, p.y - s*0.6); ctx.lineTo(p.x + s*0.55, p.y - s*0.15); ctx.lineTo(p.x + s*0.35, p.y + s*0.55); ctx.lineTo(p.x - s*0.35, p.y + s*0.55); ctx.closePath(); ctx.stroke();
       break;
-    case 'home':
-      ctx.fillRect(p.x - s*0.85, p.y - s*0.15, s*1.7, s*1.15);
-      ctx.beginPath(); ctx.moveTo(p.x - s*1.05, p.y - s*0.15); ctx.lineTo(p.x, p.y - s*1.3); ctx.lineTo(p.x + s*1.05, p.y - s*0.15); ctx.closePath(); ctx.fill();
+    case 'bank':
+      ctx.beginPath(); ctx.moveTo(p.x - s*1.25, p.y - s*0.55); ctx.lineTo(p.x, p.y - s*1.25); ctx.lineTo(p.x + s*1.25, p.y - s*0.55); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(p.x - s*1.05, p.y - s*0.38); ctx.lineTo(p.x + s*1.05, p.y - s*0.38); ctx.moveTo(p.x - s*1.05, p.y + s*0.78); ctx.lineTo(p.x + s*1.05, p.y + s*0.78); ctx.stroke();
+      [-0.62, 0, 0.62].forEach(function(offset){ ctx.beginPath(); ctx.moveTo(p.x + offset*s, p.y - s*0.22); ctx.lineTo(p.x + offset*s, p.y + s*0.58); ctx.stroke(); });
+      break;
+    case 'garage':
+      ctx.strokeRect(p.x - s*1.15, p.y - s*0.15, s*2.3, s*0.8);
+      ctx.beginPath(); ctx.moveTo(p.x - s*0.65, p.y - s*0.15); ctx.lineTo(p.x - s*0.35, p.y - s*0.65); ctx.lineTo(p.x + s*0.5, p.y - s*0.65); ctx.lineTo(p.x + s*0.85, p.y - s*0.15); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(p.x - s*0.35, p.y + s*0.65); ctx.lineTo(p.x - s*0.35, p.y + s*0.15); ctx.lineTo(p.x + s*0.35, p.y + s*0.15); ctx.lineTo(p.x + s*0.35, p.y + s*0.65); ctx.stroke();
+      ctx.beginPath(); ctx.arc(p.x - s*0.62, p.y + s*0.75, s*0.22, 0, Math.PI*2); ctx.arc(p.x + s*0.62, p.y + s*0.75, s*0.22, 0, Math.PI*2); ctx.stroke();
+      break;
+    case 'realty':
+      ctx.strokeRect(p.x - s*0.85, p.y - s*0.05, s*1.7, s*1.05);
+      ctx.beginPath(); ctx.moveTo(p.x - s*1.05, p.y - s*0.05); ctx.lineTo(p.x, p.y - s*1.1); ctx.lineTo(p.x + s*1.05, p.y - s*0.05); ctx.stroke();
+      ctx.strokeRect(p.x - s*0.18, p.y + s*0.35, s*0.36, s*0.65);
+      break;
+    case 'cityhall':
+      ctx.beginPath(); ctx.moveTo(p.x - s*1.05, p.y - s*0.65); ctx.lineTo(p.x, p.y - s*1.15); ctx.lineTo(p.x + s*1.05, p.y - s*0.65); ctx.moveTo(p.x - s*0.95, p.y - s*0.48); ctx.lineTo(p.x + s*0.95, p.y - s*0.48); ctx.moveTo(p.x - s*0.95, p.y + s*0.82); ctx.lineTo(p.x + s*0.95, p.y + s*0.82); ctx.stroke();
+      [-0.55, 0, 0.55].forEach(function(offset){ ctx.beginPath(); ctx.moveTo(p.x + offset*s, p.y - s*0.3); ctx.lineTo(p.x + offset*s, p.y + s*0.62); ctx.stroke(); });
+      break;
+    case 'heist':
+      ctx.strokeRect(p.x - s*0.7, p.y - s*0.05, s*1.4, s*0.95);
+      ctx.beginPath(); ctx.arc(p.x, p.y - s*0.05, s*0.48, Math.PI, Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(p.x, p.y + s*0.38, s*0.12, 0, Math.PI*2); ctx.stroke();
+      break;
+    case 'shop':
+      ctx.beginPath(); ctx.moveTo(p.x - s*0.35, p.y - s*0.92); ctx.lineTo(p.x - s*0.75, p.y - s*0.65); ctx.lineTo(p.x - s*1.05, p.y - s*0.08); ctx.lineTo(p.x - s*0.58, p.y + s*0.18); ctx.lineTo(p.x - s*0.5, p.y + s); ctx.lineTo(p.x + s*0.5, p.y + s); ctx.lineTo(p.x + s*0.58, p.y + s*0.18); ctx.lineTo(p.x + s*1.05, p.y - s*0.08); ctx.lineTo(p.x + s*0.75, p.y - s*0.65); ctx.lineTo(p.x + s*0.35, p.y - s*0.92); ctx.quadraticCurveTo(p.x, p.y - s*0.6, p.x - s*0.35, p.y - s*0.92); ctx.stroke();
+      break;
+    case 'bar':
+      ctx.beginPath(); ctx.moveTo(p.x - s*0.9, p.y - s*0.9); ctx.lineTo(p.x + s*0.9, p.y - s*0.9); ctx.lineTo(p.x + s*0.38, p.y - s*0.08); ctx.quadraticCurveTo(p.x, p.y + s*0.18, p.x - s*0.38, p.y - s*0.08); ctx.closePath(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(p.x, p.y + s*0.18); ctx.lineTo(p.x, p.y + s*0.86); ctx.moveTo(p.x - s*0.5, p.y + s*0.86); ctx.lineTo(p.x + s*0.5, p.y + s*0.86); ctx.stroke();
       break;
     case 'service':
       ctx.beginPath(); ctx.arc(p.x, p.y, s*0.75, 0, Math.PI*2); ctx.fill();
@@ -97,7 +126,7 @@ export function drawMinimap(options: MinimapRenderOptions): void {
   const scale = options.scale ?? MINIMAP_SCALE;
   const glyphScale = options.glyphScale ?? 1;
 
-  mctx.fillStyle = '#12141c'; mctx.fillRect(0,0,viewW,viewH);
+  mctx.fillStyle = '#17364b'; mctx.fillRect(0,0,viewW,viewH);
   if(options.indoors){
     mctx.fillStyle='#6c7080'; mctx.font='10px IBM Plex Mono, monospace'; mctx.textAlign='center'; mctx.textBaseline='middle';
     mctx.fillText('Indoors', halfX, halfY);
@@ -111,6 +140,40 @@ export function drawMinimap(options: MinimapRenderOptions): void {
   const centerX = options.center ? options.center.x : options.player.x + options.pan.x;
   const centerY = options.center ? options.center.y : options.player.y + options.pan.y;
   const proj = function(wx: number, wy: number){ return { x: halfX + (wx-centerX)*scale, y: halfY + (wy-centerY)*scale }; };
+
+  mctx.save();
+  if(options.landmass.length){
+    mctx.beginPath();
+    options.landmass.forEach(function(point, index){
+      const p = proj(point.x, point.y);
+      if(index === 0) mctx.moveTo(p.x, p.y);
+      else mctx.lineTo(p.x, p.y);
+    });
+    mctx.closePath();
+    mctx.fillStyle = '#303438';
+    mctx.fill();
+    mctx.strokeStyle = 'rgba(217,210,184,0.48)';
+    mctx.lineWidth = Math.max(1, 1.5*glyphScale);
+    mctx.stroke();
+    mctx.clip();
+  }
+
+  [[1500,500],[3500,500]].forEach(function(pair){
+    const x0 = pair[0], x1 = pair[0] + pair[1];
+    const a = proj(x0, 0);
+    const b = proj(x1, options.worldHeight);
+    mctx.fillStyle = '#1c3a52';
+    mctx.fillRect(a.x, a.y, b.x - a.x, b.y - a.y);
+  });
+
+  const riverA = proj(0, 20);
+  const riverB = proj(options.worldWidth, 20);
+  mctx.strokeStyle = '#1c3a52';
+  mctx.lineWidth = Math.max(8, 46*scale);
+  mctx.beginPath();
+  mctx.moveTo(riverA.x, riverA.y);
+  mctx.lineTo(riverB.x, riverB.y);
+  mctx.stroke();
 
   ['devlin','westside','hub'].forEach(function(distId){
     const off = options.districtOffsets[distId];
@@ -127,8 +190,11 @@ export function drawMinimap(options: MinimapRenderOptions): void {
         if(!isOnMap(p, viewW, viewH)) return;
         const w=(f.x1-f.x0)*scale;
         const d=(f.y1-f.y0)*scale;
-        mctx.fillStyle='rgba(58,108,68,0.55)';
+        mctx.fillStyle='rgba(58,128,76,0.72)';
         mctx.fillRect(p.x-w/2,p.y-d/2,w,d);
+        mctx.strokeStyle='rgba(115,180,120,0.5)';
+        mctx.lineWidth=Math.max(1, 1*glyphScale);
+        mctx.strokeRect(p.x-w/2,p.y-d/2,w,d);
       }
     });
   });
@@ -143,23 +209,82 @@ export function drawMinimap(options: MinimapRenderOptions): void {
   mctx.lineTo(beachA.x, beachA.y);
   mctx.fill();
 
-  mctx.strokeStyle='rgba(120,120,135,0.4)';
-  mctx.lineWidth = Math.max(2, 3*glyphScale);
+  const drawRoad = function(points: Point[], width: number){
+    mctx.strokeStyle='rgba(22,24,31,0.95)';
+    mctx.lineWidth=Math.max(2, width*scale + 2*glyphScale);
+    mctx.beginPath();
+    points.forEach(function(point, index){ const p=proj(point.x,point.y); if(index===0) mctx.moveTo(p.x,p.y); else mctx.lineTo(p.x,p.y); });
+    mctx.stroke();
+    mctx.strokeStyle='rgba(84,90,104,0.94)';
+    mctx.lineWidth=Math.max(1, width*scale);
+    mctx.beginPath();
+    points.forEach(function(point, index){ const p=proj(point.x,point.y); if(index===0) mctx.moveTo(p.x,p.y); else mctx.lineTo(p.x,p.y); });
+    mctx.stroke();
+  };
   options.roadNetwork.vertical.forEach(function(r){
-    const p1=proj(r.x,0);
-    const p2=proj(r.x,options.worldHeight);
-    mctx.beginPath(); mctx.moveTo(p1.x,p1.y); mctx.lineTo(p2.x,p2.y); mctx.stroke();
+    drawRoad([{x:r.x,y:0},{x:r.x,y:options.worldHeight}], r.w ?? 62);
   });
   options.roadNetwork.horizontal.forEach(function(r){
-    const p1=proj(0,r.y);
-    const p2=proj(options.worldWidth,r.y);
-    mctx.beginPath(); mctx.moveTo(p1.x,p1.y); mctx.lineTo(p2.x,p2.y); mctx.stroke();
+    drawRoad([{x:0,y:r.y},{x:options.worldWidth,y:r.y}], r.w ?? 74);
   });
   options.roadNetwork.diagonal.forEach(function(r){
-    const p1=proj(r.x1,r.y1);
-    const p2=proj(r.x2,r.y2);
-    mctx.beginPath(); mctx.moveTo(p1.x,p1.y); mctx.lineTo(p2.x,p2.y); mctx.stroke();
+    drawRoad([{x:r.x1,y:r.y1},{x:r.x2,y:r.y2}], r.w ?? 54);
   });
+
+  [[1500,500],[3500,500]].forEach(function(pair){
+    const cx=pair[0], cw=pair[1];
+    [300,600,900].forEach(function(ry){
+      const a=proj(cx, ry);
+      const b=proj(cx+cw, ry);
+      mctx.strokeStyle='rgba(154,160,174,0.96)';
+      mctx.lineWidth=Math.max(3, 78*scale);
+      mctx.beginPath(); mctx.moveTo(a.x,a.y); mctx.lineTo(b.x,b.y); mctx.stroke();
+      mctx.strokeStyle='rgba(60,64,76,0.95)';
+      mctx.lineWidth=Math.max(2, 58*scale);
+      mctx.beginPath(); mctx.moveTo(a.x,a.y); mctx.lineTo(b.x,b.y); mctx.stroke();
+    });
+  });
+
+  const railX = 3470;
+  const railA = proj(railX, 0);
+  const railB = proj(railX, options.worldHeight);
+  mctx.strokeStyle='rgba(18,18,22,0.98)';
+  mctx.lineWidth=Math.max(2, 34*scale);
+  mctx.beginPath(); mctx.moveTo(railA.x,railA.y); mctx.lineTo(railB.x,railB.y); mctx.stroke();
+  mctx.strokeStyle='rgba(170,164,150,0.85)';
+  mctx.lineWidth=Math.max(1, 4*glyphScale);
+  [-7,7].forEach(function(offset){
+    const a=proj(railX+offset, 0);
+    const b=proj(railX+offset, options.worldHeight);
+    mctx.beginPath(); mctx.moveTo(a.x,a.y); mctx.lineTo(b.x,b.y); mctx.stroke();
+  });
+  mctx.strokeStyle='rgba(86,78,68,0.75)';
+  mctx.lineWidth=Math.max(1, 2*glyphScale);
+  for(let y=20;y<options.worldHeight;y+=60){
+    const a=proj(railX-18,y);
+    const b=proj(railX+18,y);
+    mctx.beginPath(); mctx.moveTo(a.x,a.y); mctx.lineTo(b.x,b.y); mctx.stroke();
+  }
+
+  const trainT = (Date.now() % 38000) / 38000;
+  if(trainT > 0.12 && trainT < 0.92){
+    const y = (trainT - 0.12) / 0.8 * options.worldHeight;
+    const p = proj(railX, y);
+    mctx.fillStyle='#b43a35';
+    mctx.fillRect(p.x - Math.max(3,6*glyphScale), p.y - Math.max(8,15*glyphScale), Math.max(6,12*glyphScale), Math.max(16,30*glyphScale));
+    mctx.strokeStyle='#f0d38a';
+    mctx.strokeRect(p.x - Math.max(3,6*glyphScale), p.y - Math.max(8,15*glyphScale), Math.max(6,12*glyphScale), Math.max(16,30*glyphScale));
+  }
+
+  mctx.restore();
+
+  mctx.save();
+  if(options.landmass.length){
+    mctx.beginPath();
+    options.landmass.forEach(function(point, index){ const p=proj(point.x, point.y); if(index===0) mctx.moveTo(p.x,p.y); else mctx.lineTo(p.x,p.y); });
+    mctx.closePath();
+    mctx.clip();
+  }
 
   if(options.districtNames){
     mctx.fillStyle='rgba(224,200,96,0.5)';
@@ -184,6 +309,7 @@ export function drawMinimap(options: MinimapRenderOptions): void {
     mctx.save(); mctx.translate(p.x,p.y); mctx.rotate(Math.PI/4);
     mctx.fillStyle='#e0c860'; const ls = 3*glyphScale; mctx.fillRect(-ls,-ls,ls*2,ls*2); mctx.restore();
   });
+  mctx.restore();
 
   const drawWaypoint = function(wp: Point){
     const p = proj(wp.x, wp.y);
@@ -193,8 +319,7 @@ export function drawMinimap(options: MinimapRenderOptions): void {
     mctx.beginPath(); mctx.moveTo(p.x-r,p.y); mctx.lineTo(p.x+r,p.y); mctx.moveTo(p.x,p.y-r); mctx.lineTo(p.x,p.y+r); mctx.stroke();
     mctx.beginPath(); mctx.arc(p.x,p.y,r+1,0,Math.PI*2); mctx.stroke();
   };
-  const waypointList = options.waypoints ?? [options.waypoint];
-  waypointList.forEach(function(wp){ if(wp) drawWaypoint(wp); });
+  if(options.waypoint) drawWaypoint(options.waypoint);
 
   const pp = proj(options.player.x,options.player.y);
   mctx.save(); mctx.translate(pp.x,pp.y); mctx.rotate(options.player.facing);

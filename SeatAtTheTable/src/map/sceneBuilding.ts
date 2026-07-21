@@ -1,4 +1,5 @@
 import type { DiagonalRoad, HorizontalRoad, Landmark, VerticalRoad } from './world';
+import { WINDHAVEN_LANDMASS } from './world';
 import type { FillerItem, MapZoneType } from '../config/types';
 import type * as ThreeNamespace from 'three';
 
@@ -50,12 +51,26 @@ export interface LandmarkSceneOptions extends BaseSceneOptions {
 
 export function buildBaseGround(options: BaseSceneOptions): void {
   const { THREE, worldGroup, worldWidth, worldHeight } = options;
-  const groundBase = new THREE.Mesh(new THREE.PlaneGeometry(worldWidth,worldHeight), new THREE.MeshStandardMaterial({color:'#303438', roughness:1}));
-  groundBase.rotation.x=-Math.PI/2; groundBase.position.set(worldWidth/2,0,worldHeight/2); groundBase.receiveShadow=true; worldGroup.add(groundBase);
-  [{x0:0,x1:1500,color:'#39453d'},{x0:2000,x1:3500,color:'#443838'},{x0:4000,x1:5500,color:'#403c2c'}].forEach(function(dg){
-    const w=dg.x1-dg.x0;
-    const tint = new THREE.Mesh(new THREE.PlaneGeometry(w,worldHeight), new THREE.MeshStandardMaterial({color:dg.color, roughness:1}));
-    tint.rotation.x=-Math.PI/2; tint.position.set(dg.x0+w/2,0.01,worldHeight/2); tint.receiveShadow=true; worldGroup.add(tint);
+  const waterBase = new THREE.Mesh(new THREE.PlaneGeometry(worldWidth + 260, worldHeight + 260), new THREE.MeshStandardMaterial({color:'#17364b', roughness:0.35, metalness:0.2}));
+  waterBase.rotation.x=-Math.PI/2; waterBase.position.set(worldWidth/2, -0.03, worldHeight/2); waterBase.receiveShadow=true; worldGroup.add(waterBase);
+  const landShape = new THREE.Shape();
+  WINDHAVEN_LANDMASS.forEach(function(point, index){
+    if(index === 0) landShape.moveTo(point.x, point.y);
+    else landShape.lineTo(point.x, point.y);
+  });
+  landShape.closePath();
+  const land = new THREE.Mesh(new THREE.ShapeGeometry(landShape), new THREE.MeshStandardMaterial({color:'#303438', roughness:1}));
+  land.rotation.x=-Math.PI/2; land.position.y=0; land.receiveShadow=true; worldGroup.add(land);
+  [
+    { points:[{x:65,y:160},{x:320,y:100},{x:820,y:86},{x:1420,y:78},{x:1510,y:126},{x:1510,y:1090},{x:1020,y:1128},{x:480,y:1106},{x:84,y:1026}] },
+    { points:[{x:1990,y:118},{x:2360,y:90},{x:2990,y:82},{x:3490,y:124},{x:3490,y:1098},{x:3000,y:1128},{x:2420,y:1108},{x:1990,y:1144}] },
+    { points:[{x:3990,y:94},{x:4500,y:84},{x:5030,y:96},{x:5328,y:150},{x:5430,y:300},{x:5380,y:1080},{x:4960,y:1128},{x:4410,y:1112},{x:3990,y:1144}] },
+  ].forEach(function(dg){
+    const shape = new THREE.Shape();
+    dg.points.forEach(function(point, index){ if(index === 0) shape.moveTo(point.x, point.y); else shape.lineTo(point.x, point.y); });
+    shape.closePath();
+    const tint = new THREE.Mesh(new THREE.ShapeGeometry(shape), new THREE.MeshStandardMaterial({color:'#303438', roughness:1}));
+    tint.rotation.x=-Math.PI/2; tint.position.y=0.01; tint.receiveShadow=true; worldGroup.add(tint);
   });
 }
 
