@@ -1,5 +1,6 @@
 import type { DiagonalRoad, HorizontalRoad, Landmark, VerticalRoad } from './world';
 import { windhavenMapModel } from './mapModel';
+import { mapTerrainTheme, terrainForDistrict } from './renderTheme';
 import type { FillerItem, MapZoneType } from '../config/types';
 import type * as ThreeNamespace from 'three';
 
@@ -79,11 +80,24 @@ function addGroundLine(options: BaseSceneOptions, points: Array<{ x: number; y: 
 
 export function buildBaseGround(options: BaseSceneOptions): void {
   const { THREE, worldGroup, worldWidth, worldHeight } = options;
-  const waterBase = new THREE.Mesh(new THREE.PlaneGeometry(worldWidth + 920, worldHeight + 620), new THREE.MeshStandardMaterial({color:'#17364b', roughness:0.42, metalness:0.18}));
+  const waterBase = new THREE.Mesh(new THREE.PlaneGeometry(worldWidth + 920, worldHeight + 620), new THREE.MeshStandardMaterial({color:mapTerrainTheme.openWater, roughness:0.24, metalness:0.26}));
   waterBase.rotation.x=-Math.PI/2; waterBase.position.set(worldWidth/2, -0.04, worldHeight/2); waterBase.receiveShadow=true; worldGroup.add(waterBase);
-  addGroundShape(options, windhavenMapModel.landmass, '#303438', 0, 1);
-  addGroundLine(options, windhavenMapModel.landmass, '#c7d7d0', 0.34, 0.13);
-  addGroundLine(options, windhavenMapModel.landmass.filter(function(_point, index){ return index % 2 === 0; }), '#d9d2b8', 0.16, 0.14);
+  addGroundShape(options, windhavenMapModel.landmass, mapTerrainTheme.baseLand, 0, 1);
+  windhavenMapModel.districts.forEach(function(district){
+    const terrain = terrainForDistrict(district.id);
+    const material = new THREE.MeshStandardMaterial({
+      color: terrain.land,
+      roughness: 1,
+    });
+    const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPoints(THREE, district.landArea)), material);
+    mesh.rotation.x = -Math.PI/2;
+    mesh.position.y = 0.03;
+    mesh.receiveShadow = true;
+    worldGroup.add(mesh);
+    addGroundLine(options, district.landArea, mapTerrainTheme.districtStroke, 0.18, 0.16);
+  });
+  addGroundLine(options, windhavenMapModel.landmass, mapTerrainTheme.coastline, 0.46, 0.13);
+  addGroundLine(options, windhavenMapModel.landmass.filter(function(_point, index){ return index % 2 === 0; }), mapTerrainTheme.coastlineSecondary, 0.24, 0.14);
   [
     [{x:-220,y:118},{x:520,y:84},{x:1220,y:112},{x:2060,y:84},{x:2760,y:112},{x:3580,y:88},{x:4420,y:118},{x:5360,y:92}],
     [{x:-180,y:142},{x:680,y:116},{x:1540,y:136},{x:2380,y:112},{x:3320,y:142},{x:4210,y:118},{x:5480,y:148}],
@@ -94,7 +108,7 @@ export function buildBaseGround(options: BaseSceneOptions): void {
 
 export function buildCanalWater(options: BaseSceneOptions): void {
   const { THREE, worldGroup, worldHeight } = options;
-  const canalMat = new THREE.MeshStandardMaterial({color:'#1c3a52', roughness:0.2, metalness:0.4});
+  const canalMat = new THREE.MeshStandardMaterial({color:mapTerrainTheme.canalWater, roughness:0.18, metalness:0.46});
   windhavenMapModel.canals.forEach(function(channel){
     const canal = new THREE.Mesh(new THREE.PlaneGeometry(channel.width,worldHeight + 180), canalMat);
     canal.rotation.x=-Math.PI/2; canal.position.set(channel.x+channel.width/2,0.04,worldHeight/2); worldGroup.add(canal);
@@ -212,10 +226,6 @@ export function buildFillerCity(options: FillerSceneOptions): void {
           awning.position.set(0,-f.h/2+16,f.d/2+3); mesh.add(awning);
         }
         mesh.position.set(f.x+off,f.h/2,f.y); mesh.rotation.y = f.rot; worldGroup.add(mesh);
-      } else if(f.kind==='edge'){
-        const color = distId==='hub'?(f.hue<0.5?'#22262f':'#2c2a3a'):(distId==='westside'?(f.hue<0.5?'#2c2a24':'#332c26'):(f.hue<0.5?'#2a2e36':'#332e28'));
-        const mesh = helpers.box(f.w,f.h,f.d,color);
-        mesh.position.set(f.x+off,f.h/2,f.y); mesh.rotation.y = f.rot; worldGroup.add(mesh);
       } else if(f.kind==='park'){
         const cx=(f.x0+f.x1)/2+off, cy=(f.y0+f.y1)/2, w=f.x1-f.x0, d=f.y1-f.y0;
         const grass = new THREE.Mesh(new THREE.PlaneGeometry(w,d), new THREE.MeshStandardMaterial({color:'#2c4a30', roughness:1}));
@@ -297,7 +307,7 @@ export function buildRailAndRiver(options: BaseSceneOptions): void {
       tie.castShadow=true; tie.receiveShadow=true; tie.position.set(start.x,1,ty); worldGroup.add(tie);
     }
   });
-  addGroundShape(options, windhavenMapModel.northRiver, '#1c3a52', 0.06, 0.28);
+  addGroundShape(options, windhavenMapModel.northRiver, mapTerrainTheme.canalWater, 0.06, 0.24);
   addGroundShape(options, windhavenMapModel.lakefrontBeach, '#b9a777', 0.09, 1);
   addGroundLine(options, windhavenMapModel.northRiver.slice(2), '#e4efe8', 0.18, 0.14);
   addGroundLine(options, windhavenMapModel.lakefrontBeach, '#d9d2b8', 0.22, 0.15);

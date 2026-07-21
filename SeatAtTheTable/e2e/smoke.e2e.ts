@@ -51,6 +51,38 @@ test.describe('game boot', () => {
     expect(browserIssues).toEqual([]);
   });
 
+  test('map fullscreen expands the scene container to the viewport', async ({ page }) => {
+    await page.goto('/');
+
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    await page.locator('.tab-btn[data-tab="map"]').click();
+    await expect(page.locator('#scene3d-container')).toBeVisible();
+
+    const beforeBox = await page.locator('#scene3d-container').evaluate((element: HTMLElement) => {
+      const rect = element.getBoundingClientRect();
+      return { width: rect.width, height: rect.height };
+    });
+    await page.locator('#fullscreen-btn').click();
+
+    const box = await page.locator('#scene3d-container').evaluate((element: HTMLElement) => {
+      const rect = element.getBoundingClientRect();
+      const style = window.getComputedStyle(element);
+      return { width: rect.width, height: rect.height, top: rect.top, position: style.position, viewportWidth: document.documentElement.clientWidth };
+    });
+
+    expect(Math.round(box.width)).toBe(Math.round(box.viewportWidth));
+    expect(Math.round(box.top)).toBe(0);
+    expect(box.width).toBeGreaterThan(beforeBox.width * 1.2);
+    expect(box.height).toBeGreaterThanOrEqual(Math.min(beforeBox.height, 380));
+    expect(box.position).toBe('fixed');
+    await expect(page.locator('#scene3d-container')).toHaveClass(/fullscreen/);
+
+    await page.locator('#minimap-expand').click();
+    await expect(page.locator('#citymap-overlay')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#citymap-canvas')).toBeVisible();
+
+  });
+
   test('minimap centers the player marker', async ({ page }) => {
     await page.goto('/');
 
@@ -146,7 +178,7 @@ test.describe('game boot', () => {
     expect(cityBox).not.toBeNull();
     if(!cityBox) return;
 
-    await page.mouse.click(cityBox.x + cityBox.width * 0.3, cityBox.y + cityBox.height * 0.55);
+    await page.mouse.click(cityBox.x + cityBox.width * 0.13, cityBox.y + cityBox.height * 0.55);
     await expect(page.locator('#minimap-clear')).toHaveClass(/show/);
   });
 });

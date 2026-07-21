@@ -1,6 +1,6 @@
 import type { Point } from '../config/types';
 import { CANAL_CHANNELS, DISTRICT_OFFSETS, DISTRICT_W, LAKEFRONT_BEACH, NORTH_RIVER, WINDHAVEN_LANDMASS, WORLD_H, WORLD_W, districtParkSlots, landmarks, roadNetwork } from './world';
-import { boundsForPoints, isPointInWater, type Bounds } from './geometry';
+import { boundsForPoints, isPointInWater, pointInPolygon, type Bounds } from './geometry';
 import { buildableBands, distancePointToSegment } from './layout';
 
 export interface MapDistrictRecord {
@@ -8,6 +8,7 @@ export interface MapDistrictRecord {
   name: string;
   labelPoint: Point;
   centerX: number;
+  landArea: Point[];
 }
 
 export type RoadClass = 'arterial' | 'local' | 'diagonal';
@@ -124,6 +125,50 @@ const railLines: RailLineRecord[] = [
   },
 ];
 
+const districtLandAreas: Record<MapDistrictRecord['id'], Point[]> = {
+  devlin: [
+    { x: 30, y: 118 },
+    { x: 270, y: 92 },
+    { x: 620, y: 110 },
+    { x: 970, y: 88 },
+    { x: 1320, y: 116 },
+    { x: 1470, y: 172 },
+    { x: 1460, y: 1040 },
+    { x: 1270, y: 1126 },
+    { x: 850, y: 1108 },
+    { x: 430, y: 1132 },
+    { x: 70, y: 1068 },
+    { x: 46, y: 760 },
+    { x: 78, y: 430 },
+  ],
+  westside: [
+    { x: 2035, y: 112 },
+    { x: 2380, y: 96 },
+    { x: 2740, y: 124 },
+    { x: 3120, y: 98 },
+    { x: 3460, y: 138 },
+    { x: 3470, y: 1028 },
+    { x: 3200, y: 1126 },
+    { x: 2800, y: 1106 },
+    { x: 2380, y: 1134 },
+    { x: 2040, y: 1058 },
+  ],
+  hub: [
+    { x: 4035, y: 124 },
+    { x: 4320, y: 100 },
+    { x: 4680, y: 132 },
+    { x: 5060, y: 118 },
+    { x: 5480, y: 162 },
+    { x: 5528, y: 412 },
+    { x: 5470, y: 790 },
+    { x: 5534, y: 1036 },
+    { x: 5300, y: 1138 },
+    { x: 4860, y: 1106 },
+    { x: 4440, y: 1132 },
+    { x: 4050, y: 1066 },
+  ],
+};
+
 function parkRecords(): MapParkRecord[] {
   const localRoadXs = [270, 700, 1130];
   const xBands = buildableBands(localRoadXs, DISTRICT_W, 56);
@@ -160,9 +205,9 @@ export const windhavenMapModel: WindhavenMapModel = {
   landmass: WINDHAVEN_LANDMASS,
   landBounds: boundsForPoints(WINDHAVEN_LANDMASS),
   districts: [
-    { id: 'devlin', name: 'Devlin', labelPoint: { x: DISTRICT_W/2, y: 6 }, centerX: DISTRICT_OFFSETS.devlin + DISTRICT_W/2 },
-    { id: 'westside', name: 'West Side', labelPoint: { x: DISTRICT_OFFSETS.westside + DISTRICT_W/2, y: 6 }, centerX: DISTRICT_OFFSETS.westside + DISTRICT_W/2 },
-    { id: 'hub', name: 'The Hub', labelPoint: { x: DISTRICT_OFFSETS.hub + DISTRICT_W/2, y: 6 }, centerX: DISTRICT_OFFSETS.hub + DISTRICT_W/2 },
+    { id: 'devlin', name: 'Devlin', labelPoint: { x: DISTRICT_W/2, y: 116 }, centerX: DISTRICT_OFFSETS.devlin + DISTRICT_W/2, landArea: districtLandAreas.devlin },
+    { id: 'westside', name: 'West Side', labelPoint: { x: DISTRICT_OFFSETS.westside + DISTRICT_W/2, y: 116 }, centerX: DISTRICT_OFFSETS.westside + DISTRICT_W/2, landArea: districtLandAreas.westside },
+    { id: 'hub', name: 'The Hub', labelPoint: { x: DISTRICT_OFFSETS.hub + DISTRICT_W/2, y: 116 }, centerX: DISTRICT_OFFSETS.hub + DISTRICT_W/2, landArea: districtLandAreas.hub },
   ],
   canals: CANAL_CHANNELS,
   northRiver: NORTH_RIVER,
@@ -175,10 +220,9 @@ export const windhavenMapModel: WindhavenMapModel = {
   landmarks,
 };
 
-export function districtIdAtPoint(point: Point, model: WindhavenMapModel = windhavenMapModel): MapDistrictRecord['id'] {
-  return model.districts.reduce(function(best, district){
-    return Math.abs(point.x - district.centerX) < Math.abs(point.x - best.centerX) ? district : best;
-  }, model.districts[0]).id;
+export function districtIdAtPoint(point: Point, model: WindhavenMapModel = windhavenMapModel): MapDistrictRecord['id'] | null {
+  if(isPointInWater(point, 0)) return null;
+  return model.districts.find(area => pointInPolygon(point, area.landArea))?.id ?? null;
 }
 
 export function districtIdAtPlayablePoint(point: Point, radius = 0, model: WindhavenMapModel = windhavenMapModel): MapDistrictRecord['id'] | null {

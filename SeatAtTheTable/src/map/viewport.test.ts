@@ -14,6 +14,8 @@ import { gangRecruits } from '../config/gang';
 import { mapAmenities } from './amenities';
 import { createMapBuildings, mapNpcs } from './markers';
 import { buildMapObjects } from './objectFactory';
+import { mapTerrainTheme, terrainForDistrict } from './renderTheme';
+import { minimapStaticLayerCacheKey, type MinimapRenderOptions } from './minimap';
 
 describe('map viewport and geometry model', function () {
   it('exposes landmass bounds through the Windhaven map model', function () {
@@ -54,9 +56,12 @@ describe('map viewport and geometry model', function () {
     expect(districtIdAtPoint({ x: 700, y: 600 })).toBe('devlin');
     expect(districtIdAtPoint({ x: 2700, y: 600 })).toBe('westside');
     expect(districtIdAtPoint({ x: 4700, y: 600 })).toBe('hub');
+    expect(districtIdAtPoint({ x: 700, y: 30 })).toBeNull();
+    expect(districtIdAtPoint({ x: 1700, y: 600 })).toBeNull();
     expect(districtIdAtPlayablePoint({ x: 700, y: 30 }, 8)).toBeNull();
-    expect(districtIdAtPlayablePoint({ x: 1700, y: 600 }, 24)).toBe('devlin');
+    expect(districtIdAtPlayablePoint({ x: 1700, y: 600 }, 24)).toBeNull();
     expect(windhavenMapModel.districts.map(district => district.name)).toEqual(['Devlin', 'West Side', 'The Hub']);
+    expect(windhavenMapModel.districts.every(district => district.landArea.length > 4)).toBe(true);
   });
 
   it('promotes named parks into shared map-model records', function () {
@@ -69,6 +74,39 @@ describe('map viewport and geometry model', function () {
     expect(firstPark).toMatchObject({ district: 'devlin', name: 'INDIAN BOUNDARY PARK' });
     expect(firstPark.center.x).toBeGreaterThan(firstPark.x0);
     expect(firstPark.center.x).toBeLessThan(firstPark.x1);
+  });
+
+  it('keeps terrain rendering theme complete for every district', function () {
+    expect(mapTerrainTheme.openWater).not.toBe(mapTerrainTheme.baseLand);
+    expect(windhavenMapModel.districts.map(district => terrainForDistrict(district.id).id)).toEqual(['devlin', 'westside', 'hub']);
+  });
+
+  it('keys cached minimap static layers by viewport instead of dynamic player overlays', function () {
+    const options = {
+      ctx: {} as CanvasRenderingContext2D,
+      indoors: false,
+      dragging: false,
+      pan: { x: 0, y: 0 },
+      player: { x: 700, y: 600, vx: 0, vy: 0, facing: 0 },
+      mapObjects: [],
+      districtOffsets: { devlin: 0, westside: 2000, hub: 4000 },
+      fillerFor: function(){ return []; },
+      worldWidth: 5500,
+      worldHeight: 1200,
+      landmass: windhavenMapModel.landmass,
+      landmarks: windhavenMapModel.landmarks,
+      waypoint: null,
+      viewW: 900,
+      viewH: 520,
+      scale: 0.15,
+      center: { x: 2700, y: 600 },
+      glyphScale: 1.9,
+    } satisfies MinimapRenderOptions;
+
+    const movedPlayerOptions = { ...options, player: { x: 900, y: 760, vx: 50, vy: 0, facing: 1 } };
+
+    expect(minimapStaticLayerCacheKey(movedPlayerOptions)).toBe(minimapStaticLayerCacheKey(options));
+    expect(minimapStaticLayerCacheKey({ ...options, center: { x: 2800, y: 600 } })).not.toBe(minimapStaticLayerCacheKey(options));
   });
 
   it('derives typed road paths, bridges, and rail lines from the shared map model', function () {

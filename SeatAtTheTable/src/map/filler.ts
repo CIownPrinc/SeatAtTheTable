@@ -69,13 +69,6 @@ export function createFillerLayoutProvider(mapObjects: MapObject[]): FillerLayou
       filler.push({kind:'building', zone, x, y, w, d, h, hue, rot, style});
       placed.push(solid);
     };
-    const pushEdge = function(x: number, y: number, w: number, d: number, h: number, hue: number, rot: number): void {
-      const ext = rotatedHalfExtents(w, d, rot);
-      const solid = { x, y, hw:ext.hw, hd:ext.hd };
-      if(!fitsSolid(solid)) return;
-      filler.push({kind:'edge', x, y, w, d, h, hue, rot});
-      placed.push(solid);
-    };
     for(let xi=0; xi<xBands.length; xi++){
       for(let yi=0; yi<yBands.length; yi++){
         const x0=xBands[xi][0], x1=xBands[xi][1], y0=yBands[yi][0], y1=yBands[yi][1];
@@ -108,25 +101,6 @@ export function createFillerLayoutProvider(mapObjects: MapObject[]): FillerLayou
         }
       }
     }
-    function skylineRow(yBase: number, yJit: number, tallBias: number): void {
-      let x = 10;
-      while(x < 1490){
-        const w = 30 + rand()*70;
-        const gap = 6 + rand()*30;
-        const cxLocal = x + w/2;
-        const y = yBase + jit()*yJit;
-        if(rand()>0.15){
-          const d = 28 + rand()*42;
-          const h = 34 + rand()*rand()*170*tallBias;
-          pushEdge(cxLocal, y, w, d, h, rand(), jit()*0.25);
-        }
-        x += w + gap;
-      }
-    }
-    skylineRow(165, 28, districtId==='hub'?1.15:0.65);
-    skylineRow(230, 32, districtId==='hub'?1.1:0.6);
-    skylineRow(1010, 42, districtId==='hub'?1.3:0.75);
-    skylineRow(1090, 55, districtId==='hub'?1.6:1.0);
     return filler;
   }
 
@@ -139,7 +113,7 @@ export function createFillerLayoutProvider(mapObjects: MapObject[]): FillerLayou
     const list: Solid[] = [];
     ['devlin','westside','hub'].forEach(function(distId){
       const off = DISTRICT_OFFSETS[distId];
-      fillerFor(distId).filter((f): f is Extract<FillerItem, {kind:'building'|'edge'}> => f.kind==='building'||f.kind==='edge').forEach(function(f){
+      fillerFor(distId).filter((f): f is Extract<FillerItem, {kind:'building'}> => f.kind==='building').forEach(function(f){
         const ext = rotatedHalfExtents(f.w, f.d, f.rot);
         list.push({x:f.x+off,y:f.y,hw:ext.hw+4,hd:ext.hd+4});
       });

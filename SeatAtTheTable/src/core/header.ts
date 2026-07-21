@@ -30,7 +30,7 @@ import { actorDisplayName, createRoamingActors, updateRoamingActors } from '../m
 import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, buildLandmarks, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
 import { buildIntersectionFurniture as buildMapIntersectionFurniture } from '../map/streetFurniture';
 import { DISTRICT_OFFSETS, DISTRICT_W, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
-import { districtIdAtPlayablePoint, districtIdAtPoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
+import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
 import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/viewport';
 import { renderZoneType } from '../map/zoning';
 import { drawInteriorRoom } from '../map/interiorScene';
@@ -2889,14 +2889,60 @@ import type * as ThreeNamespace from 'three';
   window.addEventListener('blur', function(){ Object.keys(keys).forEach(k=> keys[k]=false); });
   byId('btn-interact').addEventListener('click', tryInteract);
 
-  byId('fullscreen-btn').addEventListener('click', function(){
-    const container = byId('scene3d-container');
-    const isFs = container.classList.toggle('fullscreen');
+  function setMapFullscreenLayout(container: HTMLElement, active: boolean): void {
+    if(active){
+      container.style.position = 'fixed';
+      container.style.top = '0';
+      container.style.left = '0';
+      container.style.right = '0';
+      container.style.bottom = '0';
+      container.style.width = '100vw';
+      container.style.height = '100vh';
+      document.body.style.overflow = 'hidden';
+    } else {
+      container.style.position = '';
+      container.style.top = '';
+      container.style.left = '';
+      container.style.right = '';
+      container.style.bottom = '';
+      container.style.width = '';
+      container.style.height = '';
+      document.body.style.overflow = '';
+    }
+  }
+  function syncMapFullscreenUi(active: boolean): void {
+    const container = byId<HTMLElement>('scene3d-container');
+    container.classList.toggle('fullscreen', active);
+    setMapFullscreenLayout(container, active);
     const btn = byId('fullscreen-btn');
-    btn.innerHTML = isFs ? '<i class="ph-duotone ph-arrows-in"></i>' : '<i class="ph-duotone ph-arrows-out"></i>';
-    syncRendererSize();
+    btn.innerHTML = active ? '<i class="ph-duotone ph-arrows-in"></i>' : '<i class="ph-duotone ph-arrows-out"></i>';
+    requestAnimationFrame(syncRendererSize);
+  }
+  byId('fullscreen-btn').addEventListener('click', function(){
+    const container = byId<HTMLElement>('scene3d-container');
+    const entering = !container.classList.contains('fullscreen');
+    if(entering && container.requestFullscreen){
+      container.requestFullscreen().catch(function(){ syncMapFullscreenUi(true); });
+      return;
+    }
+    if(!entering && document.fullscreenElement === container){
+      document.exitFullscreen().catch(function(){ syncMapFullscreenUi(false); });
+      return;
+    }
+    syncMapFullscreenUi(entering);
+  });
+  document.addEventListener('fullscreenchange', function(){
+    const container = byId<HTMLElement>('scene3d-container');
+    syncMapFullscreenUi(document.fullscreenElement === container);
   });
   window.addEventListener('resize', function(){
+    const container = byId<HTMLElement>('scene3d-container');
+    if(container.classList.contains('fullscreen')) setMapFullscreenLayout(container, true);
+    syncRendererSize();
+  });
+  window.visualViewport?.addEventListener('resize', function(){
+    const container = byId<HTMLElement>('scene3d-container');
+    if(container.classList.contains('fullscreen')) setMapFullscreenLayout(container, true);
     syncRendererSize();
   });
 
@@ -2986,9 +3032,8 @@ import type * as ThreeNamespace from 'three';
     if(!renderer || !camera3d) return;
     const container = byId('scene3d-container');
     const rect = container.getBoundingClientRect();
-    const fullscreen = container.classList.contains('fullscreen');
-    const width = Math.max(1, Math.round(fullscreen ? window.innerWidth : rect.width));
-    const height = Math.max(1, Math.round(fullscreen ? window.innerHeight : rect.height));
+    const width = Math.max(1, Math.round(rect.width));
+    const height = Math.max(1, Math.round(rect.height));
     renderer.setSize(width, height, false);
     camera3d.aspect = width / height;
     camera3d.updateProjectionMatrix();
@@ -3186,7 +3231,7 @@ import type * as ThreeNamespace from 'three';
   function addVentureDetail(m: typeof mapBuildings[number], base: ThreeNamespace.Group){
     if(m.id==='cart'){
       const canopy = box(34,4,26,'#d4a017'); canopy.position.set(0,13,0); base.add(canopy);
-      const counter = box(28,7,14,'#7b4a2c'); counter.position.set(0,4,7); base.add(counter);
+      const counter = box(24,5,10,'#2f3438'); counter.position.set(0,4,8); base.add(counter);
     } else if(m.id==='garage'){
       const bay = box(34,16,3,'#15171c'); bay.position.set(0,-2,28); base.add(bay);
       const lift = box(26,2,18,'#555a68'); lift.position.set(0,-12,36); base.add(lift);
@@ -3649,7 +3694,7 @@ import type * as ThreeNamespace from 'three';
   const cityCtx = cityMapCanvas.getContext('2d')!;
   const cityMapHint = byId('citymap-hint');
   const CITY_W = cityMapCanvas.width, CITY_H = cityMapCanvas.height;
-  const cityViewport = createMapViewport(CITY_W, CITY_H, windhavenMapModel.landmass);
+  const cityViewport = createMapViewport(CITY_W, CITY_H, windhavenMapModel.districts.flatMap(district => district.landArea));
   let cityMapOpen = false;
 
   const cityLegend: Array<{ icon: string; label: string; color: string; ph?: string }> = [
@@ -3677,20 +3722,28 @@ import type * as ThreeNamespace from 'three';
       worldWidth:WORLD_W, worldHeight:WORLD_H, landmass:WINDHAVEN_LANDMASS, landmarks,
       waypoint:currentWaypoint(),
       viewW:CITY_W, viewH:CITY_H, scale:cityViewport.scale, center:cityViewport.center, glyphScale:1.9,
-      districtNames:windhavenMapModel.districts.map(function(district){ return { x: district.labelPoint.x, name: district.name }; }),
+      districtNames:windhavenMapModel.districts.map(function(district){ return { x: district.labelPoint.x, y: district.labelPoint.y, name: district.name }; }),
     });
   }
   function openCityMap(){
     cityMapOpen = true;
+    const overlay = byId('citymap-overlay');
+    const mapContainer = byId('scene3d-container');
+    if(mapContainer.classList.contains('fullscreen') && overlay.parentElement !== mapContainer) mapContainer.appendChild(overlay);
     const el = byIdOrNull('citymap-legend');
     if(el) el.innerHTML = `<div class="citymap-legend-title">Legend</div>` + cityLegend.map(function(item){
       const iconHtml = item.ph ? `<i class="ph-duotone ${item.ph} lg-ph" style="color:${item.color}"></i>` : `<span class="lg-ico lg-${item.icon}" style="--c:${item.color}"></span>`;
       return `<div class="citymap-legend-row">${iconHtml}${item.label}</div>`;
     }).join('');
-    byId('citymap-overlay').classList.remove('hidden');
+    overlay.classList.remove('hidden');
     drawCityMap();
   }
-  function closeCityMap(){ cityMapOpen = false; byId('citymap-overlay').classList.add('hidden'); }
+  function closeCityMap(){
+    cityMapOpen = false;
+    const overlay = byId('citymap-overlay');
+    overlay.classList.add('hidden');
+    if(overlay.parentElement !== document.body) document.body.appendChild(overlay);
+  }
   byId('citymap-open').addEventListener('click', openCityMap);
   byId('minimap-expand').addEventListener('click', openCityMap);
   byId('citymap-close').addEventListener('click', closeCityMap);
@@ -3706,17 +3759,26 @@ import type * as ThreeNamespace from 'three';
   }
   cityMapCanvas.addEventListener('mousemove', function(e){
     const point = cityMapWorldPoint(e);
-    const dist = districts.find(function(d){ return d.id === districtIdAtPoint(point); });
+    const dist = districts.find(function(d){ return d.id === districtIdAtPlayablePoint(point, 0); });
     const place = nearestCityMapPlace(point);
+    if(!dist){
+      cityMapHint.textContent = 'Water - waypoints must be placed on land';
+      return;
+    }
     cityMapHint.textContent = place ? `${dist ? dist.name : 'Windhaven'} · ${place.name}` : `${dist ? dist.name : 'Windhaven'} · Click to set waypoint`;
   });
   cityMapCanvas.addEventListener('mouseleave', function(){
-    cityMapHint.textContent = 'Click the expanded map to drop a waypoint · hover places to inspect them';
+    cityMapHint.textContent = 'Click land to drop a waypoint - hover places to inspect them';
   });
   cityMapCanvas.addEventListener('click', function(e){
     if(state.currentInterior) return;
     const point = cityMapWorldPoint(e);
-    const dist = districtIdAtPoint(point);
+    const dist = districtIdAtPlayablePoint(point, 0);
+    if(!dist){
+      cityMapHint.textContent = 'Water - waypoints must be placed on land';
+      drawCityMap();
+      return;
+    }
     setGlobalWaypoint(point);
     rebuildWaypointBeacon();
     byId('minimap-clear').classList.add('show');

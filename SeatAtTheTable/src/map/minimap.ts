@@ -1,6 +1,7 @@
 import type { Corner, FillerItem, Point } from '../config/types';
 import type { MapObject, MinimapIcon } from './objects';
 import { windhavenMapModel } from './mapModel';
+import { mapTerrainTheme, terrainForDistrict } from './renderTheme';
 
 export const MINIMAP_SIZE = 150;
 export const MINIMAP_SCALE = MINIMAP_SIZE / 600;
@@ -35,7 +36,35 @@ export interface MinimapRenderOptions {
   scale?: number;
   center?: Point | null;
   glyphScale?: number;
-  districtNames?: Array<{ x: number; name: string }>;
+  districtNames?: Array<{ x: number; y?: number; name: string }>;
+}
+
+interface MinimapRenderFrame {
+  viewW: number;
+  viewH: number;
+  halfX: number;
+  halfY: number;
+  scale: number;
+  glyphScale: number;
+  center: Point;
+}
+
+const staticLayerCache = new Map<string, HTMLCanvasElement>();
+
+export function minimapStaticLayerCacheKey(options: MinimapRenderOptions): string {
+  const frame = minimapRenderFrame(options);
+  const districtNames = options.districtNames?.map(name => `${name.name}:${Math.round(name.x)}:${Math.round(name.y ?? 6)}`).join('|') ?? '';
+  return [
+    frame.viewW,
+    frame.viewH,
+    frame.scale.toFixed(5),
+    Math.round(frame.center.x),
+    Math.round(frame.center.y),
+    frame.glyphScale.toFixed(2),
+    options.landmass.length,
+    options.landmarks.length,
+    districtNames,
+  ].join(':');
 }
 
 function isOnMap(point: Point, w: number, h: number): boolean {
@@ -116,8 +145,7 @@ export function drawGlyph(ctx: CanvasRenderingContext2D, p: Point, icon: Minimap
   }
 }
 
-export function drawMinimap(options: MinimapRenderOptions): void {
-  const mctx = options.ctx;
+function minimapRenderFrame(options: MinimapRenderOptions): MinimapRenderFrame {
   const size = options.size ?? MINIMAP_SIZE;
   const viewW = options.viewW ?? size;
   const viewH = options.viewH ?? size;
@@ -126,20 +154,21 @@ export function drawMinimap(options: MinimapRenderOptions): void {
   const scale = options.scale ?? MINIMAP_SCALE;
   const glyphScale = options.glyphScale ?? 1;
 
-  mctx.fillStyle = '#17364b'; mctx.fillRect(0,0,viewW,viewH);
-  if(options.indoors){
-    mctx.fillStyle='#6c7080'; mctx.font='10px IBM Plex Mono, monospace'; mctx.textAlign='center'; mctx.textBaseline='middle';
-    mctx.fillText('Indoors', halfX, halfY);
-    mctx.strokeStyle='rgba(212,160,23,0.5)'; mctx.strokeRect(0.5,0.5,viewW-1,viewH-1);
-    return;
-  }
   if(!options.center && !options.dragging && Math.hypot(options.player.vx, options.player.vy) > 5){
     options.pan.x = 0;
     options.pan.y = 0;
   }
-  const centerX = options.center ? options.center.x : options.player.x + options.pan.x;
-  const centerY = options.center ? options.center.y : options.player.y + options.pan.y;
-  const proj = function(wx: number, wy: number){ return { x: halfX + (wx-centerX)*scale, y: halfY + (wy-centerY)*scale }; };
+  const center = options.center ? options.center : { x: options.player.x + options.pan.x, y: options.player.y + options.pan.y };
+  return { viewW, viewH, halfX, halfY, scale, glyphScale, center };
+}
+
+function minimapProject(frame: MinimapRenderFrame, wx: number, wy: number): Point {
+  return { x: frame.halfX + (wx-frame.center.x)*frame.scale, y: frame.halfY + (wy-frame.center.y)*frame.scale };
+}
+
+function drawStaticMinimapLayer(mctx: CanvasRenderingContext2D, options: MinimapRenderOptions, frame: MinimapRenderFrame): void {
+  const { viewW, viewH, scale, glyphScale } = frame;
+  const proj = function(wx: number, wy: number){ return minimapProject(frame, wx, wy); };
   const drawPolygon = function(points: Point[], fill: string, stroke: string | null, lineWidth: number): void {
     if(points.length < 3) return;
     mctx.beginPath();
@@ -170,6 +199,8 @@ export function drawMinimap(options: MinimapRenderOptions): void {
     mctx.stroke();
   };
 
+  mctx.fillStyle = mapTerrainTheme.openWater; mctx.fillRect(0,0,viewW,viewH);
+
   mctx.save();
   if(options.landmass.length){
     mctx.beginPath();
@@ -179,7 +210,7 @@ export function drawMinimap(options: MinimapRenderOptions): void {
       else mctx.lineTo(p.x, p.y);
     });
     mctx.closePath();
-    mctx.fillStyle = '#303438';
+    mctx.fillStyle = mapTerrainTheme.baseLand;
     mctx.fill();
     mctx.strokeStyle = 'rgba(217,210,184,0.48)';
     mctx.lineWidth = Math.max(1, 1.5*glyphScale);
@@ -187,27 +218,31 @@ export function drawMinimap(options: MinimapRenderOptions): void {
     mctx.clip();
   }
 
+  windhavenMapModel.districts.forEach(function(district){
+    drawPolygon(district.landArea, terrainForDistrict(district.id).minimapLand, 'rgba(235,226,190,0.32)', Math.max(1, 1.2*glyphScale));
+  });
+
   windhavenMapModel.canals.forEach(function(channel){
     const x0 = channel.x, x1 = channel.x + channel.width;
     const a = proj(x0, -90);
     const b = proj(x1, options.worldHeight + 90);
-    mctx.fillStyle = '#1c3a52';
+    mctx.fillStyle = mapTerrainTheme.canalWater;
     mctx.fillRect(a.x, a.y, b.x - a.x, b.y - a.y);
     drawPolyline([{x:x0+18,y:0},{x:x0+34,y:260},{x:x0+12,y:620},{x:x0+30,y:980},{x:x0+18,y:options.worldHeight}], 'rgba(228,239,232,0.28)', Math.max(1, 1.1*glyphScale));
     drawPolyline([{x:x1-18,y:0},{x:x1-34,y:320},{x:x1-12,y:680},{x:x1-30,y:1030},{x:x1-18,y:options.worldHeight}], 'rgba(228,239,232,0.28)', Math.max(1, 1.1*glyphScale));
   });
 
-  drawPolygon(windhavenMapModel.northRiver, '#1c3a52', 'rgba(228,239,232,0.22)', Math.max(1, 1.2*glyphScale));
+  drawPolygon(windhavenMapModel.northRiver, mapTerrainTheme.canalWater, 'rgba(228,239,232,0.28)', Math.max(1, 1.2*glyphScale));
 
   ['devlin','westside','hub'].forEach(function(distId){
     const off = options.districtOffsets[distId];
     options.fillerFor(distId).forEach(function(f){
-      if(f.kind==='building' || f.kind==='edge'){
+      if(f.kind==='building'){
         const p = proj(f.x+off, f.y);
         if(!isOnMap(p, viewW, viewH)) return;
         const bw = Math.max(1.5, f.w*scale);
         const bd = Math.max(1.5, f.d*scale);
-        mctx.fillStyle = f.kind==='edge' ? 'rgba(84,90,104,0.5)' : 'rgba(120,126,142,0.72)';
+        mctx.fillStyle = 'rgba(120,126,142,0.72)';
         mctx.fillRect(p.x-bw/2, p.y-bd/2, bw, bd);
       } else if(f.kind==='park'){
         const p = proj((f.x0+f.x1)/2+off,(f.y0+f.y1)/2);
@@ -272,15 +307,6 @@ export function drawMinimap(options: MinimapRenderOptions): void {
       const b=proj(rail.path[0].x+18,y);
       mctx.beginPath(); mctx.moveTo(a.x,a.y); mctx.lineTo(b.x,b.y); mctx.stroke();
     }
-    const trainT = (Date.now() % rail.trainCycleMs) / rail.trainCycleMs;
-    if(trainT > rail.activeWindow.start && trainT < rail.activeWindow.end){
-      const y = (trainT - rail.activeWindow.start) / (rail.activeWindow.end - rail.activeWindow.start) * options.worldHeight;
-      const p = proj(rail.path[0].x, y);
-      mctx.fillStyle='#b43a35';
-      mctx.fillRect(p.x - Math.max(3,6*glyphScale), p.y - Math.max(8,15*glyphScale), Math.max(6,12*glyphScale), Math.max(16,30*glyphScale));
-      mctx.strokeStyle='#f0d38a';
-      mctx.strokeRect(p.x - Math.max(3,6*glyphScale), p.y - Math.max(8,15*glyphScale), Math.max(6,12*glyphScale), Math.max(16,30*glyphScale));
-    }
   });
 
   mctx.restore();
@@ -298,17 +324,11 @@ export function drawMinimap(options: MinimapRenderOptions): void {
     mctx.font=`700 ${Math.round(11*glyphScale)}px Oswald, sans-serif`;
     mctx.textAlign='center'; mctx.textBaseline='top';
     options.districtNames.forEach(function(d){
-      const p = proj(d.x, 6);
+      const p = proj(d.x, d.y ?? 6);
       if(p.x < -20 || p.x > viewW+20) return;
       mctx.fillText(d.name.toUpperCase(), p.x, Math.max(2, p.y));
     });
   }
-
-  options.mapObjects.forEach(function(object){
-    const p = proj(object.x, object.y);
-    if(!isOnMap(p, viewW, viewH)) return;
-    drawGlyph(mctx, p, object.minimapIcon, objectColor(object), Math.max(1.5, object.minimapSize*glyphScale));
-  });
 
   options.landmarks.forEach(function(landmark){
     const p = proj(landmark.x, landmark.y);
@@ -317,8 +337,40 @@ export function drawMinimap(options: MinimapRenderOptions): void {
     mctx.fillStyle='#e0c860'; const ls = 3*glyphScale; mctx.fillRect(-ls,-ls,ls*2,ls*2); mctx.restore();
   });
   mctx.restore();
+}
 
-  const drawWaypoint = function(wp: Point){
+function drawDynamicMinimapLayer(mctx: CanvasRenderingContext2D, options: MinimapRenderOptions, frame: MinimapRenderFrame): void {
+  const { viewW, viewH, glyphScale } = frame;
+  const proj = function(wx: number, wy: number){ return minimapProject(frame, wx, wy); };
+
+  mctx.save();
+  if(options.landmass.length){
+    mctx.beginPath();
+    options.landmass.forEach(function(point, index){ const p=proj(point.x, point.y); if(index===0) mctx.moveTo(p.x,p.y); else mctx.lineTo(p.x,p.y); });
+    mctx.closePath();
+    mctx.clip();
+  }
+
+  windhavenMapModel.railLines.forEach(function(rail){
+    const trainT = (Date.now() % rail.trainCycleMs) / rail.trainCycleMs;
+    if(trainT <= rail.activeWindow.start || trainT >= rail.activeWindow.end) return;
+    const y = (trainT - rail.activeWindow.start) / (rail.activeWindow.end - rail.activeWindow.start) * options.worldHeight;
+    const p = proj(rail.path[0].x, y);
+    mctx.fillStyle='#b43a35';
+    mctx.fillRect(p.x - Math.max(3,6*glyphScale), p.y - Math.max(8,15*glyphScale), Math.max(6,12*glyphScale), Math.max(16,30*glyphScale));
+    mctx.strokeStyle='#f0d38a';
+    mctx.strokeRect(p.x - Math.max(3,6*glyphScale), p.y - Math.max(8,15*glyphScale), Math.max(6,12*glyphScale), Math.max(16,30*glyphScale));
+  });
+
+  options.mapObjects.forEach(function(object){
+    const p = proj(object.x, object.y);
+    if(!isOnMap(p, viewW, viewH)) return;
+    drawGlyph(mctx, p, object.minimapIcon, objectColor(object), Math.max(1.5, object.minimapSize*glyphScale));
+  });
+
+  mctx.restore();
+
+  const drawWaypoint = function(wp: Point): void {
     const p = proj(wp.x, wp.y);
     const r = 6*glyphScale;
     mctx.strokeStyle='#d4a017';
@@ -339,4 +391,36 @@ export function drawMinimap(options: MinimapRenderOptions): void {
   mctx.strokeStyle='rgba(212,160,23,0.5)';
   mctx.lineWidth=1;
   mctx.strokeRect(0.5,0.5,viewW-1,viewH-1);
+}
+
+function getStaticMinimapLayer(options: MinimapRenderOptions, frame: MinimapRenderFrame): HTMLCanvasElement {
+  const key = minimapStaticLayerCacheKey(options);
+  const cached = staticLayerCache.get(key);
+  if(cached) return cached;
+  const canvas = document.createElement('canvas');
+  canvas.width = frame.viewW;
+  canvas.height = frame.viewH;
+  const ctx = canvas.getContext('2d');
+  if(!ctx) return canvas;
+  drawStaticMinimapLayer(ctx, options, frame);
+  staticLayerCache.set(key, canvas);
+  return canvas;
+}
+
+export function drawMinimap(options: MinimapRenderOptions): void {
+  const mctx = options.ctx;
+  const frame = minimapRenderFrame(options);
+
+  if(options.indoors){
+    mctx.fillStyle = mapTerrainTheme.openWater;
+    mctx.fillRect(0,0,frame.viewW,frame.viewH);
+    mctx.fillStyle='#6c7080'; mctx.font='10px IBM Plex Mono, monospace'; mctx.textAlign='center'; mctx.textBaseline='middle';
+    mctx.fillText('Indoors', frame.halfX, frame.halfY);
+    mctx.strokeStyle='rgba(212,160,23,0.5)'; mctx.strokeRect(0.5,0.5,frame.viewW-1,frame.viewH-1);
+    return;
+  }
+
+  const staticLayer = getStaticMinimapLayer(options, frame);
+  mctx.drawImage(staticLayer, 0, 0);
+  drawDynamicMinimapLayer(mctx, options, frame);
 }
