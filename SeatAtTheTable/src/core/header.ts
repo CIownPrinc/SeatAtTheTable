@@ -3311,6 +3311,59 @@ import type * as ThreeNamespace from 'three';
     }
   }
 
+  function addCategoryMarker(base: ThreeNamespace.Group, icon: MapObject['minimapIcon'], color: string, y: number): void {
+    if(!icon) return;
+    const marker = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.2,18,6), new THREE.MeshStandardMaterial({color:'#1b1d24', roughness:0.72, metalness:0.2}));
+    pole.position.y = y + 9;
+    marker.add(pole);
+    const halo = new THREE.Mesh(new THREE.RingGeometry(8,10,18), new THREE.MeshBasicMaterial({color, transparent:true, opacity:0.42, side:THREE.DoubleSide}));
+    halo.rotation.x = Math.PI / 2;
+    halo.position.y = y + 21;
+    marker.add(halo);
+    if(icon === 'bank' || icon === 'cityhall'){
+      const roof = box(22,4,8,color);
+      roof.position.y = y + 28;
+      marker.add(roof);
+      [-7,0,7].forEach(function(x){
+        const column = box(3,10,3,color);
+        column.position.set(x,y + 22,0);
+        marker.add(column);
+      });
+    } else if(icon === 'garage'){
+      const bay = box(22,14,5,color);
+      bay.position.y = y + 24;
+      marker.add(bay);
+      const door = box(12,8,2,'#111217');
+      door.position.set(0,y + 21,3);
+      marker.add(door);
+    } else if(icon === 'realty' || icon === 'shop'){
+      const shop = box(21,12,6,color);
+      shop.position.y = y + 24;
+      marker.add(shop);
+      const awning = box(24,3,8,'#d9d2b8');
+      awning.position.y = y + 31;
+      marker.add(awning);
+    } else if(icon === 'bar'){
+      const cup = new THREE.Mesh(new THREE.ConeGeometry(8,12,16), new THREE.MeshStandardMaterial({color, roughness:0.35, metalness:0.15}));
+      cup.rotation.x = Math.PI;
+      cup.position.y = y + 25;
+      marker.add(cup);
+      const stem = box(3,9,3,color);
+      stem.position.y = y + 17;
+      marker.add(stem);
+    } else if(icon === 'heist' || icon === 'illegal'){
+      const target = new THREE.Mesh(new THREE.TorusGeometry(8,2,8,18), new THREE.MeshStandardMaterial({color, roughness:0.42, metalness:0.25}));
+      target.position.y = y + 24;
+      marker.add(target);
+    } else {
+      const markerDot = new THREE.Mesh(new THREE.SphereGeometry(7,14,10), new THREE.MeshStandardMaterial({color, emissive:color, emissiveIntensity:0.22, roughness:0.55}));
+      markerDot.position.y = y + 24;
+      marker.add(markerDot);
+    }
+    base.add(marker);
+  }
+
 
   // LEGAL: ---- procedural building with windows, door, and zone-specific roof ----
   function buildDetailedBuilding(w: number, h: number, d: number, color: number | string, zoneType: string, variant = 0){
@@ -3448,6 +3501,7 @@ import type * as ThreeNamespace from 'three';
       const color = m.zone==='corporate' ? '#46516d' : (m.zone==='entertainment' ? '#5a345e' : info.color);
       const mesh = buildDetailedBuilding(footprint.w, Math.max(info.h, footprint.h), footprint.d, color, footprint.zoneType, variantForId(m.id));
       addVentureDetail(m, mesh);
+      addCategoryMarker(mesh, object.minimapIcon, m.biz.category==='legit'?'#8fd0e0':'#f0a0ae', Math.max(info.h, footprint.h)/2+12);
       mesh.position.set(object.x, Math.max(info.h, footprint.h)/2, object.y); worldGroup.add(mesh);
       addSign(mesh, m.biz.name, 34, 9, Math.max(info.h, footprint.h)/2+10, m.biz.category==='legit'?'#8fd0e0':'#f0a0ae');
     });
@@ -3458,6 +3512,7 @@ import type * as ThreeNamespace from 'three';
       const m = object.ref as ServiceBuilding;
       const mesh = buildDetailedBuilding(58,34,50,svcPalette[m.kind],'service', variantForId(m.id));
       addServiceDetail(m, mesh);
+      addCategoryMarker(mesh, object.minimapIcon, '#ffe6a0', 31);
       mesh.position.set(object.x,17,object.y); worldGroup.add(mesh);
       addSign(mesh, m.name, 40, 9, 26, '#ffe6a0');
     });
@@ -3468,6 +3523,7 @@ import type * as ThreeNamespace from 'three';
       const color = m.extorted?'#8a6a1a':'#4a4360';
       const mesh = buildDetailedBuilding(42,20,36,color,'shop', variantForId(m.id));
       addLocalBusinessDetail(m, mesh);
+      addCategoryMarker(mesh, object.minimapIcon, m.extorted?'#ffd77a':'#b8aee0', 24);
       mesh.position.set(object.x,10,object.y); worldGroup.add(mesh);
       addSign(mesh, m.name, 32, 8, 18, m.extorted?'#ffd77a':'#b8aee0');
     });

@@ -113,8 +113,10 @@ describe('map viewport and geometry model', function () {
 
   it('derives typed road paths, bridges, and rail lines from the shared map model', function () {
     const legacyRoadCount = roadNetwork.vertical.length + roadNetwork.horizontal.length + roadNetwork.diagonal.length;
+    const diagonalRoads = windhavenMapModel.roadPaths.filter(road => road.roadClass === 'diagonal');
 
     expect(windhavenMapModel.roadPaths).toHaveLength(legacyRoadCount);
+    expect(diagonalRoads.every(road => road.path.length > 2)).toBe(true);
     expect(windhavenMapModel.bridges).toHaveLength(CANAL_CHANNELS.length * roadNetwork.horizontal.length);
     expect(windhavenMapModel.railLines[0]).toMatchObject({
       id: 'cicero-freight-line',
@@ -126,7 +128,8 @@ describe('map viewport and geometry model', function () {
 
   it('finds the nearest named road through map-model road paths', function () {
     expect(nearestRoadAtPoint({ x: 710, y: 520 }).road.name).toBe('Devlin Street');
-    expect(nearestRoadAtPoint({ x: 2460, y: 775 }).road.name).toBe('Canal Bend Road');
+    const canalBend = windhavenMapModel.roadPaths.find(road => road.name === 'Canal Bend Road')!;
+    expect(nearestRoadAtPoint(canalBend.path[1]).road.name).toBe('Canal Bend Road');
   });
 
   it('turns exact map objects and landmarks into queryable place records', function () {

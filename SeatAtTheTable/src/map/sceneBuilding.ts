@@ -2,7 +2,7 @@ import type { DiagonalRoad, HorizontalRoad, Landmark, VerticalRoad } from './wor
 import { windhavenMapModel } from './mapModel';
 import { mapTerrainTheme, mapTransportTheme, terrainForDistrict } from './renderTheme';
 import { addInstancedMesh, createMapSceneMaterials, type MapSceneMaterialCache, type SceneInstance } from './scenePerformance';
-import type { FillerItem, MapZoneType } from '../config/types';
+import type { FillerItem, MapZoneType, Point } from '../config/types';
 import type * as ThreeNamespace from 'three';
 
 export interface RoadNetworkRenderData {
@@ -103,6 +103,71 @@ function addPathPlane(options: BaseSceneOptions, points: Array<{ x: number; y: n
   }
 }
 
+function addPathLineDashes(points: Point[], spacing: number, inset: number, callback: (x: number, y: number, angle: number) => void): void {
+  points.slice(0, -1).forEach(function(start, index){
+    const end = points[index + 1];
+    const dx = end.x-start.x;
+    const dy = end.y-start.y;
+    const length = Math.hypot(dx, dy);
+    const angle = Math.atan2(dy, dx);
+    for(let t=inset; t<length-inset; t+=spacing){
+      callback(start.x + Math.cos(angle)*t, start.y + Math.sin(angle)*t, angle);
+    }
+  });
+}
+
+function addSurfaceGrain(options: BaseSceneOptions): void {
+  const { THREE, worldGroup } = options;
+  const materials = materialsFor(options);
+  const sidewalkMat = materials.line('district:sidewalk-grain', { color:'#d7cfb8', transparent:true, opacity:0.08 });
+  windhavenMapModel.districts.forEach(function(district){
+    for(let y=210; y<options.worldHeight-130; y+=145){
+      const line = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(district.centerX-610,0.17,y),
+          new THREE.Vector3(district.centerX+610,0.17,y + (district.id === 'hub' ? 18 : 0)),
+        ]),
+        sidewalkMat,
+      );
+      worldGroup.add(line);
+    }
+  });
+}
+
+function addCoastlineTexture(options: BaseSceneOptions): void {
+  const { THREE, worldGroup } = options;
+  const materials = materialsFor(options);
+  const foam: SceneInstance[] = [];
+  const rocks: SceneInstance[] = [];
+  windhavenMapModel.landmass.slice(0, -1).forEach(function(start, index){
+    const end = windhavenMapModel.landmass[index + 1];
+    const dx = end.x-start.x;
+    const dy = end.y-start.y;
+    const length = Math.hypot(dx, dy);
+    const angle = Math.atan2(dy, dx);
+    for(let t=36; t<length-20; t+=112){
+      const wave = Math.sin((index + 1) * 17 + t * 0.09);
+      foam.push({
+        x:start.x + Math.cos(angle)*t,
+        y:0.18,
+        z:start.y + Math.sin(angle)*t + wave * 8,
+        rotationX:-Math.PI/2,
+        rotationZ:-angle + wave * 0.08,
+      });
+      if(index % 3 === 0){
+        rocks.push({
+          x:start.x + Math.cos(angle)*(t + 24),
+          y:1.6,
+          z:start.y + Math.sin(angle)*(t + 24) - wave * 12,
+          rotationY:angle,
+        });
+      }
+    }
+  });
+  addInstancedMesh(THREE, worldGroup, new THREE.PlaneGeometry(42,3), materials.basic('coast:foam-streak', {color:'#e4efe8', transparent:true, opacity:0.24}), foam);
+  addInstancedMesh(THREE, worldGroup, new THREE.BoxGeometry(12,3,8), materials.standard('coast:stone', {color:'#8a887c', roughness:0.96}), rocks, { receive:true });
+}
+
 export function buildBaseGround(options: BaseSceneOptions): void {
   const { THREE, worldGroup, worldWidth, worldHeight } = options;
   const materials = materialsFor(options);
@@ -130,6 +195,8 @@ export function buildBaseGround(options: BaseSceneOptions): void {
   ].forEach(function(points, index){
     addGroundLine(options, points, index === 0 ? '#8fb6c2' : '#e4efe8', index === 0 ? 0.2 : 0.12, 0.12 + index*0.01);
   });
+  addSurfaceGrain(options);
+  addCoastlineTexture(options);
 }
 
 export function buildCanalWater(options: BaseSceneOptions): void {
@@ -159,24 +226,17 @@ export function buildRoadNetwork(options: RoadSceneOptions): void {
   const crosswalkLong: SceneInstance[] = [];
   const crosswalkWide: SceneInstance[] = [];
   windhavenMapModel.roadPaths.forEach(function(road){
-    const start = road.path[0];
-    const end = road.path[1];
-    const dx = end.x-start.x;
-    const dy = end.y-start.y;
-    const length = Math.hypot(dx,dy);
     addPathPlane(options, road.path, road.width + (road.roadClass === 'arterial' ? 34 : 22), mapTransportTheme.sidewalk, 0.04, 0.92);
     addPathPlane(options, road.path, road.width, road.roadClass === 'arterial' ? mapTransportTheme.arterialSurface : mapTransportTheme.roadSurface, 0.06, 0.9);
-    for(let t=40; t<length-20; t+=94){
-      const local = t - length/2;
-      const angle = Math.atan2(dy,dx);
+    addPathLineDashes(road.path, 94, 40, function(x, y, angle){
       laneDashes.push({
-        x:(start.x+end.x)/2 + Math.cos(angle)*local,
+        x,
         y:0.075,
-        z:(start.y+end.y)/2 + Math.sin(angle)*local,
+        z:y,
         rotationX:-Math.PI/2,
         rotationZ:-angle,
       });
-    }
+    });
   });
   roadNetwork.vertical.forEach(function(v, vi){
     roadNetwork.horizontal.forEach(function(h, hi){
@@ -362,6 +422,12 @@ export function buildRailAndRiver(options: BaseSceneOptions): void {
     const length = Math.hypot(end.x-start.x, end.y-start.y);
     const rail = new THREE.Mesh(new THREE.PlaneGeometry(line.width, length), materials.standard('transport:rail-bed', {color:'#2a2a2e', roughness:1}));
     rail.rotation.x=-Math.PI/2; rail.position.set(start.x,0.06,(start.y+end.y)/2); rail.receiveShadow=true; worldGroup.add(rail);
+    [-9,9].forEach(function(offset){
+      const steel = new THREE.Mesh(new THREE.BoxGeometry(3,3,length), materials.standard('transport:rail-steel', {color:'#a6a99e', roughness:0.38, metalness:0.55}));
+      steel.position.set(start.x + offset, 2.1, (start.y + end.y) / 2);
+      steel.castShadow = true;
+      worldGroup.add(steel);
+    });
     const ties: SceneInstance[] = [];
     for(let ty=20;ty<worldHeight;ty+=26){
       ties.push({ x:start.x, y:1, z:ty });

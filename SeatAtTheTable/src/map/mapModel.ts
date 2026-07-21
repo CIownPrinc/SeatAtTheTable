@@ -91,12 +91,19 @@ const roadPaths: RoadPath[] = [
     };
   }),
   ...roadNetwork.diagonal.map(function(road): RoadPath {
+    const dx = road.x2 - road.x1;
+    const dy = road.y2 - road.y1;
+    const bend = road.name === 'Canal Bend Road' ? -72 : 58;
     return {
       id: `road-diagonal-${slugForName(road.name)}`,
       name: road.name,
       roadClass: 'diagonal',
       width: road.w,
-      path: [{ x: road.x1, y: road.y1 }, { x: road.x2, y: road.y2 }],
+      path: [
+        { x: road.x1, y: road.y1 },
+        { x: (road.x1 + road.x2) / 2 - dy / Math.hypot(dx, dy) * bend, y: (road.y1 + road.y2) / 2 + dx / Math.hypot(dx, dy) * bend },
+        { x: road.x2, y: road.y2 },
+      ],
     };
   }),
 ];
@@ -232,9 +239,10 @@ export function districtIdAtPlayablePoint(point: Point, radius = 0, model: Windh
 
 export function nearestRoadAtPoint(point: Point, model: WindhavenMapModel = windhavenMapModel): { road: RoadPath; distance: number } {
   return model.roadPaths.reduce(function(best, road){
-    const start = road.path[0];
-    const end = road.path[1];
-    const distance = distancePointToSegment(point.x, point.y, start.x, start.y, end.x, end.y);
+    const distance = road.path.slice(0, -1).reduce(function(segmentBest, start, index){
+      const end = road.path[index + 1];
+      return Math.min(segmentBest, distancePointToSegment(point.x, point.y, start.x, start.y, end.x, end.y));
+    }, Infinity);
     return distance < best.distance ? { road, distance } : best;
   }, { road: model.roadPaths[0], distance: Infinity });
 }
