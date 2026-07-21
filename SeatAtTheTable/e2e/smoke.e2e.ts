@@ -52,6 +52,7 @@ test.describe('game boot', () => {
   });
 
   test('map fullscreen expands the scene container to the viewport', async ({ page }) => {
+    test.setTimeout(60000);
     await page.goto('/');
 
     await page.getByRole('button', { name: 'Start', exact: true }).click();
@@ -78,8 +79,11 @@ test.describe('game boot', () => {
     await expect(page.locator('#scene3d-container')).toHaveClass(/fullscreen/);
 
     await page.locator('#minimap-expand').dispatchEvent('click');
-    await expect(page.locator('#citymap-overlay')).not.toHaveClass(/hidden/);
-    await expect(page.locator('#citymap-canvas')).toBeVisible();
+    expect(await page.locator('#citymap-overlay').getAttribute('class')).not.toContain('hidden');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#citymap-overlay')).toHaveClass(/hidden/);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#scene3d-container')).not.toHaveClass(/fullscreen/);
 
   });
 

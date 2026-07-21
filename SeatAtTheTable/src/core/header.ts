@@ -28,6 +28,7 @@ import { buildMapObjects, ventureFootprint } from '../map/objectFactory';
 import { createMapPlaceRecords, nearestMapPlace, type MapPlaceRecord } from '../map/places';
 import { actorDisplayName, createRoamingActors, updateRoamingActors } from '../map/roaming';
 import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, buildLandmarks, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
+import { createMapSceneMaterials } from '../map/scenePerformance';
 import { buildIntersectionFurniture as buildMapIntersectionFurniture } from '../map/streetFurniture';
 import { DISTRICT_OFFSETS, DISTRICT_W, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
@@ -2924,6 +2925,10 @@ import type * as ThreeNamespace from 'three';
   });
   window.addEventListener('keydown', function(e){
     if(e.key !== 'Escape') return;
+    if(cityMapOpen){
+      closeCityMap();
+      return;
+    }
     const container = byId<HTMLElement>('scene3d-container');
     if(container.classList.contains('fullscreen')) syncMapFullscreenUi(false);
   });
@@ -3428,7 +3433,8 @@ import type * as ThreeNamespace from 'three';
     streetLights = [];
     dealerArrivals.length = 0; // LEGAL: transient dealer walk-ins are re-added as standing figures below
 
-    const baseScene = { THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H };
+    const materials = createMapSceneMaterials(THREE);
+    const baseScene = { THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, materials };
     buildBaseGround(baseScene);
     buildCanalWater(baseScene);
     buildRoadNetwork({ ...baseScene, roadNetwork, buildIntersectionFurniture });
