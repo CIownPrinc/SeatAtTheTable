@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { boundsForPoints, isPointInWater, isPointOnBridge, isPointOnWindhavenLand, pointInPolygon } from './geometry';
 import { districtIdAtPlayablePoint, districtIdAtPoint, nearestRoadAtPoint, windhavenMapModel } from './mapModel';
-import { createMapPlaceRecords, minimapIconForLocalBusiness, minimapIconForService, nearestMapPlace, placeRecordFromMapObject } from './places';
+import { createMapPlaceRecords, mapPlaceCategoryLabel, minimapIconForLocalBusiness, minimapIconForService, nearestMapPlace, placeRecordFromMapObject } from './places';
 import type { MapObject } from './objects';
 import type { MapNpc } from './markers';
 import { clampPointToBounds, createMapViewport, screenToWorld, worldToScreen } from './viewport';
@@ -152,6 +152,7 @@ describe('map viewport and geometry model', function () {
 
     expect(record).toMatchObject({ id: 'sanjay', name: 'Sanjay', x: 1300, y: 960, category: 'person' });
     expect(record.sourceObject).toBe(object);
+    expect(mapPlaceCategoryLabel(record)).toBe('Person');
     expect(places.some(place => place.id === 'devlinHall' && place.category === 'landmark')).toBe(true);
     expect(nearestMapPlace(places, { x: 1304, y: 961 }, 42)?.name).toBe('Sanjay');
   });
@@ -161,6 +162,8 @@ describe('map viewport and geometry model', function () {
     expect(minimapIconForService(serviceBuildings.find(service => service.kind === 'garage')!)).toBe('garage');
     expect(minimapIconForLocalBusiness(localBusinesses.find(business => business.id === 'bar')!)).toBe('bar');
     expect(minimapIconForLocalBusiness(localBusinesses.find(business => business.id === 'patel')!)).toBe('shop');
+    expect(mapPlaceCategoryLabel({ category:'service', icon:'bank', sourceKind:'service' })).toBe('Bank');
+    expect(mapPlaceCategoryLabel({ category:'local', icon:'shop', sourceKind:'local' })).toBe('Local shop');
   });
 
   it('builds map objects for every authored place source', function () {

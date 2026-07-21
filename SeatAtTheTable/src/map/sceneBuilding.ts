@@ -68,10 +68,28 @@ function materialsFor(options: BaseSceneOptions): MapSceneMaterialCache {
 
 function addGroundShape(options: BaseSceneOptions, points: Array<{ x: number; y: number }>, color: string, height: number, roughness: number): ThreeNamespace.Mesh {
   const { THREE, worldGroup } = options;
-  const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPoints(THREE, points)), materialsFor(options).standard(`ground:${color}:${roughness}`, {color, roughness, metalness:0.08}));
-  mesh.rotation.x=-Math.PI/2;
+  const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPoints(THREE, points)), materialsFor(options).standard(`ground:${color}:${roughness}`, {color, roughness, metalness:0.08, side:THREE.DoubleSide}));
+  mesh.rotation.x=Math.PI/2;
   mesh.position.y=height;
   mesh.receiveShadow=true;
+  worldGroup.add(mesh);
+  return mesh;
+}
+
+function addWaterShape(options: BaseSceneOptions, points: Array<{ x: number; y: number }>, height: number): ThreeNamespace.Mesh {
+  const { THREE, worldGroup } = options;
+  const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPoints(THREE, points)), materialsFor(options).standard('terrain:river-water', {
+    color:mapTerrainTheme.canalWater,
+    emissive:mapTerrainTheme.waterEmissive,
+    emissiveIntensity:0.32,
+    roughness:0.16,
+    metalness:0.2,
+    side:THREE.DoubleSide,
+  }));
+  mesh.rotation.x = Math.PI/2;
+  mesh.position.y = height;
+  mesh.receiveShadow = true;
+  mesh.renderOrder = 2;
   worldGroup.add(mesh);
   return mesh;
 }
@@ -138,7 +156,6 @@ function addCoastlineTexture(options: BaseSceneOptions): void {
   const { THREE, worldGroup } = options;
   const materials = materialsFor(options);
   const foam: SceneInstance[] = [];
-  const rocks: SceneInstance[] = [];
   windhavenMapModel.landmass.slice(0, -1).forEach(function(start, index){
     const end = windhavenMapModel.landmass[index + 1];
     const dx = end.x-start.x;
@@ -154,34 +171,52 @@ function addCoastlineTexture(options: BaseSceneOptions): void {
         rotationX:-Math.PI/2,
         rotationZ:-angle + wave * 0.08,
       });
-      if(index % 3 === 0){
-        rocks.push({
-          x:start.x + Math.cos(angle)*(t + 24),
-          y:1.6,
-          z:start.y + Math.sin(angle)*(t + 24) - wave * 12,
-          rotationY:angle,
-        });
-      }
     }
   });
   addInstancedMesh(THREE, worldGroup, new THREE.PlaneGeometry(42,3), materials.basic('coast:foam-streak', {color:'#e4efe8', transparent:true, opacity:0.24}), foam);
-  addInstancedMesh(THREE, worldGroup, new THREE.BoxGeometry(12,3,8), materials.standard('coast:stone', {color:'#8a887c', roughness:0.96}), rocks, { receive:true });
+}
+
+function addWaterMotionStrip(options: BaseSceneOptions, x: number, z: number, width: number, rotationZ: number, driftX: number, driftZ: number, phase: number): void {
+  const { THREE, worldGroup } = options;
+  const material = materialsFor(options).basic('water:motion-strip', {color:mapTerrainTheme.waterHighlight, transparent:true, opacity:0.22, depthWrite:false});
+  const strip = new THREE.Mesh(new THREE.PlaneGeometry(width, 4), material);
+  strip.rotation.x = -Math.PI/2;
+  strip.rotation.z = rotationZ;
+  strip.position.set(x, 0.21, z);
+  strip.renderOrder = 4;
+  strip.userData.waterMotion = { baseX:x, baseZ:z, driftX, driftZ, phase };
+  worldGroup.add(strip);
+}
+
+function addWaterMotion(options: BaseSceneOptions): void {
+  windhavenMapModel.canals.forEach(function(channel, index){
+    for(let y=150; y<options.worldHeight; y+=145){
+      addWaterMotionStrip(options, channel.x + channel.width/2 + Math.sin(y*0.03)*34, y, channel.width*0.5, 0.04, 0, 16, index + y*0.01);
+    }
+  });
+  windhavenMapModel.northRiver.slice(3, -1).forEach(function(point, index){
+    addWaterMotionStrip(options, point.x, point.y + 14, 86, 0.02, 24, 0, index*0.7);
+  });
+  windhavenMapModel.lakefrontBeach.slice(1, -1).forEach(function(point, index){
+    addWaterMotionStrip(options, point.x, point.y + 28, 74, 0.08, 18, 8, index*0.9);
+  });
 }
 
 export function buildBaseGround(options: BaseSceneOptions): void {
   const { THREE, worldGroup, worldWidth, worldHeight } = options;
   const materials = materialsFor(options);
-  const waterBase = new THREE.Mesh(new THREE.PlaneGeometry(worldWidth + 920, worldHeight + 620), materials.standard('terrain:open-water', {color:mapTerrainTheme.openWater, roughness:0.24, metalness:0.26}));
-  waterBase.rotation.x=-Math.PI/2; waterBase.position.set(worldWidth/2, -0.04, worldHeight/2); waterBase.receiveShadow=true; worldGroup.add(waterBase);
+  const waterBase = new THREE.Mesh(new THREE.PlaneGeometry(worldWidth + 920, worldHeight + 620), materials.standard('terrain:open-water', {color:mapTerrainTheme.openWater, emissive:mapTerrainTheme.waterEmissive, emissiveIntensity:0.26, roughness:0.18, metalness:0.18}));
+  waterBase.rotation.x=-Math.PI/2; waterBase.position.set(worldWidth/2, -0.04, worldHeight/2); waterBase.receiveShadow=true; waterBase.renderOrder = 0; worldGroup.add(waterBase);
   addGroundShape(options, windhavenMapModel.landmass, mapTerrainTheme.baseLand, 0, 1);
   windhavenMapModel.districts.forEach(function(district){
     const terrain = terrainForDistrict(district.id);
     const material = materials.standard(`terrain:district:${district.id}`, {
       color: terrain.land,
       roughness: 1,
+      side: THREE.DoubleSide,
     });
     const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPoints(THREE, district.landArea)), material);
-    mesh.rotation.x = -Math.PI/2;
+    mesh.rotation.x = Math.PI/2;
     mesh.position.y = 0.03;
     mesh.receiveShadow = true;
     worldGroup.add(mesh);
@@ -202,7 +237,7 @@ export function buildBaseGround(options: BaseSceneOptions): void {
 export function buildCanalWater(options: BaseSceneOptions): void {
   const { THREE, worldGroup, worldHeight } = options;
   const materials = materialsFor(options);
-  const canalMat = materials.standard('terrain:canal-water', {color:mapTerrainTheme.canalWater, roughness:0.18, metalness:0.46});
+  const canalMat = materials.standard('terrain:canal-water', {color:mapTerrainTheme.canalWater, emissive:mapTerrainTheme.waterEmissive, emissiveIntensity:0.32, roughness:0.16, metalness:0.2});
   const bankMat = materials.standard('transport:canal-bank', {color:mapTransportTheme.seawall, roughness:0.85});
   const bankInstances: SceneInstance[] = [];
   windhavenMapModel.canals.forEach(function(channel){
@@ -434,10 +469,11 @@ export function buildRailAndRiver(options: BaseSceneOptions): void {
     }
     addInstancedMesh(THREE, worldGroup, new THREE.BoxGeometry(line.width-4,2,4), materials.standard('transport:rail-tie', {color:'#3a3530', roughness:0.85, metalness:0.05}), ties, { cast:true, receive:true });
   });
-  addGroundShape(options, windhavenMapModel.northRiver, mapTerrainTheme.canalWater, 0.06, 0.24);
+  addWaterShape(options, windhavenMapModel.northRiver, 0.06);
   addGroundShape(options, windhavenMapModel.lakefrontBeach, '#b9a777', 0.09, 1);
   addGroundLine(options, windhavenMapModel.northRiver.slice(2), '#e4efe8', 0.18, 0.14);
   addGroundLine(options, windhavenMapModel.lakefrontBeach, '#d9d2b8', 0.22, 0.15);
+  addWaterMotion(options);
   const pierMat = materials.standard('waterfront:pier', {color:'#736d5c', roughness:0.86});
   const pierLightMat = materials.standard('waterfront:pier-light', {color:'#343840', roughness:0.55});
   [4380, 4920, 5360].forEach(function(x, index){

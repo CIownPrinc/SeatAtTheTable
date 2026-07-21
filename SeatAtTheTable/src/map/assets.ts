@@ -54,6 +54,11 @@ const ASSET_PATHS: Record<MapAssetKey, string> = {
 };
 
 const EAGER_ASSET_KEYS: MapAssetKey[] = ['houseA', 'houseB', 'towerA', 'towerC', 'commercialAwning', 'commercialWide'];
+const FALLBACK_TEXTURE_DATA_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAI0lEQVR4AYTIoQ0AAAwCwYb9R+wQNdVgCYZP3hz+lj4m6iAAAAD//+qR2V4AAAAGSURBVAMAfjEPCeZvlw0AAAAASUVORK5CYII=';
+
+export function resolveMapAssetUrl(url: string): string {
+  return url.endsWith('Textures/colormap.png') ? FALLBACK_TEXTURE_DATA_URL : url;
+}
 
 function cloneScene(THREE: typeof ThreeNamespace, scene: ThreeNamespace.Group): ThreeNamespace.Group {
   const clone = scene.clone(true);
@@ -84,7 +89,9 @@ function fitToBox(THREE: typeof ThreeNamespace, group: ThreeNamespace.Group, wid
 
 export async function loadMapAssetLibrary(THREE: typeof ThreeNamespace): Promise<MapAssetLibrary> {
   const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
-  const loader = new GLTFLoader();
+  const manager = new THREE.LoadingManager();
+  manager.setURLModifier(resolveMapAssetUrl);
+  const loader = new GLTFLoader(manager);
   const entries = await Promise.all(EAGER_ASSET_KEYS.map(async function(key){
     const path = ASSET_PATHS[key];
     try {

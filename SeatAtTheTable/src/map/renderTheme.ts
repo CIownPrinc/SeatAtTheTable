@@ -7,6 +7,8 @@ export interface DistrictTerrainTheme {
 export interface MapTerrainTheme {
   openWater: string;
   canalWater: string;
+  waterEmissive: string;
+  waterHighlight: string;
   baseLand: string;
   coastline: string;
   coastlineSecondary: string;
@@ -26,16 +28,18 @@ export interface MapTransportTheme {
 }
 
 export const mapTerrainTheme: MapTerrainTheme = {
-  openWater: '#06324f',
-  canalWater: '#074264',
-  baseLand: '#596b4d',
+  openWater: '#0b5f93',
+  canalWater: '#0a6fa3',
+  waterEmissive: '#06496f',
+  waterHighlight: '#7ecfff',
+  baseLand: '#5f7445',
   coastline: '#f0e5bf',
   coastlineSecondary: '#f6efcf',
   districtStroke: '#f0e5bf',
   districts: [
-    { id: 'devlin', land: '#789060', minimapLand: '#789060' },
-    { id: 'westside', land: '#827851', minimapLand: '#827851' },
-    { id: 'hub', land: '#6b8b83', minimapLand: '#6b8b83' },
+    { id: 'devlin', land: '#7fa65b', minimapLand: '#7fa65b' },
+    { id: 'westside', land: '#836f47', minimapLand: '#836f47' },
+    { id: 'hub', land: '#5f8674', minimapLand: '#5f8674' },
   ],
 };
 

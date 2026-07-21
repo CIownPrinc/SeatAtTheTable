@@ -31,6 +31,25 @@ export function minimapIconForLocalBusiness(business: LocalBusiness): MinimapIco
   return 'shop';
 }
 
+export function mapPlaceCategoryLabel(place: Pick<MapPlaceRecord, 'category' | 'icon' | 'sourceKind'>): string {
+  if(place.icon === 'bank') return 'Bank';
+  if(place.icon === 'garage') return 'Garage';
+  if(place.icon === 'realty') return 'Real estate office';
+  if(place.icon === 'cityhall') return 'City Hall';
+  if(place.icon === 'heist') return 'Heist target';
+  if(place.icon === 'bar') return 'Bar / club';
+  if(place.icon === 'shop') return 'Local shop';
+  if(place.category === 'business') return 'Owned business';
+  if(place.category === 'service') return 'Service';
+  if(place.category === 'amenity') return 'Amenity';
+  if(place.category === 'corner') return 'Street corner';
+  if(place.category === 'person') return 'Person';
+  if(place.category === 'gang') return 'Gang recruit';
+  if(place.category === 'landmark') return 'Landmark';
+  if(place.sourceKind === 'local') return 'Local place';
+  return 'Place';
+}
+
 function nameForMapObject(object: MapObject): string {
   if('biz' in object.ref) return object.ref.biz.name;
   if('name' in object.ref) return object.ref.name;

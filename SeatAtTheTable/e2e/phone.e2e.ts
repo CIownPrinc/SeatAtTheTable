@@ -11,7 +11,7 @@ test.describe('phone / Windhaven OS device', () => {
     page.on('pageerror', (e) => pageErrors.push(e.message));
 
     await page.goto('/');
-    await page.getByRole('button', { name: 'Open the Cart' }).click();
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
     await expect(page.locator('#modal-overlay')).toHaveClass(/hidden/);
 
     // LEGAL: Finance and Assets are no longer flat tabs — they live on the phone now.

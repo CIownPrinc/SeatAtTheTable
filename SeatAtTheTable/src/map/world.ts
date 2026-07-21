@@ -53,6 +53,8 @@ export const VIEW_H = 440;
 export const WORLD_W = 5500;
 export const WORLD_H = 1200;
 export const DISTRICT_W = 1500;
+export const NORTH_SHORE_LOT_Y = 205;
+export const DEVLIN_NORTHWEST_LOT_X = 400;
 
 export const WINDHAVEN_LANDMASS: Point[] = [
   { x: -210, y: 64 },
@@ -149,24 +151,24 @@ export const spawnPoints: Record<string, Point> = {
 export const ventureDistricts = ['devlin', 'devlin', 'devlin', 'devlin', 'devlin', 'westside', 'westside', 'westside', 'westside', 'hub', 'hub', 'hub'];
 
 export const ventureLots: Record<string, Point[]> = {
-  devlin: [{ x: 120, y: 130 }, { x: 485, y: 130 }, { x: 915, y: 130 }, { x: 1330, y: 130 }, { x: 120, y: 450 }],
-  westside: [{ x: 2120, y: 130 }, { x: 2485, y: 130 }, { x: 2915, y: 130 }, { x: 3330, y: 130 }],
-  hub: [{ x: 4120, y: 130 }, { x: 4485, y: 130 }, { x: 4915, y: 130 }, { x: 5330, y: 130 }],
+  devlin: [{ x: DEVLIN_NORTHWEST_LOT_X, y: NORTH_SHORE_LOT_Y }, { x: 555, y: NORTH_SHORE_LOT_Y }, { x: 915, y: NORTH_SHORE_LOT_Y }, { x: 1330, y: NORTH_SHORE_LOT_Y }, { x: 120, y: 450 }],
+  westside: [{ x: 2120, y: NORTH_SHORE_LOT_Y }, { x: 2485, y: NORTH_SHORE_LOT_Y }, { x: 2915, y: NORTH_SHORE_LOT_Y }, { x: 3330, y: NORTH_SHORE_LOT_Y }],
+  hub: [{ x: 4120, y: NORTH_SHORE_LOT_Y }, { x: 4485, y: NORTH_SHORE_LOT_Y }, { x: 4915, y: NORTH_SHORE_LOT_Y }, { x: 5330, y: NORTH_SHORE_LOT_Y }],
 };
 
 export const ventureMapLots: Record<string, VentureMapLot> = {
-  cart: { district: 'devlin', x: 120, y: 130, zone: 'smallBusiness' },
-  store: { district: 'devlin', x: 485, y: 130, zone: 'smallBusiness' },
-  laundromat: { district: 'devlin', x: 915, y: 130, zone: 'smallBusiness' },
-  backroom_cards: { district: 'devlin', x: 1330, y: 130, zone: 'street' },
-  garage: { district: 'westside', x: 2120, y: 130, zone: 'industrial' },
-  cab: { district: 'westside', x: 2485, y: 130, zone: 'logistics' },
-  chop_ring: { district: 'westside', x: 2915, y: 130, zone: 'street' },
+  cart: { district: 'devlin', x: DEVLIN_NORTHWEST_LOT_X, y: NORTH_SHORE_LOT_Y, zone: 'smallBusiness' },
+  store: { district: 'devlin', x: 555, y: NORTH_SHORE_LOT_Y, zone: 'smallBusiness' },
+  laundromat: { district: 'devlin', x: 915, y: NORTH_SHORE_LOT_Y, zone: 'smallBusiness' },
+  backroom_cards: { district: 'devlin', x: 1330, y: NORTH_SHORE_LOT_Y, zone: 'street' },
+  garage: { district: 'westside', x: 2120, y: NORTH_SHORE_LOT_Y, zone: 'industrial' },
+  cab: { district: 'westside', x: 2485, y: NORTH_SHORE_LOT_Y, zone: 'logistics' },
+  chop_ring: { district: 'westside', x: 2915, y: NORTH_SHORE_LOT_Y, zone: 'street' },
   restaurant: { district: 'devlin', x: 120, y: 450, zone: 'smallBusiness' },
   lounge: { district: 'hub', x: 4485, y: 450, zone: 'entertainment' },
   wire_network: { district: 'hub', x: 4915, y: 450, zone: 'street' },
   realestate: { district: 'hub', x: 5330, y: 450, zone: 'corporate' },
-  syndicate_logistics: { district: 'westside', x: 3330, y: 130, zone: 'logistics' },
+  syndicate_logistics: { district: 'westside', x: 3330, y: NORTH_SHORE_LOT_Y, zone: 'logistics' },
   family_office: { district: 'hub', x: 4120, y: 750, zone: 'corporate' },
 };
 

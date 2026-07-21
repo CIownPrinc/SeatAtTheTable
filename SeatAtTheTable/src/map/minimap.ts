@@ -1,6 +1,7 @@
 import type { Corner, FillerItem, Point } from '../config/types';
 import type { MapObject, MinimapIcon } from './objects';
 import { windhavenMapModel } from './mapModel';
+import type { RoadPath } from './mapModel';
 import { mapTerrainTheme, terrainForDistrict } from './renderTheme';
 
 export const MINIMAP_SIZE = 150;
@@ -37,6 +38,8 @@ export interface MinimapRenderOptions {
   center?: Point | null;
   glyphScale?: number;
   districtNames?: Array<{ x: number; y?: number; name: string }>;
+  highlightPoint?: Point | null;
+  highlightLabel?: string;
 }
 
 interface MinimapRenderFrame {
@@ -54,6 +57,15 @@ const staticLayerCache = new Map<string, HTMLCanvasElement>();
 export function minimapStaticLayerCacheKey(options: MinimapRenderOptions): string {
   const frame = minimapRenderFrame(options);
   const districtNames = options.districtNames?.map(name => `${name.name}:${Math.round(name.x)}:${Math.round(name.y ?? 6)}`).join('|') ?? '';
+  const roadVersion = windhavenMapModel.roadPaths.map(road => `${road.id}:${road.roadClass}:${road.width}:${road.path.length}`).join('|');
+  const waterVersion = `${windhavenMapModel.canals.length}:${windhavenMapModel.northRiver.length}:${windhavenMapModel.lakefrontBeach.length}`;
+  const terrainVersion = [
+    mapTerrainTheme.openWater,
+    mapTerrainTheme.baseLand,
+    mapTerrainTheme.canalWater,
+    ...windhavenMapModel.districts.map(district => `${district.id}:${terrainForDistrict(district.id).minimapLand}:${district.landArea.length}`),
+  ].join('|');
+  const fillerVersion = ['devlin','westside','hub'].map(districtId => `${districtId}:${options.fillerFor(districtId).length}`).join('|');
   return [
     frame.viewW,
     frame.viewH,
@@ -63,6 +75,10 @@ export function minimapStaticLayerCacheKey(options: MinimapRenderOptions): strin
     frame.glyphScale.toFixed(2),
     options.landmass.length,
     options.landmarks.length,
+    waterVersion,
+    roadVersion,
+    terrainVersion,
+    fillerVersion,
     districtNames,
   ].join(':');
 }
@@ -260,20 +276,33 @@ function drawStaticMinimapLayer(mctx: CanvasRenderingContext2D, options: Minimap
 
   drawPolygon(windhavenMapModel.lakefrontBeach, 'rgba(185,167,119,0.55)', 'rgba(217,210,184,0.34)', Math.max(1, 1*glyphScale));
 
-  const drawRoad = function(points: Point[], width: number){
+  const drawRoad = function(road: RoadPath){
+    const surfaceWidth = road.width + (road.roadClass === 'arterial' ? 10 : road.roadClass === 'diagonal' ? 4 : 0);
+    const coreColor = road.roadClass === 'arterial' ? 'rgba(102,108,121,0.98)' : road.roadClass === 'diagonal' ? 'rgba(91,96,109,0.96)' : 'rgba(76,82,96,0.94)';
+    const edgeColor = road.roadClass === 'arterial' ? 'rgba(18,20,27,0.98)' : 'rgba(22,24,31,0.95)';
     mctx.strokeStyle='rgba(22,24,31,0.95)';
-    mctx.lineWidth=Math.max(2, width*scale + 2*glyphScale);
+    mctx.strokeStyle=edgeColor;
+    mctx.lineWidth=Math.max(2, surfaceWidth*scale + 2*glyphScale);
     mctx.beginPath();
-    points.forEach(function(point, index){ const p=proj(point.x,point.y); if(index===0) mctx.moveTo(p.x,p.y); else mctx.lineTo(p.x,p.y); });
+    road.path.forEach(function(point, index){ const p=proj(point.x,point.y); if(index===0) mctx.moveTo(p.x,p.y); else mctx.lineTo(p.x,p.y); });
     mctx.stroke();
-    mctx.strokeStyle='rgba(84,90,104,0.94)';
-    mctx.lineWidth=Math.max(1, width*scale);
+    mctx.strokeStyle=coreColor;
+    mctx.lineWidth=Math.max(1, surfaceWidth*scale);
     mctx.beginPath();
-    points.forEach(function(point, index){ const p=proj(point.x,point.y); if(index===0) mctx.moveTo(p.x,p.y); else mctx.lineTo(p.x,p.y); });
+    road.path.forEach(function(point, index){ const p=proj(point.x,point.y); if(index===0) mctx.moveTo(p.x,p.y); else mctx.lineTo(p.x,p.y); });
     mctx.stroke();
+    if(road.roadClass === 'arterial'){
+      mctx.strokeStyle='rgba(193,188,158,0.28)';
+      mctx.lineWidth=Math.max(1, 1.2*glyphScale);
+      mctx.setLineDash([8*glyphScale, 8*glyphScale]);
+      mctx.beginPath();
+      road.path.forEach(function(point, index){ const p=proj(point.x,point.y); if(index===0) mctx.moveTo(p.x,p.y); else mctx.lineTo(p.x,p.y); });
+      mctx.stroke();
+      mctx.setLineDash([]);
+    }
   };
   windhavenMapModel.roadPaths.forEach(function(road){
-    drawRoad(road.path, road.width);
+    drawRoad(road);
   });
 
   windhavenMapModel.bridges.forEach(function(bridge){
@@ -379,6 +408,43 @@ function drawDynamicMinimapLayer(mctx: CanvasRenderingContext2D, options: Minima
     mctx.beginPath(); mctx.arc(p.x,p.y,r+1,0,Math.PI*2); mctx.stroke();
   };
   if(options.waypoint) drawWaypoint(options.waypoint);
+
+  if(options.highlightPoint){
+    const hp = proj(options.highlightPoint.x, options.highlightPoint.y);
+    if(isOnMap(hp, viewW, viewH)){
+      const r = 9*glyphScale;
+      mctx.save();
+      mctx.strokeStyle='rgba(240,239,232,0.95)';
+      mctx.lineWidth=Math.max(1.5, 1.3*glyphScale);
+      mctx.beginPath();
+      mctx.arc(hp.x, hp.y, r, 0, Math.PI*2);
+      mctx.stroke();
+      mctx.strokeStyle='rgba(212,160,23,0.9)';
+      mctx.beginPath();
+      mctx.moveTo(hp.x-r-4*glyphScale, hp.y);
+      mctx.lineTo(hp.x-r+3*glyphScale, hp.y);
+      mctx.moveTo(hp.x+r-3*glyphScale, hp.y);
+      mctx.lineTo(hp.x+r+4*glyphScale, hp.y);
+      mctx.moveTo(hp.x, hp.y-r-4*glyphScale);
+      mctx.lineTo(hp.x, hp.y-r+3*glyphScale);
+      mctx.moveTo(hp.x, hp.y+r-3*glyphScale);
+      mctx.lineTo(hp.x, hp.y+r+4*glyphScale);
+      mctx.stroke();
+      if(options.highlightLabel && glyphScale >= 1.8){
+        mctx.font=`700 ${Math.round(10*glyphScale)}px IBM Plex Mono, monospace`;
+        mctx.textAlign='center';
+        mctx.textBaseline='bottom';
+        mctx.fillStyle='rgba(4,6,10,0.86)';
+        const textWidth = mctx.measureText(options.highlightLabel).width;
+        const labelX = Math.max(8 + textWidth/2, Math.min(viewW - 8 - textWidth/2, hp.x));
+        const labelY = Math.max(24, hp.y - r - 8*glyphScale);
+        mctx.fillRect(labelX - textWidth/2 - 6, labelY - 17*glyphScale, textWidth + 12, 17*glyphScale);
+        mctx.fillStyle='rgba(240,239,232,0.94)';
+        mctx.fillText(options.highlightLabel, labelX, labelY - 3*glyphScale);
+      }
+      mctx.restore();
+    }
+  }
 
   const pp = proj(options.player.x,options.player.y);
   mctx.save(); mctx.translate(pp.x,pp.y); mctx.rotate(options.player.facing);

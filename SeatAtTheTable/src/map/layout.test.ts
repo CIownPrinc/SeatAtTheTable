@@ -3,8 +3,10 @@ import { businesses } from '../config/ventures';
 import { amenityHasSolidFootprint, mapAmenities } from './amenities';
 import { createFillerLayoutProvider } from './filler';
 import { buildableBands, distancePointToSegment, localXForDistrict, rectsOverlap, rotatedHalfExtents } from './layout';
+import { districtIdAtPlayablePoint } from './mapModel';
 import { createMapBuildings } from './markers';
 import { actorRadius, canMoveTo, isWaterBlocked } from './movement';
+import { ventureFootprint } from './objectFactory';
 import { DISTRICT_OFFSETS, districtParkSlots, namedBuildingLots, roadNetwork, ventureDistricts, ventureLots, ventureMapLots } from './world';
 import { zoneForDistrictBlock } from './zoning';
 
@@ -124,6 +126,22 @@ describe('map layout helpers', function () {
       seen.add(key);
       expect(roadNetwork.vertical.some(r=>Math.abs(marker.x - r.x) < 77)).toBe(false);
       expect(roadNetwork.horizontal.some(r=>Math.abs(marker.y - r.y) < 71)).toBe(false);
+    });
+  });
+
+  it('keeps venture building footprints on playable district land', function () {
+    createMapBuildings(businesses).forEach(function(marker){
+      const footprint = ventureFootprint(marker);
+      const points = [
+        { x: marker.x - footprint.w / 2, y: marker.y - footprint.d / 2 },
+        { x: marker.x + footprint.w / 2, y: marker.y - footprint.d / 2 },
+        { x: marker.x - footprint.w / 2, y: marker.y + footprint.d / 2 },
+        { x: marker.x + footprint.w / 2, y: marker.y + footprint.d / 2 },
+      ];
+
+      points.forEach(function(point){
+        expect(districtIdAtPlayablePoint(point, 0)).toBe(marker.district);
+      });
     });
   });
 

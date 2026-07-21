@@ -25,7 +25,7 @@ import { drawMinimap as drawMapMinimap, MINIMAP_SCALE } from '../map/minimap';
 import type { MapObject } from '../map/objects';
 import { solidsFromObjects } from '../map/objects';
 import { buildMapObjects, ventureFootprint } from '../map/objectFactory';
-import { createMapPlaceRecords, nearestMapPlace, type MapPlaceRecord } from '../map/places';
+import { createMapPlaceRecords, mapPlaceCategoryLabel, nearestMapPlace, type MapPlaceRecord } from '../map/places';
 import { actorDisplayName, createRoamingActors, updateRoamingActors } from '../map/roaming';
 import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, buildLandmarks, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
 import { createMapSceneMaterials } from '../map/scenePerformance';
@@ -3479,6 +3479,16 @@ import type * as ThreeNamespace from 'three';
     attr.needsUpdate = true;
   }
 
+  function updateWaterMotion(): void {
+    if(!worldGroup) return;
+    worldGroup.children.forEach(function(child){
+      const motion = child.userData.waterMotion as { baseX: number; baseZ: number; driftX: number; driftZ: number; phase: number } | undefined;
+      if(!motion) return;
+      const wave = Math.sin(state.playSeconds * 2.2 + motion.phase);
+      child.position.x = motion.baseX + wave * motion.driftX;
+      child.position.z = motion.baseZ + wave * motion.driftZ;
+    });
+  }
 
   // LEGAL: ---- unified city — builds the entire world once; no per-district teardown ----
   function buildCityScene(){
@@ -3813,6 +3823,7 @@ import type * as ThreeNamespace from 'three';
   const CITY_W = cityMapCanvas.width, CITY_H = cityMapCanvas.height;
   const cityViewport = createMapViewport(CITY_W, CITY_H, windhavenMapModel.districts.flatMap(district => district.landArea));
   let cityMapOpen = false;
+  let cityMapHoverPlace: MapPlaceRecord | null = null;
 
   const cityLegend: Array<{ icon: string; label: string; color: string; ph?: string }> = [
     { icon:'legal',    label:'Owned business',          color:'#3e7c8c', ph:'ph-storefront' },
@@ -3840,6 +3851,8 @@ import type * as ThreeNamespace from 'three';
       waypoint:currentWaypoint(),
       viewW:CITY_W, viewH:CITY_H, scale:cityViewport.scale, center:cityViewport.center, glyphScale:1.9,
       districtNames:windhavenMapModel.districts.map(function(district){ return { x: district.labelPoint.x, y: district.labelPoint.y, name: district.name }; }),
+      highlightPoint:cityMapHoverPlace,
+      highlightLabel:cityMapHoverPlace?.name,
     });
   }
   function openCityMap(){
@@ -3875,14 +3888,19 @@ import type * as ThreeNamespace from 'three';
     const point = cityMapWorldPoint(e);
     const dist = districts.find(function(d){ return d.id === districtIdAtPlayablePoint(point, 0); });
     const place = nearestCityMapPlace(point);
+    cityMapHoverPlace = place;
     if(!dist){
       cityMapHint.textContent = 'Water - waypoints must be placed on land';
+      drawCityMap();
       return;
     }
-    cityMapHint.textContent = place ? `${dist ? dist.name : 'Windhaven'} · ${place.name}` : `${dist ? dist.name : 'Windhaven'} · Click to set waypoint`;
+    cityMapHint.textContent = place ? `${dist.name} - ${place.name} - ${mapPlaceCategoryLabel(place)}` : `${dist.name} - Click to set waypoint`;
+    drawCityMap();
   });
   cityMapCanvas.addEventListener('mouseleave', function(){
+    cityMapHoverPlace = null;
     cityMapHint.textContent = 'Click land to drop a waypoint - hover places to inspect them';
+    drawCityMap();
   });
   cityMapCanvas.addEventListener('click', function(e){
     if(state.currentInterior) return;
@@ -4022,6 +4040,7 @@ import type * as ThreeNamespace from 'three';
       renderer.domElement.style.display = 'block';
       updateDayNightLighting();
       updateWeather(dt);
+      updateWaterMotion();
       updateRoamingActors(roamingActors, { dt, playSeconds:state.playSeconds, indoors:!!state.currentInterior, canMove:function(x,y){ return tryMove(x,y,currentSolids); } });
       updateDealerArrivals(dt);
       updateTrain();
