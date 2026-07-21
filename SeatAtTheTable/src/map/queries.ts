@@ -1,7 +1,7 @@
 import type { Point } from '../config/types';
 import { isPointInWater, isPointOnWindhavenLand } from './geometry';
 import { distancePointToSegment } from './layout';
-import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel, type BridgeRecord, type MapDistrictRecord, type RoadPath, type WindhavenMapModel } from './mapModel';
+import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel, type BridgeRecord, type MapDistrictRecord, type RailLineRecord, type RoadPath, type WindhavenMapModel } from './mapModel';
 import { nearestMapPlace, type MapPlaceCategory, type MapPlaceRecord } from './places';
 
 export interface MapPointContext {
@@ -33,6 +33,47 @@ export interface RouteHint {
   roads: RoadPath[];
   bridges: BridgeRecord[];
   distance: number;
+}
+
+export interface TrainSnapshot {
+  rail: RailLineRecord;
+  point: Point;
+  progress: number;
+}
+
+export interface RailCrossingBlock {
+  rail: RailLineRecord;
+  road: RoadPath;
+  point: Point;
+  train: TrainSnapshot;
+  distance: number;
+}
+
+interface RoadSegment {
+  road: RoadPath;
+  start: Point;
+  end: Point;
+}
+
+interface RouteGraphNode {
+  id: string;
+  point: Point;
+}
+
+interface RouteGraphEdge {
+  to: string;
+  road: RoadPath;
+  distance: number;
+}
+
+interface RouteGraph {
+  nodes: Map<string, RouteGraphNode>;
+  edges: Map<string, RouteGraphEdge[]>;
+}
+
+interface RouteSearchResult {
+  pointIds: string[];
+  roads: RoadPath[];
 }
 
 export function placesByCategory(places: MapPlaceRecord[], category: MapPlaceCategory): MapPlaceRecord[] {
@@ -83,18 +124,21 @@ export function mapPointContext(point: Point, places: MapPlaceRecord[], options:
 export function routeHintBetween(start: Point, end: Point, model: WindhavenMapModel = windhavenMapModel): RouteHint {
   const startRoad = projectPointToRoad(start, model);
   const endRoad = projectPointToRoad(end, model);
-  const bridges = bridgesBetween(start, end, model);
-  const bridgeRoads = bridges
-    .map(bridge => model.roadPaths.find(road => road.name === bridge.roadName) ?? null)
-    .filter((road): road is RoadPath => road !== null);
-  const roads = uniqueRoads([startRoad.road, ...bridgeRoads, endRoad.road]);
+  const routeGraph = buildRouteGraph(startRoad, endRoad, model);
+  const routeResult = shortestRoute(
+    routeGraph,
+    pointKey(startRoad.point),
+    pointKey(endRoad.point),
+  );
+  const roadPoints = routeResult.pointIds.map(id => routeGraph.nodes.get(id)?.point).filter((point): point is Point => point !== undefined);
+  const fallbackRoadPoints = [startRoad.point, endRoad.point];
   const waypoints = compactRoutePoints([
     start,
-    startRoad.point,
-    ...bridges.map(bridgeCenter),
-    endRoad.point,
+    ...(roadPoints.length > 0 ? roadPoints : fallbackRoadPoints),
     end,
   ]);
+  const roads = uniqueRoads(routeResult.roads.length > 0 ? routeResult.roads : [startRoad.road, endRoad.road]);
+  const bridges = bridgesOnRoute(waypoints, roads, model);
 
   return {
     start,
@@ -104,6 +148,180 @@ export function routeHintBetween(start: Point, end: Point, model: WindhavenMapMo
     bridges,
     distance: routeDistance(waypoints),
   };
+}
+
+export function activeTrainSnapshot(timeMs: number, rail: RailLineRecord): TrainSnapshot | null {
+  const cycle = positiveModulo(timeMs, rail.trainCycleMs) / rail.trainCycleMs;
+  if(cycle < rail.activeWindow.start || cycle > rail.activeWindow.end) return null;
+  const progress = (cycle - rail.activeWindow.start) / (rail.activeWindow.end - rail.activeWindow.start);
+  const start = rail.path[0];
+  const end = rail.path[rail.path.length - 1];
+  return {
+    rail,
+    point: {
+      x: start.x + (end.x - start.x) * progress,
+      y: start.y + (end.y - start.y) * progress,
+    },
+    progress,
+  };
+}
+
+export function trainCrossingBlockAtPoint(point: Point, timeMs: number, radius = 28, model: WindhavenMapModel = windhavenMapModel): RailCrossingBlock | null {
+  const candidates = model.railLines.flatMap(function(rail): RailCrossingBlock[] {
+    const train = activeTrainSnapshot(timeMs, rail);
+    if(!train) return [];
+    return railCrossings(rail, model).map(function(crossing): RailCrossingBlock {
+      return {
+        rail,
+        road: crossing.road,
+        point: crossing.point,
+        train,
+        distance: Math.hypot(point.x - crossing.point.x, point.y - crossing.point.y),
+      };
+    });
+  });
+  return candidates.find(function(candidate): boolean {
+    const trainNearCrossing = Math.abs(candidate.train.point.y - candidate.point.y) <= Math.max(96, candidate.rail.width * 2);
+    return trainNearCrossing && candidate.distance <= radius + candidate.rail.width / 2 + candidate.road.width / 2;
+  }) ?? null;
+}
+
+function buildRouteGraph(startRoad: RoadProjection, endRoad: RoadProjection, model: WindhavenMapModel): RouteGraph {
+  const nodes = new Map<string, RouteGraphNode>();
+  const edges = new Map<string, RouteGraphEdge[]>();
+  const segments = roadSegments(model);
+  const pointsByRoad = new Map<string, Point[]>();
+
+  model.roadPaths.forEach(function(road): void {
+    pointsByRoad.set(road.id, [...road.path]);
+  });
+
+  for(let i = 0; i < segments.length; i++){
+    for(let j = i + 1; j < segments.length; j++){
+      const intersection = segmentIntersection(segments[i].start, segments[i].end, segments[j].start, segments[j].end);
+      if(intersection){
+        pointsByRoad.get(segments[i].road.id)?.push(intersection);
+        pointsByRoad.get(segments[j].road.id)?.push(intersection);
+      }
+    }
+  }
+
+  pointsByRoad.get(startRoad.road.id)?.push(startRoad.point);
+  pointsByRoad.get(endRoad.road.id)?.push(endRoad.point);
+
+  segments.forEach(function(segment): void {
+    const segmentPoints = (pointsByRoad.get(segment.road.id) ?? [])
+      .filter(point => pointOnSegment(point, segment.start, segment.end, 0.75))
+      .sort(function(a, b): number {
+        return segmentT(a, segment.start, segment.end) - segmentT(b, segment.start, segment.end);
+      })
+      .filter(function(point, index, points): boolean {
+        const previous = points[index - 1];
+        return !previous || pointDistance(point, previous) > 0.75;
+      });
+
+    segmentPoints.forEach(function(point): void {
+      addGraphNode(nodes, edges, point);
+    });
+
+    segmentPoints.slice(1).forEach(function(point, index): void {
+      const previous = segmentPoints[index];
+      addGraphEdge(edges, previous, point, segment.road);
+      addGraphEdge(edges, point, previous, segment.road);
+    });
+  });
+
+  return { nodes, edges };
+}
+
+function railCrossings(rail: RailLineRecord, model: WindhavenMapModel): Array<{ road: RoadPath; point: Point }> {
+  const railSegments = rail.path.slice(0, -1).map(function(start, index): { start: Point; end: Point } {
+    return { start, end: rail.path[index + 1] };
+  });
+  return model.roadPaths.flatMap(function(road): Array<{ road: RoadPath; point: Point }> {
+    return road.path.slice(0, -1).flatMap(function(start, index): Array<{ road: RoadPath; point: Point }> {
+      const end = road.path[index + 1];
+      const intersections = railSegments
+        .map(segment => segmentIntersection(segment.start, segment.end, start, end))
+        .filter((intersection): intersection is Point => intersection !== null);
+      return intersections.map(point => ({ road, point }));
+    });
+  });
+}
+
+function roadSegments(model: WindhavenMapModel): RoadSegment[] {
+  return model.roadPaths.flatMap(function(road): RoadSegment[] {
+    return road.path.slice(0, -1).map(function(start, index): RoadSegment {
+      return { road, start, end: road.path[index + 1] };
+    });
+  });
+}
+
+function addGraphNode(nodes: Map<string, RouteGraphNode>, edges: Map<string, RouteGraphEdge[]>, point: Point): string {
+  const id = pointKey(point);
+  if(!nodes.has(id)) nodes.set(id, { id, point: normalizedPoint(point) });
+  if(!edges.has(id)) edges.set(id, []);
+  return id;
+}
+
+function addGraphEdge(edges: Map<string, RouteGraphEdge[]>, from: Point, to: Point, road: RoadPath): void {
+  const fromId = pointKey(from);
+  const toId = pointKey(to);
+  if(fromId === toId) return;
+  edges.get(fromId)?.push({ to:toId, road, distance:pointDistance(from, to) });
+}
+
+function shortestRoute(graph: RouteGraph, startId: string, endId: string): RouteSearchResult {
+  const distances = new Map<string, number>();
+  const previous = new Map<string, { nodeId: string; road: RoadPath }>();
+  const unvisited = new Set<string>(graph.nodes.keys());
+
+  graph.nodes.forEach(function(_node, id): void {
+    distances.set(id, id === startId ? 0 : Infinity);
+  });
+
+  while(unvisited.size > 0){
+    const currentId = nearestUnvisited(unvisited, distances);
+    if(currentId === null || currentId === endId) break;
+    unvisited.delete(currentId);
+    const currentDistance = distances.get(currentId) ?? Infinity;
+    (graph.edges.get(currentId) ?? []).forEach(function(edge): void {
+      if(!unvisited.has(edge.to)) return;
+      const nextDistance = currentDistance + edge.distance;
+      if(nextDistance < (distances.get(edge.to) ?? Infinity)){
+        distances.set(edge.to, nextDistance);
+        previous.set(edge.to, { nodeId:currentId, road:edge.road });
+      }
+    });
+  }
+
+  if(startId !== endId && !previous.has(endId)) return { pointIds:[], roads:[] };
+
+  const pointIds = [endId];
+  const roads: RoadPath[] = [];
+  let cursor = endId;
+  while(cursor !== startId){
+    const step = previous.get(cursor);
+    if(!step) break;
+    roads.unshift(step.road);
+    cursor = step.nodeId;
+    pointIds.unshift(cursor);
+  }
+
+  return { pointIds, roads: uniqueRoads(roads) };
+}
+
+function nearestUnvisited(unvisited: Set<string>, distances: Map<string, number>): string | null {
+  let bestId: string | null = null;
+  let bestDistance = Infinity;
+  unvisited.forEach(function(id): void {
+    const distance = distances.get(id) ?? Infinity;
+    if(distance < bestDistance){
+      bestDistance = distance;
+      bestId = id;
+    }
+  });
+  return bestId;
 }
 
 function projectPointToRoadPath(point: Point, road: RoadPath): RoadProjection {
@@ -124,20 +342,15 @@ function projectPointToSegment(point: Point, start: Point, end: Point): Point {
   return { x:start.x + t*dx, y:start.y + t*dy };
 }
 
-function bridgesBetween(start: Point, end: Point, model: WindhavenMapModel): BridgeRecord[] {
-  const minX = Math.min(start.x, end.x);
-  const maxX = Math.max(start.x, end.x);
-  return model.bridges
-    .filter(function(bridge){
-      const center = bridgeCenter(bridge);
-      const routeDistanceToBridge = distancePointToSegment(center.x, center.y, start.x, start.y, end.x, end.y);
-      return center.x >= minX && center.x <= maxX && routeDistanceToBridge <= Math.max(110, bridge.width);
-    })
-    .sort(function(a, b){
-      const ax = bridgeCenter(a).x;
-      const bx = bridgeCenter(b).x;
-      return start.x <= end.x ? ax - bx : bx - ax;
+function bridgesOnRoute(points: Point[], roads: RoadPath[], model: WindhavenMapModel): BridgeRecord[] {
+  return model.bridges.filter(function(bridge): boolean {
+    if(!roads.some(road => road.name === bridge.roadName)) return false;
+    const center = bridgeCenter(bridge);
+    return points.slice(1).some(function(point, index): boolean {
+      const previous = points[index];
+      return distancePointToSegment(center.x, center.y, previous.x, previous.y, point.x, point.y) <= Math.max(bridge.width, 70);
     });
+  });
 }
 
 function bridgeCenter(bridge: BridgeRecord): Point {
@@ -168,4 +381,55 @@ function routeDistance(points: Point[]): number {
     const previous = points[index];
     return total + Math.hypot(point.x - previous.x, point.y - previous.y);
   }, 0);
+}
+
+function segmentIntersection(aStart: Point, aEnd: Point, bStart: Point, bEnd: Point): Point | null {
+  const ax = aEnd.x - aStart.x;
+  const ay = aEnd.y - aStart.y;
+  const bx = bEnd.x - bStart.x;
+  const by = bEnd.y - bStart.y;
+  const denominator = ax*by - ay*bx;
+  if(Math.abs(denominator) < 0.00001){
+    return sharedEndpoint(aStart, aEnd, bStart, bEnd);
+  }
+  const cx = bStart.x - aStart.x;
+  const cy = bStart.y - aStart.y;
+  const t = (cx*by - cy*bx) / denominator;
+  const u = (cx*ay - cy*ax) / denominator;
+  if(t < -0.00001 || t > 1.00001 || u < -0.00001 || u > 1.00001) return null;
+  return normalizedPoint({ x:aStart.x + t*ax, y:aStart.y + t*ay });
+}
+
+function sharedEndpoint(aStart: Point, aEnd: Point, bStart: Point, bEnd: Point): Point | null {
+  const endpoints = [aStart, aEnd];
+  return endpoints.find(endpoint => pointDistance(endpoint, bStart) < 0.75 || pointDistance(endpoint, bEnd) < 0.75) ?? null;
+}
+
+function pointOnSegment(point: Point, start: Point, end: Point, tolerance: number): boolean {
+  return distancePointToSegment(point.x, point.y, start.x, start.y, end.x, end.y) <= tolerance && segmentT(point, start, end) >= -0.00001 && segmentT(point, start, end) <= 1.00001;
+}
+
+function segmentT(point: Point, start: Point, end: Point): number {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const lenSq = dx*dx + dy*dy;
+  if(lenSq === 0) return 0;
+  return ((point.x - start.x)*dx + (point.y - start.y)*dy) / lenSq;
+}
+
+function pointKey(point: Point): string {
+  const normalized = normalizedPoint(point);
+  return `${normalized.x},${normalized.y}`;
+}
+
+function normalizedPoint(point: Point): Point {
+  return { x:Math.round(point.x * 1000) / 1000, y:Math.round(point.y * 1000) / 1000 };
+}
+
+function pointDistance(a: Point, b: Point): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function positiveModulo(value: number, divisor: number): number {
+  return ((value % divisor) + divisor) % divisor;
 }

@@ -25,8 +25,9 @@ import { drawMinimap as drawMapMinimap, MINIMAP_SCALE } from '../map/minimap';
 import type { MapObject } from '../map/objects';
 import { solidsFromObjects } from '../map/objects';
 import { buildMapObjects, ventureFootprint } from '../map/objectFactory';
+import { defaultParkedCarPositions, parkedCarPositionForDistrict } from '../map/parking';
 import { createMapPlaceRecords, mapPlaceCategoryLabel, type MapPlaceCategory, type MapPlaceRecord } from '../map/places';
-import { mapPointContext, nearestPlaceAtPoint, placesByCategory, routeHintBetween } from '../map/queries';
+import { mapPointContext, nearestPlaceAtPoint, placesByCategory, routeHintBetween, trainCrossingBlockAtPoint } from '../map/queries';
 import { actorDisplayName, createRoamingActors, updateRoamingActors } from '../map/roaming';
 import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, buildLandmarks, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
 import { createMapSceneMaterials } from '../map/scenePerformance';
@@ -427,7 +428,7 @@ import type * as ThreeNamespace from 'three';
     currentDistrict: 'devlin', product: 0, productLevel: 0, currentInterior: null,
     inVehicle: false,
     waypoints: { devlin:null, westside:null, hub:null, global:null },
-    parkedCarPos: { devlin:{x:700,y:660}, westside:{x:2700,y:660}, hub:{x:4700,y:660} },
+    parkedCarPos: defaultParkedCarPositions(),
     influence: 0, influenceBuys: 0, electedOffice: false, nextCampaignAt: 0, nextWarAt: 0,
     campaignActive: false, campaignEndAt: 0, campaignStyle: '',
     portfolio: {}, marketPrices: {}, marketHistory: {}, nextMarketTickAt: 0,
@@ -2926,8 +2927,10 @@ import type * as ThreeNamespace from 'three';
   });
   window.addEventListener('keydown', function(e){
     if(e.key !== 'Escape') return;
-    if(cityMapOpen){
+    const cityOverlay = byIdOrNull('citymap-overlay');
+    if(cityMapOpen || (cityOverlay && !cityOverlay.classList.contains('hidden'))){
       closeCityMap();
+      e.preventDefault();
       return;
     }
     const container = byId<HTMLElement>('scene3d-container');
@@ -2970,10 +2973,7 @@ import type * as ThreeNamespace from 'three';
     let best: MapMarker | null = null, bestDist=46;
     const car = getEquippedCar();
     if(car){
-      // LEGAL: Enter-hitbox must match the rendered car mesh, which falls back to
-      // LEGAL: carSpawnPos() before the car has ever been parked. Using the same
-      // LEGAL: source here fixes the "car you can see but can never enter" deadlock.
-      const parked = state.parkedCarPos[state.currentDistrict] || carSpawnPos();
+      const parked = parkedCarPositionForDistrict(state.parkedCarPos, state.currentDistrict);
       const d = Math.hypot(player.x-parked.x, player.y-parked.y);
       if(d<bestDist){ bestDist=d; best={type:'car', ref:parked}; }
     }
@@ -3012,6 +3012,7 @@ import type * as ThreeNamespace from 'three';
     return 150;
   }
   function tryMove(nx: number, ny: number, solids: Solid[]){
+    if(state.inVehicle && trainCrossingBlockAtPoint({ x:nx, y:ny }, Date.now(), actorRadius(true))) return false;
     return canMoveTo(nx, ny, solids, state.inVehicle);
   }
 
@@ -3666,18 +3667,12 @@ import type * as ThreeNamespace from 'three';
     if(state.inVehicle){ const car=getEquippedCar(); if(car) playerGroup.add(buildCarModel(car)); }
     else playerGroup.add(buildPedestrianModel('#f0efe8', 'arjun'));
   }
-  // LEGAL: Where a freshly-bought (never-parked) car sits — just off the district
-  // LEGAL: spawn so the player has to step over to it rather than start on top of it.
-  function carSpawnPos(): Point {
-    const s = spawnPoints[state.currentDistrict] || { x:700, y:600 };
-    return { x: s.x + 70, y: s.y };
-  }
   function updateParkedCarMesh(){
     if(!sceneInitialized || !worldGroup) return;
     if(parkedCarMesh){ worldGroup.remove(parkedCarMesh); parkedCarMesh.traverse(disposeObj); parkedCarMesh=null; }
     const car = getEquippedCar();
     if(car && !state.inVehicle){
-      const pos = state.parkedCarPos[state.currentDistrict] || carSpawnPos();
+      const pos = parkedCarPositionForDistrict(state.parkedCarPos, state.currentDistrict);
       parkedCarMesh = buildCarModel(car);
       parkedCarMesh.position.set(pos.x,0,pos.y);
       worldGroup.add(parkedCarMesh);
@@ -4363,7 +4358,7 @@ import type * as ThreeNamespace from 'three';
         (d.gangRecruits||[]).forEach((sg: any)=>{ const g=gangRecruits.find(x=>x.id===sg.id); if(g) g.inducted=sg.inducted; });
         state.inVehicle = d.inVehicle||false;
         state.waypoints = Object.assign({devlin:null,westside:null,hub:null,global:null}, d.waypoints||{});
-        state.parkedCarPos = Object.assign({devlin:{x:700,y:660},westside:{x:2700,y:660},hub:{x:4700,y:660}}, d.parkedCarPos||{});
+        state.parkedCarPos = Object.assign(defaultParkedCarPositions(), d.parkedCarPos||{});
         state.marketPrices = d.marketPrices || {};
         state.portfolio = d.portfolio || {};
         state.marketHistory = d.marketHistory || {};

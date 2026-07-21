@@ -2,6 +2,7 @@ import type { Corner, FillerItem, Point } from '../config/types';
 import type { MapObject, MinimapIcon } from './objects';
 import { windhavenMapModel } from './mapModel';
 import type { RoadPath } from './mapModel';
+import { activeTrainSnapshot } from './queries';
 import { mapTerrainTheme, terrainForDistrict } from './renderTheme';
 
 export const MINIMAP_SIZE = 150;
@@ -381,10 +382,9 @@ function drawDynamicMinimapLayer(mctx: CanvasRenderingContext2D, options: Minima
   }
 
   windhavenMapModel.railLines.forEach(function(rail){
-    const trainT = (Date.now() % rail.trainCycleMs) / rail.trainCycleMs;
-    if(trainT <= rail.activeWindow.start || trainT >= rail.activeWindow.end) return;
-    const y = (trainT - rail.activeWindow.start) / (rail.activeWindow.end - rail.activeWindow.start) * options.worldHeight;
-    const p = proj(rail.path[0].x, y);
+    const train = activeTrainSnapshot(Date.now(), rail);
+    if(!train) return;
+    const p = proj(train.point.x, train.point.y);
     mctx.fillStyle='#b43a35';
     mctx.fillRect(p.x - Math.max(3,6*glyphScale), p.y - Math.max(8,15*glyphScale), Math.max(6,12*glyphScale), Math.max(16,30*glyphScale));
     mctx.strokeStyle='#f0d38a';

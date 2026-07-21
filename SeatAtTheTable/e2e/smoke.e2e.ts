@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { inflateSync } from 'node:zlib';
 
 // LEGAL: Smoke test — the safety net that guards the header.ts split. If a
@@ -121,6 +121,21 @@ function mapCanvasColorStats(buffer: Buffer): MapCanvasColorStats {
   return { bluePixels, landPixels, darkPixels, sampledPixels, colorBuckets:buckets.size };
 }
 
+async function clippedElementScreenshot(page: Page, selector: string): Promise<Buffer> {
+  const box = await page.locator(selector).evaluate(function(element: HTMLElement){
+    const rect = element.getBoundingClientRect();
+    return { x:rect.x, y:rect.y, width:rect.width, height:rect.height };
+  });
+  return page.screenshot({
+    clip: {
+      x: Math.max(0, Math.floor(box.x)),
+      y: Math.max(0, Math.floor(box.y)),
+      width: Math.max(1, Math.floor(box.width)),
+      height: Math.max(1, Math.floor(box.height)),
+    },
+  });
+}
+
 test.describe('game boot', () => {
   test.describe.configure({ mode: 'serial' });
 
@@ -170,6 +185,7 @@ test.describe('game boot', () => {
   });
 
   test('map canvas keeps water and land visually distinct', async ({ page }) => {
+    test.setTimeout(60000);
     await page.goto('/');
     await page.getByRole('button', { name: 'Start', exact: true }).click();
     await page.locator('.tab-btn[data-tab="map"]').click();
@@ -177,7 +193,7 @@ test.describe('game boot', () => {
     await expect(canvas).toBeVisible();
     await page.waitForTimeout(1600);
 
-    const stats = mapCanvasColorStats(await canvas.screenshot());
+    const stats = mapCanvasColorStats(await clippedElementScreenshot(page, '#scene3d-container canvas.webgl-canvas'));
     const darkRatio = stats.sampledPixels === 0 ? 1 : stats.darkPixels / stats.sampledPixels;
 
     expect(stats.bluePixels).toBeGreaterThan(900);

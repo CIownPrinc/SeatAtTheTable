@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { MapObject } from './objects';
 import type { MapNpc } from './markers';
 import { createMapPlaceRecords } from './places';
-import { bridgeAtPoint, isPointOnPlayableLand, mapPointContext, nearestPlaceAtPoint, placesByCategory, projectPointToRoad, routeHintBetween } from './queries';
+import { activeTrainSnapshot, bridgeAtPoint, isPointOnPlayableLand, mapPointContext, nearestPlaceAtPoint, placesByCategory, projectPointToRoad, routeHintBetween, trainCrossingBlockAtPoint } from './queries';
 import { windhavenMapModel } from './mapModel';
 
 describe('map gameplay queries', function () {
@@ -62,5 +62,35 @@ describe('map gameplay queries', function () {
     expect(route.bridges.map(bridge => bridge.roadName)).toContain('Roosevelt Road');
     expect(route.roads.map(road => road.name)).toContain('Roosevelt Road');
     expect(route.distance).toBeGreaterThan(1900);
+  });
+
+  it('routes through connected road turns instead of cutting across blocks', function () {
+    const route = routeHintBetween({ x:700, y:520 }, { x:1130, y:840 });
+
+    expect(route.waypoints).toContainEqual({ x:700, y:600 });
+    expect(route.waypoints).toContainEqual({ x:1130, y:600 });
+    expect(route.roads.map(road => road.name)).toEqual(['Devlin Street', 'Roosevelt Road', 'Ashland Row']);
+    expect(route.distance).toBeGreaterThan(740);
+  });
+
+  it('routes diagonal shortcuts through their real endpoints', function () {
+    const route = routeHintBetween({ x:2270, y:900 }, { x:3130, y:300 });
+
+    expect(route.roads.map(road => road.name)).toContain('Canal Bend Road');
+    expect(route.waypoints).toContainEqual({ x:2270, y:900 });
+    expect(route.waypoints).toContainEqual({ x:3130, y:300 });
+    expect(route.distance).toBeLessThan(1200);
+  });
+
+  it('reports train positions and crossing blocks from the shared rail timing', function () {
+    const rail = windhavenMapModel.railLines[0];
+    const crossingCycle = rail.activeWindow.start + 0.5 * (rail.activeWindow.end - rail.activeWindow.start);
+    const crossingTime = crossingCycle * rail.trainCycleMs;
+    const inactiveTime = (rail.activeWindow.start / 2) * rail.trainCycleMs;
+
+    expect(activeTrainSnapshot(crossingTime, rail)?.point).toEqual({ x:3470, y:600 });
+    expect(activeTrainSnapshot(inactiveTime, rail)).toBeNull();
+    expect(trainCrossingBlockAtPoint({ x:3470, y:600 }, crossingTime)?.road.name).toBe('Roosevelt Road');
+    expect(trainCrossingBlockAtPoint({ x:3470, y:600 }, inactiveTime)).toBeNull();
   });
 });
