@@ -285,7 +285,14 @@
     </div>
     <div class="citymap-body">
       <div class="citymap-canvas-wrap"><canvas id="citymap-canvas" width="900" height="520"></canvas></div>
-      <div class="citymap-legend" id="citymap-legend"></div>
+      <div class="citymap-side">
+        <div class="citymap-search">
+          <input id="citymap-search" type="search" placeholder="Search places" autocomplete="off" />
+          <div class="citymap-filters" id="citymap-filters"></div>
+        </div>
+        <div class="citymap-results" id="citymap-results"></div>
+        <div class="citymap-legend" id="citymap-legend"></div>
+      </div>
     </div>
     <div class="citymap-hint" id="citymap-hint">Click the expanded map to drop a waypoint · hover places to inspect them</div>
   </div>

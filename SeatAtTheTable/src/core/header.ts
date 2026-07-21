@@ -25,8 +25,8 @@ import { drawMinimap as drawMapMinimap, MINIMAP_SCALE } from '../map/minimap';
 import type { MapObject } from '../map/objects';
 import { solidsFromObjects } from '../map/objects';
 import { buildMapObjects, ventureFootprint } from '../map/objectFactory';
-import { createMapPlaceRecords, mapPlaceCategoryLabel, type MapPlaceRecord } from '../map/places';
-import { mapPointContext, nearestPlaceAtPoint } from '../map/queries';
+import { createMapPlaceRecords, mapPlaceCategoryLabel, type MapPlaceCategory, type MapPlaceRecord } from '../map/places';
+import { mapPointContext, nearestPlaceAtPoint, placesByCategory } from '../map/queries';
 import { actorDisplayName, createRoamingActors, updateRoamingActors } from '../map/roaming';
 import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, buildLandmarks, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
 import { createMapSceneMaterials } from '../map/scenePerformance';
@@ -3821,10 +3821,15 @@ import type * as ThreeNamespace from 'three';
   const cityMapCanvas = byId<HTMLCanvasElement>('citymap-canvas');
   const cityCtx = cityMapCanvas.getContext('2d')!;
   const cityMapHint = byId('citymap-hint');
+  const cityMapSearch = byId<HTMLInputElement>('citymap-search');
+  const cityMapFilters = byId('citymap-filters');
+  const cityMapResults = byId('citymap-results');
   const CITY_W = cityMapCanvas.width, CITY_H = cityMapCanvas.height;
   const cityViewport = createMapViewport(CITY_W, CITY_H, windhavenMapModel.districts.flatMap(district => district.landArea));
   let cityMapOpen = false;
   let cityMapHoverPlace: MapPlaceRecord | null = null;
+  let cityMapFilter: MapPlaceCategory | 'all' = 'all';
+  let cityMapSearchTerm = '';
 
   const cityLegend: Array<{ icon: string; label: string; color: string; ph?: string }> = [
     { icon:'legal',    label:'Owned business',          color:'#3e7c8c', ph:'ph-storefront' },
@@ -3844,10 +3849,48 @@ import type * as ThreeNamespace from 'three';
     { icon:'you',      label:'You',                     color:'#e8e6de', ph:'ph-navigation-arrow' },
     { icon:'waypoint', label:'Waypoint',                color:'#d4a017', ph:'ph-crosshair' },
   ];
+  const cityMapFiltersList: Array<{ id: MapPlaceCategory | 'all'; label: string }> = [
+    { id:'all', label:'All' },
+    { id:'service', label:'Services' },
+    { id:'local', label:'Shops' },
+    { id:'business', label:'Businesses' },
+    { id:'corner', label:'Corners' },
+    { id:'person', label:'People' },
+    { id:'gang', label:'Gang' },
+    { id:'amenity', label:'Amenities' },
+    { id:'landmark', label:'Landmarks' },
+  ];
+  function cityFilteredPlaces(): MapPlaceRecord[] {
+    const filteredByCategory = cityMapFilter === 'all' ? mapPlaces : placesByCategory(mapPlaces, cityMapFilter);
+    const search = cityMapSearchTerm.trim().toLowerCase();
+    if(!search) return filteredByCategory;
+    return filteredByCategory.filter(function(place){
+      return place.name.toLowerCase().includes(search) || mapPlaceCategoryLabel(place).toLowerCase().includes(search) || place.district.toLowerCase().includes(search);
+    });
+  }
+  function cityVisibleMapObjects(): MapObject[] {
+    if(cityMapFilter === 'all' && !cityMapSearchTerm.trim()) return mapObjects;
+    const ids = new Set(cityFilteredPlaces().map(place => place.sourceObject?.id).filter((id): id is string => !!id));
+    return mapObjects.filter(object => ids.has(object.id));
+  }
+  function renderCityMapSearch(): void {
+    cityMapFilters.innerHTML = cityMapFiltersList.map(function(filter){
+      const active = filter.id === cityMapFilter ? ' active' : '';
+      return `<button class="citymap-filter-btn${active}" data-citymap-filter="${filter.id}" type="button">${filter.label}</button>`;
+    }).join('');
+
+    const results = cityFilteredPlaces().slice(0, 18);
+    cityMapResults.innerHTML = results.length ? results.map(function(place){
+      const active = place.id === cityMapHoverPlace?.id ? ' active' : '';
+      const icon = place.icon && place.icon !== 'landmark' ? place.icon : 'landmark';
+      const category = mapPlaceCategoryLabel(place);
+      return `<button class="citymap-result${active}" data-citymap-place="${place.id}" type="button"><span class="lg-ico lg-${icon}" style="--c:#d4a017"></span><span><span class="citymap-result-name">${place.name}</span><span class="citymap-result-meta">${category} - ${districtDisplayName(place.district)}</span></span><span class="citymap-result-waypoint" data-citymap-waypoint="${place.id}" title="Set waypoint"><i class="ph-duotone ph-crosshair"></i></span></button>`;
+    }).join('') : '<div class="citymap-result-empty">No places match that search.</div>';
+  }
   function drawCityMap(){
     drawMapMinimap({
       ctx:cityCtx, indoors:false, dragging:false, pan:{x:0,y:0},
-      player, mapObjects, districtOffsets:DISTRICT_OFFSETS, fillerFor,
+      player, mapObjects:cityVisibleMapObjects(), districtOffsets:DISTRICT_OFFSETS, fillerFor,
       worldWidth:WORLD_W, worldHeight:WORLD_H, landmass:WINDHAVEN_LANDMASS, landmarks,
       waypoint:currentWaypoint(),
       viewW:CITY_W, viewH:CITY_H, scale:cityViewport.scale, center:cityViewport.center, glyphScale:1.9,
@@ -3864,6 +3907,8 @@ import type * as ThreeNamespace from 'three';
       const iconHtml = item.ph ? `<i class="ph-duotone ${item.ph} lg-ph" style="color:${item.color}"></i>` : `<span class="lg-ico lg-${item.icon}" style="--c:${item.color}"></span>`;
       return `<div class="citymap-legend-row">${iconHtml}${item.label}</div>`;
     }).join('');
+    cityMapSearch.value = cityMapSearchTerm;
+    renderCityMapSearch();
     overlay.classList.remove('hidden');
     drawCityMap();
   }
@@ -3876,6 +3921,37 @@ import type * as ThreeNamespace from 'three';
   byId('minimap-expand').addEventListener('click', openCityMap);
   byId('citymap-close').addEventListener('click', closeCityMap);
   byId('citymap-overlay').addEventListener('click', function(e){ if(e.target === this) closeCityMap(); });
+  cityMapSearch.addEventListener('input', function(){
+    cityMapSearchTerm = cityMapSearch.value;
+    cityMapHoverPlace = cityFilteredPlaces()[0] ?? null;
+    renderCityMapSearch();
+    drawCityMap();
+  });
+  cityMapFilters.addEventListener('click', function(e){
+    const btn = (e.target as HTMLElement).closest('[data-citymap-filter]');
+    if(!btn) return;
+    cityMapFilter = btn.getAttribute('data-citymap-filter') as MapPlaceCategory | 'all';
+    cityMapHoverPlace = cityFilteredPlaces()[0] ?? null;
+    renderCityMapSearch();
+    drawCityMap();
+  });
+  cityMapResults.addEventListener('click', function(e){
+    const waypoint = (e.target as HTMLElement).closest('[data-citymap-waypoint]');
+    const row = (e.target as HTMLElement).closest('[data-citymap-place]');
+    const id = (waypoint || row)?.getAttribute(waypoint ? 'data-citymap-waypoint' : 'data-citymap-place');
+    const place = id ? mapPlaces.find(candidate => candidate.id === id) : null;
+    if(!place) return;
+    cityMapHoverPlace = place;
+    cityMapHint.textContent = `${districtDisplayName(place.district)} - ${place.name} - ${mapPlaceCategoryLabel(place)}`;
+    if(waypoint){
+      setGlobalWaypoint({ x:place.x, y:place.y });
+      rebuildWaypointBeacon();
+      byId('minimap-clear').classList.add('show');
+      scheduleSave();
+    }
+    renderCityMapSearch();
+    drawCityMap();
+  });
   function cityMapWorldPoint(e: MouseEvent): Point {
     const rect = cityMapCanvas.getBoundingClientRect();
     const px = (e.clientX-rect.left) * (CITY_W/rect.width);
@@ -3890,15 +3966,18 @@ import type * as ThreeNamespace from 'three';
     cityMapHoverPlace = place;
     if(!dist){
       cityMapHint.textContent = context.isWater ? 'Water - waypoints must be placed on land' : 'Waypoint must be placed on district land';
+      renderCityMapSearch();
       drawCityMap();
       return;
     }
     cityMapHint.textContent = place ? `${dist.name} - ${place.name} - ${mapPlaceCategoryLabel(place)}` : `${dist.name} - Click to set waypoint`;
+    renderCityMapSearch();
     drawCityMap();
   });
   cityMapCanvas.addEventListener('mouseleave', function(){
     cityMapHoverPlace = null;
     cityMapHint.textContent = 'Click land to drop a waypoint - hover places to inspect them';
+    renderCityMapSearch();
     drawCityMap();
   });
   cityMapCanvas.addEventListener('click', function(e){

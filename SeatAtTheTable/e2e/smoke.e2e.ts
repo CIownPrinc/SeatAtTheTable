@@ -351,4 +351,21 @@ test.describe('game boot', () => {
     await expect(page.locator('#citymap-hint')).toContainText('Rentport City National');
     await expect(page.locator('#citymap-hint')).toContainText('Bank');
   });
+
+  test('expanded map search filters places and can set a waypoint from results', async ({ page }) => {
+    await page.goto('/');
+
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    await page.locator('.tab-btn[data-tab="map"]').click();
+    await page.locator('#minimap-expand').dispatchEvent('click');
+    await expect(page.locator('#citymap-overlay')).not.toHaveClass(/hidden/);
+
+    await page.locator('#citymap-search').fill('national');
+    await expect(page.locator('#citymap-results')).toContainText('Rentport City National');
+    await expect(page.locator('#citymap-results')).toContainText('Bank');
+
+    await page.locator('[data-citymap-waypoint="bankHome"]').click();
+    await expect(page.locator('#minimap-clear')).toHaveClass(/show/);
+    await expect(page.locator('#citymap-hint')).toContainText('Rentport City National');
+  });
 });

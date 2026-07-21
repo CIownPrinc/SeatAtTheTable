@@ -208,7 +208,22 @@ body.quiet .card-flavor, body.quiet .pillar-desc, body.quiet .modal-body p.flavo
 .citymap-body{display:flex;gap:16px;padding:16px 18px;flex-wrap:wrap;min-height:0;overflow:auto;}
 .citymap-canvas-wrap{flex:1;min-width:280px;background:#0b0d13;border:1px solid var(--line);border-radius:6px;overflow:hidden;}
 #citymap-canvas{width:100%;height:auto;display:block;cursor:crosshair;}
-.citymap-legend{width:210px;flex-shrink:0;display:flex;flex-direction:column;gap:7px;}
+.citymap-side{width:232px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;min-height:0;}
+.citymap-search{display:flex;flex-direction:column;gap:8px;}
+.citymap-search input{width:100%;background:#0b0d13;border:1px solid var(--line);color:var(--text);font-family:var(--font-body);font-size:12px;padding:8px 9px;border-radius:6px;outline:none;}
+.citymap-search input:focus{border-color:var(--gold);box-shadow:0 0 0 2px rgba(212,160,23,0.14);}
+.citymap-filters{display:flex;gap:6px;flex-wrap:wrap;}
+.citymap-filter-btn{border:1px solid var(--line);background:rgba(255,255,255,0.03);color:var(--text-dim);font-family:var(--font-mono);font-size:10px;line-height:1;padding:6px 7px;border-radius:6px;cursor:pointer;}
+.citymap-filter-btn.active,.citymap-filter-btn:hover{border-color:var(--gold);color:var(--gold);background:rgba(212,160,23,0.1);}
+.citymap-results{max-height:150px;overflow:auto;border:1px solid var(--line);border-radius:6px;background:rgba(11,13,19,0.72);}
+.citymap-result{display:grid;grid-template-columns:18px 1fr 26px;align-items:center;gap:8px;width:100%;border:0;border-bottom:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--text-dim);font-family:var(--font-body);font-size:11.5px;text-align:left;padding:7px 8px;cursor:pointer;}
+.citymap-result:last-child{border-bottom:0;}
+.citymap-result:hover,.citymap-result.active{background:rgba(212,160,23,0.1);color:var(--text);}
+.citymap-result-name{display:block;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.citymap-result-meta{display:block;font-family:var(--font-mono);font-size:9.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.citymap-result-waypoint{display:flex;align-items:center;justify-content:center;width:24px;height:24px;border:1px solid var(--line);border-radius:5px;color:var(--gold);background:rgba(212,160,23,0.08);}
+.citymap-result-empty{padding:10px;color:var(--text-faint);font-family:var(--font-mono);font-size:10px;}
+.citymap-legend{display:flex;flex-direction:column;gap:7px;min-height:0;}
 .citymap-legend-title{font-family:var(--font-display);font-weight:700;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-faint);margin-bottom:2px;}
 .citymap-legend-row{display:flex;align-items:center;gap:9px;font-family:var(--font-body);font-size:12.5px;color:var(--text-dim);}
 .lg-ico{display:inline-block;width:12px;height:12px;flex-shrink:0;background:var(--c);}
