@@ -64,7 +64,13 @@
 
   <div class="tab-panel" data-tab="map">
     <div class="section-eyebrow">The Tac-Map</div>
-    <p class="pillar-desc">Windhaven street layout. Walk or drive with **WASD / Arrow Keys**, press **E** to interact (enter buildings, board vehicles). Right-drag or drag minimap to look around.</p>
+    <p class="pillar-desc">Windhaven street layout. Walk or drive with <strong>WASD / Arrow Keys</strong>, press <strong>E</strong> to interact (enter buildings, board vehicles), and right-drag or drag the minimap to look around.</p>
+    <div class="map-control-summary" aria-label="Map controls summary">
+      <div><strong>Move</strong><span>WASD / Arrow Keys</span></div>
+      <div><strong>Interact</strong><span>E or Interact button</span></div>
+      <div><strong>Look</strong><span>Right-drag the map</span></div>
+      <div><strong>Waypoint</strong><span>Open City Map, then click a destination</span></div>
+    </div>
     <div class="district-bar-wrap">
       <div class="district-bar-label">Travel Nodes</div>
       <div class="district-bar" id="district-bar"></div>
@@ -140,6 +146,16 @@
         </div>
         <div style="border-top:1px dashed var(--line); margin-top:15px; padding-top:15px;">
           <button class="settings-btn danger" id="reset-btn" style="width:100%;">Reset Progress</button>
+        </div>
+      </div>
+
+      <div class="settings-block credits-block" style="max-width:none;">
+        <h4 style="margin-top:0; border-bottom:1px solid var(--line); padding-bottom:10px; font-family:var(--font-display); font-size:16px; color:var(--text);">Credits & Dependencies</h4>
+        <div class="settings-row">
+          <div><div class="label">Three.js</div><div class="sub">3D map rendering uses the Three.js package bundled by Vite from the app dependencies.</div></div>
+        </div>
+        <div class="settings-row">
+          <div><div class="label">Fonts</div><div class="sub">Oswald, IBM Plex Sans, and IBM Plex Mono load from Google Fonts. Browser fallback fonts are used if that external request is blocked.</div></div>
         </div>
       </div>
 

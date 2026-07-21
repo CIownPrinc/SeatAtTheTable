@@ -4252,23 +4252,21 @@ import type * as ThreeNamespace from 'three';
   window.addEventListener('beforeunload', function(){ saveGame(true); });
 
   // LEGAL: ================= BOOT =================
-  (async function boot(){
-    wireDelegation();
-    const loaded = await loadGame();
-    if(loaded && state.started){
-      applyOfflineProgress(state.lastTick);
-      state.lastTick = Date.now();
+  function continueSavedGame(): void {
+    applyOfflineProgress(state.lastTick);
+    state.lastTick = Date.now();
 
-      const spawn = spawnPoints[state.currentDistrict] || {x:700,y:460};
-      player.x = spawn.x; player.y = spawn.y;
-      if(sceneInitialized){
-        buildDistrictScene(state.currentDistrict);
-        refreshPlayerModel();
-      }
-      renderAll();
-      log('Picked up right where you left off.');
-      return;
+    const spawn = spawnPoints[state.currentDistrict] || {x:700,y:460};
+    player.x = spawn.x; player.y = spawn.y;
+    if(sceneInitialized){
+      buildDistrictScene(state.currentDistrict);
+      refreshPlayerModel();
     }
+    renderAll();
+    log('Picked up right where you left off.');
+  }
+
+  function showOpeningStory(): void {
     showModal({
       eyebrow:'Case File — A. Malhotra', title:'FROM DELHI, RUNNING', stamp:'New Arrival',
       body:`
@@ -4283,7 +4281,48 @@ import type * as ThreeNamespace from 'three';
         scheduleSave();
       }}]
     });
+  }
+
+  function showStartPanel(): void {
+    showModal({
+      eyebrow:'Seat at the Table', title:'BUILD YOUR WINDHAVEN EMPIRE', stamp:'New Game',
+      body:`
+        <p>Start from a folding cart on Devlin Street and turn cash, crew, and respect into control of the city.</p>
+        <p class="flavor">A clean start shows the setup first, then the opening case file.</p>
+      `,
+      buttons:[{label:'Start New Game', onClick:showOpeningStory}]
+    });
+  }
+
+  function showSavedGamePanel(): void {
+    showModal({
+      eyebrow:'Seat at the Table', title:'RETURN TO WINDHAVEN', stamp:'Save Found',
+      body:`
+        <p>A saved game was found on this device. Continue from the last ledger, start over, or adjust settings before you play.</p>
+      `,
+      buttons:[
+        {label:'Continue', onClick:continueSavedGame},
+        {label:'New Game', secondary:true, onClick:async function(){
+          try{ await storageAdapter.delete('seat-save-v1'); }catch(e){}
+          location.reload();
+        }},
+        {label:'Settings', secondary:true, onClick:function(){
+          continueSavedGame();
+          setTab('settings');
+        }}
+      ]
+    });
+  }
+
+  (async function boot(){
+    wireDelegation();
+    const loaded = await loadGame();
     renderAll();
+    if(loaded && state.started){
+      showSavedGamePanel();
+      return;
+    }
+    showStartPanel();
   })();
 
   // LEGAL: ================= TOOLTIPS =================
