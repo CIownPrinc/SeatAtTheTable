@@ -331,7 +331,7 @@ import type * as ThreeNamespace from 'three';
       }
     },
     bankheist: {
-      npcName: 'First Windhaven Trust — After Hours',
+      npcName: 'The Vault Job — After Hours',
       nodes: {
         start: { text:"The vault's on a timer, the guard rotates every twenty minutes, and you've realistically got one real shot at this before they upgrade the locks. How do you want to play it?",
           choices: [
@@ -883,19 +883,59 @@ import type * as ThreeNamespace from 'three';
     log(`<i class="ph-duotone ph-vault"></i> You withdraw ${fmt(amt)} from ${bankName(bankId)}.`);
     renderAll();
   }
+  // LEGAL: In-person teller for one bank branch — quick preset moves, not typed amounts
+  // LEGAL: (the phone Bank app is for precise control). Each button is a complete action,
+  // LEGAL: so closing the modal after one is fine. depositAmount/withdrawAmount log + save.
+  function openTellerBanking(bankId: string){
+    const bank = banks.find(b=>b.id===bankId);
+    if(!bank){ log('This branch is closed.'); return; }
+    const bal = Math.floor(bankBalance(bankId));
+    const cash = Math.floor(state.cash);
+    const body = `<p>You step up to the counter at ${bank.name}.</p>`
+      + `<p class="flavor">Balance here <strong>${fmt(bal)}</strong> · On hand <strong>${fmt(cash)}</strong> · Interest ${bank.rateLabel} · Vault ${bank.security}. Use the Bank app on your phone for exact amounts or your other accounts.</p>`;
+    const buttons: ModalButton[] = [];
+    if(cash > 0){
+      buttons.push({ label:`Deposit all (${fmt(cash)})`, onClick:function(){ depositAmount(bankId, String(cash)); } });
+      if(cash > 1) buttons.push({ label:`Deposit half (${fmt(Math.floor(cash/2))})`, onClick:function(){ depositAmount(bankId, String(Math.floor(cash/2))); } });
+    }
+    if(bal > 0) buttons.push({ label:`Withdraw all (${fmt(bal)})`, onClick:function(){ withdrawAmount(bankId, String(bal)); } });
+    buttons.push({ label:'Leave', secondary:true });
+    showModal({ eyebrow:`${bank.name} — Teller`, title: bank.name, body, buttons });
+  }
+  // LEGAL: Per-bank heist. The vault hotspot opens this "pick a target" board; the chosen
+  // LEGAL: bank scales resolveHeist's payout (heistPayoutMult) and odds (security). One
+  // LEGAL: global cooldown (nextHeistAt) still gates all jobs.
+  let heistTargetBankId: string = DEFAULT_BANK_ID;
+  function heistSecurityMod(security: string){ return security==='Hardened' ? -0.12 : (security==='Soft' ? 0.10 : 0); }
+  function openHeistPlanning(){
+    if(state.playSeconds < state.nextHeistAt){ log('<i class="ph-duotone ph-lock"></i> You just hit a vault — let the city cool off before the next job.'); return; }
+    const body = `<p>You've been casing the city's banks. Which job is ready?</p>`
+      + `<p class="flavor">A soft vault is the fat score but swings wide; a hardened one barely pays and rarely gives. Bring a crew and a fast car to tilt the odds.</p>`;
+    const buttons: ModalButton[] = banks.map(function(bank){
+      return { label:`${bank.name} — ${bank.security} vault`, onClick:function(){ heistTargetBankId = bank.id; playDialogue('bankheist','start'); } };
+    });
+    buttons.push({ label:'Not tonight', secondary:true });
+    showModal({ eyebrow:'Casing the Banks', title:'Pick a target', body, buttons });
+  }
   function resolveHeist(approach: string){
     const car = getEquippedCar();
     const carBonus = car ? car.heistBonus : 0;
+    // LEGAL: The target bank scales this job: security shifts the odds, heistPayoutMult
+    // LEGAL: scales the take. Lakeside (Soft, 1.6x) is the fat easy score; First Windhaven
+    // LEGAL: (Hardened, 0.7x) is the long shot that barely pays.
+    const bank = banks.find(b=>b.id===heistTargetBankId) ?? banks[0];
+    const secMod = heistSecurityMod(bank.security);
     let chance, reward, failLossPct, heatOnAttempt, heatOnFail, respectOnFail;
     if(approach==='smash'){
-      chance = Math.min(0.7, 0.40 + state.ratCount*0.03 + carBonus + hubHeistBonus());
-      reward = Math.round(Math.max(500, rawTotalIncome()*18) * (0.8+Math.random()*0.5));
+      chance = Math.min(0.7, 0.40 + state.ratCount*0.03 + carBonus + hubHeistBonus() + secMod);
+      reward = Math.round(Math.max(500, rawTotalIncome()*18) * (0.8+Math.random()*0.5) * bank.heistPayoutMult);
       failLossPct = 0.15; heatOnAttempt = 10; heatOnFail = 15; respectOnFail = 3;
     } else {
-      chance = Math.min(0.78, 0.30 + state.muscleCount*0.04 + state.ratCount*0.03 + carBonus + hubHeistBonus());
-      reward = Math.round(Math.max(1800, rawTotalIncome()*50) * (0.8+Math.random()*0.5));
+      chance = Math.min(0.78, 0.30 + state.muscleCount*0.04 + state.ratCount*0.03 + carBonus + hubHeistBonus() + secMod);
+      reward = Math.round(Math.max(1800, rawTotalIncome()*50) * (0.8+Math.random()*0.5) * bank.heistPayoutMult);
       failLossPct = 0.22; heatOnAttempt = 20; heatOnFail = 25; respectOnFail = 10;
     }
+    chance = Math.max(0.1, chance);
     state.heat = Math.min(100, state.heat + heatOnAttempt);
     state.nextHeistAt = state.playSeconds + 420;
     const win = Math.random() < chance;
@@ -903,15 +943,15 @@ import type * as ThreeNamespace from 'three';
       state.cash += reward;
       state.respect += Math.ceil(reward/400);
       triggerMilestone('heist');
-      log(`<i class="ph-duotone ph-money"></i> The job on First Windhaven Trust pays out ${fmt(reward)}.`);
-      dialogues.bankheist.nodes.result.text = `Clean. You're out before the second patrol even swings back. <strong>${fmt(reward)}</strong> heavier, and word will get around.`;
+      log(`<i class="ph-duotone ph-money"></i> The job on ${bank.name} pays out ${fmt(reward)}.`);
+      dialogues.bankheist.nodes.result.text = `Clean. You're out of ${bank.name} before the second patrol even swings back. <strong>${fmt(reward)}</strong> heavier, and word will get around.`;
     } else {
       const loss = Math.round(state.cash*failLossPct);
       state.cash = Math.max(0, state.cash-loss);
       state.heat = Math.min(100, state.heat+heatOnFail);
       state.respect = Math.max(0, state.respect-respectOnFail);
-      log(`<i class="ph-duotone ph-siren"></i> The job on First Windhaven Trust goes sideways. Down ${fmt(loss)}, heat's up.`);
-      dialogues.bankheist.nodes.result.text = `It goes sideways fast. You get out, but not clean — <strong>${fmt(loss)}</strong> lost on the way, and there's heat on you now that wasn't there this morning.`;
+      log(`<i class="ph-duotone ph-siren"></i> The job on ${bank.name} goes sideways. Down ${fmt(loss)}, heat's up.`);
+      dialogues.bankheist.nodes.result.text = `It goes sideways fast. You get out of ${bank.name}, but not clean — <strong>${fmt(loss)}</strong> lost on the way, and there's heat on you now that wasn't there this morning.`;
     }
     renderAll();
   }
@@ -1048,7 +1088,7 @@ import type * as ThreeNamespace from 'three';
   function stockBadgeHtml(s: typeof stockMarket[number], size: number){
     const letters = s.symbol.substring(0, 2);
     return `<div style="width:${size}px;height:${size}px;border-radius:8px;overflow:hidden;background:var(--bg-row);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--gold);font-family:var(--font-mono);font-weight:700;font-size:${Math.round(size*0.34)}px;flex-shrink:0;">`
-      + `<img src="/${s.logo}" alt="${s.name}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.remove();this.parentElement.textContent='${letters}';"></div>`;
+      + `<img src="/${s.logo}" alt="${s.name}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="if(this.parentElement)this.parentElement.textContent='${letters}';"></div>`;
   }
 
   function renderBankPanel(){
@@ -1345,7 +1385,7 @@ import type * as ThreeNamespace from 'three';
       if(state.currentNews.length > 3) state.currentNews.pop();
       state.nextNewsAt = state.playSeconds + 120;
       
-      const newsCard = byId('market-news-card');
+      const newsCard = byIdOrNull('market-news-card');
       if(newsCard) {
         newsCard.innerHTML = state.currentNews.map(n => `<div class="flavor-note" style="margin-top:4px;">>> ${n}</div>`).join('');
       }
@@ -2435,14 +2475,11 @@ import type * as ThreeNamespace from 'three';
     const bn=byId<HTMLButtonElement>('buy-negotiate'); if(bn) bn.disabled = state.respect<negotiateCost();
     document.querySelectorAll<HTMLButtonElement>('[data-car-buy]').forEach(btn=>{ const c=cars.find(x=>x.id===btn.getAttribute('data-car-buy')); if(c) btn.disabled = state.cash<c.cost; });
     document.querySelectorAll<HTMLButtonElement>('[data-prop-buy]').forEach(btn=>{ const p=properties.find(x=>x.id===btn.getAttribute('data-prop-buy')); if(p) btn.disabled = state.cash<p.cost; });
-    const heistBtn=byId<HTMLButtonElement>('start-heist'); if(heistBtn) heistBtn.disabled = state.playSeconds<state.nextHeistAt;
-    const bankedEl=byId('bank-banked-value'); if(bankedEl) bankedEl.textContent=fmt(bankedTotal());
-    const onhandEl=byId('bank-onhand-value'); if(onhandEl) onhandEl.textContent=fmt(state.cash);
-    const heistStatusEl=byId('heist-status-value');
-    if(heistStatusEl){
-      const canHeist = state.playSeconds >= state.nextHeistAt;
-      heistStatusEl.textContent = canHeist ? 'Ready' : `Cooling off (${Math.max(0,Math.ceil(state.nextHeistAt-state.playSeconds))}s)`;
-    }
+    // LEGAL: The bank balance/on-hand chips only exist while the phone's vault view is
+    // LEGAL: rendered (absent in the Stocks view), so look them up null-safely. The old
+    // LEGAL: start-heist / heist-status-value HUD elements are gone — robbing is in person.
+    const bankedEl=byIdOrNull('bank-banked-value'); if(bankedEl) bankedEl.textContent=fmt(bankedTotal());
+    const onhandEl=byIdOrNull('bank-onhand-value'); if(onhandEl) onhandEl.textContent=fmt(state.cash);
     const labBtn=byId<HTMLButtonElement>('upgrade-lab'); if(labBtn) labBtn.disabled = state.cash<labCost();
     document.querySelectorAll<HTMLButtonElement>('[data-push]').forEach(btn=>{
       const d = districts.find(x=>x.id===btn.getAttribute('data-push'));
@@ -2469,7 +2506,7 @@ import type * as ThreeNamespace from 'three';
       const label = document.querySelector(`[data-control-label="${d.id}"]`);
       if(label) label.textContent = `${Math.round(d.control)}% — ${districtStatus(d.id)==='yours'?'Yours':(districtStatus(d.id)==='rival'?'Rival Controlled':'Contested')}`;
     });
-    const tradeEl = byId('trade-summary');
+    const tradeEl = byIdOrNull('trade-summary');
     if(tradeEl){
       const active = activeCorners().length;
       tradeEl.textContent = `${state.product.toFixed(0)}/${productCap()} product · ${active}/${corners.length} corners staffed · ${cornerIncomePerSec().toFixed(1)}/s`;
@@ -2541,8 +2578,10 @@ import type * as ThreeNamespace from 'three';
     byId('device-home').classList.add('hidden');
     document.querySelectorAll<HTMLElement>('.device-screen').forEach(s=> s.classList.add('hidden'));
     Object.keys(keys).forEach(k=> keys[k]=false);
-    if(app==='automart'){
-      document.querySelector<HTMLElement>('.device-screen[data-screen="automart"]')!.classList.remove('hidden');
+    if(app==='automart' || app==='realty'){
+      // LEGAL: renderAssetsPanel fills both #assets-cars and #assets-buildings (each now
+      // LEGAL: on its own screen); we just reveal the one the tapped app owns.
+      document.querySelector<HTMLElement>(`.device-screen[data-screen="${app}"]`)!.classList.remove('hidden');
       renderAssetsPanel();
     } else {
       state.financeView = app==='stocks' ? 'lcn-home' : 'vault';
@@ -2760,15 +2799,15 @@ import type * as ThreeNamespace from 'three';
             } },
            { label:'Step back', secondary:true }]) });
     } else if(kind==='bankHome'){
-      spots.push({ id:'teller', x:ROOM_W/2, y:80, label:'Teller Window', icon:'🏦', action:()=> openDeviceApp('bank') });
+      spots.push({ id:'teller', x:ROOM_W/2, y:80, label:'Teller Window', icon:'🏦', action:function(){
+        const svc = serviceBuildings.find(s=>s.id===interior.refId);
+        openTellerBanking(svc?.bankId ?? DEFAULT_BANK_ID);
+      } });
       spots.push({ id:'notices', x:AMBIENT_X, y:AMBIENT_Y, label:'Notices', icon:'📄', action:()=>
         showRoomBrief('Lobby Notices', 'First Windhaven', 'Rate sheets and fine print. Whatever is banked here stays out of reach when the feds come knocking.',
           briefRow('Banked (raid-safe)', fmt(bankedTotal()))) });
     } else if(kind==='heist'){
-      spots.push({ id:'vault', x:ROOM_W/2, y:75, label:'Vault Door', icon:'🔐', action:function(){
-        if(state.playSeconds < state.nextHeistAt){ log("🔒 The vault's not worth trying yet. Give it time."); return; }
-        playDialogue('bankheist','start');
-      } });
+      spots.push({ id:'vault', x:ROOM_W/2, y:75, label:'Case the Banks', icon:'🔐', action:openHeistPlanning });
     } else if(kind==='garage'){
       spots.push({ id:'dealer', x:ROOM_W/2, y:80, label:'Sales Desk', icon:'🔑', action:()=> openDeviceApp('automart') });
       spots.push({ id:'showroom', x:AMBIENT_X, y:AMBIENT_Y, label:'Showroom Floor', icon:'🚗', action:()=>

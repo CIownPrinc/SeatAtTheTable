@@ -109,6 +109,9 @@ export interface ServiceBuilding {
   district: string;
   x: number;
   y: number;
+  // LEGAL: For bank branches (kind 'bankHome'): which config/banks account this teller
+  // LEGAL: serves, so in-person deposit/withdraw here hits the right account.
+  bankId?: string;
 }
 
 export interface District {

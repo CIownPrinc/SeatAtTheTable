@@ -81,11 +81,19 @@ A roster of banks, each a distinct entity with tradeoffs. **No passive theft** �
    phone (robbing is in person; stocks have their own app). Also: the phone is now a
    **Pomello** handset (bezels, earpiece, home button that returns to the app grid).
    Verified by `e2e/phone.e2e.ts`. Per-bank *heist payout* wiring is Phase 3.
-3. **In-person banking + per-bank heist** — teller interactions at each bank building;
-   wire each bank's `heistPayoutMult`/security into the heist. Replace the interim teller
-   → phone redirect with a real in-person teller.
-4. **Per-business unique interactions** — haggle set, territory gating, unique
-   inventories; garage store/detail/dealer-only cars.
+3. **In-person banking + per-bank heist — DONE.** The teller hotspot opens an in-person
+   preset deposit/withdraw modal for that branch's bank (`openTellerBanking`, tied to a
+   `ServiceBuilding.bankId`); the phone keeps precise typed control. The vault hotspot
+   opens a "pick a target" board (`openHeistPlanning`) and `resolveHeist` scales reward by
+   the chosen bank's `heistPayoutMult` and odds by its security. AutoMart also split into
+   two phone apps (AutoMart = cars, Realty = properties). Fixed 4 latent `byId`-throws /
+   null bugs surfaced by a new page-error guard in `e2e/phone.e2e.ts` (one was a Phase-2
+   regression: `start-heist` throwing every tick).
+4. **Themed buildings + per-business unique interactions** (next) — bank buildings for all
+   three banks on the map; multiple **themed dealerships** (used/luxury/bikes) and
+   **themed realty brokerages** (cheap-with-a-caveat / luxury) selling their own stock
+   in person; each shared type united under a brand (names to come from the user). Plus
+   haggle where it fits, territory-gated service, unique inventories.
 5. Retire remaining redundant tabs (Politics/Gang → in-person) + polish.
 
 ---
