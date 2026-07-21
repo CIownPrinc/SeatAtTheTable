@@ -1,5 +1,5 @@
 import type { DiagonalRoad, HorizontalRoad, Landmark, VerticalRoad } from './world';
-import { CANAL_CHANNELS, LAKEFRONT_BEACH, NORTH_RIVER, WINDHAVEN_LANDMASS } from './world';
+import { windhavenMapModel } from './mapModel';
 import type { FillerItem, MapZoneType } from '../config/types';
 import type * as ThreeNamespace from 'three';
 
@@ -81,9 +81,9 @@ export function buildBaseGround(options: BaseSceneOptions): void {
   const { THREE, worldGroup, worldWidth, worldHeight } = options;
   const waterBase = new THREE.Mesh(new THREE.PlaneGeometry(worldWidth + 920, worldHeight + 620), new THREE.MeshStandardMaterial({color:'#17364b', roughness:0.42, metalness:0.18}));
   waterBase.rotation.x=-Math.PI/2; waterBase.position.set(worldWidth/2, -0.04, worldHeight/2); waterBase.receiveShadow=true; worldGroup.add(waterBase);
-  addGroundShape(options, WINDHAVEN_LANDMASS, '#303438', 0, 1);
-  addGroundLine(options, WINDHAVEN_LANDMASS, '#c7d7d0', 0.34, 0.13);
-  addGroundLine(options, WINDHAVEN_LANDMASS.filter(function(_point, index){ return index % 2 === 0; }), '#d9d2b8', 0.16, 0.14);
+  addGroundShape(options, windhavenMapModel.landmass, '#303438', 0, 1);
+  addGroundLine(options, windhavenMapModel.landmass, '#c7d7d0', 0.34, 0.13);
+  addGroundLine(options, windhavenMapModel.landmass.filter(function(_point, index){ return index % 2 === 0; }), '#d9d2b8', 0.16, 0.14);
   [
     [{x:-220,y:118},{x:520,y:84},{x:1220,y:112},{x:2060,y:84},{x:2760,y:112},{x:3580,y:88},{x:4420,y:118},{x:5360,y:92}],
     [{x:-180,y:142},{x:680,y:116},{x:1540,y:136},{x:2380,y:112},{x:3320,y:142},{x:4210,y:118},{x:5480,y:148}],
@@ -95,7 +95,7 @@ export function buildBaseGround(options: BaseSceneOptions): void {
 export function buildCanalWater(options: BaseSceneOptions): void {
   const { THREE, worldGroup, worldHeight } = options;
   const canalMat = new THREE.MeshStandardMaterial({color:'#1c3a52', roughness:0.2, metalness:0.4});
-  CANAL_CHANNELS.forEach(function(channel){
+  windhavenMapModel.canals.forEach(function(channel){
     const canal = new THREE.Mesh(new THREE.PlaneGeometry(channel.width,worldHeight + 180), canalMat);
     canal.rotation.x=-Math.PI/2; canal.position.set(channel.x+channel.width/2,0.04,worldHeight/2); worldGroup.add(canal);
     addGroundLine(options, [{x:channel.x+18,y:0},{x:channel.x+34,y:260},{x:channel.x+12,y:620},{x:channel.x+30,y:980},{x:channel.x+18,y:worldHeight}], '#c7d7d0', 0.2, 0.13);
@@ -104,37 +104,28 @@ export function buildCanalWater(options: BaseSceneOptions): void {
 }
 
 export function buildRoadNetwork(options: RoadSceneOptions): void {
-  const { THREE, worldGroup, worldWidth, worldHeight, roadNetwork } = options;
+  const { THREE, worldGroup, roadNetwork } = options;
   const roadMat = new THREE.MeshStandardMaterial({color:'#454a54', roughness:0.9});
   const laneMat = new THREE.MeshStandardMaterial({color:'#c9b45a', roughness:0.6, emissive:'#4a4020', emissiveIntensity:0.15});
-  roadNetwork.vertical.forEach(function(r){
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(62,worldHeight), roadMat);
-    m.rotation.x=-Math.PI/2; m.position.set(r.x,0.05,worldHeight/2); m.receiveShadow=true; worldGroup.add(m);
-  });
-  roadNetwork.horizontal.forEach(function(r){
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(worldWidth,80), roadMat);
-    m.rotation.x=-Math.PI/2; m.position.set(worldWidth/2,0.05,r.y); m.receiveShadow=true; worldGroup.add(m);
-    for(let lx=40; lx<worldWidth; lx+=94){
-      const dash = new THREE.Mesh(new THREE.PlaneGeometry(48,3), laneMat);
-      dash.rotation.x=-Math.PI/2; dash.position.set(lx,0.07,r.y); worldGroup.add(dash);
-    }
-  });
-  roadNetwork.diagonal.forEach(function(r){
-    const dx = r.x2-r.x1;
-    const dy = r.y2-r.y1;
+  windhavenMapModel.roadPaths.forEach(function(road){
+    const start = road.path[0];
+    const end = road.path[1];
+    const dx = end.x-start.x;
+    const dy = end.y-start.y;
     const length = Math.hypot(dx,dy);
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(length,r.w), roadMat);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(length,road.width), roadMat);
     m.rotation.x=-Math.PI/2;
     m.rotation.z=-Math.atan2(dy,dx);
-    m.position.set((r.x1+r.x2)/2,0.055,(r.y1+r.y2)/2);
+    m.position.set((start.x+end.x)/2,0.05,(start.y+end.y)/2);
     m.receiveShadow=true;
     worldGroup.add(m);
-    for(let t=42; t<length-20; t+=88){
+    if(road.roadClass !== 'arterial' && road.path[0].x === road.path[1].x) return;
+    for(let t=40; t<length-20; t+=94){
       const local = t - length/2;
-      const dash = new THREE.Mesh(new THREE.PlaneGeometry(42,3), laneMat);
+      const dash = new THREE.Mesh(new THREE.PlaneGeometry(48,3), laneMat);
       dash.rotation.x=-Math.PI/2;
       dash.rotation.z=-Math.atan2(dy,dx);
-      dash.position.set((r.x1+r.x2)/2 + Math.cos(Math.atan2(dy,dx))*local,0.075,(r.y1+r.y2)/2 + Math.sin(Math.atan2(dy,dx))*local);
+      dash.position.set((start.x+end.x)/2 + Math.cos(Math.atan2(dy,dx))*local,0.075,(start.y+end.y)/2 + Math.sin(Math.atan2(dy,dx))*local);
       worldGroup.add(dash);
     }
   });
@@ -149,18 +140,19 @@ export function buildCanalBridges(options: BaseSceneOptions): void {
   const { THREE, worldGroup } = options;
   const deckMat = new THREE.MeshStandardMaterial({color:'#3a3d47', roughness:0.7});
   const railMat = new THREE.MeshStandardMaterial({color:'#555a68', roughness:0.6});
-  CANAL_CHANNELS.forEach(function(channel){
-    const cx=channel.x, cw=channel.width;
-    [300,600,900].forEach(function(ry){
-      const deck = new THREE.Mesh(new THREE.BoxGeometry(cw,4,74), deckMat);
-      deck.position.set(cx+cw/2,2,ry); worldGroup.add(deck);
-      for(let rx=cx+30; rx<cx+cw-20; rx+=60){
-        const p1 = new THREE.Mesh(new THREE.BoxGeometry(4,18,4), railMat);
-        p1.position.set(rx,10,ry-33); worldGroup.add(p1);
-        const p2 = new THREE.Mesh(new THREE.BoxGeometry(4,18,4), railMat);
-        p2.position.set(rx,10,ry+33); worldGroup.add(p2);
-      }
-    });
+  windhavenMapModel.bridges.forEach(function(bridge){
+    const start = bridge.path[0];
+    const end = bridge.path[1];
+    const length = Math.hypot(end.x-start.x, end.y-start.y);
+    const ry = start.y;
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(length,4,bridge.width), deckMat);
+    deck.position.set((start.x+end.x)/2,2,ry); worldGroup.add(deck);
+    for(let rx=start.x+30; rx<end.x-20; rx+=60){
+      const p1 = new THREE.Mesh(new THREE.BoxGeometry(4,18,4), railMat);
+      p1.position.set(rx,10,ry-bridge.width/2+4); worldGroup.add(p1);
+      const p2 = new THREE.Mesh(new THREE.BoxGeometry(4,18,4), railMat);
+      p2.position.set(rx,10,ry+bridge.width/2-4); worldGroup.add(p2);
+    }
   });
 }
 
@@ -293,15 +285,20 @@ export function buildLandmarks(options: LandmarkSceneOptions): void {
 }
 
 export function buildRailAndRiver(options: BaseSceneOptions): void {
-  const { THREE, worldGroup, worldWidth, worldHeight } = options;
-  const rail = new THREE.Mesh(new THREE.PlaneGeometry(40,worldHeight), new THREE.MeshStandardMaterial({color:'#2a2a2e', roughness:1}));
-  rail.rotation.x=-Math.PI/2; rail.position.set(3470,0.06,worldHeight/2); rail.receiveShadow=true; worldGroup.add(rail);
-  for(let ty=20;ty<worldHeight;ty+=26){
-    const tie = new THREE.Mesh(new THREE.BoxGeometry(36,2,4), new THREE.MeshStandardMaterial({color:'#3a3530', roughness:0.85, metalness:0.05}));
-    tie.castShadow=true; tie.receiveShadow=true; tie.position.set(3470,1,ty); worldGroup.add(tie);
-  }
-  addGroundShape(options, NORTH_RIVER, '#1c3a52', 0.06, 0.28);
-  addGroundShape(options, LAKEFRONT_BEACH, '#b9a777', 0.09, 1);
-  addGroundLine(options, NORTH_RIVER.slice(2), '#e4efe8', 0.18, 0.14);
-  addGroundLine(options, LAKEFRONT_BEACH, '#d9d2b8', 0.22, 0.15);
+  const { THREE, worldGroup, worldHeight } = options;
+  windhavenMapModel.railLines.forEach(function(line){
+    const start = line.path[0];
+    const end = line.path[1];
+    const length = Math.hypot(end.x-start.x, end.y-start.y);
+    const rail = new THREE.Mesh(new THREE.PlaneGeometry(line.width, length), new THREE.MeshStandardMaterial({color:'#2a2a2e', roughness:1}));
+    rail.rotation.x=-Math.PI/2; rail.position.set(start.x,0.06,(start.y+end.y)/2); rail.receiveShadow=true; worldGroup.add(rail);
+    for(let ty=20;ty<worldHeight;ty+=26){
+      const tie = new THREE.Mesh(new THREE.BoxGeometry(line.width-4,2,4), new THREE.MeshStandardMaterial({color:'#3a3530', roughness:0.85, metalness:0.05}));
+      tie.castShadow=true; tie.receiveShadow=true; tie.position.set(start.x,1,ty); worldGroup.add(tie);
+    }
+  });
+  addGroundShape(options, windhavenMapModel.northRiver, '#1c3a52', 0.06, 0.28);
+  addGroundShape(options, windhavenMapModel.lakefrontBeach, '#b9a777', 0.09, 1);
+  addGroundLine(options, windhavenMapModel.northRiver.slice(2), '#e4efe8', 0.18, 0.14);
+  addGroundLine(options, windhavenMapModel.lakefrontBeach, '#d9d2b8', 0.22, 0.15);
 }

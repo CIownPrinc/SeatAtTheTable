@@ -1,6 +1,6 @@
 import type { Corner, FillerItem, Point } from '../config/types';
 import type { MapObject, MinimapIcon } from './objects';
-import { CANAL_CHANNELS, LAKEFRONT_BEACH, NORTH_RIVER } from './world';
+import { windhavenMapModel } from './mapModel';
 
 export const MINIMAP_SIZE = 150;
 export const MINIMAP_SCALE = MINIMAP_SIZE / 600;
@@ -22,7 +22,6 @@ export interface MinimapRenderOptions {
   mapObjects: MapObject[];
   districtOffsets: Record<string, number>;
   fillerFor: (districtId: string) => FillerItem[];
-  roadNetwork: { vertical: Array<{ x: number; w?: number }>; horizontal: Array<{ y: number; w?: number }>; diagonal: Array<{ x1: number; y1: number; x2: number; y2: number; w?: number }> };
   worldWidth: number;
   worldHeight: number;
   landmass: Point[];
@@ -188,7 +187,7 @@ export function drawMinimap(options: MinimapRenderOptions): void {
     mctx.clip();
   }
 
-  CANAL_CHANNELS.forEach(function(channel){
+  windhavenMapModel.canals.forEach(function(channel){
     const x0 = channel.x, x1 = channel.x + channel.width;
     const a = proj(x0, -90);
     const b = proj(x1, options.worldHeight + 90);
@@ -198,7 +197,7 @@ export function drawMinimap(options: MinimapRenderOptions): void {
     drawPolyline([{x:x1-18,y:0},{x:x1-34,y:320},{x:x1-12,y:680},{x:x1-30,y:1030},{x:x1-18,y:options.worldHeight}], 'rgba(228,239,232,0.28)', Math.max(1, 1.1*glyphScale));
   });
 
-  drawPolygon(NORTH_RIVER, '#1c3a52', 'rgba(228,239,232,0.22)', Math.max(1, 1.2*glyphScale));
+  drawPolygon(windhavenMapModel.northRiver, '#1c3a52', 'rgba(228,239,232,0.22)', Math.max(1, 1.2*glyphScale));
 
   ['devlin','westside','hub'].forEach(function(distId){
     const off = options.districtOffsets[distId];
@@ -224,7 +223,7 @@ export function drawMinimap(options: MinimapRenderOptions): void {
     });
   });
 
-  drawPolygon(LAKEFRONT_BEACH, 'rgba(185,167,119,0.55)', 'rgba(217,210,184,0.34)', Math.max(1, 1*glyphScale));
+  drawPolygon(windhavenMapModel.lakefrontBeach, 'rgba(185,167,119,0.55)', 'rgba(217,210,184,0.34)', Math.max(1, 1*glyphScale));
 
   const drawRoad = function(points: Point[], width: number){
     mctx.strokeStyle='rgba(22,24,31,0.95)';
@@ -238,60 +237,51 @@ export function drawMinimap(options: MinimapRenderOptions): void {
     points.forEach(function(point, index){ const p=proj(point.x,point.y); if(index===0) mctx.moveTo(p.x,p.y); else mctx.lineTo(p.x,p.y); });
     mctx.stroke();
   };
-  options.roadNetwork.vertical.forEach(function(r){
-    drawRoad([{x:r.x,y:0},{x:r.x,y:options.worldHeight}], r.w ?? 62);
-  });
-  options.roadNetwork.horizontal.forEach(function(r){
-    drawRoad([{x:0,y:r.y},{x:options.worldWidth,y:r.y}], r.w ?? 74);
-  });
-  options.roadNetwork.diagonal.forEach(function(r){
-    drawRoad([{x:r.x1,y:r.y1},{x:r.x2,y:r.y2}], r.w ?? 54);
+  windhavenMapModel.roadPaths.forEach(function(road){
+    drawRoad(road.path, road.width);
   });
 
-  CANAL_CHANNELS.forEach(function(channel){
-    const cx=channel.x, cw=channel.width;
-    [300,600,900].forEach(function(ry){
-      const a=proj(cx, ry);
-      const b=proj(cx+cw, ry);
-      mctx.strokeStyle='rgba(154,160,174,0.96)';
-      mctx.lineWidth=Math.max(3, 78*scale);
-      mctx.beginPath(); mctx.moveTo(a.x,a.y); mctx.lineTo(b.x,b.y); mctx.stroke();
-      mctx.strokeStyle='rgba(60,64,76,0.95)';
-      mctx.lineWidth=Math.max(2, 58*scale);
+  windhavenMapModel.bridges.forEach(function(bridge){
+    const a=proj(bridge.path[0].x, bridge.path[0].y);
+    const b=proj(bridge.path[1].x, bridge.path[1].y);
+    mctx.strokeStyle='rgba(154,160,174,0.96)';
+    mctx.lineWidth=Math.max(3, (bridge.width + 4)*scale);
+    mctx.beginPath(); mctx.moveTo(a.x,a.y); mctx.lineTo(b.x,b.y); mctx.stroke();
+    mctx.strokeStyle='rgba(60,64,76,0.95)';
+    mctx.lineWidth=Math.max(2, Math.max(56, bridge.width - 16)*scale);
+    mctx.beginPath(); mctx.moveTo(a.x,a.y); mctx.lineTo(b.x,b.y); mctx.stroke();
+  });
+
+  windhavenMapModel.railLines.forEach(function(rail){
+    const railA = proj(rail.path[0].x, rail.path[0].y);
+    const railB = proj(rail.path[1].x, rail.path[1].y);
+    mctx.strokeStyle='rgba(18,18,22,0.98)';
+    mctx.lineWidth=Math.max(2, (rail.width - 6)*scale);
+    mctx.beginPath(); mctx.moveTo(railA.x,railA.y); mctx.lineTo(railB.x,railB.y); mctx.stroke();
+    mctx.strokeStyle='rgba(170,164,150,0.85)';
+    mctx.lineWidth=Math.max(1, 4*glyphScale);
+    [-7,7].forEach(function(offset){
+      const a=proj(rail.path[0].x+offset, rail.path[0].y);
+      const b=proj(rail.path[1].x+offset, rail.path[1].y);
       mctx.beginPath(); mctx.moveTo(a.x,a.y); mctx.lineTo(b.x,b.y); mctx.stroke();
     });
+    mctx.strokeStyle='rgba(86,78,68,0.75)';
+    mctx.lineWidth=Math.max(1, 2*glyphScale);
+    for(let y=20;y<options.worldHeight;y+=60){
+      const a=proj(rail.path[0].x-18,y);
+      const b=proj(rail.path[0].x+18,y);
+      mctx.beginPath(); mctx.moveTo(a.x,a.y); mctx.lineTo(b.x,b.y); mctx.stroke();
+    }
+    const trainT = (Date.now() % rail.trainCycleMs) / rail.trainCycleMs;
+    if(trainT > rail.activeWindow.start && trainT < rail.activeWindow.end){
+      const y = (trainT - rail.activeWindow.start) / (rail.activeWindow.end - rail.activeWindow.start) * options.worldHeight;
+      const p = proj(rail.path[0].x, y);
+      mctx.fillStyle='#b43a35';
+      mctx.fillRect(p.x - Math.max(3,6*glyphScale), p.y - Math.max(8,15*glyphScale), Math.max(6,12*glyphScale), Math.max(16,30*glyphScale));
+      mctx.strokeStyle='#f0d38a';
+      mctx.strokeRect(p.x - Math.max(3,6*glyphScale), p.y - Math.max(8,15*glyphScale), Math.max(6,12*glyphScale), Math.max(16,30*glyphScale));
+    }
   });
-
-  const railX = 3470;
-  const railA = proj(railX, 0);
-  const railB = proj(railX, options.worldHeight);
-  mctx.strokeStyle='rgba(18,18,22,0.98)';
-  mctx.lineWidth=Math.max(2, 34*scale);
-  mctx.beginPath(); mctx.moveTo(railA.x,railA.y); mctx.lineTo(railB.x,railB.y); mctx.stroke();
-  mctx.strokeStyle='rgba(170,164,150,0.85)';
-  mctx.lineWidth=Math.max(1, 4*glyphScale);
-  [-7,7].forEach(function(offset){
-    const a=proj(railX+offset, 0);
-    const b=proj(railX+offset, options.worldHeight);
-    mctx.beginPath(); mctx.moveTo(a.x,a.y); mctx.lineTo(b.x,b.y); mctx.stroke();
-  });
-  mctx.strokeStyle='rgba(86,78,68,0.75)';
-  mctx.lineWidth=Math.max(1, 2*glyphScale);
-  for(let y=20;y<options.worldHeight;y+=60){
-    const a=proj(railX-18,y);
-    const b=proj(railX+18,y);
-    mctx.beginPath(); mctx.moveTo(a.x,a.y); mctx.lineTo(b.x,b.y); mctx.stroke();
-  }
-
-  const trainT = (Date.now() % 38000) / 38000;
-  if(trainT > 0.12 && trainT < 0.92){
-    const y = (trainT - 0.12) / 0.8 * options.worldHeight;
-    const p = proj(railX, y);
-    mctx.fillStyle='#b43a35';
-    mctx.fillRect(p.x - Math.max(3,6*glyphScale), p.y - Math.max(8,15*glyphScale), Math.max(6,12*glyphScale), Math.max(16,30*glyphScale));
-    mctx.strokeStyle='#f0d38a';
-    mctx.strokeRect(p.x - Math.max(3,6*glyphScale), p.y - Math.max(8,15*glyphScale), Math.max(6,12*glyphScale), Math.max(16,30*glyphScale));
-  }
 
   mctx.restore();
 

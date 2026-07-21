@@ -15,20 +15,23 @@ import { brandById } from '../config/brands';
 import type { GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState, Point, ServiceBuilding, GangRecruit, Car, DialogueTree } from '../config/types';
 import type { MapAssetKey, MapAssetLibrary } from '../map/assets';
 import { loadMapAssetLibrary } from '../map/assets';
-import { amenityHasSolidFootprint, createAmenityModal, mapAmenities } from '../map/amenities';
+import { createAmenityModal, mapAmenities } from '../map/amenities';
 import { minigameOpen, playMinigame, type MinigameResult } from '../map/minigames';
 import { buildAmenityModel as buildMapAmenityModel } from '../map/amenityRendering';
 import { createFillerLayoutProvider, seededRandom } from '../map/filler';
-import { distancePointToSegment } from '../map/layout';
 import { applyNamedBuildingLots, createMapBuildings, mapNpcs } from '../map/markers';
-import { canMoveTo } from '../map/movement';
+import { actorRadius, canMoveTo } from '../map/movement';
 import { drawMinimap as drawMapMinimap, MINIMAP_SCALE } from '../map/minimap';
-import type { MapObject, MinimapIcon } from '../map/objects';
-import { createBounds, nearestMapObject, solidsFromObjects } from '../map/objects';
+import type { MapObject } from '../map/objects';
+import { solidsFromObjects } from '../map/objects';
+import { buildMapObjects, ventureFootprint } from '../map/objectFactory';
+import { createMapPlaceRecords, nearestMapPlace, type MapPlaceRecord } from '../map/places';
 import { actorDisplayName, createRoamingActors, updateRoamingActors } from '../map/roaming';
 import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, buildLandmarks, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
 import { buildIntersectionFurniture as buildMapIntersectionFurniture } from '../map/streetFurniture';
 import { DISTRICT_OFFSETS, DISTRICT_W, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
+import { districtIdAtPlayablePoint, districtIdAtPoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
+import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/viewport';
 import { renderZoneType } from '../map/zoning';
 import { drawInteriorRoom } from '../map/interiorScene';
 import type * as ThreeNamespace from 'three';
@@ -2677,91 +2680,26 @@ import type * as ThreeNamespace from 'three';
   applyNamedBuildingLots(serviceBuildings);
   applyNamedBuildingLots(localBusinesses);
 
-  function serviceMinimapIcon(service: ServiceBuilding): MinimapIcon {
-    if(service.kind === 'bankHome') return 'bank';
-    if(service.kind === 'garage') return 'garage';
-    if(service.kind === 'realty') return 'realty';
-    if(service.kind === 'cityhall') return 'cityhall';
-    if(service.kind === 'heist') return 'heist';
-    return 'service';
-  }
-
-  function localBusinessMinimapIcon(business: LocalBusiness): MinimapIcon {
-    if(business.id === 'bar' || business.id === 'marlowe') return 'bar';
-    if(business.id === 'chopshop') return 'garage';
-    if(business.id === 'jewelers') return 'realty';
-    return 'shop';
-  }
-
   // LEGAL: Businesses spread proportionally across all 3 districts
   // LEGAL: Building lots sit strictly between the road strips. Vertical roads are at
   // LEGAL: rel-x 270/700/1130 (±37) and horizontal roads at y 300/600/900 (±37), so
   // LEGAL: these column/row centers keep every venture fully clear of the streets.
   const mapBuildings = createMapBuildings(businesses);
-  function ventureFootprint(m: typeof mapBuildings[number]): { w: number; d: number; h: number; zoneType: string } {
-    if(m.id==='cart') return { w:30, d:22, h:14, zoneType:'shop' };
-    if(m.zone==='corporate') return { w:72, d:58, h:m.id==='family_office'?96:82, zoneType:'skyscraper' };
-    if(m.zone==='logistics') return { w:82, d:58, h:32, zoneType:'industrial' };
-    if(m.zone==='industrial') return { w:76, d:54, h:28, zoneType:'industrial' };
-    if(m.zone==='entertainment') return { w:70, d:54, h:42, zoneType:'commercial' };
-    if(m.zone==='street') return { w:56, d:44, h:26, zoneType:'industrial' };
-    return { w:m.biz.baseCost<1000?46:58, d:m.biz.baseCost<1000?34:46, h:m.biz.baseCost>=18000?38:24, zoneType:'shop' };
-  }
-  function ventureBounds(m: typeof mapBuildings[number]): Solid {
-    const footprint = ventureFootprint(m);
-    return createBounds(m.x, m.y, footprint.w/2+6, footprint.d/2+6);
-  }
-  function buildMapObjects(): MapObject[] {
-    return [
-      ...mapBuildings.map(function(m): MapObject<'building', typeof m> {
-        const legit = m.biz.category==='legit';
-        return { kind:'building', id:m.id, district:m.district, x:m.x, y:m.y, bounds:ventureBounds(m), interactRadius:46, minimapColor:legit?'#3e7c8c':'#a8394a', minimapSize:3, minimapIcon:legit?'legal':'illegal', ref:m };
-      }),
-      ...serviceBuildings.map(function(m): MapObject<'service', ServiceBuilding> {
-        return { kind:'service', id:m.id, district:m.district, x:m.x, y:m.y, bounds:createBounds(m.x,m.y,35,31), interactRadius:46, minimapColor:'#d4a017', minimapSize:3, minimapIcon:serviceMinimapIcon(m), ref:m };
-      }),
-      ...localBusinesses.map(function(m): MapObject<'local', LocalBusiness> {
-        return { kind:'local', id:m.id, district:m.district, x:m.x, y:m.y, bounds:createBounds(m.x,m.y,27,24), interactRadius:46, minimapColor:'#7a6fb0', minimapSize:2.5, minimapIcon:localBusinessMinimapIcon(m), ref:m };
-      }),
-      ...mapAmenities.map(function(m): MapObject<'amenity', typeof m> {
-        const bounds = amenityHasSolidFootprint(m.kind) ? createBounds(m.x,m.y,27,24) : undefined;
-        return { kind:'amenity', id:m.id, district:m.district, x:m.x, y:m.y, bounds, interactRadius:52, minimapColor:m.kind==='basketball'?'#d47a2a':'#5fbf8f', minimapSize:2.5, minimapIcon:'amenity', ref:m };
-      }),
-      ...corners.map(function(m): MapObject<'corner', Corner> {
-        return { kind:'corner', id:m.id, district:m.district, x:m.x, y:m.y, interactRadius:46, minimapColor:m.busted?'#5f6275':(m.dealer?'#d4a017':'#a8394a'), minimapSize:2, minimapIcon:'corner', ref:m };
-      }),
-      ...mapNpcs.map(function(m): MapObject<'npc', typeof m> {
-        return { kind:'npc', id:m.id, district:m.district, x:m.x, y:m.y, interactRadius:46, minimapColor:'#f0efe8', minimapSize:2, minimapIcon:'person', ref:m };
-      }),
-      ...gangRecruits.map(function(m): MapObject<'gangnpc', GangRecruit> {
-        return { kind:'gangnpc', id:m.id, district:m.district, x:m.x, y:m.y, interactRadius:46, minimapColor:'#f0efe8', minimapSize:2, minimapIcon:'gang', ref:m };
-      }),
-    ];
-  }
-  const mapObjects = buildMapObjects();
+  const mapObjects = buildMapObjects({ mapBuildings, serviceBuildings, localBusinesses, amenities:mapAmenities, corners, npcs:mapNpcs, gangRecruits });
+  const mapPlaces = createMapPlaceRecords(mapObjects, landmarks);
   const roamingActors = createRoamingActors(mapObjects);
   // LEGAL: District landmarks — unique, recognisable "spots" so each area reads as a
   // LEGAL: place rather than interchangeable blocks. Coords are world-space, sited on
   // LEGAL: each district's park/plaza and clear of the fixed anchors. (The Hub already
   // LEGAL: has The Potato, built with the park.)
-  // LEGAL: Returns which district the player is in based on X position
+  // LEGAL: Returns which district the player is in from shared land/water map data.
   function playerDistrict(){
-    if(player.x < 1500) return 'devlin';
-    if(player.x < 2000) return null;
-    if(player.x < 3500) return 'westside';
-    if(player.x < 4000) return null;
-    return 'hub';
+    return districtIdAtPlayablePoint({ x: player.x, y: player.y }, actorRadius(state.inVehicle));
   }
   function currentRoadLabel(): string {
-    const vertical = roadNetwork.vertical.reduce(function(best,r){ return Math.abs(player.x-r.x)<Math.abs(player.x-best.x)?r:best; }, roadNetwork.vertical[0]);
-    const horizontal = roadNetwork.horizontal.reduce(function(best,r){ return Math.abs(player.y-r.y)<Math.abs(player.y-best.y)?r:best; }, roadNetwork.horizontal[0]);
-    let road = Math.abs(player.x-vertical.x) < Math.abs(player.y-horizontal.y) ? { name:vertical.name, distance:Math.abs(player.x-vertical.x) } : { name:horizontal.name, distance:Math.abs(player.y-horizontal.y) };
-    roadNetwork.diagonal.forEach(function(r){
-      const distance = distancePointToSegment(player.x, player.y, r.x1, r.y1, r.x2, r.y2);
-      if(distance < road.distance) road = { name:r.name, distance };
-    });
+    const road = nearestRoadAtPoint({ x: player.x, y: player.y });
     const district = districts.find(function(d){return d.id===state.currentDistrict;})?.name ?? 'Windhaven';
-    return `${road.name}, ${district}`;
+    return `${road.road.name}, ${district}`;
   }
   const fillerLayout = createFillerLayoutProvider(mapObjects);
   function fillerFor(districtId: string){
@@ -2995,8 +2933,8 @@ import type * as ThreeNamespace from 'three';
       const d = Math.hypot(player.x-parked.x, player.y-parked.y);
       if(d<bestDist){ bestDist=d; best={type:'car', ref:parked}; }
     }
-    const object = nearestMapObject(mapObjects, player.x, player.y, bestDist);
-    if(object) best = { type:object.kind, ref:object.ref } as MapMarker;
+    const place = nearestMapPlace(mapPlaces, { x: player.x, y: player.y }, bestDist);
+    if(place?.sourceObject) best = { type:place.sourceObject.kind, ref:place.sourceObject.ref } as MapMarker;
     return best;
   }
   function tryInteract(){
@@ -3508,19 +3446,22 @@ import type * as ThreeNamespace from 'three';
       roof.position.set(0,21,-96+i*64);
       roof.castShadow=true; trainGroup.add(roof);
     }
-    trainGroup.position.set(3470,0,-260);
+    const rail = windhavenMapModel.railLines[0];
+    trainGroup.position.set(rail.path[0].x,0,-260);
     worldGroup.add(trainGroup);
   }
 
   function updateTrain(): void {
     if(!trainGroup) return;
-    const cycle = (Date.now() % 42000) / 42000;
-    if(cycle < 0.14 || cycle > 0.92){
+    const rail = windhavenMapModel.railLines[0];
+    const cycle = (Date.now() % rail.trainCycleMs) / rail.trainCycleMs;
+    if(cycle < rail.activeWindow.start || cycle > rail.activeWindow.end){
       trainGroup.visible = false;
       return;
     }
     trainGroup.visible = true;
-    trainGroup.position.z = -220 + ((cycle - 0.14) / 0.78) * (WORLD_H + 440);
+    trainGroup.position.x = rail.path[0].x;
+    trainGroup.position.z = -220 + ((cycle - rail.activeWindow.start) / (rail.activeWindow.end - rail.activeWindow.start)) * (WORLD_H + 440);
   }
 
   const dealerArrivals: Array<{ group: ThreeNamespace.Group; corner: Corner; sx: number; sy: number; t: number }> = [];
@@ -3694,7 +3635,6 @@ import type * as ThreeNamespace from 'three';
       mapObjects,
       districtOffsets:DISTRICT_OFFSETS,
       fillerFor,
-      roadNetwork,
       worldWidth:WORLD_W,
       worldHeight:WORLD_H,
       landmass:WINDHAVEN_LANDMASS,
@@ -3709,12 +3649,7 @@ import type * as ThreeNamespace from 'three';
   const cityCtx = cityMapCanvas.getContext('2d')!;
   const cityMapHint = byId('citymap-hint');
   const CITY_W = cityMapCanvas.width, CITY_H = cityMapCanvas.height;
-  const landMinX = Math.min(...WINDHAVEN_LANDMASS.map(function(point){ return point.x; }));
-  const landMaxX = Math.max(...WINDHAVEN_LANDMASS.map(function(point){ return point.x; }));
-  const landMinY = Math.min(...WINDHAVEN_LANDMASS.map(function(point){ return point.y; }));
-  const landMaxY = Math.max(...WINDHAVEN_LANDMASS.map(function(point){ return point.y; }));
-  const cityScale = Math.min(CITY_W/(landMaxX-landMinX), CITY_H/(landMaxY-landMinY));
-  const cityCenter = { x:(landMinX+landMaxX)/2, y:(landMinY+landMaxY)/2 };
+  const cityViewport = createMapViewport(CITY_W, CITY_H, windhavenMapModel.landmass);
   let cityMapOpen = false;
 
   const cityLegend: Array<{ icon: string; label: string; color: string; ph?: string }> = [
@@ -3735,22 +3670,14 @@ import type * as ThreeNamespace from 'three';
     { icon:'you',      label:'You',                     color:'#e8e6de', ph:'ph-navigation-arrow' },
     { icon:'waypoint', label:'Waypoint',                color:'#d4a017', ph:'ph-crosshair' },
   ];
-  function districtAtWorldX(wx: number): string {
-    let best = 'devlin', bestDist = Infinity;
-    Object.keys(DISTRICT_OFFSETS).forEach(function(id){
-      const d = Math.abs(wx - (DISTRICT_OFFSETS[id] + DISTRICT_W/2));
-      if(d < bestDist){ bestDist = d; best = id; }
-    });
-    return best;
-  }
   function drawCityMap(){
     drawMapMinimap({
       ctx:cityCtx, indoors:false, dragging:false, pan:{x:0,y:0},
-      player, mapObjects, districtOffsets:DISTRICT_OFFSETS, fillerFor, roadNetwork,
+      player, mapObjects, districtOffsets:DISTRICT_OFFSETS, fillerFor,
       worldWidth:WORLD_W, worldHeight:WORLD_H, landmass:WINDHAVEN_LANDMASS, landmarks,
       waypoint:currentWaypoint(),
-      viewW:CITY_W, viewH:CITY_H, scale:cityScale, center:cityCenter, glyphScale:1.9,
-      districtNames:[{ x:DISTRICT_W/2, name:'Devlin' }, { x:2000+DISTRICT_W/2, name:'West Side' }, { x:4000+DISTRICT_W/2, name:'The Hub' }],
+      viewW:CITY_W, viewH:CITY_H, scale:cityViewport.scale, center:cityViewport.center, glyphScale:1.9,
+      districtNames:windhavenMapModel.districts.map(function(district){ return { x: district.labelPoint.x, name: district.name }; }),
     });
   }
   function openCityMap(){
@@ -3772,29 +3699,16 @@ import type * as ThreeNamespace from 'three';
     const rect = cityMapCanvas.getBoundingClientRect();
     const px = (e.clientX-rect.left) * (CITY_W/rect.width);
     const py = (e.clientY-rect.top) * (CITY_H/rect.height);
-    return {
-      x: Math.max(landMinX, Math.min(landMaxX, cityCenter.x + (px-CITY_W/2)/cityScale)),
-      y: Math.max(landMinY, Math.min(landMaxY, cityCenter.y + (py-CITY_H/2)/cityScale)),
-    };
+    return clampPointToBounds(screenToWorld(cityViewport, { x:px, y:py }), cityViewport.bounds);
   }
-  function cityMapObjectName(object: MapObject): string {
-    if(object.kind === 'building') return (object as MapObject<'building', typeof mapBuildings[number]>).ref.biz.name;
-    return (object.ref as { name: string }).name;
-  }
-  function nearestCityMapObject(point: Point): MapObject | null {
-    let best: MapObject | null = null;
-    let bestDist = 42;
-    mapObjects.forEach(function(object){
-      const distance = Math.hypot(object.x - point.x, object.y - point.y);
-      if(distance < bestDist){ bestDist = distance; best = object; }
-    });
-    return best;
+  function nearestCityMapPlace(point: Point): MapPlaceRecord | null {
+    return nearestMapPlace(mapPlaces, point, 42);
   }
   cityMapCanvas.addEventListener('mousemove', function(e){
     const point = cityMapWorldPoint(e);
-    const dist = districts.find(function(d){ return d.id === districtAtWorldX(point.x); });
-    const object = nearestCityMapObject(point);
-    cityMapHint.textContent = object ? `${dist ? dist.name : 'Windhaven'} · ${cityMapObjectName(object)}` : `${dist ? dist.name : 'Windhaven'} · Click to set waypoint`;
+    const dist = districts.find(function(d){ return d.id === districtIdAtPoint(point); });
+    const place = nearestCityMapPlace(point);
+    cityMapHint.textContent = place ? `${dist ? dist.name : 'Windhaven'} · ${place.name}` : `${dist ? dist.name : 'Windhaven'} · Click to set waypoint`;
   });
   cityMapCanvas.addEventListener('mouseleave', function(){
     cityMapHint.textContent = 'Click the expanded map to drop a waypoint · hover places to inspect them';
@@ -3802,7 +3716,7 @@ import type * as ThreeNamespace from 'three';
   cityMapCanvas.addEventListener('click', function(e){
     if(state.currentInterior) return;
     const point = cityMapWorldPoint(e);
-    const dist = districtAtWorldX(point.x);
+    const dist = districtIdAtPoint(point);
     setGlobalWaypoint(point);
     rebuildWaypointBeacon();
     byId('minimap-clear').classList.add('show');
