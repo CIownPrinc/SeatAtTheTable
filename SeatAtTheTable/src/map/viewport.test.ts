@@ -14,7 +14,7 @@ import { gangRecruits } from '../config/gang';
 import { mapAmenities } from './amenities';
 import { createMapBuildings, mapNpcs } from './markers';
 import { buildMapObjects } from './objectFactory';
-import { mapTerrainTheme, terrainForDistrict } from './renderTheme';
+import { mapTerrainTheme, mapTransportTheme, terrainForDistrict } from './renderTheme';
 import { minimapStaticLayerCacheKey, type MinimapRenderOptions } from './minimap';
 
 describe('map viewport and geometry model', function () {
@@ -79,6 +79,8 @@ describe('map viewport and geometry model', function () {
   it('keeps terrain rendering theme complete for every district', function () {
     expect(mapTerrainTheme.openWater).not.toBe(mapTerrainTheme.baseLand);
     expect(windhavenMapModel.districts.map(district => terrainForDistrict(district.id).id)).toEqual(['devlin', 'westside', 'hub']);
+    expect(mapTransportTheme.roadSurface).not.toBe(mapTransportTheme.sidewalk);
+    expect(mapTransportTheme.bridgeDeck).not.toBe(mapTransportTheme.bridgeRail);
   });
 
   it('keys cached minimap static layers by viewport instead of dynamic player overlays', function () {

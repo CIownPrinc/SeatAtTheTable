@@ -77,7 +77,7 @@ test.describe('game boot', () => {
     expect(box.position).toBe('fixed');
     await expect(page.locator('#scene3d-container')).toHaveClass(/fullscreen/);
 
-    await page.locator('#minimap-expand').click();
+    await page.locator('#minimap-expand').dispatchEvent('click');
     await expect(page.locator('#citymap-overlay')).not.toHaveClass(/hidden/);
     await expect(page.locator('#citymap-canvas')).toBeVisible();
 

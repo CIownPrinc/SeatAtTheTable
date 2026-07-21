@@ -14,6 +14,17 @@ export interface MapTerrainTheme {
   districts: DistrictTerrainTheme[];
 }
 
+export interface MapTransportTheme {
+  roadSurface: string;
+  arterialSurface: string;
+  sidewalk: string;
+  lane: string;
+  crosswalk: string;
+  bridgeDeck: string;
+  bridgeRail: string;
+  seawall: string;
+}
+
 export const mapTerrainTheme: MapTerrainTheme = {
   openWater: '#06324f',
   canalWater: '#074264',
@@ -26,6 +37,17 @@ export const mapTerrainTheme: MapTerrainTheme = {
     { id: 'westside', land: '#827851', minimapLand: '#827851' },
     { id: 'hub', land: '#6b8b83', minimapLand: '#6b8b83' },
   ],
+};
+
+export const mapTransportTheme: MapTransportTheme = {
+  roadSurface: '#414753',
+  arterialSurface: '#363d4a',
+  sidewalk: '#69706b',
+  lane: '#d8c66a',
+  crosswalk: '#d9d6c8',
+  bridgeDeck: '#4c5260',
+  bridgeRail: '#c2c8d0',
+  seawall: '#b8b7a8',
 };
 
 export function terrainForDistrict(id: DistrictTerrainTheme['id']): DistrictTerrainTheme {

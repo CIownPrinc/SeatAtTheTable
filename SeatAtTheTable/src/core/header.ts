@@ -2920,20 +2920,12 @@ import type * as ThreeNamespace from 'three';
   }
   byId('fullscreen-btn').addEventListener('click', function(){
     const container = byId<HTMLElement>('scene3d-container');
-    const entering = !container.classList.contains('fullscreen');
-    if(entering && container.requestFullscreen){
-      container.requestFullscreen().catch(function(){ syncMapFullscreenUi(true); });
-      return;
-    }
-    if(!entering && document.fullscreenElement === container){
-      document.exitFullscreen().catch(function(){ syncMapFullscreenUi(false); });
-      return;
-    }
-    syncMapFullscreenUi(entering);
+    syncMapFullscreenUi(!container.classList.contains('fullscreen'));
   });
-  document.addEventListener('fullscreenchange', function(){
+  window.addEventListener('keydown', function(e){
+    if(e.key !== 'Escape') return;
     const container = byId<HTMLElement>('scene3d-container');
-    syncMapFullscreenUi(document.fullscreenElement === container);
+    if(container.classList.contains('fullscreen')) syncMapFullscreenUi(false);
   });
   window.addEventListener('resize', function(){
     const container = byId<HTMLElement>('scene3d-container');
@@ -3253,6 +3245,67 @@ import type * as ThreeNamespace from 'three';
     }
   }
 
+  function addServiceDetail(m: ServiceBuilding, base: ThreeNamespace.Group): void {
+    if(m.kind === 'bankHome'){
+      [-18, 0, 18].forEach(function(x){
+        const column = box(5,24,5,'#d7c47a');
+        column.position.set(x,-5,28);
+        base.add(column);
+      });
+      const pediment = box(48,7,8,'#8b7a42');
+      pediment.position.set(0,10,29);
+      base.add(pediment);
+    } else if(m.kind === 'garage'){
+      [-15, 15].forEach(function(x){
+        const bay = box(18,18,3,'#11141a');
+        bay.position.set(x,-5,26);
+        base.add(bay);
+      });
+      const sign = box(48,5,4,'#3e6b78');
+      sign.position.set(0,11,28);
+      base.add(sign);
+    } else if(m.kind === 'cityhall'){
+      const steps = box(62,5,18,'#797267');
+      steps.position.set(0,-14,34);
+      base.add(steps);
+      const dome = new THREE.Mesh(new THREE.SphereGeometry(16,18,10,0,Math.PI*2,0,Math.PI/2), new THREE.MeshStandardMaterial({color:'#c9a227', metalness:0.45, roughness:0.35}));
+      dome.position.set(0,22,0);
+      base.add(dome);
+    } else if(m.kind === 'realty'){
+      const roof = box(56,5,42,'#2f5360');
+      roof.position.set(0,18,0);
+      base.add(roof);
+      const placard = box(18,16,3,'#d9d2b8');
+      placard.position.set(20,-6,28);
+      base.add(placard);
+    } else if(m.kind === 'heist'){
+      const vault = new THREE.Mesh(new THREE.CylinderGeometry(13,13,6,18), new THREE.MeshStandardMaterial({color:'#7d8594', metalness:0.7, roughness:0.22}));
+      vault.rotation.x = Math.PI/2;
+      vault.position.set(0,-4,28);
+      base.add(vault);
+    }
+  }
+
+  function addLocalBusinessDetail(m: LocalBusiness, base: ThreeNamespace.Group): void {
+    if(m.id === 'bar' || m.id === 'marlowe'){
+      const neon = box(34,4,4,'#d44d96');
+      neon.position.set(0,9,22);
+      base.add(neon);
+    } else if(m.id === 'chopshop'){
+      const bay = box(26,16,3,'#15171c');
+      bay.position.set(0,-4,22);
+      base.add(bay);
+    } else if(m.id === 'jewelers'){
+      const display = box(28,12,3,'#b9ffe8');
+      display.position.set(0,-2,22);
+      base.add(display);
+    } else {
+      const awning = box(34,4,6,'#7a6fb0');
+      awning.position.set(0,7,22);
+      base.add(awning);
+    }
+  }
+
 
   // LEGAL: ---- procedural building with windows, door, and zone-specific roof ----
   function buildDetailedBuilding(w: number, h: number, d: number, color: number | string, zoneType: string, variant = 0){
@@ -3398,6 +3451,7 @@ import type * as ThreeNamespace from 'three';
     mapObjects.filter(o=>o.kind==='service').forEach(function(object){
       const m = object.ref as ServiceBuilding;
       const mesh = buildDetailedBuilding(58,34,50,svcPalette[m.kind],'service', variantForId(m.id));
+      addServiceDetail(m, mesh);
       mesh.position.set(object.x,17,object.y); worldGroup.add(mesh);
       addSign(mesh, m.name, 40, 9, 26, '#ffe6a0');
     });
@@ -3407,6 +3461,7 @@ import type * as ThreeNamespace from 'three';
       const m = object.ref as LocalBusiness;
       const color = m.extorted?'#8a6a1a':'#4a4360';
       const mesh = buildDetailedBuilding(42,20,36,color,'shop', variantForId(m.id));
+      addLocalBusinessDetail(m, mesh);
       mesh.position.set(object.x,10,object.y); worldGroup.add(mesh);
       addSign(mesh, m.name, 32, 8, 18, m.extorted?'#ffd77a':'#b8aee0');
     });
@@ -3728,8 +3783,6 @@ import type * as ThreeNamespace from 'three';
   function openCityMap(){
     cityMapOpen = true;
     const overlay = byId('citymap-overlay');
-    const mapContainer = byId('scene3d-container');
-    if(mapContainer.classList.contains('fullscreen') && overlay.parentElement !== mapContainer) mapContainer.appendChild(overlay);
     const el = byIdOrNull('citymap-legend');
     if(el) el.innerHTML = `<div class="citymap-legend-title">Legend</div>` + cityLegend.map(function(item){
       const iconHtml = item.ph ? `<i class="ph-duotone ${item.ph} lg-ph" style="color:${item.color}"></i>` : `<span class="lg-ico lg-${item.icon}" style="--c:${item.color}"></span>`;
@@ -3742,7 +3795,6 @@ import type * as ThreeNamespace from 'three';
     cityMapOpen = false;
     const overlay = byId('citymap-overlay');
     overlay.classList.add('hidden');
-    if(overlay.parentElement !== document.body) document.body.appendChild(overlay);
   }
   byId('citymap-open').addEventListener('click', openCityMap);
   byId('minimap-expand').addEventListener('click', openCityMap);
