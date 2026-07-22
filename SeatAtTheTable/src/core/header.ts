@@ -52,6 +52,7 @@ import type * as ThreeNamespace from 'three';
     maxRepeats?: number;
     entry: MissionEntry;
     body: string;
+    consequence: string;
     acceptLabel: string;
     declineLabel: string;
   };
@@ -65,19 +66,19 @@ import type * as ThreeNamespace from 'three';
     heistPrepCrewReq: 1,
   };
   const missionEventPool: MissionEventDefinition[] = [
-    { id:'tribune', title:'The Herald Wants an Interview', sender:'Lana Vance', neg:false, unique:true, entry:'phone', body:"<p class='flavor'>Lana Vance from the Windhaven Herald wants a sit-down about the person building an empire out of a folding cart.</p>", acceptLabel:'Take the interview', declineLabel:'Stay quiet' },
-    { id:'rival', title:'Rival Crew Confrontation', sender:'West Side runner', neg:true, unique:true, entry:'popup', body:"<p class='flavor'>A West Side crew thinks your runners are working streets that belong to them. Their capo is waiting near one of your active corners.</p>", acceptLabel:'Meet the capo', declineLabel:'Avoid the meeting' },
-    { id:'inspector', title:'Inspector Kowalski Visits', sender:'Health Department', neg:true, unique:false, maxRepeats:2, entry:'popup', body:"<p class='flavor'>Inspector Kowalski has a clipboard and a look that says he already knows the price of looking away.</p>", acceptLabel:'Meet Kowalski', declineLabel:'Keep him waiting' },
-    { id:'cousin', title:'Amit Calls From the Bus Station', sender:'Cousin Amit', neg:false, unique:true, entry:'phone', body:"<p class='flavor'>Amit just arrived with a suitcase and a debt following close behind. He is waiting at the Hub Bus Station.</p>", acceptLabel:'Go get Amit', declineLabel:'Turn him away' },
-    { id:'cops', title:'Detective Miller Wants a Back-Alley Talk', sender:'Burner phone', neg:true, unique:true, entry:'phone', body:"<p class='flavor'>Detective Miller sends a short message: Devlin back alley, no uniforms, no second chances.</p>", acceptLabel:'Take the meeting', declineLabel:'Ignore the burner' },
-    { id:'hustler', title:'A Talented Hustler Wants In', sender:"O'Malley's Bar", neg:false, unique:true, entry:'popup', body:"<p class='flavor'>Sharp, hungry, and risky. The pitch is waiting at O'Malley's Bar.</p>", acceptLabel:'Hear the pitch', declineLabel:'Pass on it' },
-    { id:'investor', title:'Silent Investor Invitation', sender:'Whitfield Realty', neg:false, unique:true, entry:'phone', body:"<p class='flavor'>Cash up front, no questions, in exchange for a slice of everything going forward. The meeting is at Whitfield Realty.</p>", acceptLabel:'Take the meeting', declineLabel:'Stay independent' },
-    { id:'fire', title:"Grease Fire at Kailash's Cart", sender:'Kailash', neg:true, unique:true, entry:'popup', body:"<p class='flavor'>Where it all started nearly goes up in smoke. Kailash says this does not smell accidental.</p>", acceptLabel:'Go to the cart', declineLabel:'Handle it quietly' },
-    { id:'home_safe_robbery', title:'Cash on Hand Is Not Safe', sender:'First Windhaven Trust', neg:true, unique:true, entry:'phone', body:"<p class='flavor'>Word comes in after a back-room safe gets cleaned out. The bank branches are safer than a shoebox under the bed.</p>", acceptLabel:'Learn the bank route', declineLabel:'Risk the cash' },
-    { id:'stolen_shipment', title:'Missing Cargo', sender:'Dockmaster Bell', neg:true, unique:true, entry:'phone', body:"<p class='flavor'>A cargo pallet disappears between the docks and West Side. The dockmaster says somebody at a chop shop knows where it went.</p>", acceptLabel:'Go to the docks', declineLabel:'Write it off' },
-    { id:'alderman_fixer', title:'The Bagman at City Hall', sender:'City Hall Annex', neg:false, unique:true, entry:'phone', body:"<p class='flavor'>A bagman says an alderman can become useful if a railyard union problem goes quiet.</p>", acceptLabel:'Hear the favor', declineLabel:'Avoid City Hall' },
-    { id:'turf_war', title:'West Side Pressure', sender:'Street lookout', neg:true, unique:true, entry:'popup', body:"<p class='flavor'>West Side pressure spills toward Devlin. Defend the block before the capo moves the line.</p>", acceptLabel:'Defend Devlin', declineLabel:'Let it cool' },
-    { id:'first_heist', title:'The First Real Heist', sender:'The Vault Job', neg:true, unique:true, entry:'phone', body:"<p class='flavor'>The old smash-and-grab board is not enough for your first real vault job. Pick a target, case it, choose an approach, then execute.</p>", acceptLabel:'Start casing', declineLabel:'Not tonight' },
+    { id:'tribune', title:'The Herald Wants an Interview', sender:'Lana Vance', neg:false, unique:true, entry:'phone', body:"<p class='flavor'>Lana Vance from the Windhaven Herald wants a sit-down about the person building an empire out of a folding cart.</p>", consequence:'Interview tones can raise legit income, respect, heat, prestige, and future press tone.', acceptLabel:'Take the interview', declineLabel:'Stay quiet' },
+    { id:'rival', title:'Rival Crew Confrontation', sender:'West Side runner', neg:true, unique:true, entry:'popup', body:"<p class='flavor'>A West Side crew thinks your runners are working streets that belong to them. Their capo is waiting near one of your active corners.</p>", consequence:'Choices can cost cash, raise respect and heat, split income, or spark a gang war.', acceptLabel:'Meet the capo', declineLabel:'Avoid the meeting' },
+    { id:'inspector', title:'Inspector Kowalski Visits', sender:'Health Department', neg:true, unique:false, maxRepeats:2, entry:'popup', body:"<p class='flavor'>Inspector Kowalski has a clipboard and a look that says he already knows the price of looking away.</p>", consequence:'Bribes cost cash; compliance slows legit income; blackmail can block future inspections.', acceptLabel:'Meet Kowalski', declineLabel:'Keep him waiting' },
+    { id:'cousin', title:'Amit Calls From the Bus Station', sender:'Cousin Amit', neg:false, unique:true, entry:'phone', body:"<p class='flavor'>Amit just arrived with a suitcase and a debt following close behind. He is waiting at the Hub Bus Station.</p>", consequence:'Paying costs $600; hiring can add crew and unlock a later family mistake; refusal costs respect.', acceptLabel:'Go get Amit', declineLabel:'Turn him away' },
+    { id:'cops', title:'Detective Miller Wants a Back-Alley Talk', sender:'Burner phone', neg:true, unique:true, entry:'phone', body:"<p class='flavor'>Detective Miller sends a short message: Devlin back alley, no uniforms, no second chances.</p>", consequence:'Pay cash to cut heat, snitch to reduce the case but lose respect, or risk enforcement.', acceptLabel:'Take the meeting', declineLabel:'Ignore the burner' },
+    { id:'hustler', title:'A Talented Hustler Wants In', sender:"O'Malley's Bar", neg:false, unique:true, entry:'popup', body:"<p class='flavor'>Sharp, hungry, and risky. The pitch is waiting at O'Malley's Bar.</p>", consequence:'Risky scores can pay cash or add heat; legit hiring can add crew; rejection helps rivals.', acceptLabel:'Hear the pitch', declineLabel:'Pass on it' },
+    { id:'investor', title:'Silent Investor Invitation', sender:'Whitfield Realty', neg:false, unique:true, entry:'phone', body:"<p class='flavor'>Cash up front, no questions, in exchange for a slice of everything going forward. The meeting is at Whitfield Realty.</p>", consequence:'Accept for cash with a permanent income cut, negotiate with leverage, or gain respect by rejecting.', acceptLabel:'Take the meeting', declineLabel:'Stay independent' },
+    { id:'fire', title:"Grease Fire at Kailash's Cart", sender:'Kailash', neg:true, unique:true, entry:'popup', body:"<p class='flavor'>Where it all started nearly goes up in smoke. Kailash says this does not smell accidental.</p>", consequence:'Rebuild costs cash or time; hunting the arsonist raises respect and heat and opens revenge memory.', acceptLabel:'Go to the cart', declineLabel:'Handle it quietly' },
+    { id:'home_safe_robbery', title:'Cash on Hand Is Not Safe', sender:'First Windhaven Trust', neg:true, unique:true, entry:'phone', body:"<p class='flavor'>Word comes in after a back-room safe gets cleaned out. The bank branches are safer than a shoebox under the bed.</p>", consequence:'You can lose 35% of on-hand cash, then deposit or set GPS to a bank for safer storage.', acceptLabel:'Learn the bank route', declineLabel:'Risk the cash' },
+    { id:'stolen_shipment', title:'Missing Cargo', sender:'Dockmaster Bell', neg:true, unique:true, entry:'phone', body:"<p class='flavor'>A cargo pallet disappears between the docks and West Side. The dockmaster says somebody at a chop shop knows where it went.</p>", consequence:'Buy cargo back, take it by force, or unlock Black Market Trade passive income with case risk.', acceptLabel:'Go to the docks', declineLabel:'Write it off' },
+    { id:'alderman_fixer', title:'The Bagman at City Hall', sender:'City Hall Annex', neg:false, unique:true, entry:'phone', body:"<p class='flavor'>A bagman says an alderman can become useful if a railyard union problem goes quiet.</p>", consequence:'Spend cash or pressure the union to gain influence and unlock Political Favors.', acceptLabel:'Hear the favor', declineLabel:'Avoid City Hall' },
+    { id:'turf_war', title:'West Side Pressure', sender:'Street lookout', neg:true, unique:true, entry:'popup', body:"<p class='flavor'>West Side pressure spills toward Devlin. Defend the block before the capo moves the line.</p>", consequence:'Defend Devlin, then choose truce for lower heat or assassination for high-risk turf gain.', acceptLabel:'Defend Devlin', declineLabel:'Let it cool' },
+    { id:'first_heist', title:'The First Real Heist', sender:'The Vault Job', neg:true, unique:true, entry:'phone', body:"<p class='flavor'>The old smash-and-grab board is not enough for your first real vault job. Pick a target, case it, choose an approach, then execute.</p>", consequence:'Preparation sets the target, approach, heat risk, payout odds, and escape result.', acceptLabel:'Start casing', declineLabel:'Not tonight' },
   ];
 
   const eventPool = [
@@ -1023,7 +1024,7 @@ import type * as ThreeNamespace from 'three';
     wrap.innerHTML = `
       <div class="section-eyebrow">Messages</div>
       ${messages.length ? messages.map(function(event){
-        return `<div class="mission-phone-card"><div class="mission-phone-title">${escapeHtml(event.title)}</div><div class="mission-phone-meta">${escapeHtml(event.sender)}</div><div class="mission-phone-body">${event.body}</div><div class="btn-row"><button class="mini-btn" data-mission-start="${escapeHtml(event.id)}">${escapeHtml(event.acceptLabel)}</button><button class="mini-btn secondary" data-mission-decline="${escapeHtml(event.id)}">${escapeHtml(event.declineLabel)}</button></div></div>`;
+        return `<div class="mission-phone-card unread"><div class="mission-phone-title">${escapeHtml(event.title)}</div><div class="mission-phone-meta">${escapeHtml(event.sender)}</div><div class="mission-phone-body">${event.body}<div class="mission-consequence">${escapeHtml(event.consequence)}</div></div><div class="btn-row"><button class="mini-btn" data-mission-start="${escapeHtml(event.id)}">${escapeHtml(event.acceptLabel)}</button><button class="mini-btn secondary" data-mission-decline="${escapeHtml(event.id)}">${escapeHtml(event.declineLabel)}</button></div></div>`;
       }).join('') : '<div class="mission-phone-empty">No unanswered messages.</div>'}
       <div class="section-eyebrow" style="margin-top:18px;">Active Missions</div>
       ${active.length ? active.map(function(mission){
@@ -1033,6 +1034,21 @@ import type * as ThreeNamespace from 'three';
       }).join('') : '<div class="mission-phone-empty">No active missions.</div>'}
       ${completed.length ? `<div class="section-eyebrow" style="margin-top:18px;">Completed</div>${completed.map(function(outcome){ const def = missionDefinition(outcome.id); return `<div class="mission-phone-empty">${escapeHtml(def?.title ?? outcome.id)} - ${escapeHtml(outcome.result)}</div>`; }).join('')}` : ''}
     `;
+  }
+  function unreadMissionMessageCount(): number {
+    return missionEventPool.filter(function(event){ return state.eventHistory[event.id] === 'offered' && !state.activeMissions[event.id]; }).length;
+  }
+  function renderMissionNotificationBadges(): void {
+    const count = unreadMissionMessageCount();
+    const text = count > 9 ? '9+' : String(count);
+    ['mission-phone-badge', 'mission-app-badge'].forEach(function(id){
+      const badge = byIdOrNull(id);
+      if(!badge) return;
+      badge.textContent = text;
+      badge.classList.toggle('show', count > 0);
+    });
+    const phoneBtn = byIdOrNull('phone-btn');
+    if(phoneBtn) phoneBtn.classList.toggle('has-mission-alert', count > 0);
   }
   function availableMissionEvents(): MissionEventDefinition[] {
     if(activeMissionCount(missionSaveState()) >= 3) return [];
@@ -1053,6 +1069,7 @@ import type * as ThreeNamespace from 'three';
     recordEventOffer(missionSaveState(), event.id);
     if(event.entry === 'phone'){
       log(`<i class="ph-duotone ph-device-mobile"></i> New message from ${event.sender}: ${event.title}.`);
+      renderMissionNotificationBadges();
       renderAll();
       scheduleSave();
       return;
@@ -1060,12 +1077,13 @@ import type * as ThreeNamespace from 'three';
     showModal({
       eyebrow:event.sender,
       title:event.title,
-      body:event.body,
+      body:event.body + `<p><strong>Possible consequences:</strong> ${escapeHtml(event.consequence)}</p>`,
       buttons:[
         { label:event.acceptLabel, onClick:function(){ startMissionFromOffer(event.id); } },
         { label:event.declineLabel, secondary:true, onClick:function(){ declineMissionOffer(event.id); } },
       ],
     });
+    renderMissionNotificationBadges();
     scheduleSave();
   }
 
@@ -2790,6 +2808,7 @@ import type * as ThreeNamespace from 'three';
     renderCityNews();
     renderAdvisorPanel();
     renderMissionPhoneApp();
+    renderMissionNotificationBadges();
 
     byId('hud-cash').textContent = fmt(state.cash);
     byId('hud-income').textContent = (netIncome()>=0?'+':'') + fmt(netIncome()) + '/s';

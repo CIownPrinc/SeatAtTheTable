@@ -94,11 +94,24 @@ A roster of banks, each a distinct entity with tradeoffs. **No passive theft** â
    **themed realty brokerages** (cheap-with-a-caveat / luxury) selling their own stock
    in person; each shared type united under a brand (names to come from the user). Plus
    haggle where it fits, territory-gated service, unique inventories.
+   - **Open:** disperse the branded car and realty businesses across the map instead of
+     routing everything through one generic Auto Exchange and one generic Realty office.
+     Each brand in `src/config/brands.ts` should become a searchable/interactable map
+     place with its own stock, caveat, pricing, and in-person buying rules. AutoMart and
+     the Realty phone app stay as online convenience catalogs for `online:true` stock.
+   - **Open:** wire brand caveats from `src/config/brands.ts` into real gameplay:
+     used cars can break down, bikes draw more heat and give less cover, rough-block
+     properties can be hit by crews, commercial properties improve laundering/front value,
+     and premium waterfront properties appreciate over time.
 5. Retire remaining redundant tabs (Politics/Gang â†’ in-person) + polish.
 
 ---
 
 ## Game systems & polish
+
+### Mission overhaul
+The map-and-phone mission implementation plan now lives in
+`SeatAtTheTable/docs/mission-overhaul-plan.md`.
 
 ### 1. De-bloat & polish (perf + redundancy + visuals)
 `src/core/header.ts` is a ~3,900-line monolith. Goal the user stated:
@@ -163,6 +176,11 @@ scene building, collision, minimap, zoning, lighting, weather, or user-facing be
 - Make road curves collision/minimap/path-aware beyond the current data-backed diagonals.
 - Evaluate the mirrored CC0 car & character assets role by role; keep procedural as the
   primary look, swap in external meshes only where they clearly look better.
+- Move reserved asset metadata into visible implementation work:
+  building detail GLBs should become facade dressing, roof clutter, and train-station
+  variants; car-kit GLBs should cover delivery routes, police patrols/roadblocks, traffic
+  variants, taxis, crew transport, and player garage variants; blocky character GLBs and
+  textures should be evaluated for pedestrian and named-NPC variants.
 - **Done:** visual-regression e2e checks now cover WebGL boot, water/land color
   distinction, fullscreen sizing, expanded minimap behavior, hover, search, and waypoint
   placement.
