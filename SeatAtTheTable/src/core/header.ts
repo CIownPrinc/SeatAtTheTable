@@ -14,9 +14,10 @@ import { banks, DEFAULT_BANK_ID } from '../config/banks';
 import { brandById } from '../config/brands';
 import { territoryBlocks } from '../config/blocks';
 import { CONTESTED_COLOR, YOURS_COLOR, rivalGangForDistrict } from '../config/rivals';
-import type { BlockOwner, Brand, GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState, Point, ServiceBuilding, GangRecruit, Car, DialogueTree } from '../config/types';
+import type { BlockOwner, Brand, GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState, Point, Property, ServiceBuilding, GangRecruit, Car, DialogueTree } from '../config/types';
 import { blockAtPoint, blockOwner, holdingFor, ownedBlockCount, territoryLegend } from '../map/territory';
 import { askingPrice, haggleOfferFor, haggleOffers, resolveHaggle, stockForBrand, stockItemCost, turfPricing, type HagglePush, type StockItem } from '../map/storefront';
+import { appreciationMult, breakdownChancePerSec, caveatEffectLabel, effectiveHeistBonus, launderingHeatMult, propertyRespectPerSec, repairCost, roughRaidChance, roughRaidLoss, vehicleHeatPerSec } from '../map/brandEffects';
 import type { MapAssetKey, MapAssetLibrary } from '../map/assets';
 import { loadMapAssetLibrary } from '../map/assets';
 import { renderRoamingActors } from '../map/actorRendering';
@@ -484,6 +485,9 @@ import type * as ThreeNamespace from 'three';
     procNpc: generateNPC(),
     bankAccounts: {}, selectedBank: DEFAULT_BANK_ID, nextHeistAt: 0,
     ownedCars: [], equippedCar: null, ownedProperties: [],
+    // LEGAL: Phase 4 caveats: when each property was bought (waterfront rent appreciates
+    // LEGAL: with how long you have held it) and which used cars are currently broken down.
+    propertyOwnedAt: {}, brokenCars: [],
     currentDistrict: 'devlin', product: 0, productLevel: 0, currentInterior: null,
     inVehicle: false,
     waypoints: { devlin:null, westside:null, hub:null, global:null },
@@ -596,7 +600,27 @@ import type * as ThreeNamespace from 'three';
   }
   function incomeFor(b: Business){ return b.level * b.baseIncome * efficiency(b) * tempMultActive(b); }
   function getEquippedCar(){ return cars.find(c=>c.id===state.equippedCar) || null; }
-  function propertiesIncome(){ return state.ownedProperties.reduce((s,id)=>{ const p=properties.find(x=>x.id===id); return s+(p?p.incomePerSec:0); }, 0); }
+  // LEGAL: Rent, with each brand's caveat applied. Waterfront stock appreciates the longer
+  // LEGAL: you hold it (config/brands "premium and appreciating"); everything else is flat.
+  function propertyHeldSeconds(id: string){
+    const boughtAt = state.propertyOwnedAt[id];
+    return typeof boughtAt === 'number' ? Math.max(0, state.playSeconds - boughtAt) : 0;
+  }
+  function propertyIncomeFor(p: Property){
+    return p.incomePerSec * appreciationMult(brandById(p.brand), propertyHeldSeconds(p.id));
+  }
+  function ownedPropertyList(){
+    return state.ownedProperties.map(id => properties.find(x=>x.id===id)).filter((p): p is Property => !!p);
+  }
+  function propertiesIncome(){ return ownedPropertyList().reduce((s,p)=> s + propertyIncomeFor(p), 0); }
+  // LEGAL: Ironpoint's warehouses are fronts: they wash money (less heat) but are invisible
+  // LEGAL: on the street, so they pay no respect where a penthouse does.
+  function commercialPropertyCount(){
+    return ownedPropertyList().filter(p => brandById(p.brand)?.category === 'commercial').length;
+  }
+  function propertyRespect(){
+    return ownedPropertyList().reduce((s,p)=> s + propertyRespectPerSec(brandById(p.brand)), 0);
+  }
   // LEGAL: Squeeze level 0-3; income/heat scale up with how hard you lean on the owner.
   const EXTORT_MULT = [0, 1, 2, 3.2];
   function extortLevel(b: LocalBusiness){ return b.extorted ? Math.max(1, Math.min(3, b.extortTier ?? 1)) : 0; }
@@ -632,7 +656,7 @@ import type * as ThreeNamespace from 'three';
   }
   function bribeUpkeep(){ return state.bribeOn ? rawTotalIncome()*0.12 : 0; }
   function netIncome(){ return rawTotalIncome() - bribeUpkeep(); }
-  function respectPerSec(){ const car=getEquippedCar(); return (state.muscleCount*0.6 + (car?car.respectPerSec:0)) * (grandmotherActive()?1.25:1); }
+  function respectPerSec(){ const car=getEquippedCar(); return (state.muscleCount*0.6 + (car?car.respectPerSec:0) + propertyRespect()) * (grandmotherActive()?1.25:1); }
   // LEGAL: Full heat accounting — the single source of truth for both generation and
   // LEGAL: the HUD "Details" breakdown. Sources are summed, then scaled by the shared
   // LEGAL: modifier (bribe/family/politics, campaign x2.5, crackdown x2.2, lay-low x0.2).
@@ -645,10 +669,14 @@ import type * as ThreeNamespace from 'three';
     const blackMarketHeat = blackMarketTradeHeat();
     // LEGAL: Beyond a few fronts, sprawl draws superlinear attention.
     const conspicuousHeat = Math.max(0, illegalFrontCount()-3) * 0.35;
-    const modifier = heatMult() * (state.campaignActive ? 2.5 : 1) * (crackdownActive() ? 2.2 : 1) * (state.layingLow ? 0.2 : 1);
-    const gen = (muscleHeat + streetVentureHeat + extortionHeat + cornerHeat + blackMarketHeat + conspicuousHeat) * modifier;
+    // LEGAL: Phase 4 caveats. Riding an Outlaw Riders bike is loud and exposed, so it adds
+    // LEGAL: heat outright; Ironpoint warehouses wash money, scaling the whole total down.
+    const bikeHeat = vehicleHeatPerSec(brandById(getEquippedCar()?.brand), state.inVehicle);
+    const launderMult = launderingHeatMult(commercialPropertyCount());
+    const modifier = heatMult() * (state.campaignActive ? 2.5 : 1) * (crackdownActive() ? 2.2 : 1) * (state.layingLow ? 0.2 : 1) * launderMult;
+    const gen = (muscleHeat + streetVentureHeat + extortionHeat + cornerHeat + blackMarketHeat + conspicuousHeat + bikeHeat) * modifier;
     const cool = 0.25 + state.heat*state.heat*0.001 + (state.layingLow ? 4 : 0);
-    return { muscleHeat, streetVentureHeat, extortionHeat, cornerHeat, conspicuousHeat, modifier, gen, cool, net: gen - cool };
+    return { muscleHeat, streetVentureHeat, extortionHeat, cornerHeat, conspicuousHeat, bikeHeat, launderMult, modifier, gen, cool, net: gen - cool };
   }
   function districtDriftBreakdown(d: District){
     const musclePresence = state.muscleCount*0.15;
@@ -1344,6 +1372,62 @@ import type * as ThreeNamespace from 'three';
     buttons.push({ label:'Leave', secondary:true });
     showModal({ eyebrow:`${bank.name} — Teller`, title: bank.name, body, buttons });
   }
+  // LEGAL: ---- Brand caveats in play (Phase 4) ----
+  // LEGAL: The downside printed on each shop card, actually happening. Rules live in
+  // LEGAL: map/brandEffects.ts; this only rolls the dice and applies the outcome.
+  let nextRoughRaidCheckAt = 0;
+  const ROUGH_RAID_CHECK_INTERVAL = 90; // LEGAL: seconds between crew-raid rolls
+
+  function tickBrandCaveats(dt: number){
+    // LEGAL: Used cars die on you mid-drive. Rolled per second of actual driving, so
+    // LEGAL: parking the beater is a real way to avoid the problem.
+    const car = getEquippedCar();
+    if(car && state.inVehicle && !state.brokenCars.includes(car.id)){
+      const chance = breakdownChancePerSec(car, brandById(car.brand), state.inVehicle);
+      if(chance > 0 && Math.random() < chance * dt){ breakDownCar(car); }
+    }
+
+    // LEGAL: Rough blocks get turned over. Checked on an interval rather than per frame so
+    // LEGAL: the odds mean something you can reason about.
+    if(state.playSeconds >= nextRoughRaidCheckAt){
+      nextRoughRaidCheckAt = state.playSeconds + ROUGH_RAID_CHECK_INTERVAL;
+      rollRoughBlockRaid();
+    }
+  }
+
+  function breakDownCar(car: Car){
+    state.brokenCars.push(car.id);
+    if(state.inVehicle) exitVehicle();
+    log(`<i class="ph-duotone ph-warning"></i> The ${car.name} dies in the street — steam, then nothing. Get it repaired at ${brandById(car.brand)?.name ?? 'the lot'}.`);
+    pushCityNews(`A ${car.name} sits abandoned with its hood up. No problem, apparently.`, false);
+    updateParkedCarMesh(); refreshPlayerModel(); renderAll();
+  }
+
+  function rollRoughBlockRaid(){
+    const rough = ownedPropertyList().filter(p => brandById(p.brand)?.category === 'cheap');
+    if(!rough.length) return;
+    const target = rough[Math.floor(Math.random()*rough.length)];
+    const onYourTurf = districtStatus(state.currentDistrict) === 'yours';
+    const chance = roughRaidChance({ roughCount: rough.length, heat: state.heat, onYourTurf });
+    if(Math.random() >= chance) return;
+
+    const loss = Math.min(Math.floor(state.cash), roughRaidLoss(target.cost, Math.random()));
+    state.cash = Math.max(0, state.cash - loss);
+    state.heat = Math.min(100, state.heat + 3);
+    log(`<i class="ph-duotone ph-house-line"></i> A crew turned over ${target.name} — ${fmt(loss)} gone and the police are asking who owns it.`);
+    pushCityNews(`BREAK-IN REPORTED AT ${target.name.toUpperCase()}. NEIGHBOURS SAY IT IS NOT THE FIRST.`, true);
+    renderAll();
+  }
+
+  function repairCarFlow(car: Car){
+    const cost = repairCost(car);
+    if(state.cash < cost){ log(`Repairing the ${car.name} costs ${fmt(cost)} — you are short.`); return; }
+    state.cash -= cost;
+    state.brokenCars = state.brokenCars.filter(id => id !== car.id);
+    log(`<i class="ph-duotone ph-wrench"></i> They patch the ${car.name} back together for ${fmt(cost)}.`);
+    updateParkedCarMesh(); refreshPlayerModel(); renderAll();
+  }
+
   // LEGAL: ---- In-person branded shops (Phase 4) ----
   // LEGAL: Buying used to be one generic dealer that opened the phone. Now each brand is a
   // LEGAL: place you drive to, selling only its own stock, priced by who holds the block it
@@ -1384,7 +1468,10 @@ import type * as ThreeNamespace from 'three';
     const body = `<p class="flavor">${brand.blurb}</p>`
       + `<p class="flavor">${pricing.note}</p>`
       + `<div style="margin-top:8px;">${turfTag}${discount ? ` · <span style="color:var(--gold);">haggled ${Math.round(discount*100)}% off</span>` : ''}</div>`
-      + (brand.caveat ? `<p class="flavor" style="color:var(--text-faint);margin-top:8px;">${brand.caveat}</p>` : '');
+      + (brand.caveat ? `<p class="flavor" style="color:var(--text-faint);margin-top:8px;">${brand.caveat}</p>` : '')
+      // LEGAL: Spell out what the caveat actually does mechanically — the downside should
+      // LEGAL: never be a surprise you only discover after paying.
+      + (caveatEffectLabel(brand) ? `<p class="flavor" style="color:var(--text-faint);">${caveatEffectLabel(brand)}</p>` : '');
 
     const buttons: ModalButton[] = stock.map(function(item){
       const owned = item.kind === 'car'
@@ -1393,6 +1480,11 @@ import type * as ThreeNamespace from 'three';
       const price = shopItemPrice(brand, item);
       const dealerOnly = item.kind === 'car' ? !item.car.online : !item.property.online;
       const name = item.kind === 'car' ? item.car.name : item.property.name;
+      // LEGAL: A broken-down used car is repaired at the lot that sold it to you.
+      if(owned && item.kind === 'car' && state.brokenCars.includes(item.car.id)){
+        const car = item.car;
+        return { label:`Repair ${car.name} — ${fmt(repairCost(car))}`, onClick:function(){ repairCarFlow(car); } };
+      }
       if(owned) return { label:`${name} — owned`, secondary:true };
       return {
         label:`${name} — ${fmt(price)}${dealerOnly ? ' (only here)' : ''}`,
@@ -1419,6 +1511,7 @@ import type * as ThreeNamespace from 'three';
       updateParkedCarMesh(); refreshPlayerModel();
     } else {
       state.ownedProperties.push(item.property.id);
+      state.propertyOwnedAt[item.property.id] = state.playSeconds;
       if(state.ownedProperties.length === 1) triggerMilestone('first_property');
       log(`🏢 You sign for ${item.property.name} at ${brand.name}.`);
     }
@@ -1462,7 +1555,8 @@ import type * as ThreeNamespace from 'three';
   }
   function resolveHeist(approach: string){
     const car = getEquippedCar();
-    const carBonus = car ? car.heistBonus : 0;
+    // LEGAL: A bike gives half the cover of a car — nowhere to stash a crew or a haul.
+    const carBonus = effectiveHeistBonus(car, brandById(car?.brand));
     // LEGAL: The target bank scales this job: security shifts the odds, heistPayoutMult
     // LEGAL: scales the take. Lakeside (Soft, 1.6x) is the fat easy score; First Windhaven
     // LEGAL: (Hardened, 0.7x) is the long shot that barely pays.
@@ -1502,7 +1596,8 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: ================= LOCAL BUSINESSES (map-only, rob/extort) =================
   function robLocalBiz(biz: LocalBusiness){
     const car = getEquippedCar();
-    const carBonus = car ? car.heistBonus : 0;
+    // LEGAL: A bike gives half the cover of a car — nowhere to stash a crew or a haul.
+    const carBonus = effectiveHeistBonus(car, brandById(car?.brand));
     let chance = 0.55 + state.ratCount*0.03 + carBonus - (state.heat>60 ? 0.15 : 0);
     chance = Math.max(0.15, Math.min(0.85, chance));
     biz.nextRobAt = state.playSeconds + 240;
@@ -1602,7 +1697,7 @@ import type * as ThreeNamespace from 'three';
         <div class="data-main">
           <div class="col-id">${ICONS.car}</div>
           <div class="col-name">${c.name}</div>
-          <div class="col-status">${equipped?'EQUIPPED':(owned?'GARAGED':'SHOP')}</div>
+          <div class="col-status">${owned && state.brokenCars.includes(c.id) ? 'BROKEN' : (equipped?'EQUIPPED':(owned?'GARAGED':'SHOP'))}</div>
         </div>
         <div class="data-expanded">
           ${brand ? `<div class="flavor-note" style="color:var(--gold);">${brand.name}${brand.caveat?` — <span style="color:var(--text-faint);">${brand.caveat}</span>`:''}</div>` : ''}
@@ -1622,12 +1717,12 @@ import type * as ThreeNamespace from 'three';
         <div class="data-main">
           <div class="col-id">${ICONS.bld2}</div>
           <div class="col-name">${p.name}</div>
-          <div class="col-inc">+${p.incomePerSec}/s</div>
+          <div class="col-inc">+${(owned ? propertyIncomeFor(p) : p.incomePerSec).toFixed(1)}/s</div>
           <div class="col-status">${owned?'ACTIVE':'SALE'}</div>
         </div>
         <div class="data-expanded">
           ${brand ? `<div class="flavor-note" style="color:var(--gold);">${brand.name}${brand.caveat?` — <span style="color:var(--text-faint);">${brand.caveat}</span>`:''}</div>` : ''}
-          <div class="flavor-note">${owned ? `Owned — earning ${p.incomePerSec}/s, no crew needed` : `Passive rental income: ${p.incomePerSec}/s, no crew needed`}</div>
+          <div class="flavor-note">${owned ? `Owned — earning ${propertyIncomeFor(p).toFixed(1)}/s, no crew needed${appreciationMult(brandById(p.brand), propertyHeldSeconds(p.id)) > 1 ? ` (appreciated from ${p.incomePerSec}/s)` : ''}` : `Passive rental income: ${p.incomePerSec}/s, no crew needed`}</div>
           ${btns}
         </div>
       </div>`;
@@ -2587,6 +2682,7 @@ import type * as ThreeNamespace from 'three';
       const id = btn.getAttribute('data-car-sell')!; const c = cars.find(x=>x.id===id);
       if(!c) return;
       state.ownedCars = state.ownedCars.filter(x=>x!==id);
+      state.brokenCars = state.brokenCars.filter(x=>x!==id);
       if(state.equippedCar===id) state.equippedCar = state.ownedCars[0] || null;
       state.cash += Math.round(c.cost*0.55);
       log(`<i class="ph-duotone ph-car"></i> You sell the ${c.name}.`); updateParkedCarMesh(); refreshPlayerModel(); renderAll();
@@ -2595,12 +2691,15 @@ import type * as ThreeNamespace from 'three';
       if(!p || state.cash<p.cost) return;
       if(!p.online){ log(`${p.name} is not listed online. You have to see the broker.`); return; }
       state.cash -= p.cost; state.ownedProperties.push(id);
+      state.propertyOwnedAt[id] = state.playSeconds;
       if(state.ownedProperties.length === 1) triggerMilestone('first_property');
       log(`🏢 You close on ${p.name}.`); renderAll();
     } else if(btn.hasAttribute('data-prop-sell')){
       const id = btn.getAttribute('data-prop-sell')!; const p = properties.find(x=>x.id===id);
       if(!p) return;
       state.ownedProperties = state.ownedProperties.filter(x=>x!==id);
+      // LEGAL: Selling resets the appreciation clock — buying back does not restore it.
+      delete state.propertyOwnedAt[id];
       state.cash += Math.round(p.cost*0.6);
       log(`🏢 You sell ${p.name}.`); renderAll();
     }
@@ -3032,6 +3131,8 @@ import type * as ThreeNamespace from 'three';
       push('Extortion', `+${hb.extortionHeat.toFixed(2)}/s`);
       push('Corners', `+${hb.cornerHeat.toFixed(2)}/s`);
       if(hb.conspicuousHeat > 0) push('Sprawl (conspicuous)', `+${hb.conspicuousHeat.toFixed(2)}/s`);
+      if(hb.bikeHeat > 0) push('Riding a bike (exposed)', `+${hb.bikeHeat.toFixed(2)}/s`);
+      if(hb.launderMult < 1) push('Commercial fronts (laundering)', `×${hb.launderMult.toFixed(2)}`);
       push(`Modifiers${state.layingLow?' · LAYING LOW':''}${crackdownActive()?' · SWEEP':''}`, `×${hb.modifier.toFixed(2)}`);
       push('Gross heat', `+${hb.gen.toFixed(2)}/s`);
       push('Cooling off', `−${hb.cool.toFixed(2)}/s`);
@@ -3415,7 +3516,13 @@ import type * as ThreeNamespace from 'three';
 
   // LEGAL: ---- vehicle: explicit enter/exit, matches the "Enter Vehicle" prompt pattern ----
   function enterVehicle(){
-    if(!getEquippedCar()) return;
+    const car = getEquippedCar();
+    if(!car) return;
+    // LEGAL: A broken-down used car will not start until it is repaired at its lot.
+    if(state.brokenCars.includes(car.id)){
+      log(`<i class="ph-duotone ph-wrench"></i> The ${car.name} turns over and dies. It needs repairing at ${brandById(car.brand)?.name ?? 'the lot'}.`);
+      return;
+    }
     state.inVehicle = true;
     player.vx=0; player.vy=0;
     refreshPlayerModel(); updateParkedCarMesh();
@@ -4405,12 +4512,21 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: The legend only changes when district control does, so it is rebuilt on a
   // LEGAL: signature rather than every frame — the same discipline as the heat breakdown.
   let territoryLegendKey = '';
+  function territoryLegendSignature(){
+    return districts.map(d=>`${d.id}:${ownedBlockCount(d.control)}`).join('|');
+  }
   function renderTerritoryLegend(force = false){
     const panel = byId('territory-legend');
     if(!panel || !territoryShown) return;
-    const key = districts.map(d=>`${d.id}:${ownedBlockCount(d.control)}`).join('|');
+    const key = territoryLegendSignature();
     if(!force && key === territoryLegendKey) return;
     territoryLegendKey = key;
+    panel.innerHTML = territoryLegendHtml();
+  }
+
+  // LEGAL: One markup builder for both the minimap legend and the City Map side rail, so
+  // LEGAL: the two can never drift apart.
+  function territoryLegendHtml(){
     const controls: Record<string, number> = {};
     districts.forEach(function(d){ controls[d.id] = d.control; });
     const rows = territoryLegend(territoryBlocks, controls).map(function(row){
@@ -4427,7 +4543,7 @@ import type * as ThreeNamespace from 'three';
         <div class="t-sub">You ${row.yours}/${row.yours+row.contested+row.rival} blocks · ${gang?.name ?? 'Rivals'} ${row.rival}</div>
       </div>`;
     }).join('');
-    panel.innerHTML = `<h4>Territory</h4>${rows}`
+    return `<h4>Territory</h4>${rows}`
       + `<div class="t-sub" style="margin-top:8px;">○ ringed shops sit on rival turf and charge more.</div>`;
   }
 
@@ -4438,6 +4554,27 @@ import type * as ThreeNamespace from 'three';
     if(on) renderTerritoryLegend(true);
   }
   byId('territory-toggle').addEventListener('click', function(){ setTerritoryShown(!territoryShown); });
+
+  // LEGAL: The City Map carries the same layer, tracked separately so toggling the big
+  // LEGAL: map does not change what the follow-cam minimap shows.
+  let cityTerritoryShown = false;
+  let cityTerritoryLegendKey = '';
+  function renderCityTerritoryLegend(force = false){
+    const panel = byIdOrNull('citymap-territory-legend');
+    if(!panel || !cityTerritoryShown) return;
+    const key = territoryLegendSignature();
+    if(!force && key === cityTerritoryLegendKey) return;
+    cityTerritoryLegendKey = key;
+    panel.innerHTML = territoryLegendHtml();
+  }
+  function setCityTerritoryShown(on: boolean){
+    cityTerritoryShown = on;
+    byId('citymap-territory').classList.toggle('active', on);
+    byId('citymap-territory-legend').classList.toggle('hidden', !on);
+    if(on) renderCityTerritoryLegend(true);
+    if(cityMapOpen) drawCityMap();
+  }
+  byId('citymap-territory').addEventListener('click', function(){ setCityTerritoryShown(!cityTerritoryShown); });
 
   // LEGAL: ================= CITY MAP (full-world overlay, GTA-style) =================
   const cityMapCanvas = byId<HTMLCanvasElement>('citymap-canvas');
@@ -4520,11 +4657,17 @@ import type * as ThreeNamespace from 'three';
       player, mapObjects:cityVisibleMapObjects(), districtOffsets:DISTRICT_OFFSETS, fillerFor,
       worldWidth:WORLD_W, worldHeight:WORLD_H, landmass:WINDHAVEN_LANDMASS, landmarks,
       waypoint:currentWaypoint(),
+      // LEGAL: Same territory data as the minimap, but the full map has room for block
+      // LEGAL: names, so it turns labels on.
+      territory: cityTerritoryShown ? currentHoldings() : null,
+      warnObjectIds: cityTerritoryShown ? rivalTurfShopIds() : undefined,
+      territoryLabels: cityTerritoryShown,
       viewW:CITY_W, viewH:CITY_H, scale:cityViewport.scale, center:cityViewport.center, glyphScale:1.9,
       districtNames:windhavenMapModel.districts.map(function(district){ return { x: district.labelPoint.x, y: district.labelPoint.y, name: district.name }; }),
       highlightPoint:cityMapHoverPlace,
       highlightLabel:cityMapHoverPlace?.name,
     });
+    if(cityTerritoryShown) renderCityTerritoryLegend();
   }
   function openCityMap(){
     cityMapOpen = true;
@@ -4915,6 +5058,7 @@ import type * as ThreeNamespace from 'three';
       businesses: businesses.map(b=> ({ id:b.id, level:b.level, crew:b.crew, manager:b.manager, researched:b.researched, reinvestedIncome:b.reinvestedIncome })),
       bankAccounts: state.bankAccounts, selectedBank: state.selectedBank, nextHeistAt: state.nextHeistAt,
       ownedCars: state.ownedCars, equippedCar: state.equippedCar, ownedProperties: state.ownedProperties,
+      propertyOwnedAt: state.propertyOwnedAt, brokenCars: state.brokenCars,
       localBusinesses: localBusinesses.map(b=> ({ id:b.id, extorted:b.extorted, extortTier:b.extortTier??0, resentment:b.resentment??0, nextRobAt:b.nextRobAt })),
       currentDistrict: state.currentDistrict, product: state.product, productLevel: state.productLevel,
       districts: districts.map(d=> ({ id:d.id, control:d.control, pushCount:d.pushCount, nextPushAt:d.nextPushAt })),
@@ -4983,6 +5127,14 @@ import type * as ThreeNamespace from 'three';
         state.selectedBank = banks.some(b=>b.id===d.selectedBank) ? d.selectedBank : DEFAULT_BANK_ID;
         state.nextHeistAt = d.nextHeistAt||0;
         state.ownedCars = d.ownedCars||[]; state.equippedCar = d.equippedCar||null; state.ownedProperties = d.ownedProperties||[];
+        // LEGAL: Saves from before the brand caveats have neither field. Properties owned
+        // LEGAL: back then start their appreciation clock now rather than claiming credit
+        // LEGAL: for time held before the mechanic existed, and no car starts broken.
+        state.brokenCars = Array.isArray(d.brokenCars) ? d.brokenCars.filter((id: unknown)=> typeof id === 'string') : [];
+        state.propertyOwnedAt = (d.propertyOwnedAt && typeof d.propertyOwnedAt === 'object') ? { ...d.propertyOwnedAt } : {};
+        state.ownedProperties.forEach(function(id){
+          if(typeof state.propertyOwnedAt[id] !== 'number') state.propertyOwnedAt[id] = state.playSeconds;
+        });
         (d.localBusinesses||[]).forEach((sb: any)=>{ const b=localBusinesses.find(x=>x.id===sb.id); if(b){ b.extorted=sb.extorted; b.extortTier=Number(sb.extortTier)||0; b.resentment=Number(sb.resentment)||0; b.nextRobAt=sb.nextRobAt; } });
         state.currentDistrict = d.currentDistrict || 'devlin'; state.product = d.product||0; state.productLevel = d.productLevel||0;
         (d.districts||[]).forEach((sd: any)=>{ const dist=districts.find(x=>x.id===sd.id); if(dist){ dist.control=sd.control; dist.pushCount=sd.pushCount; dist.nextPushAt=sd.nextPushAt; } });
@@ -5059,6 +5211,7 @@ import type * as ThreeNamespace from 'three';
       if(bal > 0) state.bankAccounts[b.id] = bal + bal * b.interestRate * interestMult * dt;
     });
     checkMilestones();
+    tickBrandCaveats(dt);
 
     if (state.playSeconds > state.nextMarketTickAt) {
       tickMarket();

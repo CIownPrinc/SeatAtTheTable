@@ -9,6 +9,11 @@ export default defineConfig({
   timeout: 30_000,
   expect: { timeout: 10_000 },
   fullyParallel: true,
+  // LEGAL: Nearly every spec boots the full WebGL city (three.js + GLB loads). Playwright's
+  // LEGAL: default worker count runs enough of those at once that scene boot outruns the
+  // LEGAL: readiness timeouts and tests fail on contention rather than on real defects.
+  // LEGAL: Two workers is stable and still roughly as fast as the serial run.
+  workers: 2,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: 'list',

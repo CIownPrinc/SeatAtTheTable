@@ -89,7 +89,7 @@ A roster of banks, each a distinct entity with tradeoffs. **No passive theft** �
    two phone apps (AutoMart = cars, Realty = properties). Fixed 4 latent `byId`-throws /
    null bugs surfaced by a new page-error guard in `e2e/phone.e2e.ts` (one was a Phase-2
    regression: `start-heist` throwing every tick).
-4. **Themed buildings + per-business unique interactions — MOSTLY DONE.** All nine brands
+4. **Themed buildings + per-business unique interactions — DONE.** All nine brands
    in `src/config/brands.ts` are now real walk-in places: `serviceBuildings` derives one
    `dealership` / `brokerage` building per brand from the brand's own `x`/`y`, and the
    generic `cardealer` (Windhaven Auto Exchange) and `realty` (Whitfield Realty) buildings
@@ -112,15 +112,19 @@ A roster of banks, each a distinct entity with tradeoffs. **No passive theft** �
      peel off one at a time as control rises and the block layer can never disagree with
      `districtStatus()`. A minimap toggle (`#territory-toggle`) tints blocks by holder,
      rings shops standing on rival turf, and shows a compact legend naming each crew.
-   - **Open:** wire brand caveats from `src/config/brands.ts` into real gameplay:
-     used cars can break down, bikes draw more heat and give less cover, rough-block
-     properties can be hit by crews, commercial properties improve laundering/front value,
-     and premium waterfront properties appreciate over time. (This is the last piece of
-     Phase 4 — the caveats are currently flavor text only.)
-   - **Open (offered, declined for now):** the territory overlay is minimap-only. The
-     expanded City Map already has room for block names and a full legend; enabling it
-     there is a small change if the minimap's zoom (~1.5 blocks visible at once) proves
-     too tight to read turf from.
+   - **Done:** brand caveats are real mechanics, not flavour text (`src/map/brandEffects.ts`,
+     pure + unit-tested). **Used cars** (No Problem Auto) break down while driven — the car
+     is disabled until repaired at its own lot for ~12% of its price, and cheaper beaters
+     fail more often. **Bikes** (Outlaw Riders) add flat heat while ridden and give half the
+     heist cover of a car. **Rough-block properties** (Concrete Dreams) get turned over by
+     crews on a 90s roll — risk rises with heat, halves on turf you hold. **Commercial
+     fronts** (Ironpoint) launder: each cuts heat generation (capped at 24%) but pays no
+     street respect. **Waterfront** (Lakeshore) appreciates: +25%/hr held, capped at +50%.
+     New state `propertyOwnedAt` + `brokenCars`; old saves migrate (appreciation clocks
+     start at load, no car starts broken). Heat HUD shows the bike and laundering lines.
+   - **Done:** the territory overlay is now on the **expanded City Map** too, with block
+     names drawn per block and its own legend in the side rail. The two toggles are
+     independent, so the big map and the minimap don't fight each other.
 5. Retire remaining redundant tabs (Politics/Gang → in-person) + polish.
 
 ---
@@ -217,13 +221,18 @@ scene building, collision, minimap, zoning, lighting, weather, or user-facing be
 ---
 
 ## QA / correctness
-- **Two minimap e2e checks fail on `main` (pre-existing, not from Phase 4).**
-  `smoke.e2e.ts` "minimap centers the player marker" and "minimap can pan while stopped"
-  both count "gold" pixels in the middle of the minimap and get 0. The player marker is
-  drawn as an off-white (`#e8e6de`) fill with a **1px** `#d4a017` stroke, so antialiasing
-  blends away the pure-gold pixels the predicate looks for. The marker itself renders fine
-  — the assertion is the stale part. Fix by asserting on the off-white fill, or by
-  thickening the marker stroke. Confirmed pre-existing by stashing and re-running.
+- **FIXED: the two minimap e2e checks that failed on `main`.** "minimap centers the player
+  marker" and "minimap can pan while stopped" were racing map boot, not testing a broken
+  marker: the minimap canvas stays blank until `ensureMapScene()` finishes dynamically
+  importing three.js and loading the GLBs, which on a cold Vite dev server outruns the
+  10s expect timeout. Both now wait on `canvas.webgl-canvas` (`waitForMapScene`) before
+  reading pixels. The marker's gold outline was also a 1px hairline that antialiasing
+  nearly erased — widened to 2px, which helps readability at 150px as well as the test.
+  The duplicated pixel-counting blocks are now one shared `countGoldPixelsIn` helper.
+- **e2e worker count pinned to 2** (`playwright.config.ts`). Almost every spec boots the
+  full WebGL city, and Playwright's default worker count ran enough of those concurrently
+  that scene boot lost races to the readiness timeouts — tests failed on contention, not
+  on defects. Two workers is green and about as fast as serial.
 - **Runtime-verify the venture / crew / exploit interaction modals in-browser.** The
   fullscreen + modal z-index root causes were fixed, and the modal logic reads correct
   by inspection, but the exact reported symptom was never confirmed clicked in a live

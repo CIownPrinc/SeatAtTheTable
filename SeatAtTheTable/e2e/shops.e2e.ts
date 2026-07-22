@@ -61,6 +61,34 @@ test.describe('branded shops + territory overlay', () => {
     expect(pageErrors, `uncaught page errors: ${pageErrors.join(' | ')}`).toEqual([]);
   });
 
+  test('the city map carries the same territory layer, with block names', async ({ page }) => {
+    test.setTimeout(60000);
+    const pageErrors: string[] = [];
+    page.on('pageerror', (e) => pageErrors.push(e.message));
+
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    await page.locator('.tab-btn[data-tab="map"]').click();
+    await page.locator('#minimap-expand').dispatchEvent('click');
+    await expect(page.locator('#citymap-overlay')).not.toHaveClass(/hidden/);
+
+    await expect(page.locator('#citymap-territory-legend')).toHaveClass(/hidden/);
+    await page.locator('#citymap-territory').dispatchEvent('click');
+    await expect(page.locator('#citymap-territory-legend')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#citymap-territory')).toHaveClass(/active/);
+    await expect(page.locator('#citymap-territory-legend')).toContainText('Rockwell Kings');
+    await expect(page.locator('#citymap-territory-legend .territory-row')).toHaveCount(3);
+
+    // LEGAL: The two maps track their toggles separately — turning the layer on for the
+    // LEGAL: full map must not switch it on for the follow-cam minimap.
+    await expect(page.locator('#territory-legend')).toHaveClass(/hidden/);
+
+    await page.locator('#citymap-territory').dispatchEvent('click');
+    await expect(page.locator('#citymap-territory-legend')).toHaveClass(/hidden/);
+
+    expect(pageErrors, `uncaught page errors: ${pageErrors.join(' | ')}`).toEqual([]);
+  });
+
   test('every branded shop is searchable on the expanded city map', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Start', exact: true }).click();

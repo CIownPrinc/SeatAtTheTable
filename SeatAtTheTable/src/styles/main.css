@@ -385,6 +385,11 @@ main{max-width:1240px;margin:0 auto;padding:26px 24px 60px;}
 .territory-bar{display:flex;height:5px;margin-top:4px;border-radius:3px;overflow:hidden;}
 #scene3d-container.fullscreen #territory-toggle{top:auto;bottom:58px;right:20px;}
 #scene3d-container.fullscreen .territory-legend{top:auto;bottom:20px;right:60px;}
+/* The same legend inside the City Map side rail: static flow, not pinned to the minimap. */
+.citymap-territory-legend{position:static;width:auto;margin-bottom:10px;}
+.citymap-layer-btn{border:1px solid rgba(212,160,23,0.5);background:rgba(10,11,16,0.6);color:var(--text-dim);font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:0.06em;padding:6px 12px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:6px;}
+.citymap-layer-btn:hover{border-color:var(--gold);color:var(--text);}
+.citymap-layer-btn.active{background:var(--gold);border-color:var(--gold);color:#0a0b10;}
 .minimap-clear-btn{position:absolute;top:16px;right:16px;width:26px;height:26px;border:none;background:var(--red);color:#fff;font-size:14px;line-height:1;cursor:pointer;z-index:6;display:none;border-radius:50%;box-shadow: 0 2px 4px rgba(0,0,0,0.3);}
 .minimap-clear-btn.show{display:flex;align-items:center;justify-content:center;}
 .map-hint{font-family:var(--font-mono);font-size:13px;color:var(--text-dim);min-height:20px;text-transform:uppercase;letter-spacing:0.05em;background:var(--bg-panel);padding:6px 12px;border-radius:6px;border:1px solid var(--line);}

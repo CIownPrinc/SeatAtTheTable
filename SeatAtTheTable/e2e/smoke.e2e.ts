@@ -137,6 +137,34 @@ async function clippedElementScreenshot(page: Page, selector: string): Promise<B
   });
 }
 
+// LEGAL: Counts pixels matching the player marker's gold outline (#d4a017) inside a
+// LEGAL: region of the minimap. Runs in the browser via locator.evaluate, so it must stay
+// LEGAL: self-contained — no closing over anything in the Node scope.
+function countGoldPixelsIn(canvas: HTMLCanvasElement, box: { x: number; y: number; w: number; h: number }): number {
+  const context = canvas.getContext('2d');
+  if(!context) return 0;
+  const pixels = context.getImageData(box.x, box.y, box.w, box.h).data;
+  let goldPixels = 0;
+  for(let i = 0; i < pixels.length; i += 4){
+    const r = pixels[i];
+    const g = pixels[i + 1];
+    const b = pixels[i + 2];
+    const a = pixels[i + 3];
+    if(r > 150 && g > 95 && g < 190 && b < 80 && a > 180) goldPixels += 1;
+  }
+  return goldPixels;
+}
+
+const MINIMAP_CENTER = { x: 50, y: 50, w: 50, h: 50 };
+const MINIMAP_MARKER = { x: 68, y: 68, w: 14, h: 14 };
+
+// LEGAL: The minimap stays blank until ensureMapScene() has dynamically imported three
+// LEGAL: and loaded the GLB library; the WebGL canvas appearing is the readiness signal.
+// LEGAL: Any test that reads minimap pixels must wait for this or it races the boot.
+async function waitForMapScene(page: Page): Promise<void> {
+  await expect(page.locator('#scene3d-container canvas.webgl-canvas')).toBeVisible({ timeout: 45000 });
+}
+
 test.describe('game boot', () => {
   test.describe.configure({ mode: 'serial' });
 
@@ -305,34 +333,27 @@ test.describe('game boot', () => {
   });
 
   test('minimap centers the player marker', async ({ page }) => {
+    test.setTimeout(60000);
     await page.goto('/');
 
     await page.getByRole('button', { name: 'Start', exact: true }).click();
     await page.locator('.tab-btn[data-tab="map"]').click();
+    await waitForMapScene(page);
 
-    await expect.poll(async () => page.locator('#minimap-canvas').evaluate((canvas: HTMLCanvasElement) => {
-      const context = canvas.getContext('2d');
-      if(!context) return 0;
-      const pixels = context.getImageData(50, 50, 50, 50).data;
-      let goldPixels = 0;
-      for(let i = 0; i < pixels.length; i += 4){
-        const r = pixels[i];
-        const g = pixels[i + 1];
-        const b = pixels[i + 2];
-        const a = pixels[i + 3];
-        if(r > 150 && g > 95 && g < 190 && b < 80 && a > 180) goldPixels += 1;
-      }
-      return goldPixels;
-    })).toBeGreaterThan(0);
+    await expect.poll(async () => page.locator('#minimap-canvas').evaluate(countGoldPixelsIn, MINIMAP_CENTER), { timeout: 15000 }).toBeGreaterThan(0);
   });
 
   test('minimap can pan while stopped and recenters while moving', async ({ page }) => {
+    test.setTimeout(60000);
     await page.goto('/');
 
     await page.getByRole('button', { name: 'Start', exact: true }).click();
     await page.locator('.tab-btn[data-tab="map"]').click();
     const minimap = page.locator('#minimap-canvas');
     await expect(minimap).toBeVisible();
+    // LEGAL: Without this the first assertion below (marker absent from the centre) passes
+    // LEGAL: vacuously against a blank canvas, and the second one races the scene boot.
+    await waitForMapScene(page);
 
     const box = await minimap.boundingBox();
     expect(box).not.toBeNull();
@@ -343,39 +364,13 @@ test.describe('game boot', () => {
     await page.mouse.move(box.x + 112, box.y + 75);
     await page.mouse.up();
 
-    await expect.poll(async () => minimap.evaluate((canvas: HTMLCanvasElement) => {
-      const context = canvas.getContext('2d');
-      if(!context) return 0;
-      const pixels = context.getImageData(68, 68, 14, 14).data;
-      let goldPixels = 0;
-      for(let i = 0; i < pixels.length; i += 4){
-        const r = pixels[i];
-        const g = pixels[i + 1];
-        const b = pixels[i + 2];
-        const a = pixels[i + 3];
-        if(r > 150 && g > 95 && g < 190 && b < 80 && a > 180) goldPixels += 1;
-      }
-      return goldPixels;
-    })).toBe(0);
+    await expect.poll(async () => minimap.evaluate(countGoldPixelsIn, MINIMAP_MARKER)).toBe(0);
 
     await page.keyboard.down('ArrowRight');
     await page.waitForTimeout(350);
     await page.keyboard.up('ArrowRight');
 
-    await expect.poll(async () => minimap.evaluate((canvas: HTMLCanvasElement) => {
-      const context = canvas.getContext('2d');
-      if(!context) return 0;
-      const pixels = context.getImageData(68, 68, 14, 14).data;
-      let goldPixels = 0;
-      for(let i = 0; i < pixels.length; i += 4){
-        const r = pixels[i];
-        const g = pixels[i + 1];
-        const b = pixels[i + 2];
-        const a = pixels[i + 3];
-        if(r > 150 && g > 95 && g < 190 && b < 80 && a > 180) goldPixels += 1;
-      }
-      return goldPixels;
-    })).toBeGreaterThan(0);
+    await expect.poll(async () => minimap.evaluate(countGoldPixelsIn, MINIMAP_MARKER), { timeout: 15000 }).toBeGreaterThan(0);
   });
 
   test('minimap expands before waypoint placement is allowed', async ({ page }) => {

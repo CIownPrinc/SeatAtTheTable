@@ -48,6 +48,9 @@ export interface MinimapRenderOptions {
   // LEGAL: Ids of places sitting on rival turf, ringed so you can see which shops will
   // LEGAL: mark you up before making the drive.
   warnObjectIds?: Set<string>;
+  // LEGAL: Draw each block's name inside it. Only the full City Map has the room; the
+  // LEGAL: 150px minimap would be unreadable, so it leaves this off.
+  territoryLabels?: boolean;
 }
 
 interface MinimapRenderFrame {
@@ -404,6 +407,40 @@ function drawDynamicMinimapLayer(mctx: CanvasRenderingContext2D, options: Minima
       mctx.strokeRect(a.x + 0.5, a.y + 0.5, b.x - a.x - 1, b.y - a.y - 1);
     });
     mctx.globalAlpha = 1;
+
+    // LEGAL: Block names sit just inside the top edge, clear of the place glyphs that
+    // LEGAL: cluster mid-block. Blocks are narrow, so the label shrinks and then truncates
+    // LEGAL: to fit rather than bleeding into the neighbouring block's name.
+    if(options.territoryLabels){
+      mctx.textAlign = 'center';
+      mctx.textBaseline = 'top';
+      options.territory.forEach(function(holding){
+        const a = proj(holding.block.x, holding.block.y);
+        const b = proj(holding.block.x + holding.block.w, holding.block.y + holding.block.h);
+        const cx = (a.x + b.x) / 2;
+        const top = Math.min(a.y, b.y) + 4;
+        const maxWidth = Math.abs(b.x - a.x) - 6;
+        if(maxWidth < 16) return;
+        if(!isOnMap({ x: cx, y: top }, viewW, viewH)) return;
+
+        let label = holding.block.name.toUpperCase();
+        let size = 9;
+        mctx.font = `600 ${size}px IBM Plex Mono, monospace`;
+        while(mctx.measureText(label).width > maxWidth && size > 7){
+          size -= 1;
+          mctx.font = `600 ${size}px IBM Plex Mono, monospace`;
+        }
+        while(label.length > 3 && mctx.measureText(label).width > maxWidth){
+          label = label.slice(0, -1);
+        }
+
+        mctx.lineWidth = 3;
+        mctx.strokeStyle = 'rgba(8,9,13,0.9)';
+        mctx.strokeText(label, cx, top);
+        mctx.fillStyle = holding.color;
+        mctx.fillText(label, cx, top);
+      });
+    }
   }
 
   windhavenMapModel.railLines.forEach(function(rail){
@@ -483,7 +520,10 @@ function drawDynamicMinimapLayer(mctx: CanvasRenderingContext2D, options: Minima
   const ps = 5*glyphScale;
   mctx.beginPath(); mctx.moveTo(ps+1,0); mctx.lineTo(-ps*0.8,-ps*0.8); mctx.lineTo(-ps*0.8,ps*0.8); mctx.closePath();
   mctx.fillStyle='#e8e6de'; mctx.fill();
-  mctx.lineWidth=Math.max(1,glyphScale); mctx.strokeStyle='#d4a017'; mctx.stroke();
+  // LEGAL: The gold outline was a 1px hairline, which antialiasing blended into the
+  // LEGAL: off-white fill until almost no gold pixels survived — hard to pick out at
+  // LEGAL: 150px, and the reason the two "gold pixel" smoke checks read zero.
+  mctx.lineWidth=Math.max(2,glyphScale*1.6); mctx.strokeStyle='#d4a017'; mctx.stroke();
   mctx.restore();
 
   mctx.strokeStyle='rgba(212,160,23,0.5)';

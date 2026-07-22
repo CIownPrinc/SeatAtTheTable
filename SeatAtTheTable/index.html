@@ -299,7 +299,10 @@
   <div class="citymap-panel">
     <div class="citymap-head">
       <span><i class="ph-duotone ph-map-trifold"></i> City Map — Windhaven</span>
-      <button class="citymap-close" id="citymap-close" title="Close">✕</button>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="citymap-layer-btn" id="citymap-territory" title="Show gang territory"><i class="ph-duotone ph-flag-banner"></i> Territory</button>
+        <button class="citymap-close" id="citymap-close" title="Close">✕</button>
+      </div>
     </div>
     <div class="citymap-body">
       <div class="citymap-canvas-wrap"><canvas id="citymap-canvas" width="900" height="520"></canvas></div>
@@ -309,6 +312,7 @@
           <div class="citymap-filters" id="citymap-filters"></div>
         </div>
         <div class="citymap-results" id="citymap-results"></div>
+        <div class="territory-legend citymap-territory-legend hidden" id="citymap-territory-legend"></div>
         <div class="citymap-legend" id="citymap-legend"></div>
       </div>
     </div>

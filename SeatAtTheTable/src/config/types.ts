@@ -391,6 +391,10 @@ export interface GameState {
   ownedCars: string[];
   equippedCar: string | null;
   ownedProperties: string[];
+  // LEGAL: playSeconds at purchase, per property id — drives waterfront appreciation.
+  propertyOwnedAt: Record<string, number>;
+  // LEGAL: Used cars that have broken down and need paying to repair before they drive.
+  brokenCars: string[];
   currentDistrict: string;
   product: number;
   productLevel: number;
