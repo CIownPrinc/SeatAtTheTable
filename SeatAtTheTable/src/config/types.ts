@@ -52,6 +52,35 @@ export interface FamilyTier {
 // LEGAL: each brand gets a themed building on the map where its stock is bought in person.
 // LEGAL: `online` items are also orderable from the phone (AutoMart / Realty); the rest
 // LEGAL: are dealer-only. `caveat` is the theme's downside, wired into gameplay later.
+// LEGAL: A named crew holding turf in one district. Territory used to be an anonymous
+// LEGAL: "rival"; the minimap overlay needs a name and a color per holder.
+export interface RivalGang {
+  id: string;
+  name: string;
+  short: string;
+  district: string;
+  color: string;
+  blurb: string;
+}
+
+// LEGAL: Who holds a block. 'yours' and 'rival' mirror districtStatus's buckets so the
+// LEGAL: block layer can never disagree with the district-level bonuses.
+export type BlockOwner = 'yours' | 'contested' | 'rival';
+
+// LEGAL: One named block inside a district. `resistance` is the fixed order in which
+// LEGAL: blocks fall to you as district control rises (0 = flips first, easiest); it is
+// LEGAL: authored, not random, so the map looks the same across saves and sessions.
+export interface TerritoryBlock {
+  id: string;
+  name: string;
+  district: string;
+  resistance: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export interface Brand {
   id: string;
   name: string;
@@ -60,6 +89,13 @@ export interface Brand {
   district: string;
   blurb: string;
   caveat?: string;
+  // LEGAL: District-local lot position; applyMapWorldCoordinates turns x into a world x.
+  x: number;
+  y: number;
+  // LEGAL: Cash-only lots bargain; glass showrooms do not. Gates the haggle interaction.
+  haggle?: boolean;
+  // LEGAL: What the counter staff say when turf status blocks or sours the sale.
+  rivalLine: string;
 }
 
 export interface Car {
@@ -130,6 +166,8 @@ export interface ServiceBuilding {
   // LEGAL: For bank branches (kind 'bankHome'): which config/banks account this teller
   // LEGAL: serves, so in-person deposit/withdraw here hits the right account.
   bankId?: string;
+  // LEGAL: For kinds 'dealership' / 'brokerage': which config/brands stock is sold here.
+  brandId?: string;
 }
 
 export interface District {

@@ -174,8 +174,6 @@ export const ventureMapLots: Record<string, VentureMapLot> = {
 
 export const namedBuildingLots: Record<string, Point> = {
   bankHome: { x: 485, y: 450 },
-  cardealer: { x: 915, y: 450 },
-  realty: { x: 1330, y: 450 },
   patel: { x: 485, y: 750 },
   pawn: { x: 915, y: 750 },
   herbalist: { x: 1330, y: 750 },

@@ -89,20 +89,38 @@ A roster of banks, each a distinct entity with tradeoffs. **No passive theft** �
    two phone apps (AutoMart = cars, Realty = properties). Fixed 4 latent `byId`-throws /
    null bugs surfaced by a new page-error guard in `e2e/phone.e2e.ts` (one was a Phase-2
    regression: `start-heist` throwing every tick).
-4. **Themed buildings + per-business unique interactions** (next) — bank buildings for all
-   three banks on the map; multiple **themed dealerships** (used/luxury/bikes) and
-   **themed realty brokerages** (cheap-with-a-caveat / luxury) selling their own stock
-   in person; each shared type united under a brand (names to come from the user). Plus
-   haggle where it fits, territory-gated service, unique inventories.
-   - **Open:** disperse the branded car and realty businesses across the map instead of
-     routing everything through one generic Auto Exchange and one generic Realty office.
-     Each brand in `src/config/brands.ts` should become a searchable/interactable map
-     place with its own stock, caveat, pricing, and in-person buying rules. AutoMart and
-     the Realty phone app stay as online convenience catalogs for `online:true` stock.
+4. **Themed buildings + per-business unique interactions — MOSTLY DONE.** All nine brands
+   in `src/config/brands.ts` are now real walk-in places: `serviceBuildings` derives one
+   `dealership` / `brokerage` building per brand from the brand's own `x`/`y`, and the
+   generic `cardealer` (Windhaven Auto Exchange) and `realty` (Whitfield Realty) buildings
+   are **deleted** — the counter hotspot opens that brand's own stock instead of jumping to
+   the phone. Bank branches now exist for all three banks. `src/map/storefront.ts` (pure,
+   unit-tested) owns per-brand stock, turf pricing, and haggling; the phone's AutoMart and
+   Realty apps list only `online:true` stock (plus anything already owned, so you can still
+   sell a dealer-only car), making dealer-only stock the reason to make the trip.
+   - **Done:** haggling at the cash-only lots (No Problem Auto, Concrete Dreams) — pick how
+     hard to push; a failed push locks sticker price for the visit. Respect improves the
+     odds, capped at +18 points.
+   - **Done:** territory-gated pricing — rival turf charges +25% and refuses to haggle,
+     your own blocks give 5% off, contested is standard. Each brand has a `rivalLine` for
+     what the counter says.
+   - **Done:** named rival gangs (`src/config/rivals.ts`) — Rockwell Kings (Devlin), Cicero
+     Firm (West Side), Meridian Group (Hub), one per district, each with a color.
+   - **Done:** block-level territory (`src/config/blocks.ts` + `src/map/territory.ts`).
+     Each district is a 4x2 grid of eight named blocks; a block's owner is derived from the
+     district's existing `control` via an authored `resistance` order, so blocks visibly
+     peel off one at a time as control rises and the block layer can never disagree with
+     `districtStatus()`. A minimap toggle (`#territory-toggle`) tints blocks by holder,
+     rings shops standing on rival turf, and shows a compact legend naming each crew.
    - **Open:** wire brand caveats from `src/config/brands.ts` into real gameplay:
      used cars can break down, bikes draw more heat and give less cover, rough-block
      properties can be hit by crews, commercial properties improve laundering/front value,
-     and premium waterfront properties appreciate over time.
+     and premium waterfront properties appreciate over time. (This is the last piece of
+     Phase 4 — the caveats are currently flavor text only.)
+   - **Open (offered, declined for now):** the territory overlay is minimap-only. The
+     expanded City Map already has room for block names and a full legend; enabling it
+     there is a small change if the minimap's zoom (~1.5 blocks visible at once) proves
+     too tight to read turf from.
 5. Retire remaining redundant tabs (Politics/Gang → in-person) + polish.
 
 ---
@@ -199,6 +217,13 @@ scene building, collision, minimap, zoning, lighting, weather, or user-facing be
 ---
 
 ## QA / correctness
+- **Two minimap e2e checks fail on `main` (pre-existing, not from Phase 4).**
+  `smoke.e2e.ts` "minimap centers the player marker" and "minimap can pan while stopped"
+  both count "gold" pixels in the middle of the minimap and get 0. The player marker is
+  drawn as an off-white (`#e8e6de`) fill with a **1px** `#d4a017` stroke, so antialiasing
+  blends away the pure-gold pixels the predicate looks for. The marker itself renders fine
+  — the assertion is the stale part. Fix by asserting on the off-white fill, or by
+  thickening the marker stroke. Confirmed pre-existing by stashing and re-running.
 - **Runtime-verify the venture / crew / exploit interaction modals in-browser.** The
   fullscreen + modal z-index root causes were fixed, and the modal logic reads correct
   by inspection, but the exact reported symptom was never confirmed clicked in a live

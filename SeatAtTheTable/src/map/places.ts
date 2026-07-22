@@ -17,8 +17,10 @@ export interface MapPlaceRecord extends Point {
 
 export function minimapIconForService(service: ServiceBuilding): MinimapIcon {
   if(service.kind === 'bankHome') return 'bank';
-  if(service.kind === 'garage') return 'garage';
-  if(service.kind === 'realty') return 'realty';
+  // LEGAL: Branded shops reuse the established garage / realty glyphs so the minimap
+  // LEGAL: legend, search, and place labels keep working unchanged.
+  if(service.kind === 'garage' || service.kind === 'dealership') return 'garage';
+  if(service.kind === 'realty' || service.kind === 'brokerage') return 'realty';
   if(service.kind === 'cityhall') return 'cityhall';
   if(service.kind === 'heist') return 'heist';
   return 'service';

@@ -162,6 +162,9 @@ export function drawInteriorRoom(ctx: Ctx2D, kind: string, room: InteriorRoom): 
       disc(ctx, ox+w-22, oy+wallH+14, 5, '#8a939c'); disc(ctx, ox+w-22, oy+wallH+14, 2, '#c0392b');
       break;
     }
+    // LEGAL: Branded dealerships and brokerages reuse the showroom / office decor; the
+    // LEGAL: brand identity comes from the counter stock, not a bespoke room per lot.
+    case 'dealership':
     case 'garage': {
       const wallH = drawFloor(ctx, room, pal, 'tile');
       // LEGAL: a top-down showroom car parked on the left.
@@ -175,6 +178,7 @@ export function drawInteriorRoom(ctx: Ctx2D, kind: string, room: InteriorRoom): 
       disc(ctx, ox+w-40, oy+h-40, 14, '#15181d'); disc(ctx, ox+w-40, oy+h-40, 6, '#26292f');
       break;
     }
+    case 'brokerage':
     case 'realty': {
       const wallH = drawFloor(ctx, room, pal, 'tile');
       // LEGAL: centre rug, an agent's desk, filing cabinets and framed listings.

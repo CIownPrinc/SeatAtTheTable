@@ -4,6 +4,7 @@ import { roadLandSegments, windhavenMapModel } from './mapModel';
 import type { RoadPath } from './mapModel';
 import { activeTrainSnapshot } from './queries';
 import { mapTerrainTheme, terrainForDistrict } from './renderTheme';
+import type { BlockHolding } from './territory';
 
 export const MINIMAP_SIZE = 150;
 export const MINIMAP_SCALE = MINIMAP_SIZE / 600;
@@ -41,6 +42,12 @@ export interface MinimapRenderOptions {
   districtNames?: Array<{ x: number; y?: number; name: string }>;
   highlightPoint?: Point | null;
   highlightLabel?: string;
+  // LEGAL: Territory overlay. Null/empty leaves the minimap exactly as it was, so the
+  // LEGAL: overlay is purely additive and costs nothing while toggled off.
+  territory?: BlockHolding[] | null;
+  // LEGAL: Ids of places sitting on rival turf, ringed so you can see which shops will
+  // LEGAL: mark you up before making the drive.
+  warnObjectIds?: Set<string>;
 }
 
 interface MinimapRenderFrame {
@@ -381,6 +388,24 @@ function drawDynamicMinimapLayer(mctx: CanvasRenderingContext2D, options: Minima
     mctx.clip();
   }
 
+  // LEGAL: Territory tint sits under everything else so roads, glyphs and the player
+  // LEGAL: marker stay readable. Drawn inside the landmass clip, so turf stops at the
+  // LEGAL: shoreline instead of bleeding across the canals.
+  if(options.territory?.length){
+    options.territory.forEach(function(holding){
+      const a = proj(holding.block.x, holding.block.y);
+      const b = proj(holding.block.x + holding.block.w, holding.block.y + holding.block.h);
+      mctx.globalAlpha = holding.owner === 'contested' ? 0.2 : 0.36;
+      mctx.fillStyle = holding.color;
+      mctx.fillRect(a.x, a.y, b.x - a.x, b.y - a.y);
+      mctx.globalAlpha = 0.5;
+      mctx.strokeStyle = holding.color;
+      mctx.lineWidth = 1;
+      mctx.strokeRect(a.x + 0.5, a.y + 0.5, b.x - a.x - 1, b.y - a.y - 1);
+    });
+    mctx.globalAlpha = 1;
+  }
+
   windhavenMapModel.railLines.forEach(function(rail){
     const train = activeTrainSnapshot(Date.now(), rail);
     if(!train) return;
@@ -395,6 +420,13 @@ function drawDynamicMinimapLayer(mctx: CanvasRenderingContext2D, options: Minima
     const p = proj(object.x, object.y);
     if(!isOnMap(p, viewW, viewH)) return;
     drawGlyph(mctx, p, object.minimapIcon, objectColor(object), Math.max(1.5, object.minimapSize*glyphScale));
+    // LEGAL: Ring shops standing on rival turf so the markup is visible from the map.
+    if(options.warnObjectIds?.has(object.id)){
+      const r = Math.max(4, object.minimapSize * glyphScale * 2.2);
+      mctx.strokeStyle = '#ffffff';
+      mctx.lineWidth = 1.4;
+      mctx.beginPath(); mctx.arc(p.x, p.y, r, 0, Math.PI*2); mctx.stroke();
+    }
   });
 
   mctx.restore();

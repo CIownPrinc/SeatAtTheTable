@@ -12,7 +12,11 @@ import { npcFirstNames, npcLastNames, npcDispositions } from '../config/npcs';
 import { stockMarket } from '../config/stockMarket';
 import { banks, DEFAULT_BANK_ID } from '../config/banks';
 import { brandById } from '../config/brands';
-import type { GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState, Point, ServiceBuilding, GangRecruit, Car, DialogueTree } from '../config/types';
+import { territoryBlocks } from '../config/blocks';
+import { CONTESTED_COLOR, YOURS_COLOR, rivalGangForDistrict } from '../config/rivals';
+import type { BlockOwner, Brand, GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState, Point, ServiceBuilding, GangRecruit, Car, DialogueTree } from '../config/types';
+import { blockAtPoint, blockOwner, holdingFor, ownedBlockCount, territoryLegend } from '../map/territory';
+import { askingPrice, haggleOfferFor, haggleOffers, resolveHaggle, stockForBrand, stockItemCost, turfPricing, type HagglePush, type StockItem } from '../map/storefront';
 import type { MapAssetKey, MapAssetLibrary } from '../map/assets';
 import { loadMapAssetLibrary } from '../map/assets';
 import { renderRoamingActors } from '../map/actorRendering';
@@ -132,6 +136,19 @@ import type * as ThreeNamespace from 'three';
     const c = districts.find(d=>d.id===id)!.control;
     return c>=60 ? 'yours' : (c<=25 ? 'rival' : 'contested');
   }
+  // LEGAL: Block-level ownership. districtStatus answers "who holds this district"; this
+  // LEGAL: answers "who holds this street", which is what a shop's pricing actually reads.
+  // LEGAL: Both derive from the same district control value, so they can never disagree.
+  function districtControl(id: string){ return districts.find(d=>d.id===id)?.control ?? 0; }
+  function ownerAt(point: Point): BlockOwner {
+    const block = blockAtPoint(territoryBlocks, point);
+    if(!block) return districtStatus(state.currentDistrict) as BlockOwner;
+    return blockOwner(block, districtControl(block.district));
+  }
+  function blockNameAt(point: Point): string {
+    return blockAtPoint(territoryBlocks, point)?.name ?? 'open ground';
+  }
+
   function devlinIncomeBonus(){ const s=districtStatus('devlin'); return s==='yours'?1.15:(s==='rival'?0.9:1); }
   function westsideHeatMult(){ const s=districtStatus('westside'); return s==='yours'?0.75:(s==='rival'?1.25:1); }
   function westsideRateBonus(){ const s=districtStatus('westside'); return s==='yours'?1.15:(s==='rival'?0.85:1); }
@@ -818,7 +835,9 @@ import type * as ThreeNamespace from 'three';
     if(id === 'tribune') return missionObjectiveFromPlace(missionPlaceByService('heraldHq'), 'Windhaven Herald studio');
     if(id === 'cousin') return missionObjectiveFromPlace(missionPlaceByService('hubBusStation'), 'Meet Amit at the bus station');
     if(id === 'cops') return missionObjectiveFromPlace(missionPlaceByService('devlinAlley'), 'Meet Detective Miller in the alley');
-    if(id === 'investor') return missionObjectiveFromPlace(missionPlaceByService('realty'), 'Meet the silent investor');
+    // LEGAL: The generic realty office is gone; the investor now meets you at Horizon,
+    // LEGAL: the luxury brokerage, which suits a silent money man better anyway.
+    if(id === 'investor') return missionObjectiveFromPlace(missionPlaceByService('brand-horizon'), 'Meet the silent investor');
     if(id === 'hustler') return missionObjectiveFromPlace(missionPlaceByObjectId('bar'), "Hear the pitch at O'Malley's");
     if(id === 'fire') return missionObjectiveFromPlace(missionPlaceByObjectId('cart'), "Check Kailash's Cart");
     if(id === 'inspector') {
@@ -1325,6 +1344,105 @@ import type * as ThreeNamespace from 'three';
     buttons.push({ label:'Leave', secondary:true });
     showModal({ eyebrow:`${bank.name} — Teller`, title: bank.name, body, buttons });
   }
+  // LEGAL: ---- In-person branded shops (Phase 4) ----
+  // LEGAL: Buying used to be one generic dealer that opened the phone. Now each brand is a
+  // LEGAL: place you drive to, selling only its own stock, priced by who holds the block it
+  // LEGAL: stands on, with haggling at the cash-only lots. Anything not marked online:true
+  // LEGAL: can ONLY be bought here — that dealer-only stock is the reason to make the trip.
+
+  // LEGAL: Haggling is per visit, not permanent: the won discount is remembered for this
+  // LEGAL: brand until you leave, and a failed push locks that brand out until you return.
+  const haggleDiscounts: Record<string, number> = {};
+  const haggleSpent: Record<string, boolean> = {};
+
+  function shopContext(brand: Brand){
+    const svc = serviceBuildings.find(s => s.brandId === brand.id);
+    const point = svc ? { x: svc.x, y: svc.y } : { x: player.x, y: player.y };
+    const owner = ownerAt(point);
+    return { svc, owner, blockName: blockNameAt(point), pricing: turfPricing(brand, owner) };
+  }
+
+  function shopItemPrice(brand: Brand, item: StockItem){
+    const { pricing } = shopContext(brand);
+    return askingPrice(stockItemCost(item), pricing.multiplier, haggleDiscounts[brand.id] ?? 0);
+  }
+
+  function openBrandShop(brandId: string){
+    const brand = brandById(brandId);
+    if(!brand){ log('This place is shuttered.'); return; }
+    const { owner, blockName, pricing } = shopContext(brand);
+    const gang = rivalGangForDistrict(brand.district);
+    const stock = stockForBrand(brand, cars, properties);
+    const discount = haggleDiscounts[brand.id] ?? 0;
+
+    const turfTag = owner === 'rival'
+      ? `<span style="color:${gang?.color ?? '#a8394a'};">${gang?.name ?? 'Rival'} hold ${blockName} — prices up ${Math.round((pricing.multiplier-1)*100)}%</span>`
+      : (owner === 'yours'
+        ? `<span style="color:var(--gold);">You hold ${blockName} — ${Math.round((1-pricing.multiplier)*100)}% off</span>`
+        : `<span style="color:var(--text-faint);">${blockName} is contested — standard price</span>`);
+
+    const body = `<p class="flavor">${brand.blurb}</p>`
+      + `<p class="flavor">${pricing.note}</p>`
+      + `<div style="margin-top:8px;">${turfTag}${discount ? ` · <span style="color:var(--gold);">haggled ${Math.round(discount*100)}% off</span>` : ''}</div>`
+      + (brand.caveat ? `<p class="flavor" style="color:var(--text-faint);margin-top:8px;">${brand.caveat}</p>` : '');
+
+    const buttons: ModalButton[] = stock.map(function(item){
+      const owned = item.kind === 'car'
+        ? state.ownedCars.includes(item.car.id)
+        : state.ownedProperties.includes(item.property.id);
+      const price = shopItemPrice(brand, item);
+      const dealerOnly = item.kind === 'car' ? !item.car.online : !item.property.online;
+      const name = item.kind === 'car' ? item.car.name : item.property.name;
+      if(owned) return { label:`${name} — owned`, secondary:true };
+      return {
+        label:`${name} — ${fmt(price)}${dealerOnly ? ' (only here)' : ''}`,
+        onClick: function(){ buyFromShop(brand, item); },
+      };
+    });
+
+    if(pricing.canHaggle && !haggleSpent[brand.id] && !discount){
+      buttons.push({ label:'Haggle', onClick:function(){ openHaggle(brand); } });
+    }
+    buttons.push({ label:'Leave', secondary:true });
+    showModal({ eyebrow: owner === 'rival' ? 'Rival turf' : brand.name, title: brand.name, body, buttons });
+  }
+
+  function buyFromShop(brand: Brand, item: StockItem){
+    const price = shopItemPrice(brand, item);
+    if(state.cash < price){ log(`Not enough cash — that one is ${fmt(price)}.`); return; }
+    state.cash -= price;
+    if(item.kind === 'car'){
+      state.ownedCars.push(item.car.id);
+      if(!state.equippedCar) state.equippedCar = item.car.id;
+      if(item.car.id === 'bentley') triggerMilestone('bentley');
+      log(`<i class="ph-duotone ph-car"></i> You drive a ${item.car.name} off the lot at ${brand.name}.`);
+      updateParkedCarMesh(); refreshPlayerModel();
+    } else {
+      state.ownedProperties.push(item.property.id);
+      if(state.ownedProperties.length === 1) triggerMilestone('first_property');
+      log(`🏢 You sign for ${item.property.name} at ${brand.name}.`);
+    }
+    renderAll();
+  }
+
+  function openHaggle(brand: Brand){
+    const body = `<p>You let the number hang in the air a second too long.</p>`
+      + `<p class="flavor">Push harder for a bigger cut, but if he walks you pay sticker for the rest of the visit. Your name on the street helps.</p>`;
+    const buttons: ModalButton[] = haggleOffers.map(function(offer){
+      return { label:`${offer.label} — ${Math.round(offer.discount*100)}% off`, onClick:function(){ runHaggle(brand, offer.push); } };
+    });
+    buttons.push({ label:'Never mind', secondary:true, onClick:function(){ openBrandShop(brand.id); } });
+    showModal({ eyebrow:'Haggling', title:brand.name, body, buttons });
+  }
+
+  function runHaggle(brand: Brand, push: HagglePush){
+    const result = resolveHaggle(haggleOfferFor(push), state.respect, Math.random());
+    haggleSpent[brand.id] = true;
+    if(result.won) haggleDiscounts[brand.id] = result.discount;
+    log(result.message);
+    openBrandShop(brand.id);
+  }
+
   // LEGAL: Per-bank heist. The vault hotspot opens this "pick a target" board; the chosen
   // LEGAL: bank scales resolveHeist's payout (heistPayoutMult) and odds (security). One
   // LEGAL: global cooldown (nextHeistAt) still gates all jobs.
@@ -1461,7 +1579,13 @@ import type * as ThreeNamespace from 'three';
     const propWrap = byId('assets-buildings');
     if(!carsWrap || !propWrap) return;
 
-    carsWrap.innerHTML = cars.map(c=>{
+    // LEGAL: The phone is an online catalog, so it lists only online:true stock plus
+    // LEGAL: anything you already own (you must still be able to sell a dealer-only car
+    // LEGAL: you bought in person). Everything else is sold at the brand's shop.
+    const listedCars = cars.filter(c => c.online || state.ownedCars.includes(c.id));
+    const listedProperties = properties.filter(p => p.online || state.ownedProperties.includes(p.id));
+
+    carsWrap.innerHTML = listedCars.map(c=>{
       const owned = state.ownedCars.includes(c.id);
       const equipped = state.equippedCar === c.id;
       const brand = brandById(c.brand);
@@ -1488,7 +1612,7 @@ import type * as ThreeNamespace from 'three';
       </div>`;
     }).join('');
 
-    propWrap.innerHTML = properties.map(p=>{
+    propWrap.innerHTML = listedProperties.map(p=>{
       const owned = state.ownedProperties.includes(p.id);
       const brand = brandById(p.brand);
       const btns = owned
@@ -2450,6 +2574,9 @@ import type * as ThreeNamespace from 'three';
     if(btn.hasAttribute('data-car-buy')){
       const id = btn.getAttribute('data-car-buy')!; const c = cars.find(x=>x.id===id);
       if(!c || state.cash<c.cost) return;
+      // LEGAL: Dealer-only stock is never orderable from the phone, even if a stale row
+      // LEGAL: survives a re-render — the shop is the only place that can sell it.
+      if(!c.online){ log(`${c.name} is not sold online. You have to go to the lot.`); return; }
       state.cash -= c.cost; state.ownedCars.push(id);
       if(!state.equippedCar) state.equippedCar = id;
       if(id === 'bentley') triggerMilestone('bentley');
@@ -2466,6 +2593,7 @@ import type * as ThreeNamespace from 'three';
     } else if(btn.hasAttribute('data-prop-buy')){
       const id = btn.getAttribute('data-prop-buy')!; const p = properties.find(x=>x.id===id);
       if(!p || state.cash<p.cost) return;
+      if(!p.online){ log(`${p.name} is not listed online. You have to see the broker.`); return; }
       state.cash -= p.cost; state.ownedProperties.push(id);
       if(state.ownedProperties.length === 1) triggerMilestone('first_property');
       log(`🏢 You close on ${p.name}.`); renderAll();
@@ -3123,6 +3251,9 @@ import type * as ThreeNamespace from 'three';
 
   applyMapWorldCoordinates(localBusinesses);
   applyMapWorldCoordinates(serviceBuildings);
+  // LEGAL: Blocks use the same district-local x convention as the buildings that sit on
+  // LEGAL: them, so they must be converted before any ownership hit test runs.
+  applyMapWorldCoordinates(territoryBlocks);
   applyMapWorldCoordinates(corners);
   applyMapWorldCoordinates(gangRecruits);
 
@@ -3228,16 +3359,27 @@ import type * as ThreeNamespace from 'three';
           briefRow('Banked (raid-safe)', fmt(bankedTotal()))) });
     } else if(kind==='heist'){
       spots.push({ id:'vault', x:ROOM_W/2, y:75, label:'Case the Banks', icon:'🔐', action:openHeistPlanning });
-    } else if(kind==='garage'){
-      spots.push({ id:'dealer', x:ROOM_W/2, y:80, label:'Sales Desk', icon:'🔑', action:()=> openDeviceApp('automart') });
-      spots.push({ id:'showroom', x:AMBIENT_X, y:AMBIENT_Y, label:'Showroom Floor', icon:'🚗', action:()=>
-        showRoomBrief('Showroom Floor', 'Motor Row', 'Chrome under the lights. You walk the floor and look over what you keep in the garage.',
-          briefRow('Cars owned', String(state.ownedCars.length))) });
-    } else if(kind==='realty'){
-      spots.push({ id:'agent', x:ROOM_W/2, y:80, label:"Agent's Desk", icon:'📋', action:()=> openDeviceApp('automart') });
-      spots.push({ id:'listings', x:AMBIENT_X, y:AMBIENT_Y, label:'Listings Wall', icon:'🏠', action:()=>
-        showRoomBrief('Listings Wall', 'Windhaven Realty', 'Framed listings and SOLD stickers. You scan the wall and tally what you already hold.',
-          briefRow('Properties owned', String(state.ownedProperties.length))) });
+    } else if(kind==='dealership' || kind==='brokerage'){
+      // LEGAL: Branded shop. The counter sells only this brand's stock at this block's
+      // LEGAL: price — no generic catalog, no jump to a tab.
+      const svc = serviceBuildings.find(s=>s.id===interior.refId);
+      const brand = brandById(svc?.brandId);
+      if(!brand) return [];
+      const vehicles = kind==='dealership';
+      spots.push({ id:'counter', x:ROOM_W/2, y:80, label: vehicles ? 'Sales Desk' : "Agent's Desk", icon: vehicles ? '🔑' : '📋',
+        action:()=> openBrandShop(brand.id) });
+      spots.push({ id:'floor', x:AMBIENT_X, y:AMBIENT_Y, label: vehicles ? 'Showroom Floor' : 'Listings Wall', icon: vehicles ? '🚗' : '🏠',
+        action:function(){
+          const { owner, blockName } = shopContext(brand);
+          const gang = rivalGangForDistrict(brand.district);
+          const turf = owner==='yours' ? 'Your blocks.' : (owner==='rival' ? `${gang?.name ?? 'A rival crew'} run this street.` : 'Nobody has this street locked down.');
+          showRoomBrief(vehicles ? 'Showroom Floor' : 'Listings Wall', brand.name,
+            vehicles
+              ? 'Chrome under the lights. You walk the floor and look over what you keep in the garage.'
+              : 'Framed listings and SOLD stickers. You scan the wall and tally what you already hold.',
+            briefRow(vehicles ? 'Cars owned' : 'Properties owned', String(vehicles ? state.ownedCars.length : state.ownedProperties.length))
+            + briefRow('Block', `${blockName} — ${turf}`));
+        } });
     } else if(kind==='cityhall'){
       spots.push({ id:'clerk', x:ROOM_W/2, y:80, label:"Clerk's Window", icon:'🏛️', action:()=> setTab('politics') });
       spots.push({ id:'notices', x:AMBIENT_X, y:AMBIENT_Y, label:'Public Notices', icon:'📢', action:()=>
@@ -3729,7 +3871,7 @@ import type * as ThreeNamespace from 'three';
       const pediment = box(48,7,8,'#8b7a42');
       pediment.position.set(0,10,29);
       base.add(pediment);
-    } else if(m.kind === 'garage'){
+    } else if(m.kind === 'garage' || m.kind === 'dealership'){
       [-15, 15].forEach(function(x){
         const bay = box(18,18,3,'#11141a');
         bay.position.set(x,-5,26);
@@ -3745,7 +3887,7 @@ import type * as ThreeNamespace from 'three';
       const dome = new THREE.Mesh(new THREE.SphereGeometry(16,18,10,0,Math.PI*2,0,Math.PI/2), new THREE.MeshStandardMaterial({color:'#c9a227', metalness:0.45, roughness:0.35}));
       dome.position.set(0,22,0);
       base.add(dome);
-    } else if(m.kind === 'realty'){
+    } else if(m.kind === 'realty' || m.kind === 'brokerage'){
       const roof = box(56,5,42,'#2f5360');
       roof.position.set(0,18,0);
       base.add(roof);
@@ -4233,9 +4375,69 @@ import type * as ThreeNamespace from 'three';
       landmass:WINDHAVEN_LANDMASS,
       landmarks,
       waypoint:currentWaypoint(),
+      territory: territoryShown ? currentHoldings() : null,
+      warnObjectIds: territoryShown ? rivalTurfShopIds() : undefined,
     });
+    if(territoryShown) renderTerritoryLegend();
     if(cityMapOpen) drawCityMap();
   }
+
+  // LEGAL: ---- Territory overlay (minimap) ----
+  // LEGAL: Turf-gated shop pricing is invisible until you can see whose block a shop sits
+  // LEGAL: on. This tints the minimap by block owner and rings the shops that will mark you
+  // LEGAL: up. Purely a view over districts[].control — it changes no game state.
+  let territoryShown = false;
+
+  function currentHoldings(){
+    return territoryBlocks.map(function(block){ return holdingFor(block, districtControl(block.district)); });
+  }
+  // LEGAL: Only branded shops are ringed — those are the places where turf actually
+  // LEGAL: changes what you pay.
+  function rivalTurfShopIds(){
+    const ids = new Set<string>();
+    serviceBuildings.forEach(function(svc){
+      if(!svc.brandId) return;
+      if(ownerAt({ x:svc.x, y:svc.y }) === 'rival') ids.add(svc.id);
+    });
+    return ids;
+  }
+
+  // LEGAL: The legend only changes when district control does, so it is rebuilt on a
+  // LEGAL: signature rather than every frame — the same discipline as the heat breakdown.
+  let territoryLegendKey = '';
+  function renderTerritoryLegend(force = false){
+    const panel = byId('territory-legend');
+    if(!panel || !territoryShown) return;
+    const key = districts.map(d=>`${d.id}:${ownedBlockCount(d.control)}`).join('|');
+    if(!force && key === territoryLegendKey) return;
+    territoryLegendKey = key;
+    const controls: Record<string, number> = {};
+    districts.forEach(function(d){ controls[d.id] = d.control; });
+    const rows = territoryLegend(territoryBlocks, controls).map(function(row){
+      const district = districts.find(d=>d.id===row.district);
+      const gang = row.gang;
+      const seg = function(count: number, color: string){
+        return count ? `<span style="flex:${count};background:${color};"></span>` : '';
+      };
+      return `<div class="territory-row">
+        <div class="t-name"><span class="territory-swatch" style="background:${gang?.color ?? '#7d8a99'};"></span>${district?.name ?? row.district}</div>
+        <div class="territory-bar">
+          ${seg(row.yours, YOURS_COLOR)}${seg(row.contested, CONTESTED_COLOR)}${seg(row.rival, gang?.color ?? '#7d8a99')}
+        </div>
+        <div class="t-sub">You ${row.yours}/${row.yours+row.contested+row.rival} blocks · ${gang?.name ?? 'Rivals'} ${row.rival}</div>
+      </div>`;
+    }).join('');
+    panel.innerHTML = `<h4>Territory</h4>${rows}`
+      + `<div class="t-sub" style="margin-top:8px;">○ ringed shops sit on rival turf and charge more.</div>`;
+  }
+
+  function setTerritoryShown(on: boolean){
+    territoryShown = on;
+    byId('territory-toggle').classList.toggle('active', on);
+    byId('territory-legend').classList.toggle('hidden', !on);
+    if(on) renderTerritoryLegend(true);
+  }
+  byId('territory-toggle').addEventListener('click', function(){ setTerritoryShown(!territoryShown); });
 
   // LEGAL: ================= CITY MAP (full-world overlay, GTA-style) =================
   const cityMapCanvas = byId<HTMLCanvasElement>('citymap-canvas');

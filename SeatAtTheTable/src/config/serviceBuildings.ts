@@ -1,10 +1,33 @@
+import { brands } from './brands';
 import { ICONS } from './icons';
 import type { ServiceBuilding } from './types';
 
+// LEGAL: Every brand in config/brands becomes a real place you walk into. Dealerships and
+// LEGAL: brokerages carry their brandId so the interior knows whose stock to show. This
+// LEGAL: replaces the old single generic 'cardealer' / 'realty' pair, which routed every
+// LEGAL: purchase straight to the phone.
+const brandBuildings: ServiceBuilding[] = brands.map(function(brand){
+  return {
+    id: `brand-${brand.id}`,
+    kind: brand.sells === 'vehicle' ? 'dealership' : 'brokerage',
+    name: brand.name,
+    icon: brand.sells === 'vehicle' ? ICONS.garage : ICONS.bld3,
+    district: brand.district,
+    x: brand.x,
+    y: brand.y,
+    brandId: brand.id,
+  };
+});
+
 export const serviceBuildings: ServiceBuilding[] = [
+  // LEGAL: One walk-in branch per bank in config/banks, so in-person banking is possible
+  // LEGAL: for all three accounts rather than only Rentport's.
   { id:'bankHome', kind:'bankHome', name:'Rentport City National — Devlin Branch', icon:ICONS.bank, district:'devlin', x:1360, y:230, bankId:'rentport-national' },
-  { id:'cardealer', kind:'garage', name:'Windhaven Auto Exchange', icon:ICONS.garage, district:'devlin', x:1360, y:430 },
-  { id:'realty', kind:'realty', name:'Whitfield Realty', icon:ICONS.bld3, district:'devlin', x:1360, y:630 },
+  { id:'bankFirstWindhaven', kind:'bankHome', name:'First Windhaven — West Side Branch', icon:ICONS.bank, district:'westside', x:915, y:750, bankId:'first-windhaven' },
+  { id:'bankLakeside', kind:'bankHome', name:'Lakeside Offshore — Dockside Office', icon:ICONS.bank, district:'westside', x:1330, y:750, bankId:'lakeside-offshore' },
+
+  ...brandBuildings,
+
   { id:'cityhall', kind:'cityhall', name:'City Hall Annex', icon:ICONS.gov, district:'hub', x:1150, y:250 },
   { id:'heistTarget', kind:'heist', name:'First Windhaven Trust', icon:ICONS.bank, district:'hub', x:280, y:650 },
   { id:'heraldHq', kind:'missionOffice', name:'Windhaven Herald HQ', icon:ICONS.phone, district:'hub', x:820, y:360 },
@@ -14,3 +37,7 @@ export const serviceBuildings: ServiceBuilding[] = [
   { id:'railyard', kind:'missionOffice', name:'Railyard', icon:ICONS.box, district:'westside', x:780, y:180 },
   { id:'marigoldLounge', kind:'missionOffice', name:'Marigold Lounge', icon:ICONS.person, district:'westside', x:1050, y:520 },
 ];
+
+export function serviceBuildingByBrand(brandId: string): ServiceBuilding | undefined {
+  return serviceBuildings.find(s => s.brandId === brandId);
+}

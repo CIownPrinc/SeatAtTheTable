@@ -174,7 +174,8 @@ describe('map viewport and geometry model', function () {
 
   it('keeps service and local-shop icon categories centralized', function () {
     expect(minimapIconForService(serviceBuildings.find(service => service.kind === 'bankHome')!)).toBe('bank');
-    expect(minimapIconForService(serviceBuildings.find(service => service.kind === 'garage')!)).toBe('garage');
+    expect(minimapIconForService(serviceBuildings.find(service => service.kind === 'dealership')!)).toBe('garage');
+    expect(minimapIconForService(serviceBuildings.find(service => service.kind === 'brokerage')!)).toBe('realty');
     expect(minimapIconForLocalBusiness(localBusinesses.find(business => business.id === 'bar')!)).toBe('bar');
     expect(minimapIconForLocalBusiness(localBusinesses.find(business => business.id === 'patel')!)).toBe('shop');
     expect(mapPlaceCategoryLabel({ category:'service', icon:'bank', sourceKind:'service' })).toBe('Bank');

@@ -370,6 +370,21 @@ main{max-width:1240px;margin:0 auto;padding:26px 24px 60px;}
 #minimap-canvas:active{cursor:grabbing;}
 .minimap-expand-btn{position:absolute;top:144px;right:16px;width:30px;height:30px;border:1px solid rgba(212,160,23,0.72);background:rgba(10,11,16,0.86);color:var(--gold);font-size:14px;line-height:1;cursor:pointer;z-index:30;display:flex;align-items:center;justify-content:center;border-radius:7px;box-shadow:0 2px 4px rgba(0,0,0,0.3);}
 .minimap-expand-btn:hover{background:#52a0ff;}
+/* Territory overlay toggle sits under the expand button; the legend panel slides in to
+   the left of the minimap so the gang names have somewhere to live. */
+#territory-toggle{top:180px;}
+#territory-toggle.active{background:var(--gold);color:#0a0b10;}
+.territory-legend{position:absolute;top:16px;right:182px;z-index:30;width:186px;padding:10px 12px;background:rgba(10,11,16,0.92);border:1px solid rgba(212,160,23,0.5);border-radius:8px;font-family:var(--font-mono);font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.04em;box-shadow:0 4px 10px rgba(0,0,0,0.4);}
+.territory-legend.hidden{display:none;}
+.territory-legend h4{margin:0 0 8px;font-size:10px;color:var(--gold);letter-spacing:0.08em;}
+.territory-row{margin-bottom:8px;}
+.territory-row:last-child{margin-bottom:0;}
+.territory-row .t-name{display:flex;align-items:center;gap:6px;color:var(--text);}
+.territory-row .t-sub{margin-top:2px;color:var(--text-faint);text-transform:none;letter-spacing:0;}
+.territory-swatch{width:9px;height:9px;flex-shrink:0;border-radius:2px;display:inline-block;}
+.territory-bar{display:flex;height:5px;margin-top:4px;border-radius:3px;overflow:hidden;}
+#scene3d-container.fullscreen #territory-toggle{top:auto;bottom:58px;right:20px;}
+#scene3d-container.fullscreen .territory-legend{top:auto;bottom:20px;right:60px;}
 .minimap-clear-btn{position:absolute;top:16px;right:16px;width:26px;height:26px;border:none;background:var(--red);color:#fff;font-size:14px;line-height:1;cursor:pointer;z-index:6;display:none;border-radius:50%;box-shadow: 0 2px 4px rgba(0,0,0,0.3);}
 .minimap-clear-btn.show{display:flex;align-items:center;justify-content:center;}
 .map-hint{font-family:var(--font-mono);font-size:13px;color:var(--text-dim);min-height:20px;text-transform:uppercase;letter-spacing:0.05em;background:var(--bg-panel);padding:6px 12px;border-radius:6px;border:1px solid var(--line);}
