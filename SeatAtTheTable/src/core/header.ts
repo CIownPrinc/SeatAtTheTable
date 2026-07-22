@@ -39,7 +39,7 @@ import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from
 import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/viewport';
 import { renderZoneType } from '../map/zoning';
 import { drawInteriorRoom } from '../map/interiorScene';
-import { activeMissionCount, advanceMissionStage, canOfferRepeatableEvent, canOfferUniqueEvent, completeMission, declineMission, missionSaveDefaults, recordEventOffer, startMission } from './missions';
+import { activeMissionCount, advanceMissionStage, canOfferRepeatableEvent, canOfferUniqueEvent, completeMission, declineMission, missionCompleted, missionSaveDefaults, recordEventOffer, startMission } from './missions';
 import type * as ThreeNamespace from 'three';
 
   type MissionEntry = 'popup' | 'phone';
@@ -55,6 +55,15 @@ import type * as ThreeNamespace from 'three';
     acceptLabel: string;
     declineLabel: string;
   };
+  const PHASE2_MISSION_CONFIG = {
+    blackMarketIncome: 6,
+    blackMarketHeat: 0.25,
+    politicalFavorCost: 1200,
+    politicalFavorHeatReduction: 18,
+    homeSafeRobberyLossPct: 0.35,
+    heistPrepRespectReq: 45,
+    heistPrepCrewReq: 1,
+  };
   const missionEventPool: MissionEventDefinition[] = [
     { id:'tribune', title:'The Herald Wants an Interview', sender:'Lana Vance', neg:false, unique:true, entry:'phone', body:"<p class='flavor'>Lana Vance from the Windhaven Herald wants a sit-down about the person building an empire out of a folding cart.</p>", acceptLabel:'Take the interview', declineLabel:'Stay quiet' },
     { id:'rival', title:'Rival Crew Confrontation', sender:'West Side runner', neg:true, unique:true, entry:'popup', body:"<p class='flavor'>A West Side crew thinks your runners are working streets that belong to them. Their capo is waiting near one of your active corners.</p>", acceptLabel:'Meet the capo', declineLabel:'Avoid the meeting' },
@@ -64,6 +73,11 @@ import type * as ThreeNamespace from 'three';
     { id:'hustler', title:'A Talented Hustler Wants In', sender:"O'Malley's Bar", neg:false, unique:true, entry:'popup', body:"<p class='flavor'>Sharp, hungry, and risky. The pitch is waiting at O'Malley's Bar.</p>", acceptLabel:'Hear the pitch', declineLabel:'Pass on it' },
     { id:'investor', title:'Silent Investor Invitation', sender:'Whitfield Realty', neg:false, unique:true, entry:'phone', body:"<p class='flavor'>Cash up front, no questions, in exchange for a slice of everything going forward. The meeting is at Whitfield Realty.</p>", acceptLabel:'Take the meeting', declineLabel:'Stay independent' },
     { id:'fire', title:"Grease Fire at Kailash's Cart", sender:'Kailash', neg:true, unique:true, entry:'popup', body:"<p class='flavor'>Where it all started nearly goes up in smoke. Kailash says this does not smell accidental.</p>", acceptLabel:'Go to the cart', declineLabel:'Handle it quietly' },
+    { id:'home_safe_robbery', title:'Cash on Hand Is Not Safe', sender:'First Windhaven Trust', neg:true, unique:true, entry:'phone', body:"<p class='flavor'>Word comes in after a back-room safe gets cleaned out. The bank branches are safer than a shoebox under the bed.</p>", acceptLabel:'Learn the bank route', declineLabel:'Risk the cash' },
+    { id:'stolen_shipment', title:'Missing Cargo', sender:'Dockmaster Bell', neg:true, unique:true, entry:'phone', body:"<p class='flavor'>A cargo pallet disappears between the docks and West Side. The dockmaster says somebody at a chop shop knows where it went.</p>", acceptLabel:'Go to the docks', declineLabel:'Write it off' },
+    { id:'alderman_fixer', title:'The Bagman at City Hall', sender:'City Hall Annex', neg:false, unique:true, entry:'phone', body:"<p class='flavor'>A bagman says an alderman can become useful if a railyard union problem goes quiet.</p>", acceptLabel:'Hear the favor', declineLabel:'Avoid City Hall' },
+    { id:'turf_war', title:'West Side Pressure', sender:'Street lookout', neg:true, unique:true, entry:'popup', body:"<p class='flavor'>West Side pressure spills toward Devlin. Defend the block before the capo moves the line.</p>", acceptLabel:'Defend Devlin', declineLabel:'Let it cool' },
+    { id:'first_heist', title:'The First Real Heist', sender:'The Vault Job', neg:true, unique:true, entry:'phone', body:"<p class='flavor'>The old smash-and-grab board is not enough for your first real vault job. Pick a target, case it, choose an approach, then execute.</p>", acceptLabel:'Start casing', declineLabel:'Not tonight' },
   ];
 
   const eventPool = [
@@ -570,6 +584,8 @@ import type * as ThreeNamespace from 'three';
   function extortLevel(b: LocalBusiness){ return b.extorted ? Math.max(1, Math.min(3, b.extortTier ?? 1)) : 0; }
   function extortMult(b: LocalBusiness){ return EXTORT_MULT[extortLevel(b)]; }
   function localBizIncome(){ return localBusinesses.filter(b=>b.extorted).reduce((s,b)=> s + b.extortIncome*extortMult(b), 0); }
+  function blackMarketTradeIncome(){ return state.worldMemory.blackMarketTrade ? PHASE2_MISSION_CONFIG.blackMarketIncome : 0; }
+  function blackMarketTradeHeat(){ return state.worldMemory.blackMarketTrade ? PHASE2_MISSION_CONFIG.blackMarketHeat : 0; }
   function activeCorners(){ return corners.filter(c=> c.dealer && !c.busted); }
   function cornerDemandPerSec(){ return activeCorners().reduce((s,c)=> s+c.consumption, 0); }
   function cornerIncomePerSec(){
@@ -594,7 +610,7 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: runs at a fraction; the legit empire and rents are unaffected.
     const low = state.layingLow ? 0.4 : 1;
     const venturesIncome = businesses.reduce((s,b)=> s + incomeFor(b) * (b.category==='street' ? low : 1), 0) * devlinIncomeBonus();
-    return (venturesIncome + propertiesIncome() + localBizIncome()*low + cornerIncomePerSec()*low + electedOfficeIncome()) * globalIncomeMult();
+    return (venturesIncome + propertiesIncome() + localBizIncome()*low + cornerIncomePerSec()*low + blackMarketTradeIncome()*low + electedOfficeIncome()) * globalIncomeMult();
   }
   function bribeUpkeep(){ return state.bribeOn ? rawTotalIncome()*0.12 : 0; }
   function netIncome(){ return rawTotalIncome() - bribeUpkeep(); }
@@ -608,10 +624,11 @@ import type * as ThreeNamespace from 'three';
     const extortionHeat = localBusinesses.filter(b=>b.extorted).reduce((s,b)=> s + b.extortHeat*extortMult(b), 0);
     const muscleHeat = state.muscleCount*0.5;
     const cornerHeat = cornerHeatPerSec();
+    const blackMarketHeat = blackMarketTradeHeat();
     // LEGAL: Beyond a few fronts, sprawl draws superlinear attention.
     const conspicuousHeat = Math.max(0, illegalFrontCount()-3) * 0.35;
     const modifier = heatMult() * (state.campaignActive ? 2.5 : 1) * (crackdownActive() ? 2.2 : 1) * (state.layingLow ? 0.2 : 1);
-    const gen = (muscleHeat + streetVentureHeat + extortionHeat + cornerHeat + conspicuousHeat) * modifier;
+    const gen = (muscleHeat + streetVentureHeat + extortionHeat + cornerHeat + blackMarketHeat + conspicuousHeat) * modifier;
     const cool = 0.25 + state.heat*state.heat*0.001 + (state.layingLow ? 4 : 0);
     return { muscleHeat, streetVentureHeat, extortionHeat, cornerHeat, conspicuousHeat, modifier, gen, cool, net: gen - cool };
   }
@@ -779,7 +796,24 @@ import type * as ThreeNamespace from 'three';
       const corner = activeCorners()[0] ?? corners.find(function(c){ return !c.busted; }) ?? corners[0];
       return missionObjectiveFromPlace(missionPlaceByObjectId(corner.id), `Meet the rival capo at ${corner.name}`);
     }
+    if(id === 'home_safe_robbery') return missionObjectiveFromPlace(missionPlaceByService('bankHome'), 'Visit a bank branch');
+    if(id === 'stolen_shipment') return missionObjectiveFromPlace(missionPlaceByService('docksDockmaster'), 'Question Dockmaster Bell');
+    if(id === 'alderman_fixer') return missionObjectiveFromPlace(missionPlaceByService('cityhall'), 'Meet the City Hall bagman');
+    if(id === 'turf_war') {
+      const corner = corners.find(function(c){ return c.district === 'devlin' && !c.busted; }) ?? corners[0];
+      return missionObjectiveFromPlace(missionPlaceByObjectId(corner.id), `Defend ${corner.name}`);
+    }
+    if(id === 'first_heist') return missionObjectiveFromPlace(missionPlaceByService('heistTarget'), 'Case First Windhaven Trust');
     return null;
+  }
+  function advanceMissionToObjective(id: string, stageId: string, serviceOrObjectId: string, label: string): void {
+    const place = missionPlaceByService(serviceOrObjectId) ?? missionPlaceByObjectId(serviceOrObjectId);
+    const objective = missionObjectiveFromPlace(place, label);
+    advanceMissionStage(missionSaveState(), id, stageId, state.playSeconds, objective);
+    setMissionGps(id);
+    if(objective) log(`<i class="ph-duotone ph-map-pin"></i> Objective updated: ${objective.label}.`);
+    renderAll();
+    scheduleSave();
   }
   function setMissionGps(missionId: string): void {
     const mission = state.activeMissions[missionId];
@@ -805,6 +839,11 @@ import type * as ThreeNamespace from 'three';
     else if(id === 'hustler'){ state.cash += 500; state.worldMemory.rejectedHustler = true; log('<i class="ph-duotone ph-users-three"></i> You pass. They leave a finder fee, then start talking to rivals.'); }
     else if(id === 'investor'){ state.respect += 8; state.worldMemory.investorRejected = true; log('<i class="ph-duotone ph-star"></i> You show the investor the door. Independence has its own price.'); }
     else if(id === 'fire'){ applyTempMult('legit', 0.7, 30); state.worldMemory.cartRebuiltQuietly = true; log('<i class="ph-duotone ph-warning-circle"></i> You rebuild quietly. Business limps while the smoke clears.'); }
+    else if(id === 'home_safe_robbery'){ state.worldMemory.ignoredBankLesson = true; log('<i class="ph-duotone ph-vault"></i> You keep cash close. Convenient, and exposed.'); }
+    else if(id === 'stolen_shipment'){ state.product = Math.max(0, state.product - 30); state.worldMemory.shipmentWrittenOff = true; log('<i class="ph-duotone ph-package"></i> You write off the missing cargo. Supply tightens.'); }
+    else if(id === 'alderman_fixer'){ state.worldMemory.avoidedBagman = true; log('<i class="ph-duotone ph-courthouse"></i> You avoid the bagman. City Hall remains useful only from a distance.'); }
+    else if(id === 'turf_war'){ state.heat = Math.max(0, state.heat - 5); state.worldMemory.avoidedTurfWar = true; log('<i class="ph-duotone ph-map-pin"></i> You let the pressure cool instead of answering it.'); }
+    else if(id === 'first_heist'){ state.worldMemory.firstHeistDelayed = true; log('<i class="ph-duotone ph-lock"></i> You leave the vault job on the board.'); }
     else { log('<i class="ph-duotone ph-info"></i> You let the opportunity pass for now.'); }
     renderAll();
     scheduleSave();
@@ -907,6 +946,67 @@ import type * as ThreeNamespace from 'three';
         { label:'Threaten', onClick:function(){ state.respect += 12; state.heat = Math.min(100, state.heat + 14); state.worldMemory.cityHallAttention = true; log('<i class="ph-duotone ph-warning"></i> The investor leaves with a smile that says City Hall will hear about this.'); finishMission('investor', 'threatened'); } },
       ]}); return;
     }
+    if(id === 'home_safe_robbery'){
+      const loss = Math.round(state.cash * PHASE2_MISSION_CONFIG.homeSafeRobberyLossPct);
+      showModal({ eyebrow:'Banking Lesson', title:'The Missing Safe Money', body:`<p class='flavor'>A back-room safe gets cleaned out. You lose <strong>${fmt(loss)}</strong> before anyone admits they saw the door open. Banked cash is slower to move, but raids and street thieves cannot grab it from your pocket.</p>`, buttons:[
+        { label:'Deposit what remains', onClick:function(){ state.cash = Math.max(0, state.cash - loss); state.worldMemory.homeSafeRobbed = true; openDeviceApp('bank'); finishMission('home_safe_robbery', 'bank lesson'); } },
+        { label:'Set GPS to the bank', onClick:function(){ state.cash = Math.max(0, state.cash - loss); state.worldMemory.homeSafeRobbed = true; finishMission('home_safe_robbery', 'gps to bank'); setGlobalWaypoint(missionPlaceByService('bankHome')); rebuildWaypointBeacon(); byId('minimap-clear').classList.add('show'); } },
+      ]}); return;
+    }
+    if(id === 'stolen_shipment'){
+      const mission = state.activeMissions.stolen_shipment;
+      if(mission?.stageId === 'travel'){
+        showModal({ eyebrow:'Docks', title:'Dockmaster Bell', body:"<p class='flavor'>Bell points at a blank slot on the manifest. \"Cargo did not vanish. Somebody hauled it west and paid cash to make the paperwork boring.\"</p>", buttons:[
+          { label:'Trace it to the chop shop', onClick:function(){ state.worldMemory.dockmasterTalked = true; advanceMissionToObjective('stolen_shipment', 'chopshop', 'chopshop', 'Find the missing shipment at the West Side Chop Shop'); } },
+          { label:'Drop it', secondary:true, onClick:function(){ finishMission('stolen_shipment', 'dropped at docks'); } },
+        ]}); return;
+      }
+      showModal({ eyebrow:'West Side Chop Shop', title:'Missing Cargo', body:"<p class='flavor'>The shipment sits behind a half-stripped delivery van. Deke smiles like he already priced every option.</p>", buttons:[
+        { label:'Buy it back ($1400)', onClick:function(){ state.cash = Math.max(0, state.cash - 1400); state.product = Math.min(productCap(), state.product + 80); log('<i class="ph-duotone ph-package"></i> You buy back the shipment and restock the street.'); finishMission('stolen_shipment', 'bought back'); } },
+        { label:'Take it by force', onClick:function(){ state.product = Math.min(productCap(), state.product + 90); state.respect += 18; state.heat = Math.min(100, state.heat + 22); log('<i class="ph-duotone ph-hand-fist"></i> You take the shipment back loud. The West Side hears about it.'); finishMission('stolen_shipment', 'taken by force'); } },
+        { label:'Partner with Deke', onClick:function(){ state.worldMemory.blackMarketTrade = true; state.investigation = Math.min(100, state.investigation + 8); log(`<i class="ph-duotone ph-handshake"></i> Black Market Trade is running: +${fmt(PHASE2_MISSION_CONFIG.blackMarketIncome)}/s with extra case risk.`); finishMission('stolen_shipment', 'black market trade'); } },
+      ]}); return;
+    }
+    if(id === 'alderman_fixer'){
+      const mission = state.activeMissions.alderman_fixer;
+      if(mission?.stageId === 'travel'){
+        showModal({ eyebrow:'City Hall Annex', title:'The Bagman', body:"<p class='flavor'>The bagman does not say the alderman's name. He just names the problem: a railyard union leader blocking permits.</p>", buttons:[
+          { label:'Go to the railyard', onClick:function(){ advanceMissionToObjective('alderman_fixer', 'railyard', 'railyard', 'Handle the railyard union leader'); } },
+          { label:'Walk away', secondary:true, onClick:function(){ finishMission('alderman_fixer', 'walked away'); } },
+        ]}); return;
+      }
+      showModal({ eyebrow:'Railyard', title:'Union Leader Calder', body:"<p class='flavor'>Calder has enough workers behind him to be brave and enough overdue bills to be practical.</p>", buttons:[
+        { label:'Pay the workers ($1800)', onClick:function(){ state.cash = Math.max(0, state.cash - 1800); state.influence += 45; state.worldMemory.politicalFavorsUnlocked = true; log('<i class="ph-duotone ph-courthouse"></i> The permits move. Political Favors are now available at City Hall.'); finishMission('alderman_fixer', 'paid workers'); } },
+        { label:'Pressure Calder', onClick:function(){ state.respect += 14; state.heat = Math.min(100, state.heat + 12); state.influence += 25; state.worldMemory.politicalFavorsUnlocked = true; log('<i class="ph-duotone ph-courthouse"></i> Calder folds. City Hall owes you, and everyone saw how.'); finishMission('alderman_fixer', 'pressured'); } },
+      ]}); return;
+    }
+    if(id === 'turf_war'){
+      const mission = state.activeMissions.turf_war;
+      if(mission?.stageId === 'travel'){
+        showModal({ eyebrow:'Devlin Corner', title:'Hold the Block', body:"<p class='flavor'>A lookout calls positions. You can make a clean show of force or let the first punch land.</p>", buttons:[
+          { label:'Defend with crew', onClick:function(){ const devlin = districts.find(function(d){ return d.id === 'devlin'; })!; devlin.control = Math.min(100, devlin.control + 8 + state.muscleCount); state.respect += 8; state.heat = Math.min(100, state.heat + 8); advanceMissionToObjective('turf_war', 'capo', 'marigoldLounge', 'Track the rival capo to Marigold Lounge'); } },
+          { label:'Pay locals to watch ($700)', onClick:function(){ state.cash = Math.max(0, state.cash - 700); state.heat = Math.max(0, state.heat - 4); advanceMissionToObjective('turf_war', 'capo', 'marigoldLounge', 'Track the rival capo to Marigold Lounge'); } },
+        ]}); return;
+      }
+      showModal({ eyebrow:'Marigold Lounge', title:'The Capo', body:"<p class='flavor'>The capo offers a truce before anyone reaches for a weapon. It is either a way out or a chance to end the argument.</p>", buttons:[
+        { label:'Take the truce', onClick:function(){ state.heat = Math.max(0, state.heat - 12); state.worldMemory.westsideTruce = true; log('<i class="ph-duotone ph-handshake"></i> The truce holds. For now, West Side pressure cools.'); finishMission('turf_war', 'truce'); } },
+        { label:'Assassinate him', onClick:function(){ const westside = districts.find(function(d){ return d.id === 'westside'; })!; const success = Math.random() < Math.min(0.8, 0.35 + gangStrength()/80); if(success){ westside.control = Math.min(100, westside.control + 18); state.respect += 28; log('<i class="ph-duotone ph-crosshair"></i> The capo drops and a West Side block opens up.'); } else { state.cash = Math.max(0, state.cash - 1600); state.muscleCount = Math.max(0, state.muscleCount - 1); log('<i class="ph-duotone ph-warning"></i> The hit misses. You lose money and muscle getting out.'); } state.heat = Math.min(100, state.heat + 30); finishMission('turf_war', success ? 'capo removed' : 'hit failed'); } },
+      ]}); return;
+    }
+    if(id === 'first_heist'){
+      const mission = state.activeMissions.first_heist;
+      if(mission?.stageId === 'travel'){
+        const buttons: ModalButton[] = [
+          { label:'Pick the fast smash approach', onClick:function(){ state.worldMemory.firstHeistApproach = 'smash'; advanceMissionToObjective('first_heist', 'escape', 'heistTarget', 'Execute the smash-and-grab'); } },
+        ];
+        if(crewUsedGlobal() >= PHASE2_MISSION_CONFIG.heistPrepCrewReq) buttons.unshift({ label:'Pick the quiet crew approach', onClick:function(){ state.worldMemory.firstHeistApproach = 'crew'; advanceMissionToObjective('first_heist', 'escape', 'heistTarget', 'Execute the crew heist'); } });
+        showModal({ eyebrow:'First Windhaven Trust', title:'Case the Bank', body:"<p class='flavor'>You time the guard, count exits, and mark the cameras. This is no longer a button press. It is a plan.</p>", buttons }); return;
+      }
+      heistTargetBankId = DEFAULT_BANK_ID;
+      resolveHeist(String(state.worldMemory.firstHeistApproach || 'smash'));
+      finishMission('first_heist', String(state.worldMemory.firstHeistApproach || 'smash'));
+      return;
+    }
     if(id === 'fire'){
       showModal({ eyebrow:"Kailash's Cart", title:'Smoke Under the Awning', body:"<p class='flavor'>The repair is easy. Deciding whether to chase the person who lit it is the hard part.</p>", buttons:[
         { label:'Rebuild quietly ($250)', onClick:function(){ state.cash = Math.max(0, state.cash - 250); state.worldMemory.cartRebuiltQuietly = true; log('<i class="ph-duotone ph-warning-circle"></i> A quick repair keeps the cart running.'); finishMission('fire', 'rebuilt'); } },
@@ -939,6 +1039,11 @@ import type * as ThreeNamespace from 'three';
     return missionEventPool.filter(function(event){
       if(state.activeMissions[event.id]) return false;
       if(event.id === 'inspector' && state.worldMemory.kowalskiBlackmailed) return false;
+      if(event.id === 'home_safe_robbery' && (bankedTotal() > 0 || state.cash < 300)) return false;
+      if(event.id === 'stolen_shipment' && !businesses.some(function(b){ return b.id === 'syndicate_logistics' && b.level > 0; })) return false;
+      if(event.id === 'alderman_fixer' && state.influence < 80) return false;
+      if(event.id === 'turf_war' && !(state.worldMemory.gangWarSparked || districts.find(function(d){ return d.id === 'westside'; })!.control >= 35)) return false;
+      if(event.id === 'first_heist' && (missionCompleted(missionSaveState(), 'first_heist') || state.respect < PHASE2_MISSION_CONFIG.heistPrepRespectReq)) return false;
       if(event.unique && !canOfferUniqueEvent(missionSaveState(), event.id)) return false;
       if(!event.unique && !canOfferRepeatableEvent(missionSaveState(), event.id, event.maxRepeats)) return false;
       return true;
@@ -1176,6 +1281,8 @@ import type * as ThreeNamespace from 'three';
   let heistTargetBankId: string = DEFAULT_BANK_ID;
   function heistSecurityMod(security: string){ return security==='Hardened' ? -0.12 : (security==='Soft' ? 0.10 : 0); }
   function openHeistPlanning(){
+    if(state.activeMissions.first_heist){ resolveMissionAtObjective('first_heist'); return; }
+    if(!missionCompleted(missionSaveState(), 'first_heist') && state.respect >= PHASE2_MISSION_CONFIG.heistPrepRespectReq){ startMissionFromOffer('first_heist'); return; }
     if(state.playSeconds < state.nextHeistAt){ log('<i class="ph-duotone ph-lock"></i> You just hit a vault — let the city cool off before the next job.'); return; }
     const body = `<p>You've been casing the city's banks. Which job is ready?</p>`
       + `<p class="flavor">A soft vault is the fat score but swings wide; a hardened one barely pays and rarely gives. Bring a crew and a fast car to tilt the odds.</p>`;
@@ -2062,6 +2169,19 @@ import type * as ThreeNamespace from 'three';
           <div class="btn-row"><button class="mini-btn" ${state.cash>=influenceCost()?'':'disabled'} id="buy-influence">FUND <span class="cost">${fmt(influenceCost())}</span></button></div>
         </div>
       </div>
+      ${state.worldMemory.politicalFavorsUnlocked ? `
+      <div class="data-row">
+        <div class="data-main">
+          <div class="col-id">${ICONS.phone}</div>
+          <div class="col-name">Political Favors</div>
+          <div class="col-stat">COST: ${fmt(PHASE2_MISSION_CONFIG.politicalFavorCost)} + 20 influence</div>
+          <div class="col-status">UNLOCKED</div>
+        </div>
+        <div class="data-expanded">
+          <div class="flavor-note">Spend cash and influence to make paperwork move, soften heat, and slow the case.</div>
+          <div class="btn-row"><button class="mini-btn" ${(state.cash>=PHASE2_MISSION_CONFIG.politicalFavorCost && state.influence>=20)?'':'disabled'} id="call-political-favor">CALL IN FAVOR</button></div>
+        </div>
+      </div>` : ''}
       ${politicians.map(p=>`
       <div class="data-row">
         <div class="data-main">
@@ -2424,6 +2544,15 @@ import type * as ThreeNamespace from 'three';
     const btn = target.closest('button');
     if(!btn) return;
     if(btn.id === 'buy-influence'){ buyInfluence(); }
+    else if(btn.id === 'call-political-favor'){
+      if(state.cash < PHASE2_MISSION_CONFIG.politicalFavorCost || state.influence < 20) return;
+      state.cash -= PHASE2_MISSION_CONFIG.politicalFavorCost;
+      state.influence -= 20;
+      state.heat = Math.max(0, state.heat - PHASE2_MISSION_CONFIG.politicalFavorHeatReduction);
+      state.investigation = Math.max(0, state.investigation - 8);
+      log('<i class="ph-duotone ph-courthouse"></i> A political favor moves through City Hall. Heat drops and the case file thins.');
+      renderAll();
+    }
     else if(btn.id === 'launch-campaign'){
       if(state.electedOffice || state.campaignActive) return;
       if(!(state.influence >= 500 && state.playSeconds >= state.nextCampaignAt)) return;
@@ -2628,6 +2757,19 @@ import type * as ThreeNamespace from 'three';
           <div class="flavor-note">Dealers are managed from the map — walk up to a corner and press E. This is just the read-out.</div>
         </div>
       </div>
+      ${state.worldMemory.blackMarketTrade ? `
+      <div class="data-row">
+        <div class="data-main">
+          <div class="col-id">${ICONS.box}</div>
+          <div class="col-name">Black Market Trade</div>
+          <div class="col-stat">INCOME: +${fmt(blackMarketTradeIncome())}/s</div>
+          <div class="col-stat">HEAT: +${blackMarketTradeHeat().toFixed(2)}/s</div>
+          <div class="col-status">ACTIVE</div>
+        </div>
+        <div class="data-expanded">
+          <div class="flavor-note">A chop-shop cargo partnership. It pays quietly enough, but federal attention builds while it runs.</div>
+        </div>
+      </div>` : ''}
     `;
   }
 

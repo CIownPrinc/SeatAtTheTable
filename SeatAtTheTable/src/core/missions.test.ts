@@ -7,6 +7,7 @@ import {
   canOfferUniqueEvent,
   completeMission,
   declineMission,
+  missionCompleted,
   missionSaveDefaults,
   recordEventOffer,
   startMission,
@@ -57,8 +58,16 @@ describe('mission state helpers', function () {
 
     const outcome = completeMission(save, 'tribune', 'humorous', 30);
     expect(outcome?.result).toBe('humorous');
+    expect(missionCompleted(save, 'tribune')).toBe(true);
     expect(activeMissionCount(save)).toBe(0);
     expect(completeMission(save, 'tribune', 'duplicate', 31)).toBeNull();
+  });
+
+  it('treats saved completed outcomes as completed mission history', function () {
+    const save = missionSaveDefaults({ completedMissions:{ first_heist:{ id:'first_heist', result:'crew', completedAt:40 } } });
+
+    expect(missionCompleted(save, 'first_heist')).toBe(true);
+    expect(missionCompleted(save, 'stolen_shipment')).toBe(false);
   });
 
   it('applies world consequences once', function () {

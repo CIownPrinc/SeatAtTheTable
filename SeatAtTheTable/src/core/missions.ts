@@ -43,6 +43,10 @@ export function activeMissionCount(save: MissionSaveState): number {
   return Object.values(save.activeMissions).filter(function(mission){ return mission.status === 'active'; }).length;
 }
 
+export function missionCompleted(save: MissionSaveState, missionId: string): boolean {
+  return save.eventHistory[missionId] === 'completed' || !!save.completedMissions[missionId];
+}
+
 export function startMission(save: MissionSaveState, mission: MissionState): MissionState {
   save.activeMissions[mission.id] = mission;
   save.eventHistory[mission.id] = 'accepted';
