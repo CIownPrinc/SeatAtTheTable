@@ -50,6 +50,11 @@ export interface RailLineRecord {
   activeWindow: { start: number; end: number };
 }
 
+export interface RoadLandSegment {
+  road: RoadPath;
+  path: Point[];
+}
+
 export interface WindhavenMapModel {
   worldWidth: number;
   worldHeight: number;
@@ -245,4 +250,39 @@ export function nearestRoadAtPoint(point: Point, model: WindhavenMapModel = wind
     }, Infinity);
     return distance < best.distance ? { road, distance } : best;
   }, { road: model.roadPaths[0], distance: Infinity });
+}
+
+function pointBetween(start: Point, end: Point, t: number): Point {
+  return { x: start.x + (end.x - start.x) * t, y: start.y + (end.y - start.y) * t };
+}
+
+export function roadLandSegments(model: WindhavenMapModel = windhavenMapModel, sampleLength = 36): RoadLandSegment[] {
+  const segments: RoadLandSegment[] = [];
+  model.roadPaths.forEach(function(road){
+    road.path.slice(0, -1).forEach(function(start, index){
+      const end = road.path[index + 1];
+      const length = Math.hypot(end.x - start.x, end.y - start.y);
+      const sampleCount = Math.max(1, Math.ceil(length / sampleLength));
+      let runStart: Point | null = null;
+      let runEnd: Point | null = null;
+
+      for(let sample = 1; sample <= sampleCount; sample += 1){
+        const t0 = (sample - 1) / sampleCount;
+        const t1 = sample / sampleCount;
+        const mid = pointBetween(start, end, (t0 + t1) / 2);
+        const onLand = districtIdAtPoint(mid, model) !== null;
+        if(onLand){
+          if(!runStart) runStart = pointBetween(start, end, t0);
+          runEnd = pointBetween(start, end, t1);
+        } else if(runStart && runEnd){
+          segments.push({ road, path:[runStart, runEnd] });
+          runStart = null;
+          runEnd = null;
+        }
+      }
+
+      if(runStart && runEnd) segments.push({ road, path:[runStart, runEnd] });
+    });
+  });
+  return segments;
 }

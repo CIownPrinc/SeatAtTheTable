@@ -1,5 +1,5 @@
 import type { Business, MapZoneType } from '../config/types';
-import { namedBuildingLots, ventureDistricts, ventureLots, ventureMapLots } from './world';
+import { DISTRICT_OFFSETS, DISTRICT_W, namedBuildingLots, ventureDistricts, ventureLots, ventureMapLots } from './world';
 
 export interface MapBuilding {
   id: string;
@@ -25,6 +25,23 @@ export function applyNamedBuildingLots<T extends { id: string; x: number; y: num
     if(!lot) return;
     item.x = lot.x;
     item.y = lot.y;
+  });
+}
+
+export function worldXForDistrict(district: string, x: number): number {
+  const offset = DISTRICT_OFFSETS[district] || 0;
+  return offset > 0 && x < DISTRICT_W ? x + offset : x;
+}
+
+export function applyMapWorldCoordinates<T extends { id: string; district: string; x: number; y: number }>(items: T[]): void {
+  items.forEach(function(item){
+    const namedLot = namedBuildingLots[item.id];
+    if(namedLot){
+      item.x = namedLot.x;
+      item.y = namedLot.y;
+      return;
+    }
+    item.x = worldXForDistrict(item.district, item.x);
   });
 }
 

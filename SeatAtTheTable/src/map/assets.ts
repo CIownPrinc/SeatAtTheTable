@@ -1,59 +1,12 @@
 import type * as ThreeNamespace from 'three';
+import { EAGER_MAP_ASSET_KEYS, MAP_ASSET_PATHS, type MapAssetKey } from './assetManifest';
 
-export type MapAssetKey =
-  | 'houseA'
-  | 'houseB'
-  | 'towerA'
-  | 'towerC'
-  | 'commercialAwning'
-  | 'commercialWide'
-  | 'carSedan'
-  | 'carSport'
-  | 'carTaxi'
-  | 'carPolice'
-  | 'carSuv'
-  | 'carLuxurySuv'
-  | 'carDelivery'
-  | 'carVan'
-  | 'characterA'
-  | 'characterC'
-  | 'characterE'
-  | 'characterH'
-  | 'characterK'
-  | 'characterN';
+export type { MapAssetKey } from './assetManifest';
 
 export interface MapAssetLibrary {
   createFittedModel(key: MapAssetKey, width: number, height: number, depth: number): ThreeNamespace.Group | null;
 }
 
-const BUILDING_ASSET_BASE = '/assets/map/kenney-modular-buildings/';
-const CAR_ASSET_BASE = '/assets/map/kenney-car-kit/';
-const CHARACTER_ASSET_BASE = '/assets/map/kenney-blocky-characters/';
-
-const ASSET_PATHS: Record<MapAssetKey, string> = {
-  houseA: `${BUILDING_ASSET_BASE}building-sample-house-a.glb`,
-  houseB: `${BUILDING_ASSET_BASE}building-sample-house-b.glb`,
-  towerA: `${BUILDING_ASSET_BASE}building-sample-tower-a.glb`,
-  towerC: `${BUILDING_ASSET_BASE}building-sample-tower-c.glb`,
-  commercialAwning: `${BUILDING_ASSET_BASE}building-window-awnings.glb`,
-  commercialWide: `${BUILDING_ASSET_BASE}building-window-wide.glb`,
-  carSedan: `${CAR_ASSET_BASE}sedan.glb`,
-  carSport: `${CAR_ASSET_BASE}sedan-sports.glb`,
-  carTaxi: `${CAR_ASSET_BASE}taxi.glb`,
-  carPolice: `${CAR_ASSET_BASE}police.glb`,
-  carSuv: `${CAR_ASSET_BASE}suv.glb`,
-  carLuxurySuv: `${CAR_ASSET_BASE}suv-luxury.glb`,
-  carDelivery: `${CAR_ASSET_BASE}delivery.glb`,
-  carVan: `${CAR_ASSET_BASE}van.glb`,
-  characterA: `${CHARACTER_ASSET_BASE}character-a.glb`,
-  characterC: `${CHARACTER_ASSET_BASE}character-c.glb`,
-  characterE: `${CHARACTER_ASSET_BASE}character-e.glb`,
-  characterH: `${CHARACTER_ASSET_BASE}character-h.glb`,
-  characterK: `${CHARACTER_ASSET_BASE}character-k.glb`,
-  characterN: `${CHARACTER_ASSET_BASE}character-n.glb`,
-};
-
-const EAGER_ASSET_KEYS: MapAssetKey[] = ['houseA', 'houseB', 'towerA', 'towerC', 'commercialAwning', 'commercialWide'];
 const FALLBACK_TEXTURE_DATA_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAI0lEQVR4AYTIoQ0AAAwCwYb9R+wQNdVgCYZP3hz+lj4m6iAAAAD//+qR2V4AAAAGSURBVAMAfjEPCeZvlw0AAAAASUVORK5CYII=';
 
 export function resolveMapAssetUrl(url: string): string {
@@ -92,8 +45,8 @@ export async function loadMapAssetLibrary(THREE: typeof ThreeNamespace): Promise
   const manager = new THREE.LoadingManager();
   manager.setURLModifier(resolveMapAssetUrl);
   const loader = new GLTFLoader(manager);
-  const entries = await Promise.all(EAGER_ASSET_KEYS.map(async function(key){
-    const path = ASSET_PATHS[key];
+  const entries = await Promise.all(EAGER_MAP_ASSET_KEYS.map(async function(key){
+    const path = MAP_ASSET_PATHS[key];
     try {
       const gltf = await loader.loadAsync(path);
       return [key, gltf.scene] as const;

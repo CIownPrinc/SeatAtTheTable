@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "typecheck": "turbo run typecheck",
     "test": "vitest run",
+    "audit:map-assets": "node SeatAtTheTable/scripts/audit-map-assets.mjs",
     "format": "prettier --write ."
   },
   "keywords": [],

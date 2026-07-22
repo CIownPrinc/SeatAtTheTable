@@ -1,5 +1,5 @@
 import type { DiagonalRoad, HorizontalRoad, Landmark, VerticalRoad } from './world';
-import { windhavenMapModel } from './mapModel';
+import { districtIdAtPlayablePoint, roadLandSegments, windhavenMapModel } from './mapModel';
 import { mapTerrainTheme, mapTransportTheme, terrainForDistrict } from './renderTheme';
 import { addInstancedMesh, createMapSceneMaterials, type MapSceneMaterialCache, type SceneInstance } from './scenePerformance';
 import type { FillerItem, MapZoneType, Point } from '../config/types';
@@ -260,10 +260,11 @@ export function buildRoadNetwork(options: RoadSceneOptions): void {
   const laneDashes: SceneInstance[] = [];
   const crosswalkLong: SceneInstance[] = [];
   const crosswalkWide: SceneInstance[] = [];
-  windhavenMapModel.roadPaths.forEach(function(road){
-    addPathPlane(options, road.path, road.width + (road.roadClass === 'arterial' ? 34 : 22), mapTransportTheme.sidewalk, 0.04, 0.92);
-    addPathPlane(options, road.path, road.width, road.roadClass === 'arterial' ? mapTransportTheme.arterialSurface : mapTransportTheme.roadSurface, 0.06, 0.9);
-    addPathLineDashes(road.path, 94, 40, function(x, y, angle){
+  roadLandSegments().forEach(function(segment){
+    const road = segment.road;
+    addPathPlane(options, segment.path, road.width + (road.roadClass === 'arterial' ? 34 : 22), mapTransportTheme.sidewalk, 0.04, 0.92);
+    addPathPlane(options, segment.path, road.width, road.roadClass === 'arterial' ? mapTransportTheme.arterialSurface : mapTransportTheme.roadSurface, 0.06, 0.9);
+    addPathLineDashes(segment.path, 94, 40, function(x, y, angle){
       laneDashes.push({
         x,
         y:0.075,
@@ -341,14 +342,18 @@ export function buildStreetTrees(options: TreeSceneOptions): void {
       for(let x=off+95; x<off+1405; x+=125){
         if(options.roadNetwork.vertical.some(v=>Math.abs(x-v.x)<72)) continue;
         const side = rand() > 0.5 ? -1 : 1;
-        buildStreetTree(options, x + (rand()-0.5)*18, r.y + side*58 + (rand()-0.5)*14, 0.78 + rand()*0.45);
+        const treeX = x + (rand()-0.5)*18;
+        const treeY = r.y + side*58 + (rand()-0.5)*14;
+        if(districtIdAtPlayablePoint({ x:treeX, y:treeY }, 8) === distId) buildStreetTree(options, treeX, treeY, 0.78 + rand()*0.45);
       }
     });
     options.roadNetwork.vertical.filter(v=>v.x>off && v.x<off+1500).forEach(function(v){
       for(let y=95; y<options.worldHeight-95; y+=155){
         if(options.roadNetwork.horizontal.some(r=>Math.abs(y-r.y)<82)) continue;
         const side = rand() > 0.5 ? -1 : 1;
-        buildStreetTree(options, v.x + side*50 + (rand()-0.5)*12, y + (rand()-0.5)*18, 0.72 + rand()*0.38);
+        const treeX = v.x + side*50 + (rand()-0.5)*12;
+        const treeY = y + (rand()-0.5)*18;
+        if(districtIdAtPlayablePoint({ x:treeX, y:treeY }, 8) === distId) buildStreetTree(options, treeX, treeY, 0.72 + rand()*0.38);
       }
     });
   });

@@ -53,6 +53,7 @@ export function isPointOnBridge(point: Point, radius: number): boolean {
 }
 
 export function isPointInWater(point: Point, radius: number): boolean {
+  if(!isPointOnWindhavenLand(point, radius)) return true;
   if(point.y < 56 + radius) return true;
   return isPointInCanal(point, radius) && !isPointOnBridge(point, radius);
 }

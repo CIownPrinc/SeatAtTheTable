@@ -20,7 +20,7 @@ import { createAmenityModal, mapAmenities } from '../map/amenities';
 import { minigameOpen, playMinigame, type MinigameResult } from '../map/minigames';
 import { buildAmenityModel as buildMapAmenityModel } from '../map/amenityRendering';
 import { createFillerLayoutProvider, seededRandom } from '../map/filler';
-import { applyNamedBuildingLots, createMapBuildings, mapNpcs } from '../map/markers';
+import { applyMapWorldCoordinates, createMapBuildings, mapNpcs } from '../map/markers';
 import { actorRadius, canMoveTo } from '../map/movement';
 import { drawMinimap as drawMapMinimap, MINIMAP_SCALE } from '../map/minimap';
 import type { MapObject } from '../map/objects';
@@ -2660,30 +2660,10 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: buttons, which can swallow a click landing mid-rebuild.
   let lastLocPanelAt = 0;
 
-  // LEGAL: Apply district offsets to all relative coordinates dynamically
-  localBusinesses.forEach(b => {
-    if (b.x < 1500 && DISTRICT_OFFSETS[b.district]) {
-      b.x += DISTRICT_OFFSETS[b.district];
-    }
-  });
-  serviceBuildings.forEach(b => {
-    if (b.x < 1500 && DISTRICT_OFFSETS[b.district]) {
-      b.x += DISTRICT_OFFSETS[b.district];
-    }
-  });
-  corners.forEach(b => {
-    if (b.x < 1500 && DISTRICT_OFFSETS[b.district]) {
-      b.x += DISTRICT_OFFSETS[b.district];
-    }
-  });
-  gangRecruits.forEach(b => {
-    if (b.x < 1500 && DISTRICT_OFFSETS[b.district]) {
-      b.x += DISTRICT_OFFSETS[b.district];
-    }
-  });
-
-  applyNamedBuildingLots(serviceBuildings);
-  applyNamedBuildingLots(localBusinesses);
+  applyMapWorldCoordinates(localBusinesses);
+  applyMapWorldCoordinates(serviceBuildings);
+  applyMapWorldCoordinates(corners);
+  applyMapWorldCoordinates(gangRecruits);
 
   // LEGAL: Businesses spread proportionally across all 3 districts
   // LEGAL: Building lots sit strictly between the road strips. Vertical roads are at

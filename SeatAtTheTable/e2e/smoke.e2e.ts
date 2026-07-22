@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { inflateSync } from 'node:zlib';
+import { EAGER_MAP_ASSET_KEYS, MAP_ASSET_PATHS } from '../src/map/assetManifest';
 
 // LEGAL: Smoke test — the safety net that guards the header.ts split. If a
 // LEGAL: refactor breaks how the game boots or switches tabs, this goes red
@@ -163,10 +164,15 @@ test.describe('game boot', () => {
 
   test('map renders without WebGL shader failures or missing GLB assets', async ({ page }) => {
     const browserIssues: string[] = [];
+    const requestedMapAssets = new Set<string>();
 
     page.on('console', function(message){
       const text = message.text();
       if(text.includes('Shader Error') || text.includes('program not valid') || text.includes('GLTFLoader') || text.includes("Couldn't load texture")) browserIssues.push(text);
+    });
+    page.on('request', function(request){
+      const url = new URL(request.url());
+      if(url.pathname.includes('/assets/map/')) requestedMapAssets.add(url.pathname);
     });
     page.on('response', function(response){
       if(response.url().includes('/assets/map/') && response.status() >= 400) browserIssues.push(`${response.status()} ${response.url()}`);
@@ -182,6 +188,9 @@ test.describe('game boot', () => {
     await page.waitForTimeout(1200);
 
     expect(browserIssues).toEqual([]);
+    EAGER_MAP_ASSET_KEYS.forEach(function(key){
+      expect(requestedMapAssets.has(MAP_ASSET_PATHS[key]), `${MAP_ASSET_PATHS[key]} should be requested by the running game`).toBe(true);
+    });
   });
 
   test('map canvas keeps water and land visually distinct', async ({ page }) => {

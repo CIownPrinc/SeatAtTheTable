@@ -4,11 +4,15 @@ import { amenityHasSolidFootprint, mapAmenities } from './amenities';
 import { createFillerLayoutProvider } from './filler';
 import { buildableBands, distancePointToSegment, localXForDistrict, rectsOverlap, rotatedHalfExtents } from './layout';
 import { districtIdAtPlayablePoint } from './mapModel';
-import { createMapBuildings } from './markers';
+import { applyMapWorldCoordinates, createMapBuildings } from './markers';
 import { actorRadius, canMoveTo, isWaterBlocked } from './movement';
-import { ventureFootprint } from './objectFactory';
+import { buildMapObjects, ventureFootprint } from './objectFactory';
 import { DISTRICT_OFFSETS, districtParkSlots, namedBuildingLots, roadNetwork, ventureDistricts, ventureLots, ventureMapLots } from './world';
 import { zoneForDistrictBlock } from './zoning';
+import { serviceBuildings } from '../config/serviceBuildings';
+import { localBusinesses } from '../config/localBusinesses';
+import { corners } from '../config/trade';
+import { gangRecruits } from '../config/gang';
 
 describe('map layout helpers', function () {
   it('converts world x positions into district-local x positions', function () {
@@ -145,6 +149,53 @@ describe('map layout helpers', function () {
     });
   });
 
+  it('keeps authored service, local, corner, amenity, and recruit points on playable district land', function () {
+    const serviceCopies = serviceBuildings.map(service => ({ ...service }));
+    const localCopies = localBusinesses.map(business => ({ ...business }));
+    const cornerCopies = corners.map(corner => ({ ...corner }));
+    const recruitCopies = gangRecruits.map(recruit => ({ ...recruit }));
+    applyMapWorldCoordinates(serviceCopies);
+    applyMapWorldCoordinates(localCopies);
+    applyMapWorldCoordinates(cornerCopies);
+    applyMapWorldCoordinates(recruitCopies);
+
+    [...serviceCopies, ...localCopies, ...cornerCopies, ...recruitCopies, ...mapAmenities].forEach(function(item){
+      expect(districtIdAtPlayablePoint({ x:item.x, y:item.y }, 16), `${item.id} should sit on ${item.district} land`).toBe(item.district);
+    });
+  });
+
+  it('keeps every bounded authored map object footprint inside playable land', function () {
+    const serviceCopies = serviceBuildings.map(service => ({ ...service }));
+    const localCopies = localBusinesses.map(business => ({ ...business }));
+    const cornerCopies = corners.map(corner => ({ ...corner }));
+    const recruitCopies = gangRecruits.map(recruit => ({ ...recruit }));
+    applyMapWorldCoordinates(serviceCopies);
+    applyMapWorldCoordinates(localCopies);
+    applyMapWorldCoordinates(cornerCopies);
+    applyMapWorldCoordinates(recruitCopies);
+    const objects = buildMapObjects({
+      mapBuildings:createMapBuildings(businesses),
+      serviceBuildings:serviceCopies,
+      localBusinesses:localCopies,
+      amenities:mapAmenities,
+      corners:cornerCopies,
+      npcs:[],
+      gangRecruits:recruitCopies,
+    });
+
+    objects.forEach(function(object){
+      if(!object.bounds) return;
+      [
+        { x:object.bounds.x-object.bounds.hw, y:object.bounds.y-object.bounds.hd },
+        { x:object.bounds.x+object.bounds.hw, y:object.bounds.y-object.bounds.hd },
+        { x:object.bounds.x-object.bounds.hw, y:object.bounds.y+object.bounds.hd },
+        { x:object.bounds.x+object.bounds.hw, y:object.bounds.y+object.bounds.hd },
+      ].forEach(function(point){
+        expect(districtIdAtPlayablePoint(point, 0), `${object.id} footprint should stay on ${object.district} land`).toBe(object.district);
+      });
+    });
+  });
+
   it('keeps multiple named park slots for each district', function () {
     Object.values(districtParkSlots).forEach(function(slots){
       const seen = new Set<string>();
@@ -210,6 +261,40 @@ describe('map layout helpers', function () {
         roadNetwork.diagonal.forEach(function(road){
           const distance = distancePointToSegment(filler.x+off, filler.y, road.x1, road.y1, road.x2, road.y2);
           expect(distance).toBeGreaterThan(Math.max(filler.w,filler.d)/2 + road.w/2);
+        });
+      });
+    });
+  });
+
+  it('keeps filler buildings, lots, and parks inside their district land polygons', function () {
+    const markers = createMapBuildings(businesses);
+    const provider = createFillerLayoutProvider(markers.map(function(marker){
+      return { kind:'building' as const, id:marker.id, district:marker.district, x:marker.x, y:marker.y, bounds:{x:marker.x,y:marker.y,hw:40,hd:34}, interactRadius:46, minimapColor:'#fff', minimapSize:3, ref:marker };
+    }));
+
+    ['devlin','westside','hub'].forEach(function(districtId){
+      const off = DISTRICT_OFFSETS[districtId];
+      provider.fillerFor(districtId).forEach(function(filler){
+        if(filler.kind === 'building'){
+          const ext = rotatedHalfExtents(filler.w, filler.d, filler.rot);
+          [
+            { x:filler.x-ext.hw+off, y:filler.y-ext.hd },
+            { x:filler.x+ext.hw+off, y:filler.y-ext.hd },
+            { x:filler.x-ext.hw+off, y:filler.y+ext.hd },
+            { x:filler.x+ext.hw+off, y:filler.y+ext.hd },
+          ].forEach(function(point){
+            expect(districtIdAtPlayablePoint(point, 0), `${filler.kind} should stay on ${districtId} land`).toBe(districtId);
+          });
+          return;
+        }
+        if(filler.kind === 'edge') return;
+        [
+          { x:filler.x0+off, y:filler.y0 },
+          { x:filler.x1+off, y:filler.y0 },
+          { x:filler.x0+off, y:filler.y1 },
+          { x:filler.x1+off, y:filler.y1 },
+        ].forEach(function(point){
+          expect(districtIdAtPlayablePoint(point, 0), `${filler.kind} should stay on ${districtId} land`).toBe(districtId);
         });
       });
     });

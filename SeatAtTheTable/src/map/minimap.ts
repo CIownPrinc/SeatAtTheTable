@@ -1,6 +1,6 @@
 import type { Corner, FillerItem, Point } from '../config/types';
 import type { MapObject, MinimapIcon } from './objects';
-import { windhavenMapModel } from './mapModel';
+import { roadLandSegments, windhavenMapModel } from './mapModel';
 import type { RoadPath } from './mapModel';
 import { activeTrainSnapshot } from './queries';
 import { mapTerrainTheme, terrainForDistrict } from './renderTheme';
@@ -58,7 +58,7 @@ const staticLayerCache = new Map<string, HTMLCanvasElement>();
 export function minimapStaticLayerCacheKey(options: MinimapRenderOptions): string {
   const frame = minimapRenderFrame(options);
   const districtNames = options.districtNames?.map(name => `${name.name}:${Math.round(name.x)}:${Math.round(name.y ?? 6)}`).join('|') ?? '';
-  const roadVersion = windhavenMapModel.roadPaths.map(road => `${road.id}:${road.roadClass}:${road.width}:${road.path.length}`).join('|');
+  const roadVersion = roadLandSegments().map(segment => `${segment.road.id}:${segment.road.roadClass}:${segment.road.width}:${Math.round(segment.path[0].x)}:${Math.round(segment.path[0].y)}:${Math.round(segment.path[1].x)}:${Math.round(segment.path[1].y)}`).join('|');
   const waterVersion = `${windhavenMapModel.canals.length}:${windhavenMapModel.northRiver.length}:${windhavenMapModel.lakefrontBeach.length}`;
   const terrainVersion = [
     mapTerrainTheme.openWater,
@@ -302,8 +302,8 @@ function drawStaticMinimapLayer(mctx: CanvasRenderingContext2D, options: Minimap
       mctx.setLineDash([]);
     }
   };
-  windhavenMapModel.roadPaths.forEach(function(road){
-    drawRoad(road);
+  roadLandSegments().forEach(function(segment){
+    drawRoad({ ...segment.road, path:segment.path });
   });
 
   windhavenMapModel.bridges.forEach(function(bridge){

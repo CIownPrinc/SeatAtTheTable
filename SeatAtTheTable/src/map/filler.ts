@@ -3,6 +3,7 @@ import type { MapObject } from './objects';
 import { buildableBands, distancePointToSegment, localXForDistrict, rectsOverlap, rotatedHalfExtents } from './layout';
 import { DISTRICT_OFFSETS, DISTRICT_W, WORLD_H, districtParkSlots, districtSeeds, landmarks, roadNetwork } from './world';
 import { zoneForDistrictBlock } from './zoning';
+import { districtIdAtPlayablePoint } from './mapModel';
 
 const ROAD_VISUAL_CLEARANCE_X = 56;
 const ROAD_VISUAL_CLEARANCE_Y = 66;
@@ -49,9 +50,20 @@ export function createFillerLayoutProvider(mapObjects: MapObject[]): FillerLayou
     const filler: FillerItem[] = [];
     const placed: Solid[] = occupied.map(o=>({ x:o.x, y:o.y, hw:o.r, hd:o.r }));
     const jit = ()=> rand()-0.5;
+    const solidInsideDistrictLand = function(candidate: Solid): boolean {
+      const off = DISTRICT_OFFSETS[districtId] || 0;
+      return [
+        { x:candidate.x-candidate.hw, y:candidate.y-candidate.hd },
+        { x:candidate.x+candidate.hw, y:candidate.y-candidate.hd },
+        { x:candidate.x-candidate.hw, y:candidate.y+candidate.hd },
+        { x:candidate.x+candidate.hw, y:candidate.y+candidate.hd },
+        { x:candidate.x, y:candidate.y },
+      ].every(point => districtIdAtPlayablePoint({ x:point.x+off, y:point.y }, 0) === districtId);
+    };
     const fitsSolid = function(candidate: Solid): boolean {
       if(candidate.x-candidate.hw < 8 || candidate.x+candidate.hw > DISTRICT_W-8) return false;
       if(candidate.y-candidate.hd < 8 || candidate.y+candidate.hd > WORLD_H-8) return false;
+      if(!solidInsideDistrictLand(candidate)) return false;
       if(localRoadXs.some(x=> Math.abs(candidate.x-x) < candidate.hw+ROAD_VISUAL_CLEARANCE_X)) return false;
       if(roadNetwork.horizontal.some(r=> Math.abs(candidate.y-r.y) < candidate.hd+ROAD_VISUAL_CLEARANCE_Y)) return false;
       if(roadNetwork.diagonal.some(r=> {
@@ -75,12 +87,13 @@ export function createFillerLayoutProvider(mapObjects: MapObject[]): FillerLayou
         const cx=(x0+x1)/2, cy=(y0+y1)/2;
         const blockSolid = { x:cx, y:cy, hw:(x1-x0)/2, hd:(y1-y0)/2 };
         const blockHasAnchor = placed.some(o=>rectsOverlap(blockSolid, o, 8));
+        const blockInsideDistrict = solidInsideDistrictLand(blockSolid);
         const parkSlot = parkSlots.find(function(slot){
           const slotYi = slot.yi === 'south' ? yBands.length - 1 : slot.yi;
           return slot.xi === xi && slotYi === yi;
         });
-        if(parkSlot && !blockHasAnchor){ filler.push({kind:'park', name:parkSlot.name, x0,y0,x1,y1}); placed.push(blockSolid); continue; }
-        if((xi===lotBand.xi && yi===lotBand.yi || (districtId!=='hub' && xi===0 && yi===1) || (districtId==='hub' && xi===2 && yi===2)) && !blockHasAnchor){ filler.push({kind:'lot', x0,y0,x1,y1}); placed.push(blockSolid); continue; }
+        if(parkSlot && !blockHasAnchor && blockInsideDistrict){ filler.push({kind:'park', name:parkSlot.name, x0,y0,x1,y1}); placed.push(blockSolid); continue; }
+        if((xi===lotBand.xi && yi===lotBand.yi || (districtId!=='hub' && xi===0 && yi===1) || (districtId==='hub' && xi===2 && yi===2)) && !blockHasAnchor && blockInsideDistrict){ filler.push({kind:'lot', x0,y0,x1,y1}); placed.push(blockSolid); continue; }
         const bw = x1-x0, bd = y1-y0;
         const cols = 2 + Math.floor(rand()*2);
         const rows = 1 + Math.floor(rand()*3);

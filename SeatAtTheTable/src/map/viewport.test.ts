@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { boundsForPoints, isPointInWater, isPointOnBridge, isPointOnWindhavenLand, pointInPolygon } from './geometry';
-import { districtIdAtPlayablePoint, districtIdAtPoint, nearestRoadAtPoint, windhavenMapModel } from './mapModel';
+import { districtIdAtPlayablePoint, districtIdAtPoint, nearestRoadAtPoint, roadLandSegments, windhavenMapModel } from './mapModel';
 import { createMapPlaceRecords, mapPlaceCategoryLabel, minimapIconForLocalBusiness, minimapIconForService, nearestMapPlace, placeRecordFromMapObject } from './places';
 import type { MapObject } from './objects';
 import type { MapNpc } from './markers';
@@ -47,6 +47,8 @@ describe('map viewport and geometry model', function () {
     expect(pointInPolygon({ x: 700, y: 600 }, windhavenMapModel.landmass)).toBe(true);
     expect(isPointOnWindhavenLand({ x: 18, y: 600 }, 8)).toBe(true);
     expect(isPointInWater({ x: 700, y: 30 }, 8)).toBe(true);
+    expect(isPointInWater({ x: -180, y: 40 }, 8)).toBe(true);
+    expect(isPointInWater({ x: 5700, y: 1180 }, 8)).toBe(true);
     expect(isPointInWater({ x: 1700, y: 560 }, 24)).toBe(true);
     expect(isPointOnBridge({ x: 1700, y: 600 }, 24)).toBe(true);
     expect(isPointInWater({ x: 1700, y: 600 }, 24)).toBe(false);
@@ -124,6 +126,19 @@ describe('map viewport and geometry model', function () {
       activeWindow: { start: 0.12, end: 0.92 },
     });
     expect(windhavenMapModel.roadPaths.find(road => road.name === 'Roosevelt Road')?.roadClass).toBe('arterial');
+  });
+
+  it('exposes only land-backed road render segments for the renderer and minimap', function () {
+    const segments = roadLandSegments();
+
+    expect(segments.length).toBeGreaterThan(windhavenMapModel.roadPaths.length);
+    segments.forEach(function(segment){
+      const midpoint = {
+        x: (segment.path[0].x + segment.path[1].x) / 2,
+        y: (segment.path[0].y + segment.path[1].y) / 2,
+      };
+      expect(districtIdAtPoint(midpoint), `${segment.road.name} segment should be on district land`).not.toBeNull();
+    });
   });
 
   it('finds the nearest named road through map-model road paths', function () {
