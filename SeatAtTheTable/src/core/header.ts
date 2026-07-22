@@ -704,14 +704,46 @@ import type * as ThreeNamespace from 'three';
       </div>
     `).join('');
   }
+  type StreetLogPriority = 'major' | 'standard' | 'minor';
+  const suppressedStreetLogPhrases = [
+    'you step into ',
+    'you get in.',
+    'you park up and get out.',
+    'waypoint set to ',
+    'gps set to ',
+    'head over to ',
+    'not enough cash to sponsor',
+    'small talk with ',
+    'respects the hustle',
+  ];
+  let lastStreetLogKey = '';
+  let lastStreetLogAt = 0;
+  function plainStreetLogText(message: string): string {
+    return message.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+  }
+  function streetLogPriority(message: string): StreetLogPriority {
+    const text = plainStreetLogText(message).toLowerCase();
+    if(suppressedStreetLogPhrases.some(function(phrase){ return text.includes(phrase); })) return 'minor';
+    if(text.includes('raid') || text.includes('crackdown') || text.includes('heist') || text.includes('mission started') || text.includes('new message') || text.includes('black market') || text.includes('political favor') || text.includes('campaign') || text.includes('war') || text.includes('busted') || text.includes('seized') || text.includes('unlocked')) return 'major';
+    if(text.includes('heat') || text.includes('case') || text.includes('respect') || text.includes('deposit') || text.includes('withdraw') || text.includes('earned') || text.includes('income') || text.includes('cash') || text.includes('pays out') || text.includes('goes sideways')) return 'standard';
+    return 'minor';
+  }
   function log(msg: string){
+    const priority = streetLogPriority(msg);
+    const plain = plainStreetLogText(msg);
+    const now = Date.now();
+    const repeatKey = plain.toLowerCase();
+    if(priority === 'minor') return;
+    if(repeatKey === lastStreetLogKey && now - lastStreetLogAt < 30000) return;
+    lastStreetLogKey = repeatKey;
+    lastStreetLogAt = now;
     const wrap = byId('ticker');
     const item = document.createElement('div');
-    item.className = 'ticker-item';
+    item.className = `ticker-item ${priority}`;
     const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    item.innerHTML = `<span class="t-time">${time}</span><span>${msg}</span>`;
+    item.innerHTML = `<span class="t-time">${time}</span><span class="t-msg">${msg}</span>`;
     wrap.prepend(item);
-    while(wrap.children.length > 45 && wrap.lastChild) wrap.removeChild(wrap.lastChild);
+    while(wrap.children.length > 24 && wrap.lastChild) wrap.removeChild(wrap.lastChild);
   }
 
   // LEGAL: ================= MODAL =================

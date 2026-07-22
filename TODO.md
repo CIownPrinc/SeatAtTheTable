@@ -109,6 +109,12 @@ A roster of banks, each a distinct entity with tradeoffs. **No passive theft** â
 
 ## Game systems & polish
 
+### Parody geography
+`SeatAtTheTable/src/config/parodyGeography.ts` defines the current in-universe city
+references: San Plastica = Bay Area / Northern California cities, Rentport = New York
+City, and Flamingo Bay = Miami. Use those names instead of real city names unless the
+user explicitly asks otherwise.
+
 ### Mission overhaul
 The map-and-phone mission implementation plan now lives in
 `SeatAtTheTable/docs/mission-overhaul-plan.md`.
