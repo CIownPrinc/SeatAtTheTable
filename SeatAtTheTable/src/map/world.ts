@@ -50,13 +50,63 @@ export interface DistrictParkSlot {
 
 export const VIEW_W = 760;
 export const VIEW_H = 440;
-export const WORLD_W = 5500;
 export const WORLD_H = 1200;
-export const DISTRICT_W = 1500;
-export const NORTH_SHORE_LOT_Y = 205;
-export const DEVLIN_NORTHWEST_LOT_X = 400;
 
-export const WINDHAVEN_LANDMASS: Point[] = [
+// LEGAL: ---- District widening (world expansion stage 1a) ----
+// LEGAL: Every coordinate in this file was authored against 1500-wide districts separated
+// LEGAL: by 500-wide canals. Widening the districts by hand would mean rewriting ~60
+// LEGAL: numbers across landmass, rivers, roads, lots and landmarks, with no way to check
+// LEGAL: the result. Instead the authored numbers stay exactly as they were and
+// LEGAL: `widenAuthoredX` stretches them into the wider world.
+// LEGAL:
+// LEGAL: Districts stretch; canals and building footprints do NOT. That is the whole point
+// LEGAL: — buildings keep their size while the gaps between them grow, which is what fixes
+// LEGAL: the cramping. Y is untouched, so every hand-placed anchor stays on its own land.
+const AUTHORED_DISTRICT_W = 1500;
+const CANAL_W = 500;
+export const DISTRICT_W = 2100;
+
+// LEGAL: Authored breakpoints (district edges and canal edges) and where each one lands
+// LEGAL: after widening. Between breakpoints the mapping is linear; outside the ends it
+// LEGAL: extrapolates at the district scale so the coastline, which runs past both edges
+// LEGAL: of the world, stretches with everything else instead of detaching.
+const AUTHORED_BREAKPOINTS = [0, 1500, 2000, 3500, 4000, 5500];
+const WIDENED_BREAKPOINTS = [
+  0,
+  DISTRICT_W,
+  DISTRICT_W + CANAL_W,
+  DISTRICT_W * 2 + CANAL_W,
+  DISTRICT_W * 2 + CANAL_W * 2,
+  DISTRICT_W * 3 + CANAL_W * 2,
+];
+const DISTRICT_SCALE = DISTRICT_W / AUTHORED_DISTRICT_W;
+
+export function widenAuthoredX(x: number): number {
+  const first = AUTHORED_BREAKPOINTS[0];
+  if(x <= first) return WIDENED_BREAKPOINTS[0] + (x - first) * DISTRICT_SCALE;
+  for(let i = 0; i < AUTHORED_BREAKPOINTS.length - 1; i += 1){
+    const a0 = AUTHORED_BREAKPOINTS[i];
+    const a1 = AUTHORED_BREAKPOINTS[i + 1];
+    if(x <= a1){
+      const t = (x - a0) / (a1 - a0);
+      return WIDENED_BREAKPOINTS[i] + t * (WIDENED_BREAKPOINTS[i + 1] - WIDENED_BREAKPOINTS[i]);
+    }
+  }
+  const lastAuthored = AUTHORED_BREAKPOINTS[AUTHORED_BREAKPOINTS.length - 1];
+  const lastWidened = WIDENED_BREAKPOINTS[WIDENED_BREAKPOINTS.length - 1];
+  return lastWidened + (x - lastAuthored) * DISTRICT_SCALE;
+}
+
+// LEGAL: Convenience wrappers so the authored literals below stay readable.
+function widenPoints(points: Point[]): Point[] {
+  return points.map(p => ({ x: widenAuthoredX(p.x), y: p.y }));
+}
+
+export const WORLD_W = WIDENED_BREAKPOINTS[WIDENED_BREAKPOINTS.length - 1];
+export const NORTH_SHORE_LOT_Y = 205;
+export const DEVLIN_NORTHWEST_LOT_X = widenAuthoredX(400);
+
+export const WINDHAVEN_LANDMASS: Point[] = widenPoints([
   { x: -210, y: 64 },
   { x: -42, y: -18 },
   { x: 320, y: -52 },
@@ -93,14 +143,16 @@ export const WINDHAVEN_LANDMASS: Point[] = [
   { x: -252, y: 600 },
   { x: -96, y: 366 },
   { x: -210, y: 64 },
-];
+]);
 
+// LEGAL: Canals keep their authored 500 width — only their position moves, so the
+// LEGAL: crossings stay the same length and the bridges still fit.
 export const CANAL_CHANNELS: CanalChannel[] = [
-  { x: 1500, width: 500, name: 'South Branch Canal' },
-  { x: 3500, width: 500, name: 'Lakefront Cut' },
+  { x: widenAuthoredX(1500), width: CANAL_W, name: 'South Branch Canal' },
+  { x: widenAuthoredX(3500), width: CANAL_W, name: 'Lakefront Cut' },
 ];
 
-export const NORTH_RIVER: Point[] = [
+export const NORTH_RIVER: Point[] = widenPoints([
   { x: -260, y: -140 },
   { x: 5780, y: -140 },
   { x: 5780, y: 118 },
@@ -118,9 +170,9 @@ export const NORTH_RIVER: Point[] = [
   { x: 610, y: 82 },
   { x: 190, y: 58 },
   { x: -260, y: 102 },
-];
+]);
 
-export const LAKEFRONT_BEACH: Point[] = [
+export const LAKEFRONT_BEACH: Point[] = widenPoints([
   { x: 3970, y: 52 },
   { x: 4240, y: 88 },
   { x: 4560, y: 64 },
@@ -128,12 +180,12 @@ export const LAKEFRONT_BEACH: Point[] = [
   { x: 5180, y: 86 },
   { x: 5520, y: 124 },
   { x: 5520, y: 52 },
-];
+]);
 
 export const DISTRICT_OFFSETS: Record<string, number> = {
-  devlin: 0,
-  westside: 2000,
-  hub: 4000,
+  devlin: widenAuthoredX(0),
+  westside: widenAuthoredX(2000),
+  hub: widenAuthoredX(4000),
 };
 
 export const districtSeeds: Record<string, number> = {
@@ -143,55 +195,58 @@ export const districtSeeds: Record<string, number> = {
 };
 
 export const spawnPoints: Record<string, Point> = {
-  devlin: { x: 700, y: 600 },
-  westside: { x: 2700, y: 600 },
-  hub: { x: 4700, y: 600 },
+  devlin: { x: widenAuthoredX(700), y: 600 },
+  westside: { x: widenAuthoredX(2700), y: 600 },
+  hub: { x: widenAuthoredX(4700), y: 600 },
 };
 
 export const ventureDistricts = ['devlin', 'devlin', 'devlin', 'devlin', 'devlin', 'westside', 'westside', 'westside', 'westside', 'hub', 'hub', 'hub'];
 
 export const ventureLots: Record<string, Point[]> = {
-  devlin: [{ x: DEVLIN_NORTHWEST_LOT_X, y: NORTH_SHORE_LOT_Y }, { x: 555, y: NORTH_SHORE_LOT_Y }, { x: 915, y: NORTH_SHORE_LOT_Y }, { x: 1330, y: NORTH_SHORE_LOT_Y }, { x: 120, y: 450 }],
-  westside: [{ x: 2120, y: NORTH_SHORE_LOT_Y }, { x: 2485, y: NORTH_SHORE_LOT_Y }, { x: 2915, y: NORTH_SHORE_LOT_Y }, { x: 3330, y: NORTH_SHORE_LOT_Y }],
-  hub: [{ x: 4120, y: NORTH_SHORE_LOT_Y }, { x: 4485, y: NORTH_SHORE_LOT_Y }, { x: 4915, y: NORTH_SHORE_LOT_Y }, { x: 5330, y: NORTH_SHORE_LOT_Y }],
+  devlin: widenPoints([{ x: 400, y: NORTH_SHORE_LOT_Y }, { x: 555, y: NORTH_SHORE_LOT_Y }, { x: 915, y: NORTH_SHORE_LOT_Y }, { x: 1330, y: NORTH_SHORE_LOT_Y }, { x: 120, y: 450 }]),
+  westside: widenPoints([{ x: 2120, y: NORTH_SHORE_LOT_Y }, { x: 2485, y: NORTH_SHORE_LOT_Y }, { x: 2915, y: NORTH_SHORE_LOT_Y }, { x: 3330, y: NORTH_SHORE_LOT_Y }]),
+  hub: widenPoints([{ x: 4120, y: NORTH_SHORE_LOT_Y }, { x: 4485, y: NORTH_SHORE_LOT_Y }, { x: 4915, y: NORTH_SHORE_LOT_Y }, { x: 5330, y: NORTH_SHORE_LOT_Y }]),
 };
 
+// LEGAL: Authored lot x values, widened once here so the tables below stay readable.
+function lotX(x: number): number { return widenAuthoredX(x); }
+
 export const ventureMapLots: Record<string, VentureMapLot> = {
-  cart: { district: 'devlin', x: DEVLIN_NORTHWEST_LOT_X, y: NORTH_SHORE_LOT_Y, zone: 'smallBusiness' },
-  store: { district: 'devlin', x: 555, y: NORTH_SHORE_LOT_Y, zone: 'smallBusiness' },
-  laundromat: { district: 'devlin', x: 915, y: NORTH_SHORE_LOT_Y, zone: 'smallBusiness' },
-  backroom_cards: { district: 'devlin', x: 1330, y: NORTH_SHORE_LOT_Y, zone: 'street' },
-  garage: { district: 'westside', x: 2120, y: NORTH_SHORE_LOT_Y, zone: 'industrial' },
-  cab: { district: 'westside', x: 2485, y: NORTH_SHORE_LOT_Y, zone: 'logistics' },
-  chop_ring: { district: 'westside', x: 2915, y: NORTH_SHORE_LOT_Y, zone: 'street' },
-  restaurant: { district: 'devlin', x: 120, y: 450, zone: 'smallBusiness' },
-  lounge: { district: 'hub', x: 4485, y: 450, zone: 'entertainment' },
-  wire_network: { district: 'hub', x: 4915, y: 450, zone: 'street' },
-  realestate: { district: 'hub', x: 5330, y: 450, zone: 'corporate' },
-  syndicate_logistics: { district: 'westside', x: 3330, y: NORTH_SHORE_LOT_Y, zone: 'logistics' },
-  family_office: { district: 'hub', x: 4120, y: 750, zone: 'corporate' },
+  cart: { district: 'devlin', x: lotX(400), y: NORTH_SHORE_LOT_Y, zone: 'smallBusiness' },
+  store: { district: 'devlin', x: lotX(555), y: NORTH_SHORE_LOT_Y, zone: 'smallBusiness' },
+  laundromat: { district: 'devlin', x: lotX(915), y: NORTH_SHORE_LOT_Y, zone: 'smallBusiness' },
+  backroom_cards: { district: 'devlin', x: lotX(1330), y: NORTH_SHORE_LOT_Y, zone: 'street' },
+  garage: { district: 'westside', x: lotX(2120), y: NORTH_SHORE_LOT_Y, zone: 'industrial' },
+  cab: { district: 'westside', x: lotX(2485), y: NORTH_SHORE_LOT_Y, zone: 'logistics' },
+  chop_ring: { district: 'westside', x: lotX(2915), y: NORTH_SHORE_LOT_Y, zone: 'street' },
+  restaurant: { district: 'devlin', x: lotX(120), y: 450, zone: 'smallBusiness' },
+  lounge: { district: 'hub', x: lotX(4485), y: 450, zone: 'entertainment' },
+  wire_network: { district: 'hub', x: lotX(4915), y: 450, zone: 'street' },
+  realestate: { district: 'hub', x: lotX(5330), y: 450, zone: 'corporate' },
+  syndicate_logistics: { district: 'westside', x: lotX(3330), y: NORTH_SHORE_LOT_Y, zone: 'logistics' },
+  family_office: { district: 'hub', x: lotX(4120), y: 750, zone: 'corporate' },
 };
 
 export const namedBuildingLots: Record<string, Point> = {
-  bankHome: { x: 485, y: 450 },
-  patel: { x: 485, y: 750 },
-  pawn: { x: 915, y: 750 },
-  herbalist: { x: 1330, y: 750 },
-  bar: { x: 485, y: 1030 },
-  chopshop: { x: 2120, y: 450 },
-  liquor: { x: 3330, y: 450 },
-  jewelers: { x: 4485, y: 450 },
-  marlowe: { x: 4915, y: 450 },
-  cityhall: { x: 5330, y: 450 },
-  heistTarget: { x: 4120, y: 750 },
+  bankHome: { x: lotX(485), y: 450 },
+  patel: { x: lotX(485), y: 750 },
+  pawn: { x: lotX(915), y: 750 },
+  herbalist: { x: lotX(1330), y: 750 },
+  bar: { x: lotX(485), y: 1030 },
+  chopshop: { x: lotX(2120), y: 450 },
+  liquor: { x: lotX(3330), y: 450 },
+  jewelers: { x: lotX(4485), y: 450 },
+  marlowe: { x: lotX(4915), y: 450 },
+  cityhall: { x: lotX(5330), y: 450 },
+  heistTarget: { x: lotX(4120), y: 750 },
 };
 
 export const landmarks: Landmark[] = [
-  { id: 'devlinHall', name: 'DEVLIN HALL', district: 'devlin', x: 125, y: 820 },
-  { id: 'ciceroWorks', name: 'CICERO WORKS', district: 'westside', x: 2125, y: 850 },
+  { id: 'devlinHall', name: 'DEVLIN HALL', district: 'devlin', x: lotX(125), y: 820 },
+  { id: 'ciceroWorks', name: 'CICERO WORKS', district: 'westside', x: lotX(2125), y: 850 },
   // LEGAL: The Potato — Windhaven's mirror-polished civic sculpture in the Hub, the
   // LEGAL: in-universe answer to a certain bean. Parody naming per config/parodyGeography.
-  { id: 'thePotato', name: 'THE POTATO', district: 'hub', x: 4760, y: 560 },
+  { id: 'thePotato', name: 'THE POTATO', district: 'hub', x: lotX(4760), y: 560 },
 ];
 
 export const districtParkSlots: Record<string, DistrictParkSlot[]> = {
@@ -215,16 +270,18 @@ export const districtParkSlots: Record<string, DistrictParkSlot[]> = {
 };
 
 export const roadNetwork: { vertical: VerticalRoad[]; horizontal: HorizontalRoad[]; diagonal: DiagonalRoad[] } = {
+  // LEGAL: Road positions widen with the districts; road WIDTHS stay authored, so the
+  // LEGAL: blocks between them grow while the streets themselves stay the same size.
   vertical: [
-    { x: 270, w: 74, name: 'Rockwell Avenue' },
-    { x: 700, w: 74, name: 'Devlin Street' },
-    { x: 1130, w: 74, name: 'Ashland Row' },
-    { x: 2270, w: 74, name: 'Cicero Avenue' },
-    { x: 2700, w: 74, name: 'Pulaski Road' },
-    { x: 3130, w: 74, name: 'Canal Yard Drive' },
-    { x: 4270, w: 74, name: 'LaSalle Street' },
-    { x: 4700, w: 74, name: 'Wabash Avenue' },
-    { x: 5130, w: 74, name: 'Lakefront Drive' },
+    { x: lotX(270), w: 74, name: 'Rockwell Avenue' },
+    { x: lotX(700), w: 74, name: 'Devlin Street' },
+    { x: lotX(1130), w: 74, name: 'Ashland Row' },
+    { x: lotX(2270), w: 74, name: 'Cicero Avenue' },
+    { x: lotX(2700), w: 74, name: 'Pulaski Road' },
+    { x: lotX(3130), w: 74, name: 'Canal Yard Drive' },
+    { x: lotX(4270), w: 74, name: 'LaSalle Street' },
+    { x: lotX(4700), w: 74, name: 'Wabash Avenue' },
+    { x: lotX(5130), w: 74, name: 'Lakefront Drive' },
   ],
   horizontal: [
     { y: 300, w: 74, name: 'Grand Avenue' },
@@ -238,8 +295,8 @@ export const roadNetwork: { vertical: VerticalRoad[]; horizontal: HorizontalRoad
   // LEGAL: Devlin's grid is too dense to route one cleanly, so it has none.
   diagonal: [
     // LEGAL: Westside: (Cicero & Cermak) -> (Canal Yard & Grand); passes empty cells at ~(2485,750) & (2915,450).
-    { x1: 2270, y1: 900, x2: 3130, y2: 300, w: 56, name: 'Canal Bend Road' },
+    { x1: lotX(2270), y1: 900, x2: lotX(3130), y2: 300, w: 56, name: 'Canal Bend Road' },
     // LEGAL: Hub: (Wabash & Cermak) -> (Lakefront & Roosevelt); short cut through the open ~(4915,750) block.
-    { x1: 4700, y1: 900, x2: 5130, y2: 600, w: 54, name: 'Lake Shore Cut' },
+    { x1: lotX(4700), y1: 900, x2: lotX(5130), y2: 600, w: 54, name: 'Lake Shore Cut' },
   ],
 };

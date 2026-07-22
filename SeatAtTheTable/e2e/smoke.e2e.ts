@@ -233,8 +233,17 @@ test.describe('game boot', () => {
     const stats = mapCanvasColorStats(await clippedElementScreenshot(page, '#scene3d-container canvas.webgl-canvas'));
     const darkRatio = stats.sampledPixels === 0 ? 1 : stats.darkPixels / stats.sampledPixels;
 
-    expect(stats.bluePixels).toBeGreaterThan(900);
-    expect(stats.landPixels).toBeGreaterThan(180);
+    // LEGAL: These check that water and land are both present and distinguishable. The
+    // LEGAL: water floor used to be a flat 900 pixels, calibrated against the original
+    // LEGAL: 1500-wide districts. Widening the districts deliberately puts more land in
+    // LEGAL: front of a fixed spawn camera, so an absolute count would have to be retuned
+    // LEGAL: on every world change. Expressed as a share of the sampled view it keeps
+    // LEGAL: testing the actual intent and survives the remaining expansion stages.
+    const waterRatio = stats.bluePixels / Math.max(1, stats.sampledPixels);
+    const landRatio = stats.landPixels / Math.max(1, stats.sampledPixels);
+
+    expect(waterRatio).toBeGreaterThan(0.02);
+    expect(landRatio).toBeGreaterThan(0.01);
     expect(stats.colorBuckets).toBeGreaterThan(36);
     expect(darkRatio).toBeLessThan(0.68);
   });
@@ -407,16 +416,18 @@ test.describe('game boot', () => {
     await expect(page.locator('#citymap-overlay')).not.toHaveClass(/hidden/);
 
     const target = await page.locator('#citymap-canvas').evaluate(async (canvas: HTMLCanvasElement) => {
-      const [{ windhavenMapModel }, viewportModule] = await Promise.all([
+      const [{ windhavenMapModel }, viewportModule, worldModule] = await Promise.all([
         import('/src/map/mapModel.ts'),
         import('/src/map/viewport.ts'),
+        import('/src/map/world.ts'),
       ]);
       const viewport = viewportModule.createMapViewport(
         canvas.width,
         canvas.height,
         windhavenMapModel.districts.flatMap(district => district.landArea),
       );
-      const point = viewportModule.worldToScreen(viewport, { x:485, y:450 });
+      // LEGAL: The bank's authored lot, widened the same way map/world.ts widens it.
+      const point = viewportModule.worldToScreen(viewport, { x: worldModule.widenAuthoredX(485), y:450 });
       const rect = canvas.getBoundingClientRect();
       return {
         x: rect.left + point.x * (rect.width / canvas.width),

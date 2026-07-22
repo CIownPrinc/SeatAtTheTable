@@ -7,6 +7,11 @@ import type { MapNpc } from './markers';
 import { clampPointToBounds, createMapViewport, screenToWorld, worldToScreen } from './viewport';
 import { CANAL_CHANNELS, WINDHAVEN_LANDMASS, districtParkSlots, roadNetwork } from './world';
 import { serviceBuildings } from '../config/serviceBuildings';
+import { widenAuthoredX } from './world';
+
+// LEGAL: Authored against the original 1500-wide districts, widened at read time — see
+// LEGAL: map/world.ts. Keeps these points meaningful rather than magic numbers.
+const wx = widenAuthoredX;
 import { localBusinesses } from '../config/localBusinesses';
 import { businesses } from '../config/ventures';
 import { corners } from '../config/trade';
@@ -44,24 +49,24 @@ describe('map viewport and geometry model', function () {
   });
 
   it('classifies land, river, canal, and bridge points from shared map data', function () {
-    expect(pointInPolygon({ x: 700, y: 600 }, windhavenMapModel.landmass)).toBe(true);
-    expect(isPointOnWindhavenLand({ x: 18, y: 600 }, 8)).toBe(true);
-    expect(isPointInWater({ x: 700, y: 30 }, 8)).toBe(true);
-    expect(isPointInWater({ x: -180, y: 40 }, 8)).toBe(true);
-    expect(isPointInWater({ x: 5700, y: 1180 }, 8)).toBe(true);
-    expect(isPointInWater({ x: 1700, y: 560 }, 24)).toBe(true);
-    expect(isPointOnBridge({ x: 1700, y: 600 }, 24)).toBe(true);
-    expect(isPointInWater({ x: 1700, y: 600 }, 24)).toBe(false);
+    expect(pointInPolygon({ x: wx(700), y: 600 }, windhavenMapModel.landmass)).toBe(true);
+    expect(isPointOnWindhavenLand({ x: wx(18), y: 600 }, 8)).toBe(true);
+    expect(isPointInWater({ x: wx(700), y: 30 }, 8)).toBe(true);
+    expect(isPointInWater({ x: wx(-180), y: 40 }, 8)).toBe(true);
+    expect(isPointInWater({ x: wx(5700), y: 1180 }, 8)).toBe(true);
+    expect(isPointInWater({ x: wx(1700), y: 560 }, 24)).toBe(true);
+    expect(isPointOnBridge({ x: wx(1700), y: 600 }, 24)).toBe(true);
+    expect(isPointInWater({ x: wx(1700), y: 600 }, 24)).toBe(false);
   });
 
   it('resolves districts from shared map model label and center data', function () {
-    expect(districtIdAtPoint({ x: 700, y: 600 })).toBe('devlin');
-    expect(districtIdAtPoint({ x: 2700, y: 600 })).toBe('westside');
-    expect(districtIdAtPoint({ x: 4700, y: 600 })).toBe('hub');
-    expect(districtIdAtPoint({ x: 700, y: 30 })).toBeNull();
-    expect(districtIdAtPoint({ x: 1700, y: 600 })).toBeNull();
-    expect(districtIdAtPlayablePoint({ x: 700, y: 30 }, 8)).toBeNull();
-    expect(districtIdAtPlayablePoint({ x: 1700, y: 600 }, 24)).toBeNull();
+    expect(districtIdAtPoint({ x: wx(700), y: 600 })).toBe('devlin');
+    expect(districtIdAtPoint({ x: wx(2700), y: 600 })).toBe('westside');
+    expect(districtIdAtPoint({ x: wx(4700), y: 600 })).toBe('hub');
+    expect(districtIdAtPoint({ x: wx(700), y: 30 })).toBeNull();
+    expect(districtIdAtPoint({ x: wx(1700), y: 600 })).toBeNull();
+    expect(districtIdAtPlayablePoint({ x: wx(700), y: 30 }, 8)).toBeNull();
+    expect(districtIdAtPlayablePoint({ x: wx(1700), y: 600 }, 24)).toBeNull();
     expect(windhavenMapModel.districts.map(district => district.name)).toEqual(['Devlin', 'West Side', 'The Hub']);
     expect(windhavenMapModel.districts.every(district => district.landArea.length > 4)).toBe(true);
   });
@@ -142,7 +147,7 @@ describe('map viewport and geometry model', function () {
   });
 
   it('finds the nearest named road through map-model road paths', function () {
-    expect(nearestRoadAtPoint({ x: 710, y: 520 }).road.name).toBe('Devlin Street');
+    expect(nearestRoadAtPoint({ x: wx(700) + 10, y: 520 }).road.name).toBe('Devlin Street');
     const canalBend = windhavenMapModel.roadPaths.find(road => road.name === 'Canal Bend Road')!;
     expect(nearestRoadAtPoint(canalBend.path[1]).road.name).toBe('Canal Bend Road');
   });

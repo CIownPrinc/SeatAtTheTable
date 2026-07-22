@@ -2,6 +2,7 @@ import type { GangRecruit, Point } from '../config/types';
 import type { MapObject } from './objects';
 import type { MapNpc } from './markers';
 import { seededRandom } from './filler';
+import { widenAuthoredX } from './world';
 import type * as ThreeNamespace from 'three';
 
 export type RoamingActorKind = 'pedestrian' | 'car';
@@ -38,11 +39,14 @@ function roamSeed(id: string): number {
   return seed;
 }
 
-export const trafficCarRoutes: Array<{ id: string; color: string; speed: number; route: Point[] }> = [
+// LEGAL: Traffic routes are authored on the road grid, so their x values must be widened
+// LEGAL: exactly like the roads in map/world.ts — otherwise the cars drive down what used
+// LEGAL: to be a street and is now the middle of a block.
+export const trafficCarRoutes: Array<{ id: string; color: string; speed: number; route: Point[] }> = ([
   { id:'devlin-cruiser', color:'#405560', speed:72, route:[{x:270,y:300},{x:270,y:900},{x:700,y:900},{x:1130,y:900},{x:1130,y:300},{x:700,y:300}] },
   { id:'westside-sedan', color:'#704040', speed:78, route:[{x:2270,y:300},{x:3130,y:300},{x:3130,y:900},{x:2700,y:900},{x:2270,y:900}] },
   { id:'hub-cab', color:'#d4a017', speed:84, route:[{x:4270,y:600},{x:5130,y:600},{x:5130,y:300},{x:4700,y:300},{x:4270,y:300}] },
-];
+]).map(entry => ({ ...entry, route: entry.route.map(p => ({ x: widenAuthoredX(p.x), y: p.y })) }));
 
 export function createRoamingActors(mapObjects: MapObject[]): RoamingActor[] {
   const actors: RoamingActor[] = [];

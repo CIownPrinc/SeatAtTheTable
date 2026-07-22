@@ -4,6 +4,7 @@ import type { MapNpc } from './markers';
 import { windhavenMapModel } from './mapModel';
 import { createMapPlaceRecords } from './places';
 import { gameplayHooksAtPoint } from './gameplayHooks';
+import { widenAuthoredX } from './world';
 
 describe('map gameplay hooks', function () {
   const npc: MapNpc = { id:'sanjay', name:'Sanjay', district:'devlin', x:1300, y:960, type:'named' };
@@ -37,8 +38,10 @@ describe('map gameplay hooks', function () {
   });
 
   it('returns a tutorial hook for water points', function () {
-    const hooks = gameplayHooksAtPoint({ x:1700, y:560 }, places, { player:{ x:700, y:600 } });
+    // LEGAL: Mid-canal, authored against the original district width and widened.
+    const water = { x: widenAuthoredX(1700), y: 560 };
+    const hooks = gameplayHooksAtPoint(water, places, { player:{ x: widenAuthoredX(700), y: 600 } });
 
-    expect(hooks).toEqual([{ kind:'tutorial', point:{ x:1700, y:560 }, districtId:null, label:'Waypoints and jobs need land access.' }]);
+    expect(hooks).toEqual([{ kind:'tutorial', point:water, districtId:null, label:'Waypoints and jobs need land access.' }]);
   });
 });

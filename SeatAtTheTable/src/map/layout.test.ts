@@ -7,7 +7,7 @@ import { districtIdAtPlayablePoint } from './mapModel';
 import { applyMapWorldCoordinates, createMapBuildings } from './markers';
 import { actorRadius, canMoveTo, isWaterBlocked } from './movement';
 import { buildMapObjects, ventureFootprint } from './objectFactory';
-import { DISTRICT_OFFSETS, districtParkSlots, namedBuildingLots, roadNetwork, ventureDistricts, ventureLots, ventureMapLots } from './world';
+import { DISTRICT_OFFSETS, districtParkSlots, namedBuildingLots, roadNetwork, ventureDistricts, ventureLots, ventureMapLots, widenAuthoredX } from './world';
 import { zoneForDistrictBlock } from './zoning';
 import { serviceBuildings } from '../config/serviceBuildings';
 import { localBusinesses } from '../config/localBusinesses';
@@ -213,20 +213,26 @@ describe('map layout helpers', function () {
   it('blocks cars from water while allowing bridge crossings', function () {
     const carRadius = actorRadius(true);
 
-    expect(isWaterBlocked(1700, 450, carRadius)).toBe(true);
-    expect(isWaterBlocked(1700, 600, carRadius)).toBe(false);
+    // LEGAL: Points are authored against the original 1500-wide districts and widened, so
+    // LEGAL: they keep meaning "mid-canal" rather than being magic numbers that drift every
+    // LEGAL: time the world grows.
+    expect(isWaterBlocked(widenAuthoredX(1700), 450, carRadius)).toBe(true);
+    expect(isWaterBlocked(widenAuthoredX(1700), 600, carRadius)).toBe(false);
   });
 
   it('crosses canals only on horizontal bridge decks, never via diagonals over water', function () {
     const carRadius = actorRadius(true);
 
     // LEGAL: On the horizontal bridge deck spanning the canal: passable.
-    expect(isWaterBlocked(1775, 600, carRadius)).toBe(false);
+    expect(isWaterBlocked(widenAuthoredX(1775), 600, carRadius)).toBe(false);
     // LEGAL: Between bridges, mid-canal: blocked — no diagonal jumps the water.
-    expect(isWaterBlocked(1775, 560, carRadius)).toBe(true);
+    expect(isWaterBlocked(widenAuthoredX(1775), 560, carRadius)).toBe(true);
 
     // LEGAL: Structural guarantee: no diagonal road's x-span overlaps a canal channel.
-    const canals = [{ lo: 1530, hi: 1970 }, { lo: 3530, hi: 3970 }];
+    const canals = [
+      { lo: widenAuthoredX(1530), hi: widenAuthoredX(1970) },
+      { lo: widenAuthoredX(3530), hi: widenAuthoredX(3970) },
+    ];
     roadNetwork.diagonal.forEach(function (road) {
       const loX = Math.min(road.x1, road.x2);
       const hiX = Math.max(road.x1, road.x2);
@@ -239,8 +245,10 @@ describe('map layout helpers', function () {
   it('uses vehicle radius for world bounds and solid collision', function () {
     const solids = [{ x: 200, y: 200, hw: 20, hd: 20 }];
 
-    expect(canMoveTo(18, 600, [], true)).toBe(true);
-    expect(canMoveTo(-280, 600, [], false)).toBe(false);
+    // LEGAL: Just inside the western shoreline, and well outside it — both widen with the
+    // LEGAL: coastline, so these keep testing the radius rather than a fixed x.
+    expect(canMoveTo(widenAuthoredX(18), 600, [], true)).toBe(true);
+    expect(canMoveTo(widenAuthoredX(-280), 600, [], false)).toBe(false);
     expect(canMoveTo(245, 200, solids, true)).toBe(true);
     expect(canMoveTo(243, 200, solids, true)).toBe(false);
   });

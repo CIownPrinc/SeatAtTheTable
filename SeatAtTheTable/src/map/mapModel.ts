@@ -1,5 +1,5 @@
 import type { Point } from '../config/types';
-import { CANAL_CHANNELS, DISTRICT_OFFSETS, DISTRICT_W, LAKEFRONT_BEACH, NORTH_RIVER, WINDHAVEN_LANDMASS, WORLD_H, WORLD_W, districtParkSlots, landmarks, roadNetwork } from './world';
+import { CANAL_CHANNELS, DISTRICT_OFFSETS, DISTRICT_W, LAKEFRONT_BEACH, NORTH_RIVER, WINDHAVEN_LANDMASS, WORLD_H, WORLD_W, districtParkSlots, landmarks, roadNetwork, widenAuthoredX } from './world';
 import { boundsForPoints, isPointInWater, pointInPolygon, type Bounds } from './geometry';
 import { buildableBands, distancePointToSegment } from './layout';
 
@@ -131,14 +131,24 @@ const railLines: RailLineRecord[] = [
     id: 'cicero-freight-line',
     name: 'Cicero Freight Line',
     width: 40,
-    path: [{ x: 3470, y: 0 }, { x: 3470, y: WORLD_H }],
+    // LEGAL: Authored to run down the eastern edge of the West Side. Roads and bridges
+    // LEGAL: derive from already-widened data, but this literal does not — without
+    // LEGAL: widening it the line drifts into the middle of the district.
+    path: [{ x: widenAuthoredX(3470), y: 0 }, { x: widenAuthoredX(3470), y: WORLD_H }],
     trainCycleMs: 38000,
     activeWindow: { start: 0.12, end: 0.92 },
   },
 ];
 
+// LEGAL: Authored against the original 1500-wide districts and stretched by
+// LEGAL: widenAuthoredX, exactly like the coastline and roads in map/world.ts. Keeping the
+// LEGAL: authored numbers means these polygons still line up with the anchors inside them.
+function widenLandArea(points: Point[]): Point[] {
+  return points.map(p => ({ x: widenAuthoredX(p.x), y: p.y }));
+}
+
 const districtLandAreas: Record<MapDistrictRecord['id'], Point[]> = {
-  devlin: [
+  devlin: widenLandArea([
     { x: 30, y: 118 },
     { x: 270, y: 92 },
     { x: 620, y: 110 },
@@ -152,8 +162,8 @@ const districtLandAreas: Record<MapDistrictRecord['id'], Point[]> = {
     { x: 70, y: 1068 },
     { x: 46, y: 760 },
     { x: 78, y: 430 },
-  ],
-  westside: [
+  ]),
+  westside: widenLandArea([
     { x: 2035, y: 112 },
     { x: 2380, y: 96 },
     { x: 2740, y: 124 },
@@ -164,8 +174,8 @@ const districtLandAreas: Record<MapDistrictRecord['id'], Point[]> = {
     { x: 2800, y: 1106 },
     { x: 2380, y: 1134 },
     { x: 2040, y: 1058 },
-  ],
-  hub: [
+  ]),
+  hub: widenLandArea([
     { x: 4035, y: 124 },
     { x: 4320, y: 100 },
     { x: 4680, y: 132 },
@@ -178,11 +188,13 @@ const districtLandAreas: Record<MapDistrictRecord['id'], Point[]> = {
     { x: 4860, y: 1106 },
     { x: 4440, y: 1132 },
     { x: 4050, y: 1066 },
-  ],
+  ]),
 };
 
 function parkRecords(): MapParkRecord[] {
-  const localRoadXs = [270, 700, 1130];
+  // LEGAL: District-local road positions, widened to match DISTRICT_W. Devlin sits at
+  // LEGAL: offset 0, so widenAuthoredX is exactly the district-local transform here.
+  const localRoadXs = [270, 700, 1130].map(widenAuthoredX);
   const xBands = buildableBands(localRoadXs, DISTRICT_W, 56);
   const yBands = buildableBands(roadNetwork.horizontal.map(road => road.y), WORLD_H, 66);
 
