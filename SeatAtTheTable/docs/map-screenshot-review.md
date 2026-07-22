@@ -1,5 +1,11 @@
 # Map Screenshot And Profile Review
 
+> **STATUS: dated record of one review pass, not a plan.** Nothing here is outstanding.
+> Kept because it documents what the automated visual review actually checks and what the
+> `[map-build]` timing profile reports — both still live in `e2e/smoke.e2e.ts` and
+> `map/scenePerformance.ts`. Expect these numbers and thresholds to change when
+> `world-expansion-plan.md` lands.
+
 Date: 2026-07-22
 
 ## Viewports Covered

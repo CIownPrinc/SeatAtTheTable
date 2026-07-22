@@ -1,12 +1,22 @@
 # SeatAtTheTable — Roadmap / TODO
 
-Single consolidated backlog for the game (this file replaces the old
-`SeatAtTheTable/MAP_TODO.md`, now merged in below). Single trunk: **`main`**.
+The single answer to **"what's next?"**. Design detail for the two big systems lives in
+`SeatAtTheTable/docs/` — this file says what to do and points there for how.
+
+| Doc | Covers | Status |
+| --- | --- | --- |
+| [`docs/world-expansion-plan.md`](SeatAtTheTable/docs/world-expansion-plan.md) | Bigger districts, outskirts ring, lot allocator, zoning, garage | **Active, not started** |
+| [`docs/mission-overhaul-plan.md`](SeatAtTheTable/docs/mission-overhaul-plan.md) | Mission state, event history, world memory, entry points | Active, partly built |
+| [`docs/map-asset-usage-audit.md`](SeatAtTheTable/docs/map-asset-usage-audit.md) | Which CC0 assets are used vs. reserved | Reference |
+| [`docs/map-overhaul-plan.md`](SeatAtTheTable/docs/map-overhaul-plan.md) | The map architecture as originally built | **Superseded** — history only |
+| [`docs/map-screenshot-review.md`](SeatAtTheTable/docs/map-screenshot-review.md) | What the visual review + timing profile check | Dated record |
+
+Engineering rules (types, TDD, comment policy, quality gates) live in **`AGENTS.md`** and
+are not repeated here.
 
 Verify with (this is also the pre-push hook):
 `pnpm lint && pnpm typecheck && pnpm -w run test && pnpm --dir SeatAtTheTable build`
-
-Comments in source must be prefixed `// LEGAL:` / `// TODO:` / `// COMPLIANCE:`.
+Plus `pnpm --dir SeatAtTheTable e2e` for anything touching the map, phone or shops.
 
 ## Branch workflow (important)
 Do all work on `main`, or a short-lived feature branch that is merged and **deleted
@@ -15,289 +25,147 @@ immediately** — never keep committing to an already-merged branch. Always
 agent (Codex + Claude Code) at the **same** branch. The old two-branch setup
 (`main` + `fix/map-playability`, Codex PRs landing on one and Claude on the other)
 caused duplicate-feature merges (e.g. the "two heat bars" HUD bug).
-`fix/map-playability` and `refactor/config-split-and-types` are merged and deleted.
 
 ---
 
-## ACTIVE INITIATIVE — Diegetic device + in-person interactions + multi-bank
+# ACTIVE — in priority order
 
-**Problem being solved:** interior hotspots currently just call `setTab('bank'/'assets'/
-'politics')` — "interactions go straight to a tab." Reframe the whole game along a
-real-world line: **online things happen on a phone you can open anywhere; physical things
-require physically going there.**
+## 1. World rebuild — see [`world-expansion-plan.md`](SeatAtTheTable/docs/world-expansion-plan.md)
 
-### The phone (online, always available)
-- A phone button in the HUD opens a full-screen "Windhaven OS" overlay (same pattern as
-  the map / minigame overlays; freezes map input while open, like `minigameOpen()`).
-- Apps: **Bank** (accounts across multiple banks — open/deposit/withdraw/transfer),
-  **Stocks** (RCN exchange — *online only*), **AutoMart** (curated online catalog — a
-  *subset* of cars/properties, delivered), **Empire** (business management — kept online
-  so you don't have to drive to every venture to expand).
-- Politics & Gang come *off* the flat tabs and become in-person (city hall, gang spots).
-- Event wiring is delegated (`e.target.closest` on document listeners), so the existing
-  `#bank-panel` / `#assets-*` render containers can be relocated into the overlay and
-  keep working. `renderBankPanel` already switches on `state.financeView` ('vault' vs
-  'market'), so Bank and Stocks split cleanly into two apps.
+The biggest job, and most placement work depends on it. In dependency order: grow the
+districts + add the outskirts ring → replace `namedBuildingLots` with a real lot allocator
+(the root cause of overlapping buildings and buildings in streets) → neighbourhood zoning
+character → filler variety → restore distinct shop silhouettes → garage → owned property
+visible on the map.
 
-### In-person (go there) — similar but UNIQUE per business
-No cookie-cutter modal. Each business type gets its own flavour of interaction:
-- **Haggle** at some (pawn / market / corner) — the haggle minigame belongs *here*, where
-  bargaining is natural, to earn a discount. (Removed from the generic amenity path.)
-- **Territory-gated**: some refuse service or give worse prices in rival turf
-  (`districtStatus(d)==='rival'`).
-- **Unique inventories**: dealer-only cars at the garage, guns at the armory, pets at the
-  pet store — each catalogue distinct.
-- Cars: **store**, **detail/customize**, and buy **dealer-only** models at the garage
-  (things AutoMart doesn't sell online).
+**Blocking question for the player:** are the outskirts drivable and populated, or scenery?
 
-### Multiple banks (hybrid online + in-person)
-A roster of banks, each a distinct entity with tradeoffs. **No passive theft** — the
-"risk" is purely about robbery:
-- **Interest rate** + a **heist profile** (payout vs difficulty/heat when *you* rob it).
-  Your deposits at a bank are exposed only if a *rival* heists that same bank.
-- **Online + in-person:** open accounts, deposit, withdraw, transfer.
-- **In-person only:** rob it (the heist), with per-bank payout/difficulty.
-- `state.bank` (a single balance) becomes **per-bank balances**; saved games migrate the
-  old balance into the safe default bank.
-- Draft roster (tune later): First Windhaven (safe, low interest, hard/low-payout heist),
-  Rentport City National (mid), an offshore bank (high interest, easy/high-payout heist —
-  so parking cash there earns more but is a fat target for you *and* rivals).
+## 2. Onboarding / just-in-time tutorial
 
-### Phasing (each phase ships green: lint+typecheck+test+build)
-1. **Device shell — DONE.** Phone button in the HUD opens a "Windhaven OS" overlay
-   (`#device-overlay`) with a home screen + app grid. Bank & Stocks share the relocated
-   `#bank-panel` (icons preset `state.financeView` vault/lcn-home); AutoMart hosts the
-   relocated `#assets-*` containers. Finance & Assets removed from the tab bar; number-key
-   tab list, advisor-jump router, and the interior teller/dealer/agent hotspots all
-   redirected to the phone. Map input (movement + E) freezes while the phone is open;
-   Escape / backdrop closes it. Verified by `e2e/phone.e2e.ts`. Empire stays the landing
-   tab (not moved). *Bank app still single-balance — multi-bank is Phase 2.*
-2. **Multi-bank model — DONE.** `config/banks.ts` roster (First Windhaven / Rentport City
-   National / Lakeside Offshore) differing by interest rate + heist profile. `state.bank`
-   → `state.bankAccounts` (per-bank) + `state.selectedBank`; interest accrues per account
-   at each bank's rate; `bankedTotal()` is the raid-safe pile everything reads. Saved games
-   migrate the old single balance into the default bank. Bank app lists banks (tap to
-   select → deposit/withdraw that account); the heist card + stocks card are gone from the
-   phone (robbing is in person; stocks have their own app). Also: the phone is now a
-   **Pomello** handset (bezels, earpiece, home button that returns to the app grid).
-   Verified by `e2e/phone.e2e.ts`. Per-bank *heist payout* wiring is Phase 3.
-3. **In-person banking + per-bank heist — DONE.** The teller hotspot opens an in-person
-   preset deposit/withdraw modal for that branch's bank (`openTellerBanking`, tied to a
-   `ServiceBuilding.bankId`); the phone keeps precise typed control. The vault hotspot
-   opens a "pick a target" board (`openHeistPlanning`) and `resolveHeist` scales reward by
-   the chosen bank's `heistPayoutMult` and odds by its security. AutoMart also split into
-   two phone apps (AutoMart = cars, Realty = properties). Fixed 4 latent `byId`-throws /
-   null bugs surfaced by a new page-error guard in `e2e/phone.e2e.ts` (one was a Phase-2
-   regression: `start-heist` throwing every tick).
-4. **Themed buildings + per-business unique interactions — DONE.** All nine brands
-   in `src/config/brands.ts` are now real walk-in places: `serviceBuildings` derives one
-   `dealership` / `brokerage` building per brand from the brand's own `x`/`y`, and the
-   generic `cardealer` (Windhaven Auto Exchange) and `realty` (Whitfield Realty) buildings
-   are **deleted** — the counter hotspot opens that brand's own stock instead of jumping to
-   the phone. Bank branches now exist for all three banks. `src/map/storefront.ts` (pure,
-   unit-tested) owns per-brand stock, turf pricing, and haggling; the phone's AutoMart and
-   Realty apps list only `online:true` stock (plus anything already owned, so you can still
-   sell a dealer-only car), making dealer-only stock the reason to make the trip.
-   - **Done:** haggling at the cash-only lots (No Problem Auto, Concrete Dreams) — pick how
-     hard to push; a failed push locks sticker price for the visit. Respect improves the
-     odds, capped at +18 points.
-   - **Done:** territory-gated pricing — rival turf charges +25% and refuses to haggle,
-     your own blocks give 5% off, contested is standard. Each brand has a `rivalLine` for
-     what the counter says.
-   - **Done:** named rival gangs (`src/config/rivals.ts`) — Rockwell Kings (Devlin), Cicero
-     Firm (West Side), Meridian Group (Hub), one per district, each with a color.
-   - **Done:** block-level territory (`src/config/blocks.ts` + `src/map/territory.ts`).
-     Each district is a 4x2 grid of eight named blocks; a block's owner is derived from the
-     district's existing `control` via an authored `resistance` order, so blocks visibly
-     peel off one at a time as control rises and the block layer can never disagree with
-     `districtStatus()`. A minimap toggle (`#territory-toggle`) tints blocks by holder,
-     rings shops standing on rival turf, and shows a compact legend naming each crew.
-   - **Done:** brand caveats are real mechanics, not flavour text (`src/map/brandEffects.ts`,
-     pure + unit-tested). **Used cars** (No Problem Auto) break down while driven — the car
-     is disabled until repaired at its own lot for ~12% of its price, and cheaper beaters
-     fail more often. **Bikes** (Outlaw Riders) add flat heat while ridden and give half the
-     heist cover of a car. **Rough-block properties** (Concrete Dreams) get turned over by
-     crews on a 90s roll — risk rises with heat, halves on turf you hold. **Commercial
-     fronts** (Ironpoint) launder: each cuts heat generation (capped at 24%) but pays no
-     street respect. **Waterfront** (Lakeshore) appreciates: +25%/hr held, capped at +50%.
-     New state `propertyOwnedAt` + `brokenCars`; old saves migrate (appreciation clocks
-     start at load, no car starts broken). Heat HUD shows the bike and laundering lines.
-   - **Done:** the territory overlay is now on the **expanded City Map** too, with block
-     names drawn per block and its own legend in the side rail. The two toggles are
-     independent, so the big map and the minimap don't fight each other.
-5. Retire remaining redundant tabs (Politics/Gang → in-person) + polish.
+Replace the advisor briefing, which the player finds "clunky and primitive". Wants
+progressive, contextual, mission-based teaching rather than a static priority list.
+**Design questions still open — ask before building.** Likely overlaps the mission system,
+so read `mission-overhaul-plan.md` first.
+
+## 3. Finish the mission chains
+
+`home_safe_robbery`, `stolen_shipment`, `alderman_fixer`, `turf_war`, `first_heist` have
+initial playable implementations only. Lana Vance's Herald interview is the one fully
+realised map → interior → dialogue mission and is the model to follow.
+
+## 4. Initiative Phase 5 — retire the last redundant tabs
+
+Politics and Gang move off flat tabs and become in-person (city hall, gang spots), closing
+the diegetic-device initiative. Phases 1-4 are done — see "Shipped" below.
 
 ---
 
-## ACTIVE — World rebuild & remaining player-reported work
+# Open backlog (smaller, unblocked)
 
-Ordered by dependency. Most placement work rides on the map expansion, so that goes first.
+### De-bloat & polish
+`src/core/header.ts` is a ~5,000-line monolith. Player's stated goal: "make the game run
+smoother, gameplay better, and more visually pleasing."
+- Confirm the `renderAll()` (full rebuild) vs cheap `refreshHUD()` split is respected
+  everywhere — hot paths must not call `renderAll()` when only HUD numbers changed.
+- Visual polish pass across panels and the 3D map.
+- Sweep for remaining merge leftovers / duplicate code.
 
-1. **Map expansion (biggest, blocks most of the rest).** Decided with the user: enlarge each
-   district AND wrap the city in an outskirts ring. Break the perfect horizontal row of three
-   1500-wide squares (currently `WORLD_W 5500 × WORLD_H 1200`, `DISTRICT_OFFSETS` 0/2000/4000)
-   into an irregular cluster, then add suburbs, industrial edge, farmland and forest around
-   the outside joined by a highway ring. Touches `map/world.ts`, `map/mapModel.ts`, roads,
-   collision, minimap, filler, and `config/blocks.ts` (territory blocks are derived from
-   district geometry and must move with it).
-2. **Per-block placement so buildings stop overlapping and standing in streets.** Needs a real
-   lot allocator: several interactable buildings per block, packed without overlap and set back
-   from the road edge. `namedBuildingLots` is a hand-authored `Record<id, Point>` and is the
-   root of the current cramping — it cannot express "two shops on one block".
-3. **Neighbourhood character in zoning.** Keep zoning loose but readable: bougie vs. rough
-   residential, shopping strips, office/corporate, entertainment. Feeds both filler generation
-   and `map/renderTheme.ts`.
-4. **More filler-building variety** matching those zones.
-5. **Distinct silhouettes for `dealership` / `brokerage` buildings.** Deliberately deferred:
-   giving them their own footprints cut visible water past the "water and land visually
-   distinct" smoke guard (876 vs a 900 floor), because bigger footprints wall off the
-   shoreline near spawn. Confirmed by stashing that the guard was right. Redo once the map
-   rebuild re-tunes scene composition and there is room to set buildings back from the water.
-6. **Garage.** Decided: one garage in Devlin (home turf). Cars park where you leave them for
-   ~3 minutes, then return to the garage. Needs per-car parked position + timestamp.
-7. **Owned real estate should appear on the map as buildings** you can see and find.
-8. **Onboarding / just-in-time tutorial** to replace the advisor briefing, which the user finds
-   clunky and primitive. Progressive, contextual, mission-based teaching rather than a static
-   priority list. Design questions still open — ask before building.
+### Building interiors
+Per-type decor (`src/map/interiorScene.ts`) and per-type "read the room" hotspots are done.
+- **Optional:** deepen into recurring events (the block board rotating real requests), and
+  give the heist room more than the single vault hotspot.
 
-## Game systems & polish
+### Map engine
+**Asset rule:** when a library or asset pack is added, future map work should actively use
+it. Don't add assets or helpers that don't feed scene building, collision, minimap, zoning,
+lighting, weather, or user-facing behaviour.
+- Continue extracting `buildCityScene` from `header.ts` into typed map modules.
+- Use the GLB loader for more city props (street furniture, parking, docks, residential
+  detail) once exact CC0 sources are chosen.
+- Expand roaming with lane-aware traffic rules and better pedestrian destination tables.
+- Make road curves collision/minimap/path-aware beyond the current data-backed diagonals.
+- Move reserved asset metadata into visible work: building-detail GLBs → facade dressing,
+  roof clutter, station variants; car-kit GLBs → delivery routes, police patrols,
+  roadblocks, taxis, crew transport; character GLBs → pedestrian and named-NPC variants.
+- A full non-grid road rewrite is deliberately **not** pursued — it would strand the ~40
+  hand-placed anchors. Revisit only as part of the world rebuild.
+
+### Amenities
+Basketball, park chess, pet store and newsstand are done.
+- **Optional:** more amenity variety; tie rewards into reputation beyond flat respect
+  (e.g. the guard dog actually lowering heat).
+
+### QA
+- **Runtime-verify the venture / crew / exploit interaction modals in-browser.** The
+  fullscreen + modal z-index root causes were fixed and the logic reads correct by
+  inspection, but the reported symptom was never confirmed clicked in a live session.
+
+### Broader architecture (forward-looking, lower priority than gameplay)
+- **`apps/web/` is still `create-next-app` boilerplate** — intended home for Next.js 16 +
+  React 19 + shadcn + TanStack Query + Prisma. Deferred behind "harden the Vite game first."
+- **Prisma version mismatch:** root uses v5, `apps/web` uses v7. `prisma/schema.prisma` is
+  still a placeholder `Post` model on sqlite.
+- `services/` is empty; no Python/ML yet.
+- Strict typing on `SeatAtTheTable` is effectively complete — `tsc --noEmit` passes clean
+  and is in the push gate.
+
+---
+
+# Conventions worth keeping in view
 
 ### Parody geography
-`SeatAtTheTable/src/config/parodyGeography.ts` defines the current in-universe city
-references: San Plastica = Bay Area / Northern California cities, Rentport = New York
-City, and Flamingo Bay = Miami. Use those names instead of real city names unless the
-user explicitly asks otherwise.
+`src/config/parodyGeography.ts` holds the in-universe city references: San Plastica = Bay
+Area / Northern California, Rentport = New York City, Flamingo Bay = Miami. Use those names
+instead of real cities unless the player says otherwise.
 
-### Mission overhaul
-The map-and-phone mission implementation plan now lives in
-`SeatAtTheTable/docs/mission-overhaul-plan.md`.
+### Named rival crews
+`src/config/rivals.ts` — Rockwell Kings (Devlin), Cicero Firm (West Side), Meridian Group
+(The Hub). One per district. Territory turf, shop pricing and the map overlay all read from
+these.
 
-### 1. De-bloat & polish (perf + redundancy + visuals)
-`src/core/header.ts` is a ~3,900-line monolith. Goal the user stated:
-"make the game run smoother, gameplay better, and more visually pleasing."
-- **Done:** heat-breakdown innerHTML now rebuilds only when the `<details>` is open;
-  district-locations panel rebuild throttled to ~4×/sec (was every frame, and was
-  swallowing clicks by recreating Waypoint buttons mid-frame); dead helpers removed
-  (`heatGenPerSec`, `inDistrict`, `buildingSolids`).
-- **Open:** confirm the `renderAll()` (full rebuild, `header.ts:2289`) vs cheap
-  `refreshHUD()` (`header.ts:2378`) split is respected everywhere — hot paths must not
-  call `renderAll()` when only HUD numbers changed.
-- **Open:** visual polish pass across panels and the 3D map.
-- **Open:** sweep for any remaining merge leftovers / duplicate code.
+### The online catalog is frozen
+The phone's AutoMart/Realty apps sell exactly what the pre-phone Assets tab sold:
+`sedan`, `impala`, `escalade`, `bentley` and `twoflat`, `retailstrip`, `aptbuilding`,
+`loft`. Never add to that list. Every brand must instead keep in-person-only stock — both
+rules are locked by tests in `src/map/storefront.test.ts`.
 
-### 2. Building interiors
-The interior "room" scenes are the 2D canvas in `header.ts` (`drawInteriorScene` /
-`hotspotsFor` / `InteriorState`).
-- **Done:** per-building-type interior decor extracted to `src/map/interiorScene.ts`
-  (bank vs corner shop vs car dealership etc.), unit-tested, wired into `header.ts`.
-- **Done:** richer per-type interactions — every entered building now has a second,
-  in-world "read the room" hotspot (`hotspotsFor` in `header.ts`) surfacing real state
-  (wanted/fed-case/turf, banked-cash, cars/properties owned) plus a rep-building
-  "Sponsor the block party" action at local businesses. Shared `showRoomBrief`/
-  `statusRows`/`briefRow` helpers.
-- **Open (optional):** deepen these into recurring events (e.g. the block board rotating
-  actual requests), and give the heist room more than the single vault hotspot.
-
-### 3. Amenity minigames + non-exploit interactions — **DONE**
-Only amenities that are actually games are games: `src/map/minigames.ts` implements the
-**basketball free-throw** and **park chess** skill games, with pure, unit-tested scoring
-(`src/map/minigames.test.ts`). Launched via `src/map/amenities.ts` →
-`runAmenityMinigame` in `header.ts`, which applies the returned cash/respect reward; map
-movement + E-interact freeze while an overlay is up. The **pet store** and **newsstand**
-are plain buy modals (buy pets/supplies/guard dog; buy a paper/snack/lottery ticket) —
-no bolted-on game where one doesn't fit.
-- **Follow-up (optional):** more amenity variety; tie rewards into reputation systems
-  beyond flat respect (e.g. the guard dog actually lowering heat).
+### e2e gotcha
+Specs that read map pixels must `await waitForMapScene(page)` first — the canvas is blank
+until three.js and the GLBs finish loading, and on a cold dev server that outruns the
+default timeout. Workers are pinned to 2 in `playwright.config.ts` because nearly every
+spec boots a full WebGL city and the default count fails on contention, not defects.
 
 ---
 
-## Map engine (from the former MAP_TODO.md)
+# Shipped (for context)
 
-**Asset & system rule:** when a new library, asset pack, or map system is added, future
-map work should actively use it. Don't download assets or add helpers that don't feed
-scene building, collision, minimap, zoning, lighting, weather, or user-facing behavior.
+**Diegetic device initiative, Phases 1-4.** Phone ("Windhaven OS" on a Pomello handset)
+hosting the online-only services; multi-bank model (`config/banks.ts`) with per-bank
+balances, interest and heist profiles; in-person banking and per-bank heists; all nine
+brands as walk-in shops with their own stock, haggling at the cash-only lots, and
+territory-gated pricing. The generic Auto Exchange and Whitfield Realty are gone.
 
-### Status
-- **Done:** `three` installed via pnpm (no CDN/global `THREE: any`); map code modularized
-  under `src/map/*` (roaming, minimap, amenities + amenity rendering, scene building,
-  street furniture, world data, zoning, interior decor, minigames).
-- **Done:** GLB buildings via the shared map asset library (Kenney CC0 packs mirrored
-  under `public/assets/map`). Cars/NPCs still use procedural models by choice.
-- **In progress:** extracting `buildCityScene` out of `header.ts` into typed modules.
+**Brand caveats as real mechanics** (`map/brandEffects.ts`): used cars break down, bikes
+add heat and halve heist cover, rough-block properties get raided, commercial fronts
+launder, waterfront appreciates.
 
-### Next steps (open)
-- Continue extracting `buildCityScene` from `header.ts`: next pass should move named
-  business / service / corner rendering into typed map modules.
-- Use the GLB loader for more city props (street furniture, parking, docks/logistics,
-  residential details) once exact CC0 sources are chosen.
-- Expand roaming with lane-aware traffic rules and more believable pedestrian
-  destination tables.
-- Make road curves collision/minimap/path-aware beyond the current data-backed diagonals.
-- Evaluate the mirrored CC0 car & character assets role by role; keep procedural as the
-  primary look, swap in external meshes only where they clearly look better.
-- Move reserved asset metadata into visible implementation work:
-  building detail GLBs should become facade dressing, roof clutter, and train-station
-  variants; car-kit GLBs should cover delivery routes, police patrols/roadblocks, traffic
-  variants, taxis, crew transport, and player garage variants; blocky character GLBs and
-  textures should be evaluated for pedestrian and named-NPC variants.
-- **Done:** visual-regression e2e checks now cover WebGL boot, water/land color
-  distinction, fullscreen sizing, expanded minimap behavior, hover, search, and waypoint
-  placement.
-- Replace more handmade primitives only where a CC0 asset fits the Chicago-parody style.
-- **Done:** road-graph route hints now follow connected streets, bridges, and diagonal
-  shortcut endpoints. Full non-grid road rewrite is deliberately *not* pursued — it would strand the ~40 hand-placed
-  anchors and re-introduce buildings-in-streets. Offer only if the user wants to leave
-  the grid entirely.
+**Block-level territory** (`config/blocks.ts` + `map/territory.ts` + `config/rivals.ts`):
+eight named blocks per district, ownership derived from district control via an authored
+resistance order, with a toggleable overlay on both the minimap and the City Map.
 
----
+**Missions**: mission-backed event flow, save state (`activeMissions`, `eventHistory`,
+`worldMemory`), phone Missions app, and Lana Vance's Herald interview end to end.
 
-## QA / correctness
-- **FIXED: the two minimap e2e checks that failed on `main`.** "minimap centers the player
-  marker" and "minimap can pan while stopped" were racing map boot, not testing a broken
-  marker: the minimap canvas stays blank until `ensureMapScene()` finishes dynamically
-  importing three.js and loading the GLBs, which on a cold Vite dev server outruns the
-  10s expect timeout. Both now wait on `canvas.webgl-canvas` (`waitForMapScene`) before
-  reading pixels. The marker's gold outline was also a 1px hairline that antialiasing
-  nearly erased — widened to 2px, which helps readability at 150px as well as the test.
-  The duplicated pixel-counting blocks are now one shared `countGoldPixelsIn` helper.
-- **e2e worker count pinned to 2** (`playwright.config.ts`). Almost every spec boots the
-  full WebGL city, and Playwright's default worker count ran enough of those concurrently
-  that scene boot lost races to the readiness timeouts — tests failed on contention, not
-  on defects. Two workers is green and about as fast as serial.
-- **Runtime-verify the venture / crew / exploit interaction modals in-browser.** The
-  fullscreen + modal z-index root causes were fixed, and the modal logic reads correct
-  by inspection, but the exact reported symptom was never confirmed clicked in a live
-  session. Worth an explicit manual pass (or extending the Playwright smoke e2e).
+**Heat redesign**: WANTED ladder + sticky INVESTIGATION meter → hybrid raid; crackdown
+waves, Lay Low, Retain Counsel, concave cooldown.
 
----
+**Other**: Windhaven Wire news feed; stock market with designed logos; territory war depth
+(guns, mid-war payoff, casualties, police fallout); GTA-style City Map overlay with legend,
+search and click-to-waypoint; extortion squeeze tiers + owner resentment; amenity minigames.
 
-## Broader architecture (forward-looking, not game-loop work)
-These come from the repo reality vs. target-stack gap; lower priority than gameplay.
-- **`apps/web/` is still `create-next-app` boilerplate.** It's the intended home for the
-  modern stack (Next.js 16 + React 19 + shadcn + TanStack Query + Prisma) but nothing
-  game-specific is built there yet. Migration was deliberately deferred behind
-  "harden the Vite game first."
-- **Prisma version mismatch:** root uses Prisma v5, `apps/web` uses v7 — reconcile before
-  building anything real on the DB. `prisma/schema.prisma` is still a placeholder `Post`
-  model on sqlite.
-- `services/` is empty; no Python/ML yet (the UV/Ruff/ML rules in AGENTS.md are
-  forward-looking, not describing existing code).
-- Note: the strict-typing effort on `SeatAtTheTable` is effectively complete —
-  `pnpm typecheck` (strict `tsc --noEmit`) passes clean and is in the push gate.
-
----
-
-## Shipped recently (for context)
-- Heat redesign: WANTED ladder (heat) + sticky INVESTIGATION meter → **hybrid** raid
-  (footprint damage + small capped fine; legit + bank-safe removes late-game wealth cap).
-  Crackdown waves, **Lay Low** toggle, **Retain Counsel** lever, concave heat cooldown.
-- Windhaven Wire: player-contextual city-news feed, distinct from the RCN stock ticker.
-- Stock market with designed logos (lettermark fallback for FWT/HLG).
-- Territory & war depth: buy/consume guns (armory), mid-war payoff decision, casualties,
-  police fallout; territory pushes cost cash + draw heat + bust risk.
-- Map: two tasteful intra-district diagonal roads (never crossing water); GTA-style City
-  Map overlay (Map tab → "City Map") with icon glyphs, legend, click-to-waypoint;
-  dealer-posting spawns a walk-up NPC + standing dealer figure.
-- Exploitation rework: extortion squeeze **tiers** + owner **resentment** (Ease off /
-  Send muscle); no more random 40%-per-raid drop.
-- Kept useful Codex features: advisor panel + district-locations panel.
+**Recent bug fixes**: waypoint trail now follows you (was computed once at set time); shop
+nametags no longer clipped (fixed-size font overflowed the sign canvas past ~31 chars);
+district labels moved into the water and out of the landmass clip; buying a car in person
+now equips it; cars no longer get permanently stuck on buildings (actor radius jumps 8 → 24
+when you get in, so a legal on-foot spot could be inside a building's bounds with no escape
+path); bikes render as bikes; The Potato added as a Hub landmark.

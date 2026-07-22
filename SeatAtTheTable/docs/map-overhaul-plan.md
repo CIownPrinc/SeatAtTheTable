@@ -1,5 +1,21 @@
 # Windhaven Map Overhaul Plan
 
+> **STATUS: SUPERSEDED — historical record. Do not plan new work from this file.**
+>
+> This plan built the map system that exists today: the shared map model, typed map data,
+> `MapViewport`, the cached minimap layers, road/bridge/rail records, place-specific 3D
+> buildings, and the single global waypoint. Its "Definition of Done" below was met.
+>
+> It is superseded because its *premise* no longer holds. It treated the three-district
+> horizontal layout as the target shape and explicitly settled on it. The player has since
+> called that layout unrealistic and asked for larger districts plus an outskirts ring.
+>
+> **For current map work, read `world-expansion-plan.md` instead.**
+>
+> Kept because the architecture rationale — one data model driving both the 3D world and the
+> minimap, authored coordinates over separate "pretty" minimap coordinates — still governs
+> how the map should be edited, and the expansion must not regress it.
+
 ## Goal
 
 Rebuild the map system so Windhaven feels like a real city space, not a rectangular prototype grid. The map should load faster, be easier to edit without breaking unrelated systems, and become a strong foundation for future gameplay where location, movement, territory, services, and events matter more.
