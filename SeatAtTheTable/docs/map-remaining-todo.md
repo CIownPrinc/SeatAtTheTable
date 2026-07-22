@@ -8,14 +8,21 @@
 - [x] Keep browser map tests stable for animated WebGL screenshots.
 - [x] Verify car parking/spawn positions use one shared source of truth.
 
-## Still Worth Doing Later
+## Completed From The Remaining List
 
-- [ ] Move business, service, local shop, corner, and actor scene rendering out of `src/core/header.ts` into typed map-rendering modules.
-- [ ] Add place-specific 3D building silhouettes for banks, garages, realty offices, city hall, bars, shops, and heist targets.
-- [ ] Add map gameplay hooks that use location: missions, deliveries, police patrols, territory pressure, and tutorials.
-- [ ] Add train warnings and consequences around blocked crossings.
-- [ ] Profile scene-build timings on a normal laptop and optimize the slowest measured stage first.
-- [ ] Add a screenshot review pass for desktop, laptop, and mobile viewports before large visual changes.
+- [x] Move business, service, local shop, corner, and actor scene rendering out of `src/core/header.ts` into typed map-rendering modules.
+- [x] Add place-specific 3D building silhouettes for banks, garages, realty offices, city hall, bars, shops, and heist targets.
+- [x] Add map gameplay hooks that use location: missions, deliveries, police patrols, territory pressure, and tutorials.
+- [x] Add train warnings and consequences around blocked crossings.
+- [x] Profile scene-build timings on a normal laptop and optimize the slowest measured stage first.
+- [x] Add a screenshot review pass for desktop, laptop, and mobile viewports before large visual changes.
+
+## Completion Notes
+
+- Scene rendering modules: `src/map/placeRendering.ts` and `src/map/actorRendering.ts`.
+- Gameplay hooks: `src/map/gameplayHooks.ts`.
+- Screenshot/profile review: `docs/map-screenshot-review.md`.
+- Browser coverage: `e2e/smoke.e2e.ts`.
 
 ## Not Currently Blocked
 

@@ -15,6 +15,7 @@ import { brandById } from '../config/brands';
 import type { GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState, Point, ServiceBuilding, GangRecruit, Car, DialogueTree } from '../config/types';
 import type { MapAssetKey, MapAssetLibrary } from '../map/assets';
 import { loadMapAssetLibrary } from '../map/assets';
+import { renderRoamingActors } from '../map/actorRendering';
 import { createAmenityModal, mapAmenities } from '../map/amenities';
 import { minigameOpen, playMinigame, type MinigameResult } from '../map/minigames';
 import { buildAmenityModel as buildMapAmenityModel } from '../map/amenityRendering';
@@ -26,9 +27,10 @@ import type { MapObject } from '../map/objects';
 import { solidsFromObjects } from '../map/objects';
 import { buildMapObjects, ventureFootprint } from '../map/objectFactory';
 import { defaultParkedCarPositions, parkedCarPositionForDistrict } from '../map/parking';
+import { renderMapPlaces } from '../map/placeRendering';
 import { createMapPlaceRecords, mapPlaceCategoryLabel, type MapPlaceCategory, type MapPlaceRecord } from '../map/places';
 import { mapPointContext, nearestPlaceAtPoint, placesByCategory, routeHintBetween, routeSummary, trainCrossingBlockAtPoint } from '../map/queries';
-import { actorDisplayName, createRoamingActors, updateRoamingActors } from '../map/roaming';
+import { createRoamingActors, updateRoamingActors } from '../map/roaming';
 import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, buildLandmarks, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
 import { createMapSceneMaterials, createSceneBuildTimer } from '../map/scenePerformance';
 import { buildIntersectionFurniture as buildMapIntersectionFurniture } from '../map/streetFurniture';
@@ -3012,7 +3014,15 @@ import type * as ThreeNamespace from 'three';
     return 150;
   }
   function tryMove(nx: number, ny: number, solids: Solid[]){
-    if(state.inVehicle && trainCrossingBlockAtPoint({ x:nx, y:ny }, Date.now(), actorRadius(true))) return false;
+    const trainBlock = state.inVehicle ? trainCrossingBlockAtPoint({ x:nx, y:ny }, Date.now(), actorRadius(true)) : null;
+    if(trainBlock){
+      const now = Date.now();
+      if(now - lastTrainWarningAt > 3500){
+        lastTrainWarningAt = now;
+        log(`<i class="ph-duotone ph-train"></i> Train crossing blocked at ${trainBlock.road.name}. Wait for it to clear.`);
+      }
+      return false;
+    }
     return canMoveTo(nx, ny, solids, state.inVehicle);
   }
 
@@ -3024,6 +3034,7 @@ import type * as ThreeNamespace from 'three';
   let streetLights: ThreeNamespace.PointLight[] = [];
   let weatherPoints: ThreeNamespace.Points | null = null;
   let activeWeather: 'clear' | 'rain' | 'snow' = 'clear';
+  let lastTrainWarningAt = 0;
   const MAP_DAY_SECONDS = 240;
   const MAP_START_HOUR = 10;
 
@@ -3511,82 +3522,19 @@ import type * as ThreeNamespace from 'three';
       buildStreetTrees({ ...baseScene, roadNetwork, districtOffsets:DISTRICT_OFFSETS, seededRandom });
     });
     // LEGAL: Venture buildings — all districts
-    mapObjects.filter(o=>o.kind==='building').forEach(function(object){
-      const m = object.ref as typeof mapBuildings[number];
-      const info = buildingColorFor(m.biz);
-      const footprint = ventureFootprint(m);
-      const color = m.zone==='corporate' ? '#46516d' : (m.zone==='entertainment' ? '#5a345e' : info.color);
-      const mesh = buildDetailedBuilding(footprint.w, Math.max(info.h, footprint.h), footprint.d, color, footprint.zoneType, variantForId(m.id));
-      addVentureDetail(m, mesh);
-      addCategoryMarker(mesh, object.minimapIcon, m.biz.category==='legit'?'#8fd0e0':'#f0a0ae', Math.max(info.h, footprint.h)/2+12);
-      mesh.position.set(object.x, Math.max(info.h, footprint.h)/2, object.y); worldGroup.add(mesh);
-      addSign(mesh, m.biz.name, 34, 9, Math.max(info.h, footprint.h)/2+10, m.biz.category==='legit'?'#8fd0e0':'#f0a0ae');
+    timer.measure('places', function(): void {
+      renderMapPlaces({ THREE, worldGroup, mapObjects, helpers:{ buildingColorFor, ventureFootprint, buildDetailedBuilding, buildAmenityModel, buildPedestrianModel, addVentureDetail, addServiceDetail, addLocalBusinessDetail, addCategoryMarker, addSign, variantForId } });
     });
 
     // LEGAL: Service buildings — all districts
-    const svcPalette: Record<string, string> = { bankHome:'#7a5f1a', garage:'#3e6b78', realty:'#3e6b78', cityhall:'#7a5f1a', heist:'#5a2a33' };
-    mapObjects.filter(o=>o.kind==='service').forEach(function(object){
-      const m = object.ref as ServiceBuilding;
-      const mesh = buildDetailedBuilding(58,34,50,svcPalette[m.kind],'service', variantForId(m.id));
-      addServiceDetail(m, mesh);
-      addCategoryMarker(mesh, object.minimapIcon, '#ffe6a0', 31);
-      mesh.position.set(object.x,17,object.y); worldGroup.add(mesh);
-      addSign(mesh, m.name, 40, 9, 26, '#ffe6a0');
-    });
 
     // LEGAL: Extortable local businesses — all districts
-    mapObjects.filter(o=>o.kind==='local').forEach(function(object){
-      const m = object.ref as LocalBusiness;
-      const color = m.extorted?'#8a6a1a':'#4a4360';
-      const mesh = buildDetailedBuilding(42,20,36,color,'shop', variantForId(m.id));
-      addLocalBusinessDetail(m, mesh);
-      addCategoryMarker(mesh, object.minimapIcon, m.extorted?'#ffd77a':'#b8aee0', 24);
-      mesh.position.set(object.x,10,object.y); worldGroup.add(mesh);
-      addSign(mesh, m.name, 32, 8, 18, m.extorted?'#ffd77a':'#b8aee0');
-    });
 
-    mapObjects.filter(o=>o.kind==='amenity').forEach(function(object){
-      const amenity = object.ref as typeof mapAmenities[number];
-      const mesh = buildAmenityModel(amenity);
-      const y = amenity.kind === 'petstore' || amenity.kind === 'shop' ? 10 : 0;
-      mesh.position.set(object.x,y,object.y);
-      worldGroup.add(mesh);
-    });
 
     // LEGAL: Corners — all districts
-    mapObjects.filter(o=>o.kind==='corner').forEach(function(object){
-      const m = object.ref as Corner;
-      const staffed=m.dealer&&!m.busted;
-      const color=m.busted?'#5f6275':(staffed?'#d4a017':'#a8394a');
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(1.4,1.4,26,6), new THREE.MeshStandardMaterial({color:'#2a2c33'}));
-      pole.position.set(object.x,13,object.y); pole.castShadow=true; worldGroup.add(pole);
-      const orb = new THREE.Mesh(new THREE.SphereGeometry(7,10,10), new THREE.MeshStandardMaterial({color, emissive:color, emissiveIntensity:0.4}));
-      orb.position.set(object.x,28,object.y); worldGroup.add(orb);
-      addSign(pole, m.name, 30, 8, 22, '#f0efe8');
-      // LEGAL: A posted dealer is a visible figure standing at the corner.
-      if(staffed){
-        const dealer = buildPedestrianModel('#d4a017', 'dealer-'+m.id);
-        dealer.position.set(object.x+12, 0, object.y+9);
-        dealer.rotation.y = Math.PI;
-        worldGroup.add(dealer);
-      }
-    });
 
-    roamingActors.forEach(function(actor){
-      if(actor.kind === 'car'){
-        const car = buildTrafficCarModel(actor.id, actor.color);
-        car.position.set(actor.x,0,actor.y);
-        car.rotation.y = -actor.facing + Math.PI / 2;
-        worldGroup.add(car);
-        actor.group = car;
-        return;
-      }
-      const g = buildPedestrianModel(actor.object?.kind === 'gangnpc' && (actor.object.ref as GangRecruit).inducted ? '#d4a017' : actor.color, actor.id);
-      g.position.set(actor.x,0,actor.y);
-      g.rotation.y = -actor.facing + Math.PI / 2;
-      worldGroup.add(g);
-      actor.group = g;
-      addSign(g, actorDisplayName(actor), 28, 7, 38, '#f0efe8');
+    timer.measure('actors', function(): void {
+      renderRoamingActors({ worldGroup, actors:roamingActors, helpers:{ buildTrafficCarModel, buildPedestrianModel, addSign } });
     });
 
     timer.measure('fill-and-landmarks', function(): void {

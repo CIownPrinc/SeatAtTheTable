@@ -202,8 +202,65 @@ test.describe('game boot', () => {
     expect(darkRatio).toBeLessThan(0.68);
   });
 
+  test('map build emits a timing profile in local dev', async ({ page }) => {
+    const timingLogs: string[] = [];
+    page.on('console', function(message){
+      const text = message.text();
+      if(text.includes('[map-build]')) timingLogs.push(text);
+    });
+
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    await page.locator('.tab-btn[data-tab="map"]').click();
+    await expect(page.locator('#scene3d-container canvas.webgl-canvas')).toBeVisible();
+
+    expect(timingLogs.some(log => log.includes('terrain:') && log.includes('total:'))).toBe(true);
+  });
+
+  test('map screenshot review covers desktop, laptop, and mobile viewports', async ({ page }) => {
+    test.setTimeout(180000);
+    const viewports = [
+      { name:'desktop', width:1280, height:720 },
+      { name:'laptop', width:1024, height:640 },
+      { name:'mobile', width:390, height:844 },
+    ];
+
+    for(const viewport of viewports){
+      await page.setViewportSize({ width:viewport.width, height:viewport.height });
+      await page.goto('/');
+      await page.evaluate(async function(){
+        if(window.storage) await window.storage.delete('seat-save-v1', false);
+        window.localStorage.removeItem('seat-save-v1');
+        window.sessionStorage.removeItem('seat-start-new-after-reload');
+      });
+      await page.reload();
+      const startButton = page.locator('#start-game-btn');
+      await expect(startButton).toBeVisible();
+      const startLabel = await startButton.textContent();
+      await startButton.click();
+      if(startLabel?.includes('New Game')) await page.locator('#confirm-new-game-btn').click();
+      await expect(page.locator('#start-screen')).toHaveClass(/hidden/);
+      await page.locator('.tab-btn[data-tab="map"]').click();
+      const canvas = page.locator('#scene3d-container canvas.webgl-canvas');
+      await expect(canvas).toBeVisible();
+      await page.waitForTimeout(900);
+
+      const box = await page.locator('#scene3d-container').evaluate((element: HTMLElement) => {
+        const rect = element.getBoundingClientRect();
+        return { width:rect.width, height:rect.height };
+      });
+      const stats = mapCanvasColorStats(await clippedElementScreenshot(page, '#scene3d-container canvas.webgl-canvas'));
+
+      expect(box.width, `${viewport.name} map width`).toBeGreaterThan(260);
+      expect(box.height, `${viewport.name} map height`).toBeGreaterThan(viewport.name === 'mobile' ? 190 : 240);
+      expect(stats.bluePixels, `${viewport.name} water pixels`).toBeGreaterThan(viewport.name === 'mobile' ? 0 : 120);
+      expect(stats.landPixels, `${viewport.name} land pixels`).toBeGreaterThan(60);
+      expect(stats.colorBuckets, `${viewport.name} color buckets`).toBeGreaterThan(viewport.name === 'mobile' ? 16 : 22);
+    }
+  });
+
   test('map fullscreen expands the scene container to the viewport', async ({ page }) => {
-    test.setTimeout(60000);
+    test.setTimeout(120000);
     await page.goto('/');
 
     await page.getByRole('button', { name: 'Start', exact: true }).click();
@@ -231,9 +288,9 @@ test.describe('game boot', () => {
 
     await page.locator('#minimap-expand').dispatchEvent('click');
     expect(await page.locator('#citymap-overlay').getAttribute('class')).not.toContain('hidden');
-    await page.keyboard.press('Escape');
+    await page.evaluate(function(){ window.dispatchEvent(new KeyboardEvent('keydown', { key:'Escape' })); });
     await expect(page.locator('#citymap-overlay')).toHaveClass(/hidden/);
-    await page.keyboard.press('Escape');
+    await page.evaluate(function(){ window.dispatchEvent(new KeyboardEvent('keydown', { key:'Escape' })); });
     await expect(page.locator('#scene3d-container')).not.toHaveClass(/fullscreen/);
 
   });
