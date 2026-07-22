@@ -359,17 +359,6 @@ function drawStaticMinimapLayer(mctx: CanvasRenderingContext2D, options: Minimap
     mctx.clip();
   }
 
-  if(options.districtNames){
-    mctx.fillStyle='rgba(224,200,96,0.5)';
-    mctx.font=`700 ${Math.round(11*glyphScale)}px Oswald, sans-serif`;
-    mctx.textAlign='center'; mctx.textBaseline='top';
-    options.districtNames.forEach(function(d){
-      const p = proj(d.x, d.y ?? 6);
-      if(p.x < -20 || p.x > viewW+20) return;
-      mctx.fillText(d.name.toUpperCase(), p.x, Math.max(2, p.y));
-    });
-  }
-
   options.landmarks.forEach(function(landmark){
     const p = proj(landmark.x, landmark.y);
     if(!isOnMap(p, viewW, viewH)) return;
@@ -377,6 +366,20 @@ function drawStaticMinimapLayer(mctx: CanvasRenderingContext2D, options: Minimap
     mctx.fillStyle='#e0c860'; const ls = 3*glyphScale; mctx.fillRect(-ls,-ls,ls*2,ls*2); mctx.restore();
   });
   mctx.restore();
+
+  // LEGAL: District names are drawn AFTER the landmass clip is released. They now sit in
+  // LEGAL: the water north of each district so they stop covering blocks, streets and
+  // LEGAL: place glyphs — and inside the clip a label over water was being erased outright.
+  if(options.districtNames){
+    mctx.fillStyle='rgba(224,200,96,0.62)';
+    mctx.font=`700 ${Math.round(12*glyphScale)}px Oswald, sans-serif`;
+    mctx.textAlign='center'; mctx.textBaseline='top';
+    options.districtNames.forEach(function(d){
+      const p = proj(d.x, d.y ?? 6);
+      if(p.x < -20 || p.x > viewW+20) return;
+      mctx.fillText(d.name.toUpperCase(), p.x, Math.max(2, p.y));
+    });
+  }
 }
 
 function drawDynamicMinimapLayer(mctx: CanvasRenderingContext2D, options: MinimapRenderOptions, frame: MinimapRenderFrame): void {

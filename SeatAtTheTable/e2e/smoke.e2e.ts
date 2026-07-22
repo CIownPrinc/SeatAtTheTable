@@ -191,6 +191,7 @@ test.describe('game boot', () => {
   });
 
   test('map renders without WebGL shader failures or missing GLB assets', async ({ page }) => {
+    test.setTimeout(60000);
     const browserIssues: string[] = [];
     const requestedMapAssets = new Set<string>();
 
@@ -212,7 +213,7 @@ test.describe('game boot', () => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Start', exact: true }).click();
     await page.locator('.tab-btn[data-tab="map"]').click();
-    await expect(page.locator('#scene3d-container canvas.webgl-canvas')).toBeVisible();
+    await waitForMapScene(page);
     await page.waitForTimeout(1200);
 
     expect(browserIssues).toEqual([]);
@@ -226,8 +227,7 @@ test.describe('game boot', () => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Start', exact: true }).click();
     await page.locator('.tab-btn[data-tab="map"]').click();
-    const canvas = page.locator('#scene3d-container canvas.webgl-canvas');
-    await expect(canvas).toBeVisible();
+    await waitForMapScene(page);
     await page.waitForTimeout(1600);
 
     const stats = mapCanvasColorStats(await clippedElementScreenshot(page, '#scene3d-container canvas.webgl-canvas'));

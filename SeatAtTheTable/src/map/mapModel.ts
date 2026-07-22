@@ -217,9 +217,9 @@ export const windhavenMapModel: WindhavenMapModel = {
   landmass: WINDHAVEN_LANDMASS,
   landBounds: boundsForPoints(WINDHAVEN_LANDMASS),
   districts: [
-    { id: 'devlin', name: 'Devlin', labelPoint: { x: DISTRICT_W/2, y: 116 }, centerX: DISTRICT_OFFSETS.devlin + DISTRICT_W/2, landArea: districtLandAreas.devlin },
-    { id: 'westside', name: 'West Side', labelPoint: { x: DISTRICT_OFFSETS.westside + DISTRICT_W/2, y: 116 }, centerX: DISTRICT_OFFSETS.westside + DISTRICT_W/2, landArea: districtLandAreas.westside },
-    { id: 'hub', name: 'The Hub', labelPoint: { x: DISTRICT_OFFSETS.hub + DISTRICT_W/2, y: 116 }, centerX: DISTRICT_OFFSETS.hub + DISTRICT_W/2, landArea: districtLandAreas.hub },
+    { id: 'devlin', name: 'Devlin', labelPoint: { x: DISTRICT_W/2, y: -118 }, centerX: DISTRICT_OFFSETS.devlin + DISTRICT_W/2, landArea: districtLandAreas.devlin },
+    { id: 'westside', name: 'West Side', labelPoint: { x: DISTRICT_OFFSETS.westside + DISTRICT_W/2, y: -118 }, centerX: DISTRICT_OFFSETS.westside + DISTRICT_W/2, landArea: districtLandAreas.westside },
+    { id: 'hub', name: 'The Hub', labelPoint: { x: DISTRICT_OFFSETS.hub + DISTRICT_W/2, y: -118 }, centerX: DISTRICT_OFFSETS.hub + DISTRICT_W/2, landArea: districtLandAreas.hub },
   ],
   canals: CANAL_CHANNELS,
   northRiver: NORTH_RIVER,

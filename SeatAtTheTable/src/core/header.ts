@@ -1505,9 +1505,13 @@ import type * as ThreeNamespace from 'three';
     state.cash -= price;
     if(item.kind === 'car'){
       state.ownedCars.push(item.car.id);
-      if(!state.equippedCar) state.equippedCar = item.car.id;
+      // LEGAL: You bought it in person and are standing next to it, so it becomes the car
+      // LEGAL: you are driving. Previously this only equipped when you owned nothing, so a
+      // LEGAL: dealership purchase silently did not become "your car" until you opened the
+      // LEGAL: phone and pressed DRIVE.
+      state.equippedCar = item.car.id;
       if(item.car.id === 'bentley') triggerMilestone('bentley');
-      log(`<i class="ph-duotone ph-car"></i> You drive a ${item.car.name} off the lot at ${brand.name}.`);
+      log(`<i class="ph-duotone ph-car"></i> You drive a ${item.car.name} off the lot at ${brand.name}. It's your ride now.`);
       updateParkedCarMesh(); refreshPlayerModel();
     } else {
       state.ownedProperties.push(item.property.id);
@@ -3773,8 +3777,19 @@ import type * as ThreeNamespace from 'three';
     const c = document.createElement('canvas'); c.width=2048; c.height=256;
     const cctx = c.getContext('2d')!;
     cctx.fillStyle='rgba(10,11,16,0.85)'; cctx.fillRect(0,0,2048,256);
-    cctx.fillStyle=color; cctx.font='bold 120px sans-serif'; cctx.textAlign='center'; cctx.textBaseline='middle';
-    cctx.fillText(text.slice(0,32), 1024, 128);
+    cctx.fillStyle=color; cctx.textAlign='center'; cctx.textBaseline='middle';
+    // LEGAL: Fit the name to the canvas instead of trusting a fixed size. At the old flat
+    // LEGAL: 120px, anything past ~31 characters overflowed 2048px and was clipped at both
+    // LEGAL: ends, which is why long names ("Rentport City National — Devlin Branch") read
+    // LEGAL: as having no sign at all. Shrink to fit, and only then truncate.
+    const label = text.slice(0, 42);
+    let fontSize = 120;
+    cctx.font = `bold ${fontSize}px sans-serif`;
+    while(fontSize > 54 && cctx.measureText(label).width > 1960){
+      fontSize -= 4;
+      cctx.font = `bold ${fontSize}px sans-serif`;
+    }
+    cctx.fillText(label, 1024, 128);
     const tex = new THREE.CanvasTexture(c);
     tex.minFilter = THREE.LinearMipMapLinearFilter;
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, depthTest:false}));
@@ -4365,7 +4380,24 @@ import type * as ThreeNamespace from 'three';
   function computeRoadGuide(px: number, py: number, wx: number, wy: number): Point[] {
     return sampleRouteGuide(routeHintBetween({ x:px, y:py }, { x:wx, y:wy }).waypoints, 55);
   }
+  // LEGAL: The guide dots are computed from the player's position, so a beacon built once
+  // LEGAL: at set-time goes stale the moment you drive off — the trail pointed back at
+  // LEGAL: where you were standing. Rebuild it as you move, throttled by distance travelled
+  // LEGAL: (and a floor on elapsed time) so this never runs per frame.
+  let lastGuideFrom = { x: 0, y: 0 };
+  let lastGuideAt = 0;
+  const GUIDE_REFRESH_DISTANCE = 90;
+  const GUIDE_REFRESH_SECONDS = 0.75;
+  function refreshWaypointGuide(){
+    if(!currentWaypoint() || !sceneInitialized) return;
+    const now = Date.now() / 1000;
+    if(now - lastGuideAt < GUIDE_REFRESH_SECONDS) return;
+    if(Math.hypot(player.x - lastGuideFrom.x, player.y - lastGuideFrom.y) < GUIDE_REFRESH_DISTANCE) return;
+    rebuildWaypointBeacon();
+  }
   function rebuildWaypointBeacon(){
+    lastGuideFrom = { x: player.x, y: player.y };
+    lastGuideAt = Date.now() / 1000;
     if(!sceneInitialized || !worldGroup) return;
     if(waypointBeacon){ worldGroup.remove(waypointBeacon); waypointBeacon.traverse(disposeObj); waypointBeacon=null; }
     const wp = currentWaypoint();
@@ -4486,6 +4518,7 @@ import type * as ThreeNamespace from 'three';
       warnObjectIds: territoryShown ? rivalTurfShopIds() : undefined,
     });
     if(territoryShown) renderTerritoryLegend();
+    refreshWaypointGuide();
     if(cityMapOpen) drawCityMap();
   }
 

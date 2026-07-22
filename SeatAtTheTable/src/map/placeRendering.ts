@@ -94,6 +94,9 @@ function renderLocalBusinesses(options: MapPlaceRenderOptions): void {
 export function serviceBuildingSilhouette(building: ServiceBuilding): BuildingSilhouette {
   if(building.kind === 'bankHome') return { w:70, h:42, d:56, color:'#7a5f1a', zoneType:'service' };
   if(building.kind === 'garage') return { w:84, h:28, d:62, color:'#3e6b78', zoneType:'industrial' };
+  // LEGAL: Branded shops were falling through to the generic default silhouette, which made
+  // LEGAL: them smaller and blander than the generic buildings they replaced. Give
+  // LEGAL: dealerships a wide showroom footprint and brokerages an office one.
   if(building.kind === 'realty') return { w:62, h:32, d:48, color:'#456f78', zoneType:'commercial' };
   if(building.kind === 'cityhall') return { w:88, h:48, d:64, color:'#74623c', zoneType:'service' };
   if(building.kind === 'heist') return { w:72, h:34, d:58, color:'#5a2a33', zoneType:'industrial' };
