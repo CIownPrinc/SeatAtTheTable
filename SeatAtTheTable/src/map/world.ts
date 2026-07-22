@@ -189,6 +189,9 @@ export const namedBuildingLots: Record<string, Point> = {
 export const landmarks: Landmark[] = [
   { id: 'devlinHall', name: 'DEVLIN HALL', district: 'devlin', x: 125, y: 820 },
   { id: 'ciceroWorks', name: 'CICERO WORKS', district: 'westside', x: 2125, y: 850 },
+  // LEGAL: The Potato — Windhaven's mirror-polished civic sculpture in the Hub, the
+  // LEGAL: in-universe answer to a certain bean. Parody naming per config/parodyGeography.
+  { id: 'thePotato', name: 'THE POTATO', district: 'hub', x: 4760, y: 560 },
 ];
 
 export const districtParkSlots: Record<string, DistrictParkSlot[]> = {

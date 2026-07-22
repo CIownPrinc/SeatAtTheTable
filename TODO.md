@@ -129,6 +129,37 @@ A roster of banks, each a distinct entity with tradeoffs. **No passive theft** �
 
 ---
 
+## ACTIVE — World rebuild & remaining player-reported work
+
+Ordered by dependency. Most placement work rides on the map expansion, so that goes first.
+
+1. **Map expansion (biggest, blocks most of the rest).** Decided with the user: enlarge each
+   district AND wrap the city in an outskirts ring. Break the perfect horizontal row of three
+   1500-wide squares (currently `WORLD_W 5500 × WORLD_H 1200`, `DISTRICT_OFFSETS` 0/2000/4000)
+   into an irregular cluster, then add suburbs, industrial edge, farmland and forest around
+   the outside joined by a highway ring. Touches `map/world.ts`, `map/mapModel.ts`, roads,
+   collision, minimap, filler, and `config/blocks.ts` (territory blocks are derived from
+   district geometry and must move with it).
+2. **Per-block placement so buildings stop overlapping and standing in streets.** Needs a real
+   lot allocator: several interactable buildings per block, packed without overlap and set back
+   from the road edge. `namedBuildingLots` is a hand-authored `Record<id, Point>` and is the
+   root of the current cramping — it cannot express "two shops on one block".
+3. **Neighbourhood character in zoning.** Keep zoning loose but readable: bougie vs. rough
+   residential, shopping strips, office/corporate, entertainment. Feeds both filler generation
+   and `map/renderTheme.ts`.
+4. **More filler-building variety** matching those zones.
+5. **Distinct silhouettes for `dealership` / `brokerage` buildings.** Deliberately deferred:
+   giving them their own footprints cut visible water past the "water and land visually
+   distinct" smoke guard (876 vs a 900 floor), because bigger footprints wall off the
+   shoreline near spawn. Confirmed by stashing that the guard was right. Redo once the map
+   rebuild re-tunes scene composition and there is room to set buildings back from the water.
+6. **Garage.** Decided: one garage in Devlin (home turf). Cars park where you leave them for
+   ~3 minutes, then return to the garage. Needs per-car parked position + timestamp.
+7. **Owned real estate should appear on the map as buildings** you can see and find.
+8. **Onboarding / just-in-time tutorial** to replace the advisor briefing, which the user finds
+   clunky and primitive. Progressive, contextual, mission-based teaching rather than a static
+   priority list. Design questions still open — ask before building.
+
 ## Game systems & polish
 
 ### Parody geography

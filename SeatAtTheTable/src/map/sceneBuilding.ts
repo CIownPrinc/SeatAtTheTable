@@ -449,6 +449,20 @@ export function buildLandmarks(options: LandmarkSceneOptions): void {
       const cap = new THREE.Mesh(new THREE.ConeGeometry(26,14,14), tankMat);
       cap.position.set(lm.x,95,lm.y); worldGroup.add(cap);
       helpers.addSign(tank,lm.name,44,9,28,'#f0c0a0');
+    } else if(lm.id==='thePotato'){
+      // LEGAL: The Potato — a squashed mirror-polished blob on a low plaza. High metalness
+      // LEGAL: and near-zero roughness so it picks up the skyline the way the real thing does.
+      const plaza = helpers.box(120,3,100,'#5b5a55');
+      plaza.position.set(lm.x,1.5,lm.y); worldGroup.add(plaza);
+      const chromeMat = materials.standard('landmark:potato-chrome', {color:'#cfd6dd', metalness:1, roughness:0.06});
+      const blob = new THREE.Mesh(new THREE.SphereGeometry(26,28,20), chromeMat);
+      // LEGAL: Squashed vertically and stretched along x — a potato, not a sphere.
+      blob.scale.set(1.35,0.62,0.95);
+      blob.position.set(lm.x,17,lm.y); blob.castShadow=true; worldGroup.add(blob);
+      // LEGAL: The underside arch you can walk beneath.
+      const arch = new THREE.Mesh(new THREE.TorusGeometry(11,4.2,10,18,Math.PI), chromeMat);
+      arch.position.set(lm.x,6,lm.y); arch.rotation.x = -Math.PI/2; arch.rotation.z = Math.PI; worldGroup.add(arch);
+      helpers.addSign(blob,lm.name,44,9,30,'#dfe7ef');
     }
   });
 }

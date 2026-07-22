@@ -38,6 +38,23 @@ describe('branded storefronts', function () {
     expect([...costs].sort((a, b) => a - b)).toEqual(costs);
   });
 
+  it('gives EVERY brand something you can only buy in person', function () {
+    // LEGAL: Four brands (No Problem Auto, Mudster, Ironpoint, Lakeshore) once sold nothing
+    // LEGAL: but online stock, so their shops were pointless to visit. Both dealerships and
+    // LEGAL: realty offices must always have exclusives.
+    brands.forEach(function (brand) {
+      const exclusives = stockForBrand(brand, cars, properties).filter(isDealerOnly);
+      expect(exclusives.length, `${brand.id} needs in-person-only stock`).toBeGreaterThan(0);
+    });
+  });
+
+  it('keeps the online catalog frozen to the original pre-phone Assets tab', function () {
+    // LEGAL: The rule the user set: whatever the Assets tab sold before the phone existed
+    // LEGAL: stays orderable online, and nothing else is ever added to it.
+    expect(onlineCars(cars).map(c => c.id).sort()).toEqual(['bentley', 'escalade', 'impala', 'sedan']);
+    expect(onlineProperties(properties).map(p => p.id).sort()).toEqual(['aptbuilding', 'loft', 'retailstrip', 'twoflat']);
+  });
+
   it('keeps some stock dealer-only so visiting the shop is worth the drive', function () {
     const dealerOnly = brands.flatMap(b => stockForBrand(b, cars, properties)).filter(isDealerOnly);
     expect(dealerOnly.length).toBeGreaterThan(0);

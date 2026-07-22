@@ -17,6 +17,18 @@ export const cars: Car[] = [
   { id:'bentley', name:'Electron S', icon:ICONS.car, cost:150000, speedMult:1.55, heistBonus:0.12, respectPerSec:0.4, color:'#c9a227', len:31, wid:16, brand:'electron', online:true },
   // LEGAL: Diamond Exotics - luxury supercars, status
   { id:'exotic', name:'Diamond Veyra', icon:ICONS.car, cost:450000, speedMult:1.70, heistBonus:0.10, respectPerSec:0.8, color:'#b02a3a', len:30, wid:16, brand:'diamond-exotics' },
+
+  // LEGAL: ---- Dealer-only stock ----
+  // LEGAL: The online catalog is frozen to what the old Assets tab sold, so every brand
+  // LEGAL: needs its own in-person exclusives or its shop is pointless to drive to.
+  // LEGAL: No Problem Auto and Mudster previously had none at all.
+  { id:'beater_wagon', name:'Karolla Wagon', icon:ICONS.car, cost:1400, speedMult:1.12, heistBonus:0.06, respectPerSec:0, color:'#6b7360', len:30, wid:15, brand:'no-problem-auto' },
+  { id:'panel_van', name:'Ridgeline Panel Van', icon:ICONS.car, cost:9500, speedMult:1.18, heistBonus:0.14, respectPerSec:0, color:'#8a8577', len:34, wid:17, brand:'no-problem-auto' },
+  { id:'outlaw_racer', name:'Outlaw Streetfighter', icon:ICONS.car, cost:12000, speedMult:1.52, heistBonus:0.02, respectPerSec:0.12, color:'#7a1f2a', len:19, wid:8, brand:'outlaw-riders' },
+  { id:'mudster_pickup', name:'Mudster Ranger', icon:ICONS.car, cost:18000, speedMult:1.30, heistBonus:0.10, respectPerSec:0.08, color:'#3d4a35', len:33, wid:17, brand:'mudster' },
+  { id:'mudster_armored', name:'Mudster Bulwark', icon:ICONS.car, cost:88000, speedMult:1.34, heistBonus:0.22, respectPerSec:0.3, color:'#171a1f', len:35, wid:19, brand:'mudster' },
+  { id:'electron_van', name:'Electron Haul', icon:ICONS.car, cost:62000, speedMult:1.38, heistBonus:0.16, respectPerSec:0.15, color:'#3f5a66', len:33, wid:17, brand:'electron' },
+  { id:'diamond_roadster', name:'Diamond Mirage', icon:ICONS.car, cost:260000, speedMult:1.62, heistBonus:0.08, respectPerSec:0.55, color:'#1f4f6b', len:29, wid:15, brand:'diamond-exotics' },
 ];
 
 export const properties: Property[] = [
@@ -30,4 +42,15 @@ export const properties: Property[] = [
   { id:'penthouse', name:'Skyline Penthouse', icon:ICONS.bld2, cost:950000, incomePerSec:1250, brand:'horizon' },
   // LEGAL: Lakeshore Development - waterfront, appreciates
   { id:'loft', name:'Riverside Lofts', icon:ICONS.bld3, cost:600000, incomePerSec:800, brand:'lakeshore', online:true },
+
+  // LEGAL: ---- Broker-only listings ----
+  // LEGAL: Same rule as the dealerships: Ironpoint and Lakeshore had nothing you had to
+  // LEGAL: visit for, so their offices did nothing. These are seen in person only.
+  { id:'corner_store_block', name:'Sixteenth Street Storefronts', icon:ICONS.bld1, cost:9500, incomePerSec:13, brand:'concrete-dreams' },
+  { id:'canal_walkup', name:'Canal Row Walk-Up', icon:ICONS.bld1, cost:5200, incomePerSec:7.5, brand:'concrete-dreams' },
+  { id:'freight_depot', name:'Freightline Depot', icon:ICONS.bld1, cost:48000, incomePerSec:64, brand:'ironpoint' },
+  { id:'coldstore', name:'Tannery Cold Store', icon:ICONS.bld1, cost:135000, incomePerSec:180, brand:'ironpoint' },
+  { id:'brownstone_row', name:'Gilt Shore Brownstones', icon:ICONS.bld2, cost:340000, incomePerSec:450, brand:'horizon' },
+  { id:'marina_block', name:'Waterfront Marina Block', icon:ICONS.bld3, cost:420000, incomePerSec:520, brand:'lakeshore' },
+  { id:'harbour_tower', name:'Harbourlight Tower', icon:ICONS.bld3, cost:1250000, incomePerSec:1500, brand:'lakeshore' },
 ];

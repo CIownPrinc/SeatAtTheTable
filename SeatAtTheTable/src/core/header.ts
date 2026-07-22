@@ -26,7 +26,7 @@ import { minigameOpen, playMinigame, type MinigameResult } from '../map/minigame
 import { buildAmenityModel as buildMapAmenityModel } from '../map/amenityRendering';
 import { createFillerLayoutProvider, seededRandom } from '../map/filler';
 import { applyMapWorldCoordinates, createMapBuildings, mapNpcs } from '../map/markers';
-import { actorRadius, canMoveTo } from '../map/movement';
+import { actorRadius, canMoveTo, nearestFreePoint, penetrationDepth } from '../map/movement';
 import { drawMinimap as drawMapMinimap, MINIMAP_SCALE } from '../map/minimap';
 import type { MapObject } from '../map/objects';
 import { solidsFromObjects } from '../map/objects';
@@ -3529,6 +3529,11 @@ import type * as ThreeNamespace from 'three';
     }
     state.inVehicle = true;
     player.vx=0; player.vy=0;
+    // LEGAL: A car is much wider than a pedestrian (radius 8 -> 24), so the spot you walked
+    // LEGAL: to may sit inside a building's bounds once you're driving. Nudge clear on entry
+    // LEGAL: rather than spawning the car already wedged.
+    const free = nearestFreePoint(player.x, player.y, currentSolids, true);
+    if(free){ player.x = free.x; player.y = free.y; }
     refreshPlayerModel(); updateParkedCarMesh();
     log('You get in.');
     renderAll();
@@ -3832,7 +3837,49 @@ import type * as ThreeNamespace from 'three';
     });
     return g;
   }
+  // LEGAL: Bikes were being built by buildCarModel, so a chopper rendered as a small
+  // LEGAL: saloon complete with windscreen and four wheels. Anything sold by a `bike`
+  // LEGAL: brand gets a real two-wheeler instead.
+  function isBikeCar(car: Car){ return brandById(car.brand)?.category === 'bike'; }
+
+  function buildBikeModel(car: Car){
+    const g = new THREE.Group();
+    const wheelR = 6.5;
+    const wheelMat = new THREE.MeshStandardMaterial({color:'#141414', roughness:0.85});
+    const chromeMat = new THREE.MeshStandardMaterial({color:'#b9bcc4', metalness:0.85, roughness:0.22});
+    const bodyMat = new THREE.MeshStandardMaterial({color:car.color, metalness:0.35, roughness:0.42});
+
+    // LEGAL: Two wheels in line along the length axis, not four at the corners.
+    [car.len*0.40, -car.len*0.40].forEach(function(wx){
+      const tyre = new THREE.Mesh(new THREE.TorusGeometry(wheelR, 1.9, 8, 16), wheelMat);
+      tyre.position.set(wx, wheelR, 0); tyre.rotation.y = Math.PI/2; tyre.castShadow = true; g.add(tyre);
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(wheelR*0.42, wheelR*0.42, 1.2, 10), chromeMat);
+      disc.position.set(wx, wheelR, 0); disc.rotation.x = Math.PI/2; g.add(disc);
+    });
+
+    // LEGAL: Engine block, tank and a low slung seat.
+    const engine = new THREE.Mesh(new THREE.BoxGeometry(car.len*0.30, 7, car.wid*0.78), new THREE.MeshStandardMaterial({color:'#2b2f36', roughness:0.6}));
+    engine.position.set(0, wheelR + 1.5, 0); g.add(engine);
+    const tank = new THREE.Mesh(new THREE.SphereGeometry(4.6, 12, 10), bodyMat);
+    tank.scale.set(1.5, 0.78, 0.94); tank.position.set(car.len*0.06, wheelR + 7, 0); g.add(tank);
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(car.len*0.34, 2.4, car.wid*0.66), new THREE.MeshStandardMaterial({color:'#17181d', roughness:0.9}));
+    seat.position.set(-car.len*0.20, wheelR + 6.4, 0); g.add(seat);
+
+    // LEGAL: Forks up to the bars, plus a headlamp so it reads as facing forward.
+    const fork = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 15, 6), chromeMat);
+    fork.position.set(car.len*0.36, wheelR + 5, 0); fork.rotation.z = 0.30; g.add(fork);
+    const bars = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, car.wid*1.5, 6), chromeMat);
+    bars.position.set(car.len*0.30, wheelR + 11.5, 0); bars.rotation.x = Math.PI/2; g.add(bars);
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(2.4, 10, 8), new THREE.MeshStandardMaterial({color:'#ffe9b0', emissive:'#ffd97a', emissiveIntensity:0.55}));
+    lamp.position.set(car.len*0.44, wheelR + 8.5, 0); g.add(lamp);
+    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.1, car.len*0.5, 8), chromeMat);
+    pipe.position.set(-car.len*0.10, 5, car.wid*0.42); pipe.rotation.z = Math.PI/2; g.add(pipe);
+
+    return g;
+  }
+
   function buildCarModel(car: Car){
+    if(isBikeCar(car)) return buildBikeModel(car);
     const g = new THREE.Group();
     const bodyH = car.id==='escalade'?18:(car.id==='bentley'?16:14);
     const body = box(car.len, bodyH, car.wid, car.color);
@@ -4642,7 +4689,7 @@ import type * as ThreeNamespace from 'three';
     { icon:'amenity',  label:'Amenity',                 color:'#5fbf8f', ph:'ph-basketball' },
     { icon:'person',   label:'Person',                  color:'#f0efe8', ph:'ph-user' },
     { icon:'gang',     label:'Gang recruit',            color:'#f0efe8', ph:'ph-users-three' },
-    { icon:'landmark', label:'Landmark',                color:'#e0c860', ph:'ph-star' },
+    { icon:'landmark', label:'Landmark — incl. The Potato', color:'#e0c860', ph:'ph-star' },
     { icon:'you',      label:'You',                     color:'#e8e6de', ph:'ph-navigation-arrow' },
     { icon:'waypoint', label:'Waypoint',                color:'#d4a017', ph:'ph-crosshair' },
   ];
@@ -4904,6 +4951,16 @@ import type * as ThreeNamespace from 'three';
         if(tryMove(tryX,tryY,currentSolids)){ player.x=tryX; player.y=tryY; }
         else if(tryMove(tryX,player.y,currentSolids)){ player.x=tryX; player.vy=0; }
         else if(tryMove(player.x,tryY,currentSolids)){ player.y=tryY; player.vx=0; }
+        // LEGAL: Escape hatch. If we are already inside a solid every branch above fails
+        // LEGAL: and the actor is trapped for good. Allow any step that reduces how deep we
+        // LEGAL: are wedged, so you can always drive back out of a building you got stuck on.
+        else if(!canMoveTo(player.x, player.y, currentSolids, state.inVehicle)){
+          const radius = actorRadius(state.inVehicle);
+          const here = penetrationDepth(player.x, player.y, currentSolids, radius);
+          if(penetrationDepth(tryX, tryY, currentSolids, radius) < here){ player.x=tryX; player.y=tryY; }
+          else if(penetrationDepth(tryX, player.y, currentSolids, radius) < here){ player.x=tryX; }
+          else if(penetrationDepth(player.x, tryY, currentSolids, radius) < here){ player.y=tryY; }
+        }
         else { player.vx=0; player.vy=0; }
       }
     } else { player.vx=0; player.vy=0; }
