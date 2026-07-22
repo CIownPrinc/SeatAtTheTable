@@ -9,6 +9,17 @@ export interface SceneInstance {
   rotationZ?: number;
 }
 
+export interface SceneTimingEntry {
+  name: string;
+  ms: number;
+}
+
+export interface SceneBuildTimer {
+  measure: <T>(name: string, action: () => T) => T;
+  entries: () => SceneTimingEntry[];
+  totalMs: () => number;
+}
+
 export class MapSceneMaterialCache {
   private readonly standardMaterials = new Map<string, ThreeNamespace.MeshStandardMaterial>();
   private readonly basicMaterials = new Map<string, ThreeNamespace.MeshBasicMaterial>();
@@ -52,6 +63,28 @@ export class MapSceneMaterialCache {
 
 export function createMapSceneMaterials(THREE: typeof ThreeNamespace): MapSceneMaterialCache {
   return new MapSceneMaterialCache(THREE);
+}
+
+export function createSceneBuildTimer(now: () => number = function(): number { return performance.now(); }): SceneBuildTimer {
+  const measurements: SceneTimingEntry[] = [];
+  return {
+    measure<T>(name: string, action: () => T): T {
+      const start = now();
+      try{
+        return action();
+      } finally {
+        measurements.push({ name, ms:now() - start });
+      }
+    },
+    entries(): SceneTimingEntry[] {
+      return measurements.slice();
+    },
+    totalMs(): number {
+      return measurements.reduce(function(total, entry): number {
+        return total + entry.ms;
+      }, 0);
+    },
+  };
 }
 
 export function addInstancedMesh(

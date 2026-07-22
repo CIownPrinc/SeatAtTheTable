@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { addInstancedMesh, createMapSceneMaterials } from './scenePerformance';
+import { addInstancedMesh, createMapSceneMaterials, createSceneBuildTimer } from './scenePerformance';
 
 describe('map scene performance helpers', function () {
   it('reuses materials by stable key', function () {
@@ -38,5 +38,21 @@ describe('map scene performance helpers', function () {
 
     material.dispose();
     mesh.geometry.dispose();
+  });
+
+  it('records named scene build timings without changing return values', function () {
+    let time = 100;
+    const timer = createSceneBuildTimer(function(): number {
+      time += 12;
+      return time;
+    });
+
+    const result = timer.measure('terrain', function(): string {
+      return 'built';
+    });
+
+    expect(result).toBe('built');
+    expect(timer.entries()).toEqual([{ name:'terrain', ms:12 }]);
+    expect(timer.totalMs()).toBe(12);
   });
 });

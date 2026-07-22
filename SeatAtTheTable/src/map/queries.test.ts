@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { MapObject } from './objects';
 import type { MapNpc } from './markers';
 import { createMapPlaceRecords } from './places';
-import { activeTrainSnapshot, bridgeAtPoint, isPointOnPlayableLand, mapPointContext, nearestPlaceAtPoint, placesByCategory, projectPointToRoad, routeHintBetween, trainCrossingBlockAtPoint } from './queries';
+import { activeTrainSnapshot, bridgeAtPoint, isPointOnPlayableLand, mapPointContext, nearestPlaceAtPoint, placesByCategory, projectPointToRoad, routeHintBetween, routeSummary, trainCrossingBlockAtPoint } from './queries';
 import { windhavenMapModel } from './mapModel';
 
 describe('map gameplay queries', function () {
@@ -56,12 +56,15 @@ describe('map gameplay queries', function () {
 
   it('builds a route hint with bridge crossings between districts', function () {
     const route = routeHintBetween({ x:700, y:600 }, { x:2700, y:600 });
+    const summary = routeSummary(route);
 
     expect(route.waypoints[0]).toEqual({ x:700, y:600 });
     expect(route.waypoints[route.waypoints.length - 1]).toEqual({ x:2700, y:600 });
     expect(route.bridges.map(bridge => bridge.roadName)).toContain('Roosevelt Road');
     expect(route.roads.map(road => road.name)).toContain('Roosevelt Road');
     expect(route.distance).toBeGreaterThan(1900);
+    expect(summary.label).toContain('via Roosevelt Road');
+    expect(summary.label).toContain('crossing Roosevelt Road Bridge');
   });
 
   it('routes through connected road turns instead of cutting across blocks', function () {

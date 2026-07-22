@@ -27,10 +27,10 @@ import { solidsFromObjects } from '../map/objects';
 import { buildMapObjects, ventureFootprint } from '../map/objectFactory';
 import { defaultParkedCarPositions, parkedCarPositionForDistrict } from '../map/parking';
 import { createMapPlaceRecords, mapPlaceCategoryLabel, type MapPlaceCategory, type MapPlaceRecord } from '../map/places';
-import { mapPointContext, nearestPlaceAtPoint, placesByCategory, routeHintBetween, trainCrossingBlockAtPoint } from '../map/queries';
+import { mapPointContext, nearestPlaceAtPoint, placesByCategory, routeHintBetween, routeSummary, trainCrossingBlockAtPoint } from '../map/queries';
 import { actorDisplayName, createRoamingActors, updateRoamingActors } from '../map/roaming';
 import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, buildLandmarks, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
-import { createMapSceneMaterials } from '../map/scenePerformance';
+import { createMapSceneMaterials, createSceneBuildTimer } from '../map/scenePerformance';
 import { buildIntersectionFurniture as buildMapIntersectionFurniture } from '../map/streetFurniture';
 import { DISTRICT_OFFSETS, DISTRICT_W, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
@@ -2159,7 +2159,7 @@ import type * as ThreeNamespace from 'three';
     setGlobalWaypoint({ x:location.x, y:location.y });
     rebuildWaypointBeacon();
     byId('minimap-clear').classList.add('show');
-    log(`<i class="ph-duotone ph-map-pin"></i> Waypoint set to ${location.label}.`);
+    log(`<i class="ph-duotone ph-map-pin"></i> Waypoint set to ${location.label} - ${waypointRouteLabel(location)}.`);
     scheduleSave();
   }
 
@@ -3498,13 +3498,18 @@ import type * as ThreeNamespace from 'three';
     streetLights = [];
     dealerArrivals.length = 0; // LEGAL: transient dealer walk-ins are re-added as standing figures below
 
+    const timer = createSceneBuildTimer();
     const materials = createMapSceneMaterials(THREE);
     const baseScene = { THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, materials };
-    buildBaseGround(baseScene);
-    buildCanalWater(baseScene);
-    buildRoadNetwork({ ...baseScene, roadNetwork, buildIntersectionFurniture });
-    buildStreetTrees({ ...baseScene, roadNetwork, districtOffsets:DISTRICT_OFFSETS, seededRandom });
-    buildCanalBridges(baseScene);
+    timer.measure('terrain', function(): void {
+      buildBaseGround(baseScene);
+      buildCanalWater(baseScene);
+      buildRoadNetwork({ ...baseScene, roadNetwork, buildIntersectionFurniture });
+      buildCanalBridges(baseScene);
+    });
+    timer.measure('street-trees', function(): void {
+      buildStreetTrees({ ...baseScene, roadNetwork, districtOffsets:DISTRICT_OFFSETS, seededRandom });
+    });
     // LEGAL: Venture buildings — all districts
     mapObjects.filter(o=>o.kind==='building').forEach(function(object){
       const m = object.ref as typeof mapBuildings[number];
@@ -3584,17 +3589,28 @@ import type * as ThreeNamespace from 'three';
       addSign(g, actorDisplayName(actor), 28, 7, 38, '#f0efe8');
     });
 
-    buildFillerCity({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, districtOffsets:DISTRICT_OFFSETS, fillerFor, helpers:{ box, addSign, buildDetailedBuilding, renderZoneType, seededRandom } });
-    buildLandmarks({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, landmarks, helpers:{ box, addSign } });
-    buildRailAndRiver(baseScene);
-    buildTrain();
-    currentSolids = buildAllSolids();
-    // LEGAL: Block the landmark footprints so you can't walk through them.
-    currentSolids.push({x:125,y:820,hw:44,hd:44}, {x:2125,y:850,hw:26,hd:26});
-    updateParkedCarMesh();
-    rebuildWaypointBeacon();
+    timer.measure('fill-and-landmarks', function(): void {
+      buildFillerCity({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, districtOffsets:DISTRICT_OFFSETS, fillerFor, helpers:{ box, addSign, buildDetailedBuilding, renderZoneType, seededRandom } });
+      buildLandmarks({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, landmarks, helpers:{ box, addSign } });
+      buildRailAndRiver(baseScene);
+    });
+    timer.measure('gameplay-overlays', function(): void {
+      buildTrain();
+      currentSolids = buildAllSolids();
+      // LEGAL: Block the landmark footprints so you can't walk through them.
+      currentSolids.push({x:125,y:820,hw:44,hd:44}, {x:2125,y:850,hw:26,hd:26});
+      updateParkedCarMesh();
+      rebuildWaypointBeacon();
+    });
+    if(isLocalDevBuild()){
+      console.info('[map-build]', timer.entries().map(entry => `${entry.name}:${entry.ms.toFixed(1)}ms`).join(' '), `total:${timer.totalMs().toFixed(1)}ms`);
+    }
 
     updateDayNightLighting();
+  }
+
+  function isLocalDevBuild(): boolean {
+    return location.hostname === 'localhost' || location.hostname === '127.0.0.1';
   }
 
   // LEGAL: Historical entry point kept for saved-game boot; the city is unified now.
@@ -3768,6 +3784,9 @@ import type * as ThreeNamespace from 'three';
   }
   function setGlobalWaypoint(point: Point | null): void {
     state.waypoints = { devlin:null, westside:null, hub:null, global:point };
+  }
+  function waypointRouteLabel(point: Point): string {
+    return routeSummary(routeHintBetween({ x:player.x, y:player.y }, point)).label;
   }
 
   minimapCanvas.addEventListener('mousedown', function(e){
@@ -3944,12 +3963,14 @@ import type * as ThreeNamespace from 'three';
     const place = id ? mapPlaces.find(candidate => candidate.id === id) : null;
     if(!place) return;
     cityMapHoverPlace = place;
-    cityMapHint.textContent = `${districtDisplayName(place.district)} - ${place.name} - ${mapPlaceCategoryLabel(place)}`;
     if(waypoint){
       setGlobalWaypoint({ x:place.x, y:place.y });
       rebuildWaypointBeacon();
       byId('minimap-clear').classList.add('show');
+      cityMapHint.textContent = `${districtDisplayName(place.district)} - ${place.name} - ${mapPlaceCategoryLabel(place)} - ${waypointRouteLabel(place)}`;
       scheduleSave();
+    } else {
+      cityMapHint.textContent = `${districtDisplayName(place.district)} - ${place.name} - ${mapPlaceCategoryLabel(place)}`;
     }
     renderCityMapSearch();
     drawCityMap();
@@ -3995,6 +4016,7 @@ import type * as ThreeNamespace from 'three';
     setGlobalWaypoint(point);
     rebuildWaypointBeacon();
     byId('minimap-clear').classList.add('show');
+    cityMapHint.textContent = `${districtDisplayName(dist)} waypoint - ${waypointRouteLabel(point)}`;
     if(dist !== state.currentDistrict) log(`📍 Waypoint set in ${districtDisplayName(dist)} — head there to follow it.`);
     drawCityMap();
     scheduleSave();

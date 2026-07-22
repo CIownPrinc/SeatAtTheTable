@@ -35,6 +35,13 @@ export interface RouteHint {
   distance: number;
 }
 
+export interface RouteSummary {
+  distanceMeters: number;
+  streetNames: string[];
+  bridgeNames: string[];
+  label: string;
+}
+
 export interface TrainSnapshot {
   rail: RailLineRecord;
   point: Point;
@@ -147,6 +154,20 @@ export function routeHintBetween(start: Point, end: Point, model: WindhavenMapMo
     roads,
     bridges,
     distance: routeDistance(waypoints),
+  };
+}
+
+export function routeSummary(route: RouteHint): RouteSummary {
+  const distanceMeters = Math.round(route.distance);
+  const streetNames = route.roads.map(road => road.name);
+  const bridgeNames = route.bridges.map(bridge => bridge.name);
+  const streetLabel = streetNames.length > 0 ? `via ${streetNames.slice(0, 3).join(' / ')}` : 'direct route';
+  const bridgeLabel = bridgeNames.length > 0 ? `, crossing ${bridgeNames.slice(0, 2).join(' / ')}` : '';
+  return {
+    distanceMeters,
+    streetNames,
+    bridgeNames,
+    label: `${streetLabel}${bridgeLabel} - ${distanceMeters}m`,
   };
 }
 

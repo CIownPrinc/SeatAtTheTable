@@ -160,15 +160,15 @@ scene building, collision, minimap, zoning, lighting, weather, or user-facing be
   residential details) once exact CC0 sources are chosen.
 - Expand roaming with lane-aware traffic rules and more believable pedestrian
   destination tables.
-- Make road curves collision/minimap/path-aware instead of decorative only (diagonals
-  are already data-backed).
+- Make road curves collision/minimap/path-aware beyond the current data-backed diagonals.
 - Evaluate the mirrored CC0 car & character assets role by role; keep procedural as the
   primary look, swap in external meshes only where they clearly look better.
-- **Add a visual-regression e2e check for the 3D map canvas** so shader/render failures
-  are caught before manual testing (still not done).
+- **Done:** visual-regression e2e checks now cover WebGL boot, water/land color
+  distinction, fullscreen sizing, expanded minimap behavior, hover, search, and waypoint
+  placement.
 - Replace more handmade primitives only where a CC0 asset fits the Chicago-parody style.
-- **Deferred:** pathfinding/physics until product direction requires it. Full non-grid
-  road rewrite is deliberately *not* pursued — it would strand the ~40 hand-placed
+- **Done:** road-graph route hints now follow connected streets, bridges, and diagonal
+  shortcut endpoints. Full non-grid road rewrite is deliberately *not* pursued — it would strand the ~40 hand-placed
   anchors and re-introduce buildings-in-streets. Offer only if the user wants to leave
   the grid entirely.
 

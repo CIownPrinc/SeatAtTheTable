@@ -139,7 +139,7 @@ Features:
 - Expanded map for planning.
 - One global waypoint.
 - Hover text: district, exact place name, and category.
-- Search/filter later: banks, properties, people, shops, heist targets, corners.
+- Search/filter: banks, properties, people, shops, heist targets, corners.
 - Distinct visual layers:
   - Water: blue fills.
   - Parks: green fills.
@@ -177,7 +177,7 @@ This means the map model should expose queries:
 - Is point on land.
 - Is point on bridge.
 - Is point in water.
-- Route hint from A to B.
+- Route hint from A to B, with distance and street summary.
 
 ### 8. Testing Plan
 
@@ -219,7 +219,7 @@ Visual checks:
 6. Add road classes, curved paths, bridge records, and rail records.
 7. Replace placeholder district rectangles with natural land/water/park shapes.
 8. Add place-specific 3D building models and clearer in-world signs.
-9. Add train path animation and later train-crossing gameplay hooks.
+9. Add train path animation and train-crossing gameplay hooks.
 10. Add focused unit, integration, e2e, and visual tests.
 
 ## Definition of Done

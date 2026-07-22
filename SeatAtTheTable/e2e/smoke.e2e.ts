@@ -383,5 +383,6 @@ test.describe('game boot', () => {
     await page.locator('[data-citymap-waypoint="bankHome"]').click();
     await expect(page.locator('#minimap-clear')).toHaveClass(/show/);
     await expect(page.locator('#citymap-hint')).toContainText('Rentport City National');
+    await expect(page.locator('#citymap-hint')).toContainText('via');
   });
 });
