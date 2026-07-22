@@ -455,6 +455,12 @@ main{max-width:1240px;margin:0 auto;padding:26px 24px 60px;}
 .device-back:hover{background:var(--bg-panel);}
 .device-appbar-title{font-family:var(--font-display);font-size:16px;color:var(--text);}
 .device-scroll{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px;}
+.mission-phone-card{border:1px solid var(--line);background:rgba(255,255,255,0.035);border-radius:8px;padding:12px;margin-bottom:10px;}
+.mission-phone-title{font-family:var(--font-display);font-size:15px;color:var(--text);font-weight:700;}
+.mission-phone-meta{font-family:var(--font-mono);font-size:11px;color:var(--gold);margin-top:2px;text-transform:uppercase;}
+.mission-phone-body{font-size:12.5px;line-height:1.45;color:var(--text-dim);margin-top:8px;}
+.mission-phone-body p{margin:0;}
+.mission-phone-empty{font-size:12px;color:var(--text-dim);border:1px dashed var(--line);border-radius:8px;padding:10px;margin-bottom:8px;}
 .modal{background:var(--bg-panel);border:2px solid var(--line-bright);box-shadow:0 16px 32px rgba(0,0,0,0.9);max-width:560px;width:100%;padding:0;overflow:hidden;animation:fadeModal 0.2s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 12px;}
 @keyframes fadeModal{from{opacity:0; transform: translateY(15px) scale(0.97);}to{opacity:1; transform: translateY(0) scale(1);}}
 .modal-header{border-bottom:1px solid var(--line);padding:24px 28px 20px;position:relative;background:var(--bg-row);}

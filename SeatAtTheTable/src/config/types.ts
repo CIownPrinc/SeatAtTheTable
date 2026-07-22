@@ -278,6 +278,41 @@ export interface DialogueTree {
   nodes: Record<string, DialogueNode>;
 }
 
+export type EventStatus = 'offered' | 'declined' | 'accepted' | 'completed' | 'failed';
+
+export type MissionStageStatus = 'active' | 'completed' | 'failed';
+
+export interface MissionObjective extends Point {
+  label: string;
+  district: string;
+  placeId: string;
+}
+
+export interface MissionState {
+  id: string;
+  stageId: string;
+  status: MissionStageStatus;
+  startedAt: number;
+  updatedAt: number;
+  objective: MissionObjective | null;
+}
+
+export interface MissionOutcome {
+  id: string;
+  result: string;
+  completedAt: number;
+}
+
+export type MissionWorldValue = boolean | number | string;
+
+export interface MissionSaveState {
+  eventRepeats: Record<string, number>;
+  eventHistory: Record<string, EventStatus>;
+  activeMissions: Record<string, MissionState>;
+  completedMissions: Record<string, MissionOutcome>;
+  worldMemory: Record<string, MissionWorldValue>;
+}
+
 // LEGAL: Central mutable game state. Keyed maps (waypoints, parkedCarPos,
 // LEGAL: portfolio, market*) are indexed by district or stock symbol at runtime.
 export interface GameState {
@@ -347,4 +382,9 @@ export interface GameState {
   // LEGAL: own operations and can affect heat, income, and the market.
   cityNews: string[];
   nextCityNewsAt: number;
+  eventRepeats: Record<string, number>;
+  eventHistory: Record<string, EventStatus>;
+  activeMissions: Record<string, MissionState>;
+  completedMissions: Record<string, MissionOutcome>;
+  worldMemory: Record<string, MissionWorldValue>;
 }

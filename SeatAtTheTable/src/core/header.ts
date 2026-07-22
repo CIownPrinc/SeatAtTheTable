@@ -39,7 +39,32 @@ import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from
 import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/viewport';
 import { renderZoneType } from '../map/zoning';
 import { drawInteriorRoom } from '../map/interiorScene';
+import { activeMissionCount, advanceMissionStage, canOfferRepeatableEvent, canOfferUniqueEvent, completeMission, declineMission, missionSaveDefaults, recordEventOffer, startMission } from './missions';
 import type * as ThreeNamespace from 'three';
+
+  type MissionEntry = 'popup' | 'phone';
+  type MissionEventDefinition = {
+    id: string;
+    title: string;
+    sender: string;
+    neg: boolean;
+    unique: boolean;
+    maxRepeats?: number;
+    entry: MissionEntry;
+    body: string;
+    acceptLabel: string;
+    declineLabel: string;
+  };
+  const missionEventPool: MissionEventDefinition[] = [
+    { id:'tribune', title:'The Herald Wants an Interview', sender:'Lana Vance', neg:false, unique:true, entry:'phone', body:"<p class='flavor'>Lana Vance from the Windhaven Herald wants a sit-down about the person building an empire out of a folding cart.</p>", acceptLabel:'Take the interview', declineLabel:'Stay quiet' },
+    { id:'rival', title:'Rival Crew Confrontation', sender:'West Side runner', neg:true, unique:true, entry:'popup', body:"<p class='flavor'>A West Side crew thinks your runners are working streets that belong to them. Their capo is waiting near one of your active corners.</p>", acceptLabel:'Meet the capo', declineLabel:'Avoid the meeting' },
+    { id:'inspector', title:'Inspector Kowalski Visits', sender:'Health Department', neg:true, unique:false, maxRepeats:2, entry:'popup', body:"<p class='flavor'>Inspector Kowalski has a clipboard and a look that says he already knows the price of looking away.</p>", acceptLabel:'Meet Kowalski', declineLabel:'Keep him waiting' },
+    { id:'cousin', title:'Amit Calls From the Bus Station', sender:'Cousin Amit', neg:false, unique:true, entry:'phone', body:"<p class='flavor'>Amit just arrived with a suitcase and a debt following close behind. He is waiting at the Hub Bus Station.</p>", acceptLabel:'Go get Amit', declineLabel:'Turn him away' },
+    { id:'cops', title:'Detective Miller Wants a Back-Alley Talk', sender:'Burner phone', neg:true, unique:true, entry:'phone', body:"<p class='flavor'>Detective Miller sends a short message: Devlin back alley, no uniforms, no second chances.</p>", acceptLabel:'Take the meeting', declineLabel:'Ignore the burner' },
+    { id:'hustler', title:'A Talented Hustler Wants In', sender:"O'Malley's Bar", neg:false, unique:true, entry:'popup', body:"<p class='flavor'>Sharp, hungry, and risky. The pitch is waiting at O'Malley's Bar.</p>", acceptLabel:'Hear the pitch', declineLabel:'Pass on it' },
+    { id:'investor', title:'Silent Investor Invitation', sender:'Whitfield Realty', neg:false, unique:true, entry:'phone', body:"<p class='flavor'>Cash up front, no questions, in exchange for a slice of everything going forward. The meeting is at Whitfield Realty.</p>", acceptLabel:'Take the meeting', declineLabel:'Stay independent' },
+    { id:'fire', title:"Grease Fire at Kailash's Cart", sender:'Kailash', neg:true, unique:true, entry:'popup', body:"<p class='flavor'>Where it all started nearly goes up in smoke. Kailash says this does not smell accidental.</p>", acceptLabel:'Go to the cart', declineLabel:'Handle it quietly' },
+  ];
 
   const eventPool = [
     { id:'rival', title:'A RIVAL CREW EYES YOUR CORNER', neg:true, body:"<p class='flavor'>Word is a West Side crew thinks your runners are working streets that belong to them.</p>", choices:[
@@ -437,6 +462,7 @@ import type * as ThreeNamespace from 'three';
     financeView: 'vault', activeStock: null,
     currentNews: [], newsQueue: [], nextNewsAt: 0,
     cityNews: [], nextCityNewsAt: 150,
+    eventRepeats: {}, eventHistory: {}, activeMissions: {}, completedMissions: {}, worldMemory: {},
   };
 
   // LEGAL: ================= HELPERS =================
@@ -716,6 +742,228 @@ import type * as ThreeNamespace from 'three';
     scheduleSave();
   }
 
+  function missionSaveState(){
+    return {
+      eventRepeats: state.eventRepeats,
+      eventHistory: state.eventHistory,
+      activeMissions: state.activeMissions,
+      completedMissions: state.completedMissions,
+      worldMemory: state.worldMemory,
+    };
+  }
+  function missionDefinition(id: string): MissionEventDefinition | null {
+    return missionEventPool.find(function(event){ return event.id === id; }) ?? null;
+  }
+  function missionPlaceByService(serviceId: string): MapPlaceRecord | null {
+    return mapPlaces.find(function(place){ return place.sourceObject?.kind === 'service' && place.sourceObject.id === serviceId; }) ?? null;
+  }
+  function missionPlaceByObjectId(objectId: string): MapPlaceRecord | null {
+    return mapPlaces.find(function(place){ return place.sourceObject?.id === objectId || place.id === objectId; }) ?? null;
+  }
+  function missionObjectiveFromPlace(place: MapPlaceRecord | null, label?: string) {
+    if(!place) return null;
+    return { label:label ?? place.name, district:place.district, placeId:place.id, x:place.x, y:place.y };
+  }
+  function objectiveForMission(id: string) {
+    if(id === 'tribune') return missionObjectiveFromPlace(missionPlaceByService('heraldHq'), 'Windhaven Herald studio');
+    if(id === 'cousin') return missionObjectiveFromPlace(missionPlaceByService('hubBusStation'), 'Meet Amit at the bus station');
+    if(id === 'cops') return missionObjectiveFromPlace(missionPlaceByService('devlinAlley'), 'Meet Detective Miller in the alley');
+    if(id === 'investor') return missionObjectiveFromPlace(missionPlaceByService('realty'), 'Meet the silent investor');
+    if(id === 'hustler') return missionObjectiveFromPlace(missionPlaceByObjectId('bar'), "Hear the pitch at O'Malley's");
+    if(id === 'fire') return missionObjectiveFromPlace(missionPlaceByObjectId('cart'), "Check Kailash's Cart");
+    if(id === 'inspector') {
+      const venture = flagshipLegit() ?? businesses.find(function(b){ return b.id === 'cart'; }) ?? businesses[0];
+      return missionObjectiveFromPlace(missionPlaceByObjectId(venture.id), `Meet Inspector Kowalski at ${venture.name}`);
+    }
+    if(id === 'rival') {
+      const corner = activeCorners()[0] ?? corners.find(function(c){ return !c.busted; }) ?? corners[0];
+      return missionObjectiveFromPlace(missionPlaceByObjectId(corner.id), `Meet the rival capo at ${corner.name}`);
+    }
+    return null;
+  }
+  function setMissionGps(missionId: string): void {
+    const mission = state.activeMissions[missionId];
+    if(!mission?.objective) return;
+    setGlobalWaypoint({ x:mission.objective.x, y:mission.objective.y });
+    rebuildWaypointBeacon();
+    byId('minimap-clear').classList.add('show');
+  }
+  function startMissionFromOffer(id: string): void {
+    const definition = missionDefinition(id);
+    const objective = objectiveForMission(id);
+    if(!definition || !objective) return;
+    startMission(missionSaveState(), { id, stageId:'travel', status:'active', startedAt:state.playSeconds, updatedAt:state.playSeconds, objective });
+    setMissionGps(id);
+    log(`<i class="ph-duotone ph-map-pin"></i> Mission started: ${definition.title}. GPS set to ${objective.label}.`);
+    renderAll();
+    scheduleSave();
+  }
+  function declineMissionOffer(id: string): void {
+    declineMission(missionSaveState(), id);
+    if(id === 'tribune'){ state.respect += 10; state.worldMemory.pressTone = 'quiet'; log('<i class="ph-duotone ph-star"></i> You decline Lana Vance. Some people respect a man who does not need the attention.'); }
+    else if(id === 'cousin'){ state.respect = Math.max(0, state.respect - 5); state.worldMemory.amitTurnedAway = true; log('<i class="ph-duotone ph-users"></i> Amit gets the message. Family will remember it.'); }
+    else if(id === 'hustler'){ state.cash += 500; state.worldMemory.rejectedHustler = true; log('<i class="ph-duotone ph-users-three"></i> You pass. They leave a finder fee, then start talking to rivals.'); }
+    else if(id === 'investor'){ state.respect += 8; state.worldMemory.investorRejected = true; log('<i class="ph-duotone ph-star"></i> You show the investor the door. Independence has its own price.'); }
+    else if(id === 'fire'){ applyTempMult('legit', 0.7, 30); state.worldMemory.cartRebuiltQuietly = true; log('<i class="ph-duotone ph-warning-circle"></i> You rebuild quietly. Business limps while the smoke clears.'); }
+    else { log('<i class="ph-duotone ph-info"></i> You let the opportunity pass for now.'); }
+    renderAll();
+    scheduleSave();
+  }
+  function activeMissionEntries() {
+    return Object.values(state.activeMissions).filter(function(mission){ return mission.status === 'active'; });
+  }
+  function activeMissionForPlace(placeId: string): string | null {
+    const mission = activeMissionEntries().find(function(entry){ return entry.objective?.placeId === placeId; });
+    return mission?.id ?? null;
+  }
+  function activeMissionForObjectId(objectId: string): string | null {
+    const place = missionPlaceByObjectId(objectId);
+    return place ? activeMissionForPlace(place.id) : null;
+  }
+  function activeMissionForServiceId(serviceId: string): string | null {
+    const place = missionPlaceByService(serviceId);
+    return place ? activeMissionForPlace(place.id) : null;
+  }
+  function finishMission(id: string, result: string): void {
+    completeMission(missionSaveState(), id, result, state.playSeconds);
+    setGlobalWaypoint(null);
+    rebuildWaypointBeacon();
+    byId('minimap-clear').classList.remove('show');
+    renderAll();
+    scheduleSave();
+  }
+  function resolveTribuneInterview(tone: string): void {
+    if(tone === 'professional'){ applyTempMult('legit', 1.25, 75); state.prestigeCount = Math.max(state.prestigeCount, 1); state.worldMemory.pressTone = 'professional'; log('<i class="ph-duotone ph-microphone-stage"></i> Lana runs a clean profile. Legit traffic rises and the city starts treating you like a business owner.'); }
+    else if(tone === 'evasive'){ state.respect += 8; state.heat = Math.max(0, state.heat - 8); state.worldMemory.pressTone = 'guarded'; log('<i class="ph-duotone ph-newspaper"></i> The piece says less than Lana wanted. People notice the discipline.'); }
+    else if(tone === 'humorous'){ state.respect += 14; applyTempMult('legit', 1.12, 60); state.worldMemory.pressTone = 'warm'; log('<i class="ph-duotone ph-smiley"></i> You make Windhaven laugh without giving much away. Foot traffic and street talk both improve.'); }
+    else if(tone === 'controversial'){ state.respect += 22; state.heat = Math.min(100, state.heat + 16); state.investigation = Math.min(100, state.investigation + 4); state.worldMemory.pressTone = 'scandal'; log('<i class="ph-duotone ph-warning"></i> The quotes travel fast. Respect jumps, but so does attention.'); }
+    else { state.respect += 12; state.heat = Math.min(100, state.heat + 24); state.worldMemory.pressTone = 'hostile'; log('<i class="ph-duotone ph-warning"></i> You turn the interview into a threat. The street likes it. City Hall does not.'); }
+    finishMission('tribune', tone);
+  }
+  function openTribuneInterview(): void {
+    advanceMissionStage(missionSaveState(), 'tribune', 'interview', state.playSeconds, null);
+    showModal({
+      eyebrow:'Windhaven Herald Studio',
+      title:'Lana Vance',
+      body:"<p class='flavor'>Lana checks the recorder, then looks up. \"Three questions. How do you explain the money, the loyalty, and the rumors that follow you?\"</p>",
+      buttons:[
+        { label:'Professional: business, payroll, neighborhood', onClick:function(){ resolveTribuneInterview('professional'); } },
+        { label:'Evasive: keep the answers narrow', onClick:function(){ resolveTribuneInterview('evasive'); } },
+        { label:'Humorous: make it charming', onClick:function(){ resolveTribuneInterview('humorous'); } },
+        { label:'Controversial: call out City Hall', onClick:function(){ resolveTribuneInterview('controversial'); } },
+        { label:'Aggressive: dare anyone to test you', onClick:function(){ resolveTribuneInterview('aggressive'); } },
+      ],
+    });
+    renderAll();
+    scheduleSave();
+  }
+  function resolveMissionAtObjective(id: string): void {
+    if(id === 'tribune'){ openTribuneInterview(); return; }
+    if(id === 'rival'){
+      showModal({ eyebrow:'West Side Corner', title:'Rival Capo', body:"<p class='flavor'>The capo waits with two people behind him. \"This corner pays somebody tonight. You choose who.\"</p>", buttons:[
+        { label:'Pay them off (-8% cash)', onClick:function(){ state.cash *= 0.92; state.worldMemory.rivalSettlement = 'paid'; log('<i class="ph-duotone ph-envelope-simple"></i> You pay the rival crew to walk away quietly.'); finishMission('rival', 'paid'); } },
+        { label:'Intimidate them (+Respect, +Heat)', onClick:function(){ state.respect += 15; state.heat = Math.min(100, state.heat + 18); state.worldMemory.rivalSettlement = 'intimidated'; log('<i class="ph-duotone ph-star"></i> You hold the corner. Word travels, and so does heat.'); finishMission('rival', 'intimidated'); } },
+        { label:'Negotiate a split (-Heat, income cut)', onClick:function(){ applyTempMult('all', 0.92, 90); state.heat = Math.max(0, state.heat - 10); state.worldMemory.rivalSettlement = 'split'; log('<i class="ph-duotone ph-handshake"></i> You split the corner take for quieter streets.'); finishMission('rival', 'split'); } },
+        { label:'Attack (gang war risk)', onClick:function(){ state.respect += 25; state.heat = Math.min(100, state.heat + 28); state.nextWarAt = Math.min(state.nextWarAt || Infinity, state.playSeconds + 30); state.worldMemory.gangWarSparked = true; log('<i class="ph-duotone ph-crosshair"></i> The capo leaves bleeding. West Side will answer.'); finishMission('rival', 'attacked'); } },
+      ]}); return;
+    }
+    if(id === 'inspector'){
+      const count = state.eventRepeats.inspector ?? 1;
+      const bribe = count > 1 ? 750 : 400;
+      showModal({ eyebrow:'Health Department', title:'Inspector Kowalski', body:`<p class='flavor'>Kowalski taps the clipboard. ${count > 1 ? '"We both know the second visit costs more."' : '"Clean kitchens are expensive. Dirty ones are worse."'}</p>`, buttons:[
+        { label:`Pay the bribe (${fmt(bribe)})`, onClick:function(){ state.cash = Math.max(0, state.cash - bribe); state.worldMemory.kowalskiPaid = count; log('<i class="ph-duotone ph-envelope-simple"></i> The envelope disappears and the inspection passes.'); finishMission('inspector', 'bribed'); } },
+        { label:'Comply with the inspection', onClick:function(){ applyTempMult('legit', 0.85, 45); state.worldMemory.kowalskiComplied = count; log('<i class="ph-duotone ph-scales"></i> You do it clean. Business slows while the paperwork clears.'); finishMission('inspector', 'complied'); } },
+        { label:'Blackmail him', onClick:function(){ if(state.respect >= 120 || state.influence >= 80){ state.worldMemory.kowalskiBlackmailed = true; state.heat = Math.max(0, state.heat - 12); log('<i class="ph-duotone ph-folder-lock"></i> Kowalski sees the file and forgets your address.'); } else { state.heat = Math.min(100, state.heat + 10); log('<i class="ph-duotone ph-warning"></i> You reach for leverage you do not have. Kowalski leaves angry.'); } finishMission('inspector', 'blackmail'); } },
+        { label:'Intimidate him', onClick:function(){ state.respect += 8; state.heat = Math.min(100, state.heat + 12); log('<i class="ph-duotone ph-hand-fist"></i> Kowalski backs off for now. He will remember the tone.'); finishMission('inspector', 'intimidated'); } },
+      ]}); return;
+    }
+    if(id === 'cousin'){
+      showModal({ eyebrow:'Hub Bus Station', title:'Cousin Amit', body:"<p class='flavor'>Amit has one suitcase, two apologies, and a debt that apparently found the same bus route.</p>", buttons:[
+        { label:'Pay the debt ($600)', onClick:function(){ state.cash = Math.max(0, state.cash - 600); state.respect += 4; state.worldMemory.amitHelped = true; log('<i class="ph-duotone ph-users"></i> You settle Amit\'s debt. Family first.'); finishMission('cousin', 'debt paid'); } },
+        { label:'Hire him into legit work', onClick:function(){ hireFreeCrew(); state.worldMemory.amitHired = true; log('<i class="ph-duotone ph-users"></i> Amit gets work and a warning not to embarrass the family.'); finishMission('cousin', 'hired'); } },
+        { label:'Turn him away', onClick:function(){ state.respect = Math.max(0, state.respect - 5); state.worldMemory.amitTurnedAway = true; log('<i class="ph-duotone ph-users"></i> You send Amit away. The call home will be short.'); finishMission('cousin', 'turned away'); } },
+      ]}); return;
+    }
+    if(id === 'cops'){
+      showModal({ eyebrow:'Devlin Back Alley', title:'Detective Miller', body:"<p class='flavor'>Miller keeps his hands visible. \"You can pay, you can point me at someone worse, or you can make this official.\"</p>", buttons:[
+        { label:'Pay Miller ($900, -Heat)', onClick:function(){ state.cash = Math.max(0, state.cash - 900); state.heat = Math.max(0, state.heat - 30); state.worldMemory.millerPaid = true; log('<i class="ph-duotone ph-warning"></i> Miller pockets the money. The questions stop.'); finishMission('cops', 'paid'); } },
+        { label:'Snitch on a rival (-Case, -Respect)', onClick:function(){ state.investigation = Math.max(0, state.investigation - 18); state.respect = Math.max(0, state.respect - 12); state.worldMemory.snitchOnRival = true; log('<i class="ph-duotone ph-shield-star"></i> Miller gets a name. The street gets a rumor.'); finishMission('cops', 'snitched'); } },
+        { label:'Refuse', onClick:function(){ state.heat = Math.min(100, state.heat + 15); log('<i class="ph-duotone ph-warning"></i> Miller leaves with nothing but patience.'); finishMission('cops', 'refused'); } },
+        { label:'Risk immediate enforcement', onClick:function(){ state.investigation = Math.min(100, state.investigation + 15); if(Math.random() < 0.35) triggerRaid(); else state.heat = Math.min(100, state.heat + 25); finishMission('cops', 'risked enforcement'); } },
+      ]}); return;
+    }
+    if(id === 'hustler'){
+      showModal({ eyebrow:"O'Malley's Bar", title:'Recruit Pitch', body:"<p class='flavor'>The hustler has a plan, a grin, and no proof the plan survives first contact with daylight.</p>", buttons:[
+        { label:'Approve the risky score', onClick:function(){ const ok = Math.random() < 0.62; if(ok){ state.cash += 1800; state.respect += 8; log('<i class="ph-duotone ph-sparkle"></i> The score lands. Cash and a new name come back clean enough.'); } else { state.heat = Math.min(100, state.heat + 20); log('<i class="ph-duotone ph-warning"></i> The score blows up. The money vanishes and heat rises.'); } finishMission('hustler', ok ? 'score won' : 'score failed'); } },
+        { label:'Hire for legit work', onClick:function(){ hireFreeCrew(); state.worldMemory.hustlerLegit = true; finishMission('hustler', 'hired legit'); } },
+        { label:'Reject the pitch', onClick:function(){ state.worldMemory.rejectedHustler = true; districts.find(function(d){ return d.id === 'westside'; })!.control = Math.max(0, districts.find(function(d){ return d.id === 'westside'; })!.control - 4); log('<i class="ph-duotone ph-users-three"></i> They take the pitch to your rivals.'); finishMission('hustler', 'rejected'); } },
+      ]}); return;
+    }
+    if(id === 'investor'){
+      showModal({ eyebrow:'Whitfield Realty', title:'Silent Investor', body:"<p class='flavor'>The offer is simple because the strings are not. Cash now, a cut forever.</p>", buttons:[
+        { label:'Accept (+$3000, income cut)', onClick:function(){ state.cash += 3000; state.investorPenalty = Math.min(0.5, (state.investorPenalty || 0) + 0.05); state.worldMemory.investorAccepted = true; log('<i class="ph-duotone ph-chart-line-up"></i> Cash in hand. A little less of everything is yours now.'); finishMission('investor', 'accepted'); } },
+        { label:'Negotiate terms', onClick:function(){ if(state.prestigeCount > 0 || state.respect >= 150){ state.cash += 2500; state.investorPenalty = Math.min(0.5, (state.investorPenalty || 0) + 0.025); state.respect += 5; log('<i class="ph-duotone ph-handshake"></i> You cut the investor down to a smaller piece.'); } else { state.cash += 3000; state.investorPenalty = Math.min(0.5, (state.investorPenalty || 0) + 0.06); log('<i class="ph-duotone ph-chart-line-up"></i> You try to negotiate without leverage and pay for it later.'); } finishMission('investor', 'negotiated'); } },
+        { label:'Reject', onClick:function(){ state.respect += 8; state.worldMemory.investorRejected = true; log('<i class="ph-duotone ph-star"></i> You stay independent.'); finishMission('investor', 'rejected'); } },
+        { label:'Threaten', onClick:function(){ state.respect += 12; state.heat = Math.min(100, state.heat + 14); state.worldMemory.cityHallAttention = true; log('<i class="ph-duotone ph-warning"></i> The investor leaves with a smile that says City Hall will hear about this.'); finishMission('investor', 'threatened'); } },
+      ]}); return;
+    }
+    if(id === 'fire'){
+      showModal({ eyebrow:"Kailash's Cart", title:'Smoke Under the Awning', body:"<p class='flavor'>The repair is easy. Deciding whether to chase the person who lit it is the hard part.</p>", buttons:[
+        { label:'Rebuild quietly ($250)', onClick:function(){ state.cash = Math.max(0, state.cash - 250); state.worldMemory.cartRebuiltQuietly = true; log('<i class="ph-duotone ph-warning-circle"></i> A quick repair keeps the cart running.'); finishMission('fire', 'rebuilt'); } },
+        { label:'Hunt the arsonist', onClick:function(){ state.respect += 12; state.heat = Math.min(100, state.heat + 12); state.worldMemory.arsonistHunted = true; log('<i class="ph-duotone ph-crosshair"></i> You put word out. The revenge path is open.'); finishMission('fire', 'revenge opened'); } },
+      ]});
+    }
+  }
+  function renderMissionPhoneApp(): void {
+    const wrap = byIdOrNull('missions-panel');
+    if(!wrap) return;
+    const active = activeMissionEntries();
+    const messages = missionEventPool.filter(function(event){ return state.eventHistory[event.id] === 'offered' && !state.activeMissions[event.id]; });
+    const completed = Object.values(state.completedMissions).slice(-4).reverse();
+    wrap.innerHTML = `
+      <div class="section-eyebrow">Messages</div>
+      ${messages.length ? messages.map(function(event){
+        return `<div class="mission-phone-card"><div class="mission-phone-title">${escapeHtml(event.title)}</div><div class="mission-phone-meta">${escapeHtml(event.sender)}</div><div class="mission-phone-body">${event.body}</div><div class="btn-row"><button class="mini-btn" data-mission-start="${escapeHtml(event.id)}">${escapeHtml(event.acceptLabel)}</button><button class="mini-btn secondary" data-mission-decline="${escapeHtml(event.id)}">${escapeHtml(event.declineLabel)}</button></div></div>`;
+      }).join('') : '<div class="mission-phone-empty">No unanswered messages.</div>'}
+      <div class="section-eyebrow" style="margin-top:18px;">Active Missions</div>
+      ${active.length ? active.map(function(mission){
+        const def = missionDefinition(mission.id);
+        const objective = mission.objective;
+        return `<div class="mission-phone-card"><div class="mission-phone-title">${escapeHtml(def?.title ?? mission.id)}</div><div class="mission-phone-meta">${escapeHtml(objective?.label ?? 'Awaiting objective')}</div><div class="btn-row"><button class="mini-btn" ${objective ? '' : 'disabled'} data-mission-gps="${escapeHtml(mission.id)}">Set GPS</button></div></div>`;
+      }).join('') : '<div class="mission-phone-empty">No active missions.</div>'}
+      ${completed.length ? `<div class="section-eyebrow" style="margin-top:18px;">Completed</div>${completed.map(function(outcome){ const def = missionDefinition(outcome.id); return `<div class="mission-phone-empty">${escapeHtml(def?.title ?? outcome.id)} - ${escapeHtml(outcome.result)}</div>`; }).join('')}` : ''}
+    `;
+  }
+  function availableMissionEvents(): MissionEventDefinition[] {
+    if(activeMissionCount(missionSaveState()) >= 3) return [];
+    return missionEventPool.filter(function(event){
+      if(state.activeMissions[event.id]) return false;
+      if(event.id === 'inspector' && state.worldMemory.kowalskiBlackmailed) return false;
+      if(event.unique && !canOfferUniqueEvent(missionSaveState(), event.id)) return false;
+      if(!event.unique && !canOfferRepeatableEvent(missionSaveState(), event.id, event.maxRepeats)) return false;
+      return true;
+    });
+  }
+  function showMissionOffer(event: MissionEventDefinition): void {
+    recordEventOffer(missionSaveState(), event.id);
+    if(event.entry === 'phone'){
+      log(`<i class="ph-duotone ph-device-mobile"></i> New message from ${event.sender}: ${event.title}.`);
+      renderAll();
+      scheduleSave();
+      return;
+    }
+    showModal({
+      eyebrow:event.sender,
+      title:event.title,
+      body:event.body,
+      buttons:[
+        { label:event.acceptLabel, onClick:function(){ startMissionFromOffer(event.id); } },
+        { label:event.declineLabel, secondary:true, onClick:function(){ declineMissionOffer(event.id); } },
+      ],
+    });
+    scheduleSave();
+  }
+
   function checkMilestones() {
     if(state.cash >= 200) triggerMilestone('first_venture');
     if(state.respect >= 60) triggerMilestone('local_boss');
@@ -732,14 +980,12 @@ import type * as ThreeNamespace from 'three';
   function maybeTriggerEvent(){
     if(!state.started) return;
     if(state.playSeconds < state.nextEventAt) return;
-    state.nextEventAt = state.playSeconds + 100 + Math.random()*70;
+    state.nextEventAt = state.playSeconds + 180 + Math.random()*120;
     const ratWeight = Math.max(0.35, 1 - state.ratCount*0.09);
-    const pool = eventPool.filter(e=> !e.neg || Math.random() < ratWeight || Math.random() < 0.4);
-    const ev = (pool.length?pool:eventPool)[Math.floor(Math.random()*(pool.length?pool.length:eventPool.length))];
-    showModal({
-      eyebrow:'A Decision Has to Be Made', title: ev.title, body: ev.body,
-      buttons: ev.choices.map(c=> ({ label: `${c.label} (${c.sub})`, onClick: function(){ c.run(); renderAll(); } })),
-    });
+    const candidates = availableMissionEvents().filter(function(event){ return !event.neg || Math.random() < ratWeight || Math.random() < 0.4; });
+    const pool = candidates.length ? candidates : availableMissionEvents();
+    const event = pool[Math.floor(Math.random()*pool.length)];
+    if(event) showMissionOffer(event);
   }
 
   // LEGAL: ================= THE RAID (investigation culmination) =================
@@ -2203,6 +2449,23 @@ import type * as ThreeNamespace from 'three';
     }
   }
 
+  function handleMissionPhoneAction(e: Event): void {
+    const target = e.target as HTMLElement;
+    const startBtn = target.closest('[data-mission-start]');
+    if(startBtn){ startMissionFromOffer(startBtn.getAttribute('data-mission-start')!); return; }
+    const declineBtn = target.closest('[data-mission-decline]');
+    if(declineBtn){ declineMissionOffer(declineBtn.getAttribute('data-mission-decline')!); return; }
+    const gpsBtn = target.closest('[data-mission-gps]');
+    if(gpsBtn){
+      const id = gpsBtn.getAttribute('data-mission-gps')!;
+      setMissionGps(id);
+      const mission = state.activeMissions[id];
+      if(mission?.objective) log(`<i class="ph-duotone ph-map-pin"></i> GPS set to ${mission.objective.label}.`);
+      renderMissionPhoneApp();
+      scheduleSave();
+    }
+  }
+
   function handleDistrictAction(e: Event){
     const btn = (e.target as HTMLElement).closest('[data-travel]');
     if(!btn) return;
@@ -2241,6 +2504,7 @@ import type * as ThreeNamespace from 'three';
     byId('territory-panel').addEventListener('click', handleTerritoryAction);
     byId('politics-panel').addEventListener('click', handlePoliticsAction);
     byId('gang-panel').addEventListener('click', handleGangAction);
+    byId('missions-panel').addEventListener('click', handleMissionPhoneAction);
     byId('district-bar').addEventListener('click', handleDistrictAction);
   }
 
@@ -2383,6 +2647,7 @@ import type * as ThreeNamespace from 'three';
     renderGangPanel();
     renderCityNews();
     renderAdvisorPanel();
+    renderMissionPhoneApp();
 
     byId('hud-cash').textContent = fmt(state.cash);
     byId('hud-income').textContent = (netIncome()>=0?'+':'') + fmt(netIncome()) + '/s';
@@ -2606,6 +2871,9 @@ import type * as ThreeNamespace from 'three';
       // LEGAL: on its own screen); we just reveal the one the tapped app owns.
       document.querySelector<HTMLElement>(`.device-screen[data-screen="${app}"]`)!.classList.remove('hidden');
       renderAssetsPanel();
+    } else if(app==='missions'){
+      document.querySelector<HTMLElement>('.device-screen[data-screen="missions"]')!.classList.remove('hidden');
+      renderMissionPhoneApp();
     } else {
       state.financeView = app==='stocks' ? 'lcn-home' : 'vault';
       byId('finance-appbar-title').textContent = app==='stocks' ? 'Stocks' : 'Bank';
@@ -2781,6 +3049,12 @@ import type * as ThreeNamespace from 'three';
       spots.push({ id:'clerk', x:ROOM_W/2, y:80, label:"Clerk's Window", icon:'🏛️', action:()=> setTab('politics') });
       spots.push({ id:'notices', x:AMBIENT_X, y:AMBIENT_Y, label:'Public Notices', icon:'📢', action:()=>
         showRoomBrief('Public Notices', 'City Hall', 'Permit hearings, zoning appeals, a re-election banner. The civic temperature, if you know how to read it.', '') });
+    } else if(kind==='missionOffice'){
+      const missionId = activeMissionForServiceId(interior.refId);
+      spots.push({ id:'mission', x:ROOM_W/2, y:80, label:missionId ? 'Mission Contact' : 'Front Desk', icon:'📋', action:function(){
+        if(missionId) resolveMissionAtObjective(missionId);
+        else showRoomBrief('Front Desk', interior.name, 'The place is open, but nobody here is waiting on you right now.', '');
+      } });
     }
     return spots;
   }
@@ -2977,6 +3251,15 @@ import type * as ThreeNamespace from 'three';
     if(state.inVehicle){ exitVehicle(); return; }
     const m = nearestMarker();
     if(!m) return;
+    if(m.type==='service' && m.ref.kind !== 'missionOffice'){
+      const missionId = activeMissionForServiceId(m.ref.id);
+      if(missionId){ resolveMissionAtObjective(missionId); return; }
+    }
+    if(m.type==='building' || m.type==='local' || m.type==='corner' || m.type==='amenity'){
+      const sourceId = m.type === 'building' ? m.ref.id : m.ref.id;
+      const missionId = activeMissionForObjectId(sourceId);
+      if(missionId){ resolveMissionAtObjective(missionId); return; }
+    }
     if(m.type==='car') enterVehicle();
     else if(m.type==='building') enterBuilding('venture', m.ref.id, m.ref.biz.name);
     else if(m.type==='service') enterBuilding(m.ref.kind, m.ref.id, m.ref.name);
@@ -4252,7 +4535,10 @@ import type * as ThreeNamespace from 'three';
       currentNews: state.currentNews, newsQueue: state.newsQueue, nextNewsAt: state.nextNewsAt,
       cityNews: state.cityNews, nextCityNewsAt: state.nextCityNewsAt,
       investigation: state.investigation, layingLow: state.layingLow,
-      crackdownUntil: state.crackdownUntil, nextCrackdownAt: state.nextCrackdownAt
+      crackdownUntil: state.crackdownUntil, nextCrackdownAt: state.nextCrackdownAt,
+      eventRepeats: state.eventRepeats, eventHistory: state.eventHistory,
+      activeMissions: state.activeMissions, completedMissions: state.completedMissions,
+      worldMemory: state.worldMemory
     };
   }
   let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -4328,6 +4614,12 @@ import type * as ThreeNamespace from 'three';
         state.layingLow = !!d.layingLow;
         state.crackdownUntil = Number(d.crackdownUntil)||0;
         state.nextCrackdownAt = Number(d.nextCrackdownAt) || (state.playSeconds + 360);
+        const missionSave = missionSaveDefaults(d);
+        state.eventRepeats = missionSave.eventRepeats;
+        state.eventHistory = missionSave.eventHistory;
+        state.activeMissions = missionSave.activeMissions;
+        state.completedMissions = missionSave.completedMissions;
+        state.worldMemory = missionSave.worldMemory;
         // LEGAL: Initialize any missing stocks in the market
         stockMarket.forEach(s => {
           if(!state.marketPrices[s.symbol]) state.marketPrices[s.symbol] = s.basePrice;
