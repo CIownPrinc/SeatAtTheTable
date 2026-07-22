@@ -3849,33 +3849,68 @@ import type * as ThreeNamespace from 'three';
     const chromeMat = new THREE.MeshStandardMaterial({color:'#b9bcc4', metalness:0.85, roughness:0.22});
     const bodyMat = new THREE.MeshStandardMaterial({color:car.color, metalness:0.35, roughness:0.42});
 
-    // LEGAL: Two wheels in line along the length axis, not four at the corners.
-    [car.len*0.40, -car.len*0.40].forEach(function(wx){
-      const tyre = new THREE.Mesh(new THREE.TorusGeometry(wheelR, 1.9, 8, 16), wheelMat);
-      tyre.position.set(wx, wheelR, 0); tyre.rotation.y = Math.PI/2; tyre.castShadow = true; g.add(tyre);
-      const disc = new THREE.Mesh(new THREE.CylinderGeometry(wheelR*0.42, wheelR*0.42, 1.2, 10), chromeMat);
-      disc.position.set(wx, wheelR, 0); disc.rotation.x = Math.PI/2; g.add(disc);
+    // LEGAL: Two wheels in line along the length axis (+X is forward, matching the car
+    // LEGAL: models). A TorusGeometry already lies in the XY plane with its normal along
+    // LEGAL: Z — which IS a wheel seen from the side — so it must NOT be rotated. Rotating
+    // LEGAL: it put both wheels across the bike and made it read as facing sideways.
+    const frontX = car.len*0.42, rearX = -car.len*0.42;
+    [frontX, rearX].forEach(function(wx){
+      const tyre = new THREE.Mesh(new THREE.TorusGeometry(wheelR, 2.1, 10, 20), wheelMat);
+      tyre.position.set(wx, wheelR, 0); tyre.castShadow = true; g.add(tyre);
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(wheelR*0.36, wheelR*0.36, 1.6, 12), chromeMat);
+      hub.position.set(wx, wheelR, 0); hub.rotation.x = Math.PI/2; g.add(hub);
+      // LEGAL: A few spokes so the wheel reads as a wheel at map zoom.
+      for(let i = 0; i < 4; i += 1){
+        const spoke = new THREE.Mesh(new THREE.BoxGeometry(wheelR*1.7, 0.7, 0.7), chromeMat);
+        spoke.position.set(wx, wheelR, 0); spoke.rotation.z = (i/4) * Math.PI; g.add(spoke);
+      }
     });
 
-    // LEGAL: Engine block, tank and a low slung seat.
-    const engine = new THREE.Mesh(new THREE.BoxGeometry(car.len*0.30, 7, car.wid*0.78), new THREE.MeshStandardMaterial({color:'#2b2f36', roughness:0.6}));
-    engine.position.set(0, wheelR + 1.5, 0); g.add(engine);
-    const tank = new THREE.Mesh(new THREE.SphereGeometry(4.6, 12, 10), bodyMat);
-    tank.scale.set(1.5, 0.78, 0.94); tank.position.set(car.len*0.06, wheelR + 7, 0); g.add(tank);
-    const seat = new THREE.Mesh(new THREE.BoxGeometry(car.len*0.34, 2.4, car.wid*0.66), new THREE.MeshStandardMaterial({color:'#17181d', roughness:0.9}));
-    seat.position.set(-car.len*0.20, wheelR + 6.4, 0); g.add(seat);
+    // LEGAL: Low frame spine linking the two wheels, engine slung underneath it.
+    const spine = new THREE.Mesh(new THREE.BoxGeometry(car.len*0.66, 2.2, 2.2), chromeMat);
+    spine.position.set(0, wheelR + 5.5, 0); g.add(spine);
+    const engine = new THREE.Mesh(new THREE.BoxGeometry(car.len*0.26, 7.5, car.wid*0.62), new THREE.MeshStandardMaterial({color:'#23272e', roughness:0.55, metalness:0.4}));
+    engine.position.set(-car.len*0.02, wheelR + 1.5, 0); g.add(engine);
 
-    // LEGAL: Forks up to the bars, plus a headlamp so it reads as facing forward.
-    const fork = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 15, 6), chromeMat);
-    fork.position.set(car.len*0.36, wheelR + 5, 0); fork.rotation.z = 0.30; g.add(fork);
-    const bars = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, car.wid*1.5, 6), chromeMat);
-    bars.position.set(car.len*0.30, wheelR + 11.5, 0); bars.rotation.x = Math.PI/2; g.add(bars);
-    const lamp = new THREE.Mesh(new THREE.SphereGeometry(2.4, 10, 8), new THREE.MeshStandardMaterial({color:'#ffe9b0', emissive:'#ffd97a', emissiveIntensity:0.55}));
-    lamp.position.set(car.len*0.44, wheelR + 8.5, 0); g.add(lamp);
-    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.1, car.len*0.5, 8), chromeMat);
-    pipe.position.set(-car.len*0.10, 5, car.wid*0.42); pipe.rotation.z = Math.PI/2; g.add(pipe);
+    // LEGAL: Teardrop tank over the engine, seat stepping down behind it.
+    const tank = new THREE.Mesh(new THREE.SphereGeometry(4.4, 14, 12), bodyMat);
+    tank.scale.set(1.7, 0.82, 1.0); tank.position.set(car.len*0.10, wheelR + 8, 0); g.add(tank);
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(car.len*0.30, 2.6, car.wid*0.62), new THREE.MeshStandardMaterial({color:'#15161a', roughness:0.95}));
+    seat.position.set(-car.len*0.20, wheelR + 7.2, 0); g.add(seat);
+    const tailRise = new THREE.Mesh(new THREE.BoxGeometry(car.len*0.10, 4, car.wid*0.58), bodyMat);
+    tailRise.position.set(-car.len*0.36, wheelR + 8, 0); g.add(tailRise);
 
-    return g;
+    // LEGAL: Raked front forks running down to the front axle, bars across the top, and a
+    // LEGAL: headlamp at the very front so the direction of travel is unmistakable.
+    [-1, 1].forEach(function(side){
+      const fork = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 17, 6), chromeMat);
+      fork.position.set(frontX - 2.2, wheelR + 6, side * 2.2);
+      fork.rotation.z = 0.42; g.add(fork);
+    });
+    const bars = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, car.wid*1.7, 6), chromeMat);
+    bars.position.set(frontX - 4.5, wheelR + 13, 0); bars.rotation.x = Math.PI/2; g.add(bars);
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(2.6, 12, 10), new THREE.MeshStandardMaterial({color:'#ffe9b0', emissive:'#ffd97a', emissiveIntensity:0.7}));
+    lamp.position.set(frontX + 1.4, wheelR + 10, 0); g.add(lamp);
+    const guard = new THREE.Mesh(new THREE.TorusGeometry(wheelR + 2.4, 1.1, 6, 12, Math.PI*0.55), bodyMat);
+    guard.position.set(frontX, wheelR, 0); guard.rotation.z = Math.PI*0.22; g.add(guard);
+
+    // LEGAL: Exhaust down the right flank, and a red tail lamp.
+    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.0, car.len*0.55, 8), chromeMat);
+    pipe.position.set(-car.len*0.12, 5.5, car.wid*0.40); pipe.rotation.z = Math.PI/2; g.add(pipe);
+    const tailLamp = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.8, 3), new THREE.MeshStandardMaterial({color:'#b02a3a', emissive:'#8a1020', emissiveIntensity:0.6}));
+    tailLamp.position.set(rearX - 1.5, wheelR + 8, 0); g.add(tailLamp);
+
+    g.castShadow = true;
+    // LEGAL: Same convention as buildCarModel — the bike is modelled facing +x, so it must
+    // LEGAL: be rotated to face +z to match the shared heading convention
+    // LEGAL: (playerGroup.rotation.y = -facing + PI/2). Without this it rides 90 degrees
+    // LEGAL: off its direction of travel. The outer wrapper scales it up to city scale;
+    // LEGAL: bikes are smaller than cars, so they take a slightly smaller scale.
+    g.rotation.y = -Math.PI/2;
+    const outer = new THREE.Group();
+    outer.add(g);
+    outer.scale.setScalar(1.45);
+    return outer;
   }
 
   function buildCarModel(car: Car){
