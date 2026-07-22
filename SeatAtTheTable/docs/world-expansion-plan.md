@@ -29,16 +29,52 @@ Most of the outstanding player-reported problems are downstream of geometry:
 
 Doing the allocator against the old geometry would mean writing it twice. Order matters.
 
-## Open question (ask before starting)
+## Decided with the player
 
-**Are the outskirts drivable and populated, or scenery?**
+**Outskirts: scenery first, populate later.** Pass 1 is terrain — farmland, forest, suburb
+rooftops, an industrial edge — bounded by a drivable boundary highway, with **no
+interactable places out there**. Gameplay stays urban. This kills the "three floating
+squares" problem at a fraction of the cost, and is a first step rather than a dead end:
+once the geometry and lot allocator exist, adding real places is additive.
 
-- *Populated*: roads, filler buildings, a handful of interactable places (roadside diner,
-  farm, motel, depot). Needs real road network, collision and minimap coverage out there.
-- *Scenery*: the ring exists to make the city feel embedded, gameplay stays urban. Much
-  cheaper — mostly terrain, vegetation and a boundary highway.
+*Pass 2 (later, not now):* roadside diner, motel, farm, freight depot; outskirt road
+network, collision and minimap coverage.
 
-This is the difference between a large job and a very large one.
+**Sequencing: staged commits, each one green** (lint + typecheck + tests + build + e2e).
+The map must never be left half-migrated — Codex is working on the mission system on the
+same trunk, so a broken intermediate state is expensive.
+
+**Division of work with Codex:** Codex owns missions (`core/missions.ts`, `config/npcs.ts`,
+~185 mission references inside `header.ts`). This rebuild stays in `src/map/*` and
+`src/config/*`, which touches `header.ts` in only ~19 places. Keep it that way — do not
+drift into mission code, and do not build onboarding here (it is mission-shaped and would
+collide).
+
+## Staged delivery
+
+Each stage ships green on its own. Stage 1 is split because moving district *size* and
+district *arrangement* in one commit would make a failure impossible to bisect.
+
+| Stage | Scope | Main risk |
+| --- | --- | --- |
+| **1a** | Enlarge districts. `DISTRICT_W` up, `DISTRICT_OFFSETS`/`WORLD_W` follow, land polygons, canals, road network and `config/blocks.ts` all widen with it. Arrangement unchanged. | All ~40 hand-placed anchors use district-local x (max ~1360), so a *wider* district keeps them valid. `layout.test.ts` proves it. |
+| **1b** | Break the row: stagger the districts vertically into an irregular cluster, reshape coastlines. | Anchors carry **world** y, so vertical movement can drop them off their district's land. Move anchors in the same commit and lean on `layout.test.ts`. |
+| **1c** | Outskirts terrain ring (scenery only) + drivable boundary highway. | `isPointOnWindhavenLand` currently gates *all* movement off one polygon; the ring must extend it without letting the player walk onto water. |
+| **2** | Lot allocator replacing `namedBuildingLots`. | Overlap regressions — extend `layout.test.ts` to assert non-overlap. |
+| **3** | Neighbourhood zoning character. | Mostly additive. |
+| **4** | Filler variety. | Watch the water/land visual guard in `smoke.e2e.ts`. |
+| **5-7** | Shop silhouettes, garage, owned property on the map. | Small, independent. |
+
+### Known trip-hazards
+
+- `isPointInWater` hard-codes `point.y < 56 + radius` as "north shore water". Any change to
+  the coastline must revisit that constant or the player will swim or be walled off.
+- The minimap caches a static layer keyed by `minimapStaticLayerCacheKey` — it includes
+  landmass length, terrain and road versions. Confirm geometry changes actually bust it.
+- `config/blocks.ts` derives blocks from `DISTRICT_W / 4`; `territory.test.ts` asserts 8
+  blocks per district with unique resistances 0-7. Keep that invariant through every stage.
+- The City Map viewport frames district land bounds, so it reframes automatically — but
+  district `labelPoint`s sit at `y: -118` in open water and must stay north of the coast.
 
 ## Work items, in dependency order
 
