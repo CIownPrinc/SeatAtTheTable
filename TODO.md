@@ -5,7 +5,7 @@ The single answer to **"what's next?"**. Design detail for the two big systems l
 
 | Doc | Covers | Status |
 | --- | --- | --- |
-| [`docs/world-expansion-plan.md`](SeatAtTheTable/docs/world-expansion-plan.md) | Bigger districts, outskirts ring, lot allocator, zoning, garage | **Active, not started** |
+| [`docs/world-expansion-plan.md`](SeatAtTheTable/docs/world-expansion-plan.md) | Bigger districts, outskirts, lot allocator, zoning, garage, real estate | **Complete** — outskirts pass 2 open |
 | [`docs/mission-overhaul-plan.md`](SeatAtTheTable/docs/mission-overhaul-plan.md) | Mission state, event history, world memory, entry points | Active, partly built |
 | [`docs/map-asset-usage-audit.md`](SeatAtTheTable/docs/map-asset-usage-audit.md) | Which CC0 assets are used vs. reserved | Reference |
 | [`docs/map-overhaul-plan.md`](SeatAtTheTable/docs/map-overhaul-plan.md) | The map architecture as originally built | **Superseded** — history only |
@@ -30,30 +30,24 @@ caused duplicate-feature merges (e.g. the "two heat bars" HUD bug).
 
 # ACTIVE — in priority order
 
-## 1. World rebuild — see [`world-expansion-plan.md`](SeatAtTheTable/docs/world-expansion-plan.md)
-
-The biggest job, and most placement work depends on it. In dependency order: grow the
-districts + add the outskirts ring → replace `namedBuildingLots` with a real lot allocator
-(the root cause of overlapping buildings and buildings in streets) → neighbourhood zoning
-character → filler variety → restore distinct shop silhouettes → garage → owned property
-visible on the map.
-
-**Blocking question for the player:** are the outskirts drivable and populated, or scenery?
-
-## 2. Onboarding / just-in-time tutorial
+## 1. Onboarding / just-in-time tutorial
 
 Replace the advisor briefing, which the player finds "clunky and primitive". Wants
 progressive, contextual, mission-based teaching rather than a static priority list.
-**Design questions still open — ask before building.** Likely overlaps the mission system,
-so read `mission-overhaul-plan.md` first.
+**Design questions still open — ask before building.**
 
-## 3. Finish the mission chains
+**Sequencing note:** this is mission-shaped, and Codex owns the mission system. Building it
+now would collide on the same trunk — the setup that caused the duplicate-feature merges
+this repo has already been bitten by. Do it *after* the mission chains land, so it builds
+on them rather than beside them. Read `mission-overhaul-plan.md` first.
+
+## 2. Finish the mission chains
 
 `home_safe_robbery`, `stolen_shipment`, `alderman_fixer`, `turf_war`, `first_heist` have
 initial playable implementations only. Lana Vance's Herald interview is the one fully
 realised map → interior → dialogue mission and is the model to follow.
 
-## 4. Initiative Phase 5 — retire the last redundant tabs
+## 3. Initiative Phase 5 — retire the last redundant tabs
 
 Politics and Gang move off flat tabs and become in-person (city hall, gang spots), closing
 the diegetic-device initiative. Phases 1-4 are done — see "Shipped" below.
@@ -162,6 +156,15 @@ waves, Lay Low, Retain Counsel, concave cooldown.
 **Other**: Windhaven Wire news feed; stock market with designed logos; territory war depth
 (guns, mid-war payoff, casualties, police fallout); GTA-style City Map overlay with legend,
 search and click-to-waypoint; extortion squeeze tiers + owner resentment; amenity minigames.
+
+**World expansion (complete).** Districts 40% wider via a tested coordinate transform;
+distinct coastlines per district (Devlin peninsula, compact West Side, Hub headland);
+an outskirts ring of farmland, forest, suburb and industrial edge; a lot allocator
+(`map/lots.ts`) that replaced hand-authored placement and fixed buildings overlapping and
+standing in streets; neighbourhood character (`map/neighbourhoods.ts`) driving height,
+vacancy, density and palette; per-character facade detailing; branded shop silhouettes;
+the player garage in Devlin with a 3-minute street-parking return; and owned real estate
+placed and findable on the map. See `docs/world-expansion-plan.md`.
 
 **Recent bug fixes**: waypoint trail now follows you (was computed once at set time); shop
 nametags no longer clipped (fixed-size font overflowed the sign canvas past ~31 chars);

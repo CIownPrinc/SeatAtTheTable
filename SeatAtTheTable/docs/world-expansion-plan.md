@@ -1,8 +1,24 @@
 # Windhaven World Expansion Plan
 
-**Status: ACTIVE — not started.** Supersedes `map-overhaul-plan.md`, which described the
-architecture that produced the *current* map and treated the three-district layout as
-correct. That layout is now the thing being replaced.
+> **STATUS: COMPLETE.** Every stage below shipped green (lint, typecheck, unit tests,
+> build, e2e) and every item in the Definition of Done at the foot of this file is met.
+> Kept as the record of what was built and why, and as the reference for the deferred
+> second pass on the outskirts.
+>
+> Delivered: **1a** districts widened 40% via a tested coordinate transform · **1b**
+> distinct coastlines (Devlin peninsula, compact West Side, Hub headland) · **1c**
+> outskirts ring of farmland/forest/suburb/industrial · **2** lot allocator replacing
+> `namedBuildingLots` · **3** neighbourhood character · **4** facade detailing · **5** shop
+> silhouettes · **6** the player garage · **7** owned real estate on the map.
+>
+> **Still open from this plan — the outskirts second pass.** The ring is scenery: no roads,
+> no interactable places, and no boundary highway. Adding a roadside diner, motel, farm or
+> depot out there is additive now that the geometry and the allocator exist. Note that
+> waypoints already work on outskirt land, so that part is ready.
+
+Supersedes `map-overhaul-plan.md`, which described the
+architecture that produced the *previous* map and treated the three-district layout as
+correct. That layout is what this plan replaced.
 
 ## Goal
 
