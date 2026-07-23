@@ -158,19 +158,118 @@ Lounge were all drawn as the same box.
 - Rule 1 holds: property archetype comes from the brand's category, so a Concrete Dreams
   walk-up is a `tenement` and a Horizon one is a `tower`.
 
-## 0b. New requests, not started
+## 0b. New requests — ALL DONE EXCEPT OUTSKIRTS CONTENT
 
-- **Outskirts pass 2**: the belts are still scenery. Add places to stop at.
-  ~~Extend NORTH~~ — DONE. The north question is settled: the "lake" was open to the ocean,
-  which makes it a bay, so it is now genuinely enclosed with land wrapped over the top of it.
-  That bought three northern belts (Sunset Shore, Kestrel Woods, Harrow End) and a beach
-  resort on the south shore. See `lake.test.ts`.
-- **New districts** covering the outskirts (1-3 of them), plus a **district overlay toggle**
-  alongside the existing territory overlay.
-- **Casino in the outskirts** — poker, blackjack, roulette played with Arjun's cash.
-- **Vehicle customisation shop** — respray/modify your car.
-- **Drive-in garage**: somewhere you can actually drive in and park, rather than the car
-  teleporting home.
+- ~~**Extend NORTH**~~ — DONE. The north question is settled: the "lake" was open to the
+  ocean, which makes it a bay, so it is now genuinely enclosed with land wrapped over the top
+  of it. That bought three northern belts (Sunset Shore, Kestrel Woods, Harrow End) and a
+  beach resort on the south shore. See `lake.test.ts`.
+- ~~**New districts + district overlay toggle**~~ — DONE. Three outskirt districts (Kestrel
+  Reach, Kettle Reach, Lakeridge County) grouping the eight terrain belts, plus a Districts
+  layer on the City Map beside Territory. See `regions.ts` / `regions.test.ts`.
+- ~~**Casino**~~ — DONE. The Gilded Kettle: blackjack, roulette, five-card draw, slots. Rules
+  are pure and unit-tested, including an exhaustive RTP sweep. See `casino.ts`.
+- ~~**Vehicle customisation shop**~~ — DONE. Respray bay.
+- ~~**Drive-in garage**~~ — DONE. The `bay` archetype: three walls and an open mouth, so you
+  line the car up and drive in. See `driveIn.ts`.
+- **Outskirts pass 2** — THE ONE THING LEFT. Planned below.
+
+## 0c. Outskirts content — planned, not started
+
+Three outskirt districts now exist, are named, and have exactly one thing to stop at between
+them. This is the pass that gives you a reason to drive out.
+
+### The rule this pass is built on
+
+**Every outskirt place must offer something the city physically cannot.** That is the whole
+test. If a place would work just as well on a Devlin corner, it belongs on a Devlin corner —
+the city is where the empire is, and a second, worse city in the fields is the failure mode
+here. What the outskirts have that the city does not is *distance from the police*, *space*,
+and *nobody watching*. Every place below is one of those three.
+
+Corollary: **the drive must be paid for.** A three-minute drive to a shop that saves you 5%
+is a chore. Each place either trades on heat (which nothing in the city can touch) or is
+somewhere a mission sends you.
+
+### The places
+
+Ranked by value-for-effort. Each names the belt it sits in and what it is *for*.
+
+**1. Sunset Shore Motel** — `northshore`, Kestrel Reach. *Cheap.*
+Lie low properly. The `lieLowButtons()` mechanic already exists in interiors and sheds up to
+30 heat for 45 seconds of clock. The motel is the same lever with the numbers turned up: pay
+cash, shed heat several times faster, and — the part nothing in the city offers — let a
+building **federal case** decay as well, not just heat. Nobody out here asks for a name.
+This is the strongest single reason to own a car and drive north.
+
+**2. Cicero Outworks Scrapyard** — `eastworks`, Lakeridge County. *Cheap.*
+The natural other half of the respray shop. Respray a car to keep it; **scrap** it to make it
+never have existed. Sell any car you own for cash, no paperwork, and clear whatever heat is
+attached to it. `lot` archetype — it is open ground with a crusher, not a building.
+
+**3. Harrow End Grain Co-op** — `northfarms`, Kestrel Reach. *Cheap.*
+A buyer who pays cash and files nothing. Move product at a **worse rate than the city but
+with zero heat**. Laundering as a place rather than a menu. Pairs with the banks: the co-op
+is how dirty cash gets clean slowly, the banks are how clean cash earns.
+
+**4. Boundary Meadows Drive-In** — `southfields`, Kettle Reach. *Cheap, high charm.*
+A drive-in cinema. Park the car, sit through a picture: the clock runs fast, heat cools at
+the ordinary rate, and your crew gains a little respect for being taken somewhere. Mostly
+this is texture — but it is also the obvious place to stage a conversation, and it uses the
+drive-in bay geometry that already shipped with the garage.
+
+**5. Kestrel Woods Fire Road** — `northwoods`, Kestrel Reach. *Medium — needs a minigame.*
+Unpoliced road. Driving offences cost **no heat** here, which makes it the one place in the
+world you can drive flat out. Wants a time trial to give it a score to beat; without one it
+is just a nice road. Defer the minigame if the budget is tight — the no-heat rule alone is
+worth shipping.
+
+**6. Ridgewood Stand Lodge** — `ridgewood`, Kettle Reach. *Medium — mission-shaped.*
+Neutral ground. Where the crews meet when nobody wants a meeting in the city. This is a
+**turf-war and politics** venue, so it should land *after* the mission chains (§2), not
+before — building it now would collide with Codex on the same trunk, which is exactly the
+setup that produced this repo's duplicate-feature merges.
+
+**7. Kettle Flats Airfield** — `westfarms`, Kettle Reach. *Medium — mission-shaped.*
+A crop-duster strip where shipments arrive without troubling the docks. Hook for
+`stolen_shipment`. Same sequencing caveat as the Lodge.
+
+**8. Lakeridge Country Club** — `lakeridge`, Lakeridge County. *Defer.*
+Where cash becomes standing. Genuinely good, but it overlaps the Politics tab, which §3 is
+already planning to move in-person. Build it as part of that, not separately.
+
+### Ambient life (do this alongside, it is cheap)
+
+The belts read as empty even where there is something to stop at, because nothing moves out
+there. Roaming actors already exist and take a district. Add sparse, kind-appropriate life:
+a tractor working `northfarms`, walkers on `northshore`, deer in `northwoods`, a freight
+truck on the `eastworks` road. Low counts — the point is that the countryside is not a
+painting, not that it is busy.
+
+### Constraints to respect (learned the hard way)
+
+- **Placement follows the casino's pattern, not the allocator's.** `OUTSKIRT_PLACE_LOTS` in
+  `world.ts` holds hand-placed lots; the lot allocator only knows about district blocks and
+  will silently overwrite an authored position. Anything with an entry there must be
+  *excluded* from `allocateServiceLots` (see the filter already there).
+- **Every new place needs an archetype**, and `archetypes.test.ts` fails if it does not. Pick
+  honestly: the scrapyard and the airfield are `lot` (open ground, walk straight in), the
+  motel and the co-op are buildings, the drive-in wants `bay`-like treatment.
+- **The layout tests assert district membership**, which outskirt places do not have. They
+  are asserted with `isPointOnPlayableLand` instead — four specs already do this for the
+  casino; follow them.
+- **The scene audit is not optional.** Anything new must pass: off the roads, on the land, not
+  floating, not buried, not in the water. It has caught my own additions three times.
+- **Look at it.** `e2e/shot-garage.e2e.ts` is the pattern: teleport the player, force noon,
+  screenshot. Every visual mistake this project has had — the sea-urchin palms, the alley that
+  was not between anything, the roofed-over garage — passed its tests and failed on sight.
+
+### Open question for the player
+
+Is the drive itself the point, or a tax? Every place above assumes you *want* the drive and
+just need a destination. If the drive out is tedious rather than pleasant, the honest fix is
+fast travel to district edges — but that is the Travel Nodes strip we deliberately deleted,
+so it needs a decision rather than a quiet reversal.
 
 ## 1. Onboarding / just-in-time tutorial
 
