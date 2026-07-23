@@ -35,11 +35,13 @@ import { defaultParkedCarPositions, parkedCarPositionForDistrict } from '../map/
 import { renderMapPlaces } from '../map/placeRendering';
 import { createMapPlaceRecords, mapPlaceCategoryLabel, type MapPlaceCategory, type MapPlaceRecord } from '../map/places';
 import { mapPointContext, nearestPlaceAtPoint, placesByCategory, routeHintBetween, routeSummary, trainCrossingBlockAtPoint } from '../map/queries';
+import { outskirtPlaceLabel } from '../map/outskirts';
+import { allocateLots, districtLotSlots, spreadSlots } from '../map/lots';
 import { createRoamingActors, updateRoamingActors } from '../map/roaming';
 import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, buildLandmarks, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
 import { createMapSceneMaterials, createSceneBuildTimer } from '../map/scenePerformance';
 import { buildIntersectionFurniture as buildMapIntersectionFurniture } from '../map/streetFurniture';
-import { DISTRICT_OFFSETS, DISTRICT_W, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
+import { DISTRICT_OFFSETS, DISTRICT_W, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints, ventureMapLots, widenAuthoredX } from '../map/world';
 import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
 import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/viewport';
 import { renderZoneType } from '../map/zoning';
@@ -3355,7 +3357,40 @@ import type * as ThreeNamespace from 'three';
   let lastLocPanelAt = 0;
 
   applyMapWorldCoordinates(localBusinesses);
-  applyMapWorldCoordinates(serviceBuildings);
+
+  // LEGAL: ---- Stage 2: allocate lots for the branded shops ----
+  // LEGAL: The nine brand buildings were the ones crowding blocks, because each was given a
+  // LEGAL: single authored point with no knowledge of its neighbours. They now get real
+  // LEGAL: lots off the road grid, packed several to a block and rejected wherever they
+  // LEGAL: would collide with an already-placed building. Everything already positioned —
+  // LEGAL: ventures, local businesses, corners, banks, civic buildings — is passed in as an
+  // LEGAL: obstacle so the allocator works around the authored city rather than over it.
+  const brandedShops = serviceBuildings.filter(s => !!s.brandId);
+  const fixedServices = serviceBuildings.filter(s => !s.brandId);
+  applyMapWorldCoordinates(fixedServices);
+
+  const lotObstacles: Solid[] = [
+    ...fixedServices.map(s => ({ x: s.x, y: s.y, hw: 46, hd: 42 })),
+    ...localBusinesses.map(b => ({ x: b.x, y: b.y, hw: 38, hd: 34 })),
+    ...Object.values(ventureMapLots).map(lot => ({ x: lot.x, y: lot.y, hw: 46, hd: 42 })),
+    ...mapAmenities.map(a => ({ x: a.x, y: a.y, hw: 34, hd: 30 })),
+  ];
+  const shopLots = allocateLots({
+    requests: brandedShops.map(s => ({ id: s.id, district: s.district, hw: 40, hd: 36 })),
+    slotsByDistrict: Object.fromEntries(districts.map(d => [d.id, spreadSlots(districtLotSlots({
+      districtOffset: DISTRICT_OFFSETS[d.id] ?? 0,
+      districtWidth: DISTRICT_W,
+      worldHeight: WORLD_H,
+      roadXs: [270, 700, 1130].map(widenAuthoredX),
+      roadYs: roadNetwork.horizontal.map(r => r.y),
+      roadClearance: 72,
+      perCell: 2,
+    }))])),
+    obstacles: lotObstacles,
+    gap: 16,
+  });
+  if(shopLots.unplaced.length) console.warn('[lots] no free lot for', shopLots.unplaced.join(', '));
+  applyMapWorldCoordinates(serviceBuildings, shopLots.placed);
   // LEGAL: Blocks use the same district-local x convention as the buildings that sit on
   // LEGAL: them, so they must be converted before any ownership hit test runs.
   applyMapWorldCoordinates(territoryBlocks);
@@ -4916,7 +4951,12 @@ import type * as ThreeNamespace from 'three';
     const place = context.nearestPlace;
     cityMapHoverPlace = place;
     if(!dist){
-      cityMapHint.textContent = context.isWater ? 'Water - waypoints must be placed on land' : 'Waypoint must be placed on district land';
+      // LEGAL: The outskirts are drivable land outside every district. They used to be
+      // LEGAL: rejected the same as water, which meant you could drive somewhere you could
+      // LEGAL: not navigate to. Name the belt and allow the waypoint.
+      cityMapHint.textContent = context.isWater
+        ? 'Water - waypoints must be placed on land'
+        : `${outskirtPlaceLabel(point)} - Click to set waypoint`;
       renderCityMapSearch();
       drawCityMap();
       return;
@@ -4936,16 +4976,19 @@ import type * as ThreeNamespace from 'three';
     const point = cityMapWorldPoint(e);
     const context = mapPointContext(point, mapPlaces);
     const dist = context.districtId;
-    if(!dist){
-      cityMapHint.textContent = context.isWater ? 'Water - waypoints must be placed on land' : 'Waypoint must be placed on district land';
+    // LEGAL: Water is still rejected; outskirt land is not. Anywhere you can drive to, you
+    // LEGAL: can now navigate to.
+    if(context.isWater){
+      cityMapHint.textContent = 'Water - waypoints must be placed on land';
       drawCityMap();
       return;
     }
+    const placeName = dist ? districtDisplayName(dist) : outskirtPlaceLabel(point);
     setGlobalWaypoint(point);
     rebuildWaypointBeacon();
     byId('minimap-clear').classList.add('show');
-    cityMapHint.textContent = `${districtDisplayName(dist)} waypoint - ${waypointRouteLabel(point)}`;
-    if(dist !== state.currentDistrict) log(`📍 Waypoint set in ${districtDisplayName(dist)} — head there to follow it.`);
+    cityMapHint.textContent = `${placeName} waypoint - ${waypointRouteLabel(point)}`;
+    if(dist !== state.currentDistrict) log(`📍 Waypoint set in ${placeName} — head there to follow it.`);
     drawCityMap();
     scheduleSave();
   });

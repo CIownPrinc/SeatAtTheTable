@@ -1,4 +1,4 @@
-import type { Business, MapZoneType } from '../config/types';
+import type { Business, MapZoneType, Point } from '../config/types';
 import { DISTRICT_OFFSETS, DISTRICT_W, namedBuildingLots, ventureDistricts, ventureLots, ventureMapLots } from './world';
 
 export interface MapBuilding {
@@ -33,8 +33,21 @@ export function worldXForDistrict(district: string, x: number): number {
   return offset > 0 && x < DISTRICT_W ? x + offset : x;
 }
 
-export function applyMapWorldCoordinates<T extends { id: string; district: string; x: number; y: number }>(items: T[]): void {
+export function applyMapWorldCoordinates<T extends { id: string; district: string; x: number; y: number }>(
+  items: T[],
+  allocated?: Record<string, Point>,
+): void {
   items.forEach(function(item){
+    // LEGAL: Allocator-assigned lots win over authored ones. This is how stage 2 takes
+    // LEGAL: over placement for the buildings that compete for block space without having
+    // LEGAL: to rip out namedBuildingLots, which still anchors the legacy ventures and
+    // LEGAL: local businesses whose positions are part of the city's authored character.
+    const assigned = allocated?.[item.id];
+    if(assigned){
+      item.x = assigned.x;
+      item.y = assigned.y;
+      return;
+    }
     const namedLot = namedBuildingLots[item.id];
     if(namedLot){
       item.x = namedLot.x;
