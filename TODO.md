@@ -247,12 +247,26 @@ lake:
   Reach, on the far side of the water. It is typed `kind:'suburb'` and currently contains
   nothing whatsoever.
 
-They are ~800 units apart with a lake between them. Both face the same water, which makes the
-resort a **ring** rather than a strip, and that is the opportunity: the city's south shore is
-the public beach you can walk to, and Sunset Shore is the far-side resort you have to drive
-around the lake to reach. That single distinction gives Kestrel Reach its reason to exist and
-satisfies the drive-out rule without inventing anything — you go for a day at the good beach,
-which is exactly "an experience you don't need often".
+They are ~800 units apart with a lake between them.
+
+**DECIDED: the beach goes all the way round the lake.** A body of water with sand on one bank
+and lawn on the other three is not a thing that exists — the shore is the shore. So the beach
+becomes a **ring** following the entire lake edge: the city's south shore (where it already
+is), Sunset Shore in the north, and both ends.
+
+**Build it derived, not authored.** `LAKEFRONT_BEACH` is currently a hand-written out-and-back
+ribbon of ~24 points tracing only the south shore. Replace it with a ring generated from
+`WINDHAVEN_LAKE` itself, offset outward along each segment's normal — the identical technique
+the surf lines already use (`sceneBuilding.ts`, "derived from the real coastline now, so they
+can never drift again"). This matters: hard-coded shorelines authored against a coast that
+later moved are exactly what produced the "random lines everywhere" bug, and this file is the
+last hand-authored shoreline left.
+
+Consumers to update: `mapModel.lakefrontBeach` (the source), the minimap sand polygon, and
+`buildBeachResort`, which currently assumes the ribbon's first half is the waterline —
+against a true ring the waterline is the whole inner edge, which is simpler.
+
+This also settles Sunset Shore: it is beach by construction, and the resort filler sits on it.
 
 **Zoning character: `resort`.** Add to `BlockCharacter` in `neighbourhoods.ts` alongside the
 seven that exist. Proper planning term is *Resort Commercial* / *Recreational*; `resort` is
@@ -266,12 +280,17 @@ and `basketball` already carries a skill minigame — so a beach amenity is a we
 path, not new machinery.
 - `volleyball` — a net, a court in the sand. Follows `basketball` exactly, including the
   minigame hook. Best value of the three.
-- Loungers / umbrellas already exist as scenery on the south shore (`buildLakeshore`); extend
-  them to Sunset Shore with the `resort` character rather than re-authoring them.
-- A resort building proper (hotel front, pool, cabanas) on Sunset Shore — this is the
-  `resort` character's anchor building and can double as the Motel's better-behaved cousin.
-  Note the overlap with **Sunset Shore Motel** below: if the resort is built, the motel is
-  probably redundant and should be cut rather than sat next door to it.
+- Loungers / umbrellas already exist as scenery (`buildBeachResort`); once the sand is a ring
+  they follow it round automatically rather than needing re-authoring.
+
+**DECIDED: the resorts themselves are cosmetic — filler, not venues.** Hotels, cabanas and
+pool decks are generated scenery under the `resort` character. You do not walk into them and
+they have no interior, no menu and no mechanic. This is the right call: a resort you can
+enter would be another lie-low building, and there is one of those already. It also means the
+whole resort strip costs a filler character and nothing else.
+
+Consequence: **Sunset Shore Motel stays on the venue list**, un-redundant, because the resorts
+around it are backdrop. The motel is the one building on that shore you can actually go into.
 
 ### Off-road dealership — `northwoods` or `northfarms`, Kestrel Reach
 
@@ -348,10 +367,9 @@ can drive flat out. This is an experience by construction and you would do it ra
 time trial to give it a score to beat; without one it is a nice road and nothing else, so
 either build the time trial or do not build this.
 
-**5. Sunset Shore Motel** — `northshore`, Kestrel Reach. *Borderline, and possibly redundant.*
-**Check the resort first.** If the Sunset Shore resort gets built, it occupies this exact
-site and this exact role, and two lie-low buildings on the same shore is one too many. Cut
-this in favour of the resort unless there is a reason for a seedy option beside a nice one.
+**5. Sunset Shore Motel** — `northshore`, Kestrel Reach. *Borderline on frequency.*
+The resorts around it are cosmetic filler, so this is the one enterable building on that
+shore and is not redundant.
 Lie low properly: `lieLowButtons()` already exists, and the motel would be that lever with
 the numbers up, plus the thing no city interior offers — letting a building **federal case**
 decay, not just heat. It survives the rule *only* if it stays rare. If it becomes the
@@ -459,6 +477,95 @@ Basketball, park chess, pet store and newsstand are done.
 - `services/` is empty; no Python/ML yet.
 - Strict typing on `SeatAtTheTable` is effectively complete — `tsc --noEmit` passes clean
   and is in the push gate.
+
+---
+
+# THE MAP AT A GLANCE — what every region is and what is in it
+
+Reference, not a task list. **Bold = shipped. Plain = planned (§0c).** The world is one
+landmass in an ocean, with an enclosed lake in the north, two canals cutting it into three
+city districts, and a ring of countryside around all of it.
+
+## Water
+
+| | What |
+|---|---|
+| **The ocean** | Surrounds everything. Hard world border. |
+| **Windhaven Lake** | Enclosed body in the north. Was open to the ocean (which made it a bay, not a lake) until the landmass was wrapped over the top of it. |
+| **South Branch Canal / Lakefront Cut** | The two north-south canals that separate the three city districts. Crossed by bridges on Grand, Roosevelt and Cermak. |
+| Beach ring | Sand around the ENTIRE lake edge, derived from the lake polygon. Currently only the south shore. |
+
+## The three CITY districts — turf, control, the war
+
+These carry gameplay: control %, turf pushes, spawn points, parking, territory blocks.
+Character is mapped over a 4x4 block grid per district (`neighbourhoods.ts`).
+
+### **Devlin District** — home turf, west
+Working-class throughout, a **shopping strip** on the second row, and the blocks down by the
+canal **gone to seed** (`rough`). Where Arjun starts.
+Contains: **Your Garage** (drive-in bay), **Kailash's Cart** (a stall, not a building),
+**Corner Store, Sudsy Laundromat, Windhaven Chaat House, Marigold Lounge**, **Devlin Back
+Alley** (a real gap between two buildings, with the backroom card game and the wire network
+off it), **Devlin Courts**, **Rockwell Pet Supply**, **Rentport City National**.
+
+### **West Side** — industrial, centre
+**Works and freight** across the north and the whole eastern edge; what housing exists sits
+south-west and is **the poorest in the city**. The rail line runs down its east side.
+Contains: **West Side Chop Shop**, **the railyard** (open ground, not a building), **the
+dockmaster's yard**, **West Side Holdings**, **Windy City Cab Co.** (a depot yard).
+
+### **The Hub** — money, east
+**Financial core** north and centre (towers), **Gilt Shore money** along the east edge
+(`affluent`), the **club strip** mid-south (`entertainment`, neon), **retail** on the southern
+edge. The city's north edge is the lake's south beach.
+Contains: **City Hall Annex**, **First Windhaven Trust** (the heist target), **Windhaven
+Herald HQ** (Lana Vance's interview), **The Potato**, **Park Chess Tables**, **the piers**.
+
+## The three OUTSKIRT districts — geography only, no turf
+
+Named regions, not gameplay districts. No control, no pushes — a gang war in a wheat field is
+not a thing anyone wants. Each groups terrain belts that were already out there.
+
+### **Kestrel Reach** — the north, across the lake
+Three belts: **Sunset Shore** (`suburb`), **Kestrel Woods** (`forest`), **Harrow End**
+(`farmland`). Only reachable at all since the lake was enclosed.
+Biome, planned: beach and `resort` filler along Sunset Shore; low suburban houses behind it;
+dense woodland; open farmland with silos and field lines at the top of the world.
+Planned contents: **Sunset Shore Motel** (lie low, and let a federal case decay — the one
+thing no city interior offers) · **Kestrel Woods Fire Road** (no heat for driving offences +
+a time trial) · **the off-road dealership** (Mudster's country branch — ATVs, quads,
+tractors) · **woodland tracks** that cars cannot use. This is the busiest of the three.
+
+### **Kettle Reach** — the west and south, wrapped around the city
+Three belts: **Kettle Flats** (`farmland`, west), **Boundary Meadows** (`farmland`, south),
+**Ridgewood Stand** (`forest`, south-east). An L-shape — which is why its map label needed a
+grid walk to land inside it rather than in the middle of downtown.
+Biome, planned: farmland with farmsteads; the quiet forest.
+Planned contents: **Kettle Flats Airfield** (mission-shaped, `stolen_shipment`) ·
+**Boundary Meadows Drive-In** (a picture, an evening out) · **Ridgewood Stand Lodge**
+(neutral ground where the crews meet — mission-shaped). Both mission venues land AFTER the
+mission chains (§2) to avoid colliding with Codex on the same trunk.
+
+### **Lakeridge County** — the east end
+Two belts: **Lakeridge** (`suburb`), **Cicero Outworks** (`industrial`).
+Biome, planned: lakeside suburb; a chained-up industrial edge of sheds, tanks and spoil heaps.
+Contains: **The Gilded Kettle** — the casino. Blackjack, roulette, five-card draw, slots.
+Planned: **Lakeridge Country Club** (deferred into §3's in-person Politics work).
+
+## The two forests, deliberately different
+
+Not their own district — they sit 5,000 units apart with the whole city between them, and a
+district like that is a category rather than a place.
+- **Kestrel Woods** (north, Kestrel Reach) — the wild one. Fire road, tracks, the ATV dealer.
+- **Ridgewood Stand** (south, Kettle Reach) — the quiet one. The Lodge, and nothing else.
+
+## Zoning characters
+
+**Shipped, city only:** `corporate` · `affluent` · `working` · `rough` · `shopping` ·
+`entertainment` · `industrial`.
+**Planned, outskirts:** `farmstead` · `suburb` · `resort` · `woodland` · `works`.
+The generator is currently hard-scoped to the three city districts — extending it outward is
+the single highest-value item in §0c, because the drive itself is the experience.
 
 ---
 
