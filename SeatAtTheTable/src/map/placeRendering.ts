@@ -60,6 +60,7 @@ function renderVentureBuildings(options: MapPlaceRenderOptions): void {
     helpers.addVentureDetail(building, mesh);
     helpers.addCategoryMarker(mesh, object.minimapIcon, building.biz.category === 'legit' ? '#8fd0e0' : '#f0a0ae', height / 2 + 12);
     mesh.position.set(object.x, height / 2, object.y);
+    mesh.name = `venture:${building.id}:${building.biz.name}`;
     worldGroup.add(mesh);
     helpers.addSign(mesh, building.biz.name, 34, 9, height / 2 + 10, building.biz.category === 'legit' ? '#8fd0e0' : '#f0a0ae');
   });
@@ -74,6 +75,7 @@ function renderServiceBuildings(options: MapPlaceRenderOptions): void {
     helpers.addServiceDetail(building, mesh);
     helpers.addCategoryMarker(mesh, object.minimapIcon, '#ffe6a0', silhouette.h - 3);
     mesh.position.set(object.x, silhouette.h / 2, object.y);
+    mesh.name = `service:${building.id}:${building.name}`;
     worldGroup.add(mesh);
     helpers.addSign(mesh, building.name, Math.min(54, silhouette.w * 0.72), 9, silhouette.h - 8, '#ffe6a0');
   });
@@ -90,6 +92,7 @@ function renderPropertyBuildings(options: MapPlaceRenderOptions): void {
     const mesh = helpers.buildDetailedBuilding(silhouette.w, silhouette.h, silhouette.d, silhouette.color, silhouette.zoneType, helpers.variantForId(place.id));
     helpers.addCategoryMarker(mesh, object.minimapIcon, '#5fbf8f', silhouette.h - 2);
     mesh.position.set(object.x, silhouette.h / 2, object.y);
+    mesh.name = `property:${place.id}:${place.name}`;
     worldGroup.add(mesh);
     helpers.addSign(mesh, place.name, Math.min(46, silhouette.w * 0.8), 8, silhouette.h - 6, '#9fe0c0');
   });
@@ -114,6 +117,7 @@ function renderLocalBusinesses(options: MapPlaceRenderOptions): void {
     helpers.addLocalBusinessDetail(business, mesh);
     helpers.addCategoryMarker(mesh, object.minimapIcon, business.extorted ? '#ffd77a' : '#b8aee0', silhouette.h + 4);
     mesh.position.set(object.x, silhouette.h / 2, object.y);
+    mesh.name = `local:${business.id}:${business.name}`;
     worldGroup.add(mesh);
     helpers.addSign(mesh, business.name, Math.min(42, silhouette.w * 0.82), 8, silhouette.h - 2, business.extorted ? '#ffd77a' : '#b8aee0');
   });
@@ -159,6 +163,7 @@ function renderAmenities(options: MapPlaceRenderOptions): void {
     const mesh = helpers.buildAmenityModel(amenity);
     const y = amenity.kind === 'petstore' || amenity.kind === 'shop' ? 10 : 0;
     mesh.position.set(object.x, y, object.y);
+    mesh.name = `amenity:${amenity.kind}:${amenity.id}`;
     worldGroup.add(mesh);
   });
 }
@@ -173,24 +178,31 @@ function renderCorners(options: MapPlaceRenderOptions): void {
     const corner = object.ref as Corner;
     const staffed = corner.dealer && !corner.busted;
     const color = corner.busted ? '#5f6275' : (staffed ? '#d4a017' : '#a8394a');
+    // LEGAL: Pole, orb and dealer used to be three loose children of the world. The orb sat
+    // LEGAL: at y=21 with nothing under it as far as any measurement was concerned, which is
+    // LEGAL: exactly the "random floating block" read. A corner is one object; model it as one.
+    const group = new THREE.Group();
+    group.name = `corner:${corner.id}:${corner.name}`;
     const pole = new THREE.Mesh(poleGeometry, poleMaterial);
-    pole.position.set(object.x, 13, object.y);
+    pole.position.set(0, 13, 0);
     pole.castShadow = true;
-    worldGroup.add(pole);
+    group.add(pole);
     let orbMaterial = orbMaterials.get(color);
     if(!orbMaterial){
       orbMaterial = new THREE.MeshStandardMaterial({ color, emissive:color, emissiveIntensity:0.4 });
       orbMaterials.set(color, orbMaterial);
     }
     const orb = new THREE.Mesh(orbGeometry, orbMaterial);
-    orb.position.set(object.x, 28, object.y);
-    worldGroup.add(orb);
+    orb.position.set(0, 28, 0);
+    group.add(orb);
     helpers.addSign(pole, corner.name, 30, 8, 22, '#f0efe8');
     if(staffed){
       const dealer = helpers.buildPedestrianModel('#d4a017', `dealer-${corner.id}`);
-      dealer.position.set(object.x + 12, 0, object.y + 9);
+      dealer.position.set(12, 0, 9);
       dealer.rotation.y = Math.PI;
-      worldGroup.add(dealer);
+      group.add(dealer);
     }
+    group.position.set(object.x, 0, object.y);
+    worldGroup.add(group);
   });
 }

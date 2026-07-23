@@ -487,7 +487,12 @@ export function buildFillerCity(options: FillerSceneOptions): void {
           awning.position.set(0,-f.h/2+16,f.d/2+3); mesh.add(awning);
         }
         addCharacterDetail(helpers, mesh, f);
-        mesh.position.set(f.x+off,f.h/2,f.y); mesh.rotation.y = f.rot; worldGroup.add(mesh);
+        mesh.position.set(f.x+off,f.h/2,f.y); mesh.rotation.y = f.rot;
+        // LEGAL: Named with everything needed to find the offender in the generator when the
+        // LEGAL: scene audit reports it: which district, which block character, and the
+        // LEGAL: authored (pre-offset) coordinate it was allocated at.
+        mesh.name = `filler:${distId}:${f.character}:${f.zone}@${Math.round(f.x)},${Math.round(f.y)}`;
+        worldGroup.add(mesh);
       } else if(f.kind==='park'){
         const cx=(f.x0+f.x1)/2+off, cy=(f.y0+f.y1)/2, w=f.x1-f.x0, d=f.y1-f.y0;
         const grass = new THREE.Mesh(new THREE.PlaneGeometry(w,d), materials.standard('terrain:park-grass', {color:'#2c4a30', roughness:1}));
@@ -533,9 +538,16 @@ export function buildFillerCity(options: FillerSceneOptions): void {
 }
 
 export function buildLandmarks(options: LandmarkSceneOptions): void {
-  const { THREE, worldGroup, landmarks, helpers } = options;
+  const { THREE, landmarks, helpers } = options;
   const materials = materialsFor(options);
   landmarks.forEach(function(lm){
+    // LEGAL: A landmark is ONE object. These used to be loose meshes in the world, so a dome
+    // LEGAL: read as a block hanging in the air above an unrelated base and a water tank read
+    // LEGAL: as floating above its own legs. Grouped, each landmark measures as the whole
+    // LEGAL: silhouette it actually is.
+    const worldGroup = new THREE.Group();
+    worldGroup.name = `landmark:${lm.id}`;
+    options.worldGroup.add(worldGroup);
     if(lm.id==='devlinHall'){
       const base = helpers.box(70,26,70,'#6a5b3e'); base.position.set(lm.x,13,lm.y); worldGroup.add(base);
       const steps = helpers.box(84,6,84,'#565049'); steps.position.set(lm.x,3,lm.y); worldGroup.add(steps);

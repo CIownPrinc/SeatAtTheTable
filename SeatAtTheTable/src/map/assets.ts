@@ -26,7 +26,19 @@ function cloneScene(THREE: typeof ThreeNamespace, scene: ThreeNamespace.Group): 
   return clone;
 }
 
-function fitToBox(THREE: typeof ThreeNamespace, group: ThreeNamespace.Group, width: number, height: number, depth: number): ThreeNamespace.Group | null {
+// LEGAL: Returns a WRAPPER at unit scale and origin, with the fitted model inside it.
+// LEGAL:
+// LEGAL: The fit used to be applied to the returned group itself, which broke callers two
+// LEGAL: ways. First, every caller adds detail in world units — awnings, cornices, fire
+// LEGAL: escapes, category markers, signs — and a group scaled to (30, 41.6, 22) multiplied
+// LEGAL: all of it, flinging a food cart's marker two thousand units into the sky. That is
+// LEGAL: the "random floating blocks and lines everywhere" report. Second, the recentring
+// LEGAL: offset was written to group.position, which callers then overwrote with
+// LEGAL: position.set(x, h/2, y), so asset-backed buildings sat off-centre as well.
+// LEGAL:
+// LEGAL: With the transform on an inner child, the wrapper behaves exactly like the
+// LEGAL: procedural fallback: unit scale, origin at the building's centre, world units.
+export function fitToBox(THREE: typeof ThreeNamespace, group: ThreeNamespace.Group, width: number, height: number, depth: number): ThreeNamespace.Group | null {
   const box = new THREE.Box3().setFromObject(group);
   const size = new THREE.Vector3();
   const center = new THREE.Vector3();
@@ -37,7 +49,10 @@ function fitToBox(THREE: typeof ThreeNamespace, group: ThreeNamespace.Group, wid
   const scale = new THREE.Vector3(width / size.x, height / size.y, depth / size.z);
   group.scale.copy(scale);
   group.position.set(-center.x * scale.x, -center.y * scale.y, -center.z * scale.z);
-  return group;
+
+  const wrapper = new THREE.Group();
+  wrapper.add(group);
+  return wrapper;
 }
 
 export async function loadMapAssetLibrary(THREE: typeof ThreeNamespace): Promise<MapAssetLibrary> {

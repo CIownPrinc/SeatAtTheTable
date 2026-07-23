@@ -6,6 +6,19 @@ import { test, expect, type Page } from '@playwright/test';
 // LEGAL: stopped agreeing with the scene. This audits what the renderer ACTUALLY produced,
 // LEGAL: by walking the live three.js scene through the dev-only window.__seat hook and
 // LEGAL: measuring with three's own Box3.setFromObject rather than re-deriving geometry.
+// LEGAL:
+// LEGAL: Every world object is named at the point it is added (see tagWorld in header.ts),
+// LEGAL: so a failure names the offender instead of reporting "Mesh".
+
+// LEGAL: Buildings — the things that must stand on a lot, never in a carriageway and never
+// LEGAL: in mid-air. Anything outside this list is scenery, infrastructure or a road user
+// LEGAL: (traffic, pedestrians, the El, bridges, street trees) and is audited differently.
+// LEGAL: A whitelist rather than a list of exceptions: new scenery cannot silently opt itself
+// LEGAL: into the audit and new BUILDINGS cannot silently opt themselves out.
+const BUILDING_PREFIXES = ['filler:', 'venture:', 'service:', 'property:', 'local:', 'amenity:', 'landmark:'];
+
+// LEGAL: Objects that stand on the ground but are not buildings. Audited for floating only.
+const GROUNDED_PREFIXES = [...BUILDING_PREFIXES, 'corner:'];
 
 async function waitForScene(page: Page): Promise<void> {
   await page.goto('/');
@@ -23,77 +36,80 @@ interface AuditBox {
   minZ: number; maxZ: number;
 }
 
-// LEGAL: Every world mesh with a real footprint, measured with three's Box3.
-async function worldBoxes(page: Page): Promise<AuditBox[]> {
-  return page.evaluate(() => {
+// LEGAL: Measures every named world object, filtered to the given name prefixes. Groups are
+// LEGAL: measured whole, so a dome counts as part of the hall it sits on rather than as a
+// LEGAL: block hanging in the air.
+// LEGAL:
+// LEGAL: SOLID MESHES ONLY. Box3.setFromObject expands a Sprite by its scale on every axis,
+// LEGAL: so measuring an object whole made a food cart's name label give it a 4000-unit
+// LEGAL: footprint and a 2300-unit height — and the audit duly reported the cart as standing
+// LEGAL: in four roads on opposite sides of the city. Signage and guide lines are not
+// LEGAL: masonry; only Mesh geometry defines where a building physically is.
+async function worldBoxes(page: Page, prefixes: string[]): Promise<AuditBox[]> {
+  return page.evaluate((wanted: string[]) => {
     const seat = (window as never as { __seat: { THREE: typeof import('three'); worldGroup: import('three').Group } }).__seat;
     const boxes: AuditBox[] = [];
-    const box = new seat.THREE.Box3();
     seat.worldGroup.children.forEach(function(child){
-      box.setFromObject(child);
-      if(!isFinite(box.min.x) || !isFinite(box.max.x)) return;
-      const w = box.max.x - box.min.x;
-      const d = box.max.z - box.min.z;
-      const h = box.max.y - box.min.y;
-      // LEGAL: Ignore ground planes, water and decorative lines — only solid massing.
-      if(h < 8) return;
-      if(w > 900 || d > 900) return;
+      if(!wanted.some(prefix => child.name.startsWith(prefix))) return;
+      child.updateWorldMatrix(true, true);
+      const box = new seat.THREE.Box3();
+      child.traverse(function(node){
+        const mesh = node as import('three').Mesh;
+        if(!(mesh as { isMesh?: boolean }).isMesh || !mesh.geometry) return;
+        if(!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+        const local = mesh.geometry.boundingBox;
+        if(!local) return;
+        box.union(local.clone().applyMatrix4(mesh.matrixWorld));
+      });
+      if(box.isEmpty() || !isFinite(box.min.x) || !isFinite(box.max.x)) return;
       boxes.push({
-        name: child.name || child.type,
+        name: child.name,
         minX: box.min.x, maxX: box.max.x,
         minY: box.min.y, maxY: box.max.y,
         minZ: box.min.z, maxZ: box.max.z,
       });
     });
     return boxes;
-  }) as Promise<AuditBox[]>;
+  }, prefixes) as Promise<AuditBox[]>;
 }
 
 test.describe('scene audit — what the renderer actually drew', () => {
-  test('no solid building sits on a road', async ({ page }) => {
+  test('no building stands in a road', async ({ page }) => {
     test.setTimeout(120000);
     await waitForScene(page);
 
-    const offenders = await page.evaluate(() => {
+    const roads = await page.evaluate(() => {
       const seat = (window as never as {
-        __seat: { THREE: typeof import('three'); worldGroup: import('three').Group; roadNetwork: { vertical: { x: number; w: number; name: string }[]; horizontal: { y: number; w: number; name: string }[] } };
+        __seat: { roadNetwork: { vertical: { x: number; w: number; name: string }[]; horizontal: { y: number; w: number; name: string }[] } };
       }).__seat;
-      const bad: string[] = [];
-      const box = new seat.THREE.Box3();
-      seat.worldGroup.children.forEach(function(child){
-        box.setFromObject(child);
-        if(!isFinite(box.min.x)) return;
-        const h = box.max.y - box.min.y;
-        const w = box.max.x - box.min.x;
-        const d = box.max.z - box.min.z;
-        if(h < 8 || w > 900 || d > 900) return;
-        // LEGAL: Some things are SUPPOSED to cross a road: bridges, the train, traffic
-        // LEGAL: lights and other intersection furniture, and street trees on the verge.
-        // LEGAL: They are tagged so the audit can tell them from a building in the way.
-        if(/bridge|train|rail|furniture|tree|light|sign/i.test(child.name)) return;
-        seat.roadNetwork.vertical.forEach(function(road){
-          if(box.min.x < road.x && box.max.x > road.x) bad.push(`${child.name || child.type} straddles ${road.name}`);
-        });
-        seat.roadNetwork.horizontal.forEach(function(road){
-          if(box.min.z < road.y && box.max.z > road.y) bad.push(`${child.name || child.type} straddles ${road.name}`);
-        });
+      return { vertical: seat.roadNetwork.vertical, horizontal: seat.roadNetwork.horizontal };
+    });
+    const boxes = await worldBoxes(page, BUILDING_PREFIXES);
+    expect(boxes.length, 'no buildings found — the audit is measuring nothing').toBeGreaterThan(50);
+
+    // LEGAL: Straddling the centre line means the building is standing in the carriageway,
+    // LEGAL: not merely overhanging the kerb.
+    const offenders: string[] = [];
+    boxes.forEach(function(b){
+      roads.vertical.forEach(function(road){
+        if(b.minX < road.x && b.maxX > road.x) offenders.push(`${b.name} stands in ${road.name}`);
       });
-      return bad.slice(0, 24);
+      roads.horizontal.forEach(function(road){
+        if(b.minZ < road.y && b.maxZ > road.y) offenders.push(`${b.name} stands in ${road.name}`);
+      });
     });
 
-    expect(offenders, `buildings standing in the road:\n${offenders.join('\n')}`).toEqual([]);
+    expect(offenders.slice(0, 24), `buildings standing in the road:\n${offenders.slice(0, 24).join('\n')}`).toEqual([]);
   });
 
   test('nothing floats above the ground', async ({ page }) => {
     test.setTimeout(120000);
     await waitForScene(page);
-    const boxes = await worldBoxes(page);
+    const boxes = await worldBoxes(page, GROUNDED_PREFIXES);
+    expect(boxes.length, 'nothing found — the audit is measuring nothing').toBeGreaterThan(50);
 
-    expect(boxes.length, 'no massing found — the audit is measuring nothing').toBeGreaterThan(50);
-
-    // LEGAL: A solid whose lowest point sits well above the ground plane is floating. Roof
-    // LEGAL: plant and signage hang off their parent so they are measured with it, not
-    // LEGAL: separately, which is why the whole child is measured rather than each mesh.
+    // LEGAL: A solid whose LOWEST point sits well above the ground plane is floating. Roof
+    // LEGAL: plant, signage and lamp orbs hang off their parent so they are measured with it.
     const floating = boxes.filter(b => b.minY > 12).map(b => `${b.name} floats at y=${Math.round(b.minY)}`);
     expect(floating.slice(0, 24), `floating geometry:\n${floating.slice(0, 24).join('\n')}`).toEqual([]);
   });
@@ -101,7 +117,7 @@ test.describe('scene audit — what the renderer actually drew', () => {
   test('nothing is buried under the ground', async ({ page }) => {
     test.setTimeout(120000);
     await waitForScene(page);
-    const boxes = await worldBoxes(page);
+    const boxes = await worldBoxes(page, GROUNDED_PREFIXES);
 
     const sunken = boxes.filter(b => b.maxY < 1).map(b => `${b.name} is below ground`);
     expect(sunken.slice(0, 24), `buried geometry:\n${sunken.slice(0, 24).join('\n')}`).toEqual([]);

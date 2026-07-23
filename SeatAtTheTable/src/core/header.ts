@@ -4453,6 +4453,18 @@ import type * as ThreeNamespace from 'three';
     });
   }
 
+  // LEGAL: Names everything a builder just added to the world, so the scene audit can say
+  // LEGAL: WHICH object is standing in a road instead of "Mesh". Objects that named
+  // LEGAL: themselves keep that name; this only fills the gaps.
+  function tagWorld(label: string, build: () => void): void {
+    const start = worldGroup.children.length;
+    build();
+    for(let i=start; i<worldGroup.children.length; i++){
+      const child = worldGroup.children[i];
+      if(!child.name) child.name = label;
+    }
+  }
+
   // LEGAL: ---- unified city — builds the entire world once; no per-district teardown ----
   function buildCityScene(){
     clearGroup(worldGroup);
@@ -4463,17 +4475,19 @@ import type * as ThreeNamespace from 'three';
     const materials = createMapSceneMaterials(THREE);
     const baseScene = { THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, materials };
     timer.measure('terrain', function(): void {
-      buildBaseGround(baseScene);
-      buildCanalWater(baseScene);
-      buildRoadNetwork({ ...baseScene, roadNetwork, buildIntersectionFurniture });
-      buildCanalBridges(baseScene);
+      tagWorld('terrain:ground', function(){ buildBaseGround(baseScene); });
+      tagWorld('terrain:canal', function(){ buildCanalWater(baseScene); });
+      tagWorld('road:surface', function(){ buildRoadNetwork({ ...baseScene, roadNetwork, buildIntersectionFurniture }); });
+      tagWorld('bridge:canal', function(){ buildCanalBridges(baseScene); });
     });
     timer.measure('street-trees', function(): void {
-      buildStreetTrees({ ...baseScene, roadNetwork, districtOffsets:DISTRICT_OFFSETS, seededRandom });
+      tagWorld('tree:street', function(){ buildStreetTrees({ ...baseScene, roadNetwork, districtOffsets:DISTRICT_OFFSETS, seededRandom }); });
     });
     // LEGAL: Venture buildings — all districts
     timer.measure('places', function(): void {
-      renderMapPlaces({ THREE, worldGroup, mapObjects, helpers:{ buildingColorFor, ventureFootprint, buildDetailedBuilding, buildAmenityModel, buildPedestrianModel, addVentureDetail, addServiceDetail, addLocalBusinessDetail, addCategoryMarker, addSign, variantForId } });
+      tagWorld('place', function(){
+        renderMapPlaces({ THREE, worldGroup, mapObjects, helpers:{ buildingColorFor, ventureFootprint, buildDetailedBuilding, buildAmenityModel, buildPedestrianModel, addVentureDetail, addServiceDetail, addLocalBusinessDetail, addCategoryMarker, addSign, variantForId } });
+      });
     });
 
     // LEGAL: Service buildings — all districts
@@ -4484,13 +4498,19 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: Corners — all districts
 
     timer.measure('actors', function(): void {
-      renderRoamingActors({ worldGroup, actors:roamingActors, helpers:{ buildTrafficCarModel, buildPedestrianModel, addSign } });
+      tagWorld('actor:roaming', function(){
+        renderRoamingActors({ worldGroup, actors:roamingActors, helpers:{ buildTrafficCarModel, buildPedestrianModel, addSign } });
+      });
     });
 
     timer.measure('fill-and-landmarks', function(): void {
-      buildFillerCity({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, districtOffsets:DISTRICT_OFFSETS, fillerFor, helpers:{ box, addSign, buildDetailedBuilding, renderZoneType, seededRandom } });
-      buildLandmarks({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, landmarks, helpers:{ box, addSign } });
-      buildRailAndRiver(baseScene);
+      tagWorld('filler', function(){
+        buildFillerCity({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, districtOffsets:DISTRICT_OFFSETS, fillerFor, helpers:{ box, addSign, buildDetailedBuilding, renderZoneType, seededRandom } });
+      });
+      tagWorld('landmark', function(){
+        buildLandmarks({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, landmarks, helpers:{ box, addSign } });
+      });
+      tagWorld('rail-and-river', function(){ buildRailAndRiver(baseScene); });
     });
     timer.measure('gameplay-overlays', function(): void {
       buildTrain();
@@ -4524,6 +4544,7 @@ import type * as ThreeNamespace from 'three';
     if(!worldGroup) return;
     if(trainGroup){ worldGroup.remove(trainGroup); trainGroup.traverse(disposeObj); }
     trainGroup = new THREE.Group();
+    trainGroup.name = 'train:el';
     const bodyMat = new THREE.MeshStandardMaterial({color:'#9b2f2f', roughness:0.62, metalness:0.12});
     const roofMat = new THREE.MeshStandardMaterial({color:'#d8c078', roughness:0.45, metalness:0.18});
     for(let i=0;i<4;i++){
@@ -4589,7 +4610,8 @@ import type * as ThreeNamespace from 'three';
       const pos = parkedCarPositionForDistrict(state.parkedCarPos, state.currentDistrict);
       parkedCarMesh = buildCarModel(car, false);
       parkedCarMesh.position.set(pos.x,0,pos.y);
-      worldGroup.add(parkedCarMesh);
+      parkedCarMesh.name = 'vehicle:parked';
+    worldGroup.add(parkedCarMesh);
     }
   }
   function sampleRouteGuide(points: Point[], step: number): Point[] {
@@ -4649,6 +4671,7 @@ import type * as ThreeNamespace from 'three';
       dot.rotation.x=-Math.PI/2; dot.position.set(pt.x-wp.x,0.15,pt.y-wp.y); g.add(dot);
     });
     g.position.set(wp.x,0,wp.y);
+    g.name = 'waypoint:beacon';
     worldGroup.add(g); waypointBeacon=g;
   }
 

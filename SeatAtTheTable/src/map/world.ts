@@ -326,7 +326,9 @@ export const landmarks: Landmark[] = [
   { id: 'ciceroWorks', name: 'CICERO WORKS', district: 'westside', x: lotX(2125), y: 850 },
   // LEGAL: The Potato — Windhaven's mirror-polished civic sculpture in the Hub, the
   // LEGAL: in-universe answer to a certain bean. Parody naming per config/parodyGeography.
-  { id: 'thePotato', name: 'THE POTATO', district: 'hub', x: lotX(4760), y: 560 },
+  // LEGAL: y=500, not 560. The plaza is 100 deep, so at 560 its southern edge reached into
+  // LEGAL: Roosevelt Road's carriageway (y 563..637). Sits clear of Grand Avenue too.
+  { id: 'thePotato', name: 'THE POTATO', district: 'hub', x: lotX(4760), y: 500 },
 ];
 
 export const districtParkSlots: Record<string, DistrictParkSlot[]> = {
