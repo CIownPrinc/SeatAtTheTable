@@ -3842,7 +3842,7 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: brand gets a real two-wheeler instead.
   function isBikeCar(car: Car){ return brandById(car.brand)?.category === 'bike'; }
 
-  function buildBikeModel(car: Car){
+  function buildBikeModel(car: Car, withRider: boolean){
     const g = new THREE.Group();
     const wheelR = 6.5;
     const wheelMat = new THREE.MeshStandardMaterial({color:'#141414', roughness:0.85});
@@ -3900,6 +3900,52 @@ import type * as ThreeNamespace from 'three';
     const tailLamp = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.8, 3), new THREE.MeshStandardMaterial({color:'#b02a3a', emissive:'#8a1020', emissiveIntensity:0.6}));
     tailLamp.position.set(rearX - 1.5, wheelR + 8, 0); g.add(tailLamp);
 
+    // LEGAL: A rider, because a bike has no cabin to hide you in — an empty motorcycle
+    // LEGAL: driving itself is the giveaway. Modelled facing +x like the bike, seated:
+    // LEGAL: hips on the seat, torso pitched forward toward the bars, arms reaching them,
+    // LEGAL: legs folded down to the pegs. Uses the player's own palette so the rider
+    // LEGAL: matches the pedestrian you were a moment ago.
+    const look = appearanceForPerson('arjun', '#f0efe8');
+    const hipX = -car.len*0.14, hipY = wheelR + 10;
+    const rider = new THREE.Group();
+    if(!withRider) rider.visible = false;
+
+    const pelvis = new THREE.Mesh(new THREE.BoxGeometry(7, 5, car.wid*0.66), new THREE.MeshStandardMaterial({color:look.pants, roughness:0.85}));
+    pelvis.position.set(hipX, hipY, 0); rider.add(pelvis);
+
+    // LEGAL: Torso pitched forward — rotation about z tips the +x-facing body toward the bars.
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(8.5, 12, car.wid*0.62), new THREE.MeshStandardMaterial({color:look.shirt, roughness:0.8}));
+    torso.position.set(hipX + 3.4, hipY + 5.4, 0); torso.rotation.z = -0.52; rider.add(torso);
+
+    const jacket = new THREE.Mesh(new THREE.BoxGeometry(6, 6.5, car.wid*0.7), new THREE.MeshStandardMaterial({color:'#241f27', roughness:0.9}));
+    jacket.position.set(hipX + 2.2, hipY + 4.2, 0); jacket.rotation.z = -0.52; rider.add(jacket);
+
+    const head = new THREE.Mesh(new THREE.SphereGeometry(3.2, 12, 10), new THREE.MeshStandardMaterial({color:'#1b1d24', roughness:0.35, metalness:0.25}));
+    head.position.set(hipX + 7.6, hipY + 11.6, 0); rider.add(head);
+    // LEGAL: Visor, so which way the head is pointing is readable from above.
+    const visor = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.8, 4.4), new THREE.MeshStandardMaterial({color:'#8fd0e0', emissive:'#2b4a58', emissiveIntensity:0.4}));
+    visor.position.set(hipX + 10.1, hipY + 11.4, 0); rider.add(visor);
+
+    [-1, 1].forEach(function(side){
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 11, 6), new THREE.MeshStandardMaterial({color:look.shirt, roughness:0.8}));
+      arm.position.set(hipX + 8.2, hipY + 7.4, side * car.wid*0.34);
+      arm.rotation.z = Math.PI/2 - 0.55; rider.add(arm);
+
+      const thigh = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.9, 9, 6), new THREE.MeshStandardMaterial({color:look.pants, roughness:0.88}));
+      thigh.position.set(hipX + 3.4, hipY - 1.6, side * car.wid*0.34);
+      thigh.rotation.z = Math.PI/2 - 0.35; rider.add(thigh);
+
+      const shin = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 8, 6), new THREE.MeshStandardMaterial({color:look.pants, roughness:0.88}));
+      shin.position.set(hipX + 6.2, hipY - 6.4, side * car.wid*0.34);
+      shin.rotation.z = 0.28; rider.add(shin);
+
+      const boot = new THREE.Mesh(new THREE.BoxGeometry(4, 2.4, 2.6), new THREE.MeshStandardMaterial({color:'#15161a', roughness:0.95}));
+      boot.position.set(hipX + 7.4, hipY - 10, side * car.wid*0.34); rider.add(boot);
+    });
+
+    rider.traverse(function(part){ part.castShadow = true; });
+    g.add(rider);
+
     g.castShadow = true;
     // LEGAL: Same convention as buildCarModel — the bike is modelled facing +x, so it must
     // LEGAL: be rotated to face +z to match the shared heading convention
@@ -3913,8 +3959,10 @@ import type * as ThreeNamespace from 'three';
     return outer;
   }
 
-  function buildCarModel(car: Car){
-    if(isBikeCar(car)) return buildBikeModel(car);
+  // LEGAL: `withRider` only matters for bikes — a car hides you inside it, a bike does not,
+  // LEGAL: so a parked bike must not have a rider still sitting on it.
+  function buildCarModel(car: Car, withRider = true){
+    if(isBikeCar(car)) return buildBikeModel(car, withRider);
     const g = new THREE.Group();
     const bodyH = car.id==='escalade'?18:(car.id==='bentley'?16:14);
     const body = box(car.len, bodyH, car.wid, car.color);
@@ -4439,7 +4487,7 @@ import type * as ThreeNamespace from 'three';
     const car = getEquippedCar();
     if(car && !state.inVehicle){
       const pos = parkedCarPositionForDistrict(state.parkedCarPos, state.currentDistrict);
-      parkedCarMesh = buildCarModel(car);
+      parkedCarMesh = buildCarModel(car, false);
       parkedCarMesh.position.set(pos.x,0,pos.y);
       worldGroup.add(parkedCarMesh);
     }
