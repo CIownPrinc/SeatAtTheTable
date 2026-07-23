@@ -75,16 +75,32 @@ label gave one food cart a 4000-unit footprint), so measure solid `Mesh` geometr
 the audit uses a **whitelist** of building prefixes, so new scenery cannot opt itself in and
 new buildings cannot opt themselves out.
 
+**Also fixed:**
+- Walking through the train. The level crossing was only checked while driving.
+- Entering the garage equipping a car. The parked car was tested for interaction FIRST and
+  won every tie, and your car parks at your own garage by design — so pressing interact at
+  the door got you into the car. Doors win a contested press now, and the car parks in a bay
+  beside the door rather than dead centre on it.
+- No waypoint directions on bridges. Every route dot was pinned to y=0.15; a bridge deck sits
+  at y=2 and is 4 thick, so the whole trail rendered *inside* the deck. Dots ride the surface
+  they are on.
+- Waypoint gold matching the road lane markings — the trail is cyan now.
+- Stray blocks in the water. `no solid scenery stands in the water` in the scene audit asks
+  the game's OWN water rule about every solid object. Nothing is exempt by default; the
+  things allowed over water say so in their name.
+- Cars were a stack of boxes. The body is one extruded, bevelled side profile now — same
+  approach that fixed the bike.
+- The motorcycle headlamp was an emissive sphere that threw no light. Real SpotLight,
+  parented to the player, comes up through dusk.
+
 **Still outstanding (reported, not yet fixed):**
-- You can walk through the train (only vehicles are blocked today).
-- Waypoint route hints do not show across bridges.
-- Waypoint/GPS gold is the same yellow as the road markings — shift the hue.
-- River and ocean read static; some water is miscoloured and has stray blocks in it.
 - Too many untextured white buildings — the Kenney GLB set is plain. Find or build a better
   building collection.
 - Interior "read the room" hotspots mostly just restate your wanted level, which the HUD
   already shows. Make them do something.
 - Remove the travel-nodes strip above the map.
+- River and ocean still read static (the miscolouring and stray blocks are fixed; the
+  ANIMATION is still weak).
 
 ## 0a. Places must look like what they are — DONE
 
@@ -144,10 +160,11 @@ Lounge were all drawn as the same box.
 
 ## 0b. New requests, not started
 
-- **Outskirts pass 2**: the ring is scenery. Add countryside/suburb/forest content and
-  places to stop at. Also extend the outskirts NORTH — pass 1 only widened the sides and
-  bottom, because the lake sits north. Needs a decision: move the lake out, or accept north
-  stays water.
+- **Outskirts pass 2**: the belts are still scenery. Add places to stop at.
+  ~~Extend NORTH~~ — DONE. The north question is settled: the "lake" was open to the ocean,
+  which makes it a bay, so it is now genuinely enclosed with land wrapped over the top of it.
+  That bought three northern belts (Sunset Shore, Kestrel Woods, Harrow End) and a beach
+  resort on the south shore. See `lake.test.ts`.
 - **New districts** covering the outskirts (1-3 of them), plus a **district overlay toggle**
   alongside the existing territory overlay.
 - **Casino in the outskirts** — poker, blackjack, roulette played with Arjun's cash.
