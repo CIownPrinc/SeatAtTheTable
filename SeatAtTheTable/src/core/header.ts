@@ -38,7 +38,7 @@ import { createMapPlaceRecords, mapPlaceCategoryLabel, type MapPlaceCategory, ty
 import { mapPointContext, nearestPlaceAtPoint, placesByCategory, routeHintBetween, routeSummary, trainCrossingBlockAtPoint } from '../map/queries';
 import { outskirtPlaceLabel } from '../map/outskirts';
 import { allocateServiceLots } from '../map/serviceLots';
-import { createRoamingActors, updateRoamingActors } from '../map/roaming';
+import { createRoamingActors, settleRoamingActors, updateRoamingActors } from '../map/roaming';
 import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, buildLandmarks, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
 import { createMapSceneMaterials, createSceneBuildTimer } from '../map/scenePerformance';
 import { buildIntersectionFurniture as buildMapIntersectionFurniture } from '../map/streetFurniture';
@@ -3464,6 +3464,13 @@ import type * as ThreeNamespace from 'three';
   }
   let currentSolids: Solid[] = [];
 
+  // LEGAL: Nearest standable point, shared by the player's vehicle-entry nudge and by the
+  // LEGAL: pedestrians, so a stuck actor is freed by the same rule the player is. Falls back
+  // LEGAL: to the point itself when nothing is free, which keeps callers total.
+  function rescuePoint(x: number, y: number): { x: number; y: number } {
+    return nearestFreePoint(x, y, currentSolids, false) ?? { x, y };
+  }
+
   // LEGAL: ---- interiors: a small generic room per building, with 1-2 physical hotspots ----
   const ROOM_W = 480, ROOM_H = 280, ROOM_OX = (VIEW_W-ROOM_W)/2, ROOM_OY = (VIEW_H-ROOM_H)/2 - 10;
   const DOOR_LOCAL = { x: ROOM_W/2, y: ROOM_H-6 };
@@ -4517,6 +4524,10 @@ import type * as ThreeNamespace from 'three';
       currentSolids = buildAllSolids();
       // LEGAL: Block the landmark footprints so you can't walk through them.
       currentSolids.push({x:125,y:820,hw:44,hd:44}, {x:2125,y:850,hw:26,hd:26});
+      // LEGAL: Must run AFTER the solids exist: an NPC authored inside a building is stuck
+      // LEGAL: there forever otherwise, because the point it retreats to when blocked is the
+      // LEGAL: same point it is trapped in.
+      settleRoamingActors(roamingActors, function(x, y){ return tryMove(x, y, currentSolids); }, rescuePoint);
       updateParkedCarMesh();
       rebuildWaypointBeacon();
     });
@@ -4717,6 +4728,10 @@ import type * as ThreeNamespace from 'three';
       (window as unknown as { __seat?: unknown }).__seat = {
         THREE, scene, worldGroup, player, state, mapObjects, mapPlaces,
         roadNetwork, districtOffsets: DISTRICT_OFFSETS,
+        roamingActors,
+        // LEGAL: The world's own walkability rule, so the audit asks the game where an actor
+        // LEGAL: may stand instead of re-deriving collision and grading its own homework.
+        canWalk: function(x: number, y: number){ return tryMove(x, y, currentSolids); },
       };
     }
     playerGroup = new THREE.Group(); scene.add(playerGroup);
@@ -5233,7 +5248,7 @@ import type * as ThreeNamespace from 'three';
       updateDayNightLighting();
       updateWeather(dt);
       updateWaterMotion();
-      updateRoamingActors(roamingActors, { dt, playSeconds:state.playSeconds, indoors:!!state.currentInterior, canMove:function(x,y){ return tryMove(x,y,currentSolids); } });
+      updateRoamingActors(roamingActors, { dt, playSeconds:state.playSeconds, indoors:!!state.currentInterior, canMove:function(x,y){ return tryMove(x,y,currentSolids); }, rescue:rescuePoint });
       updateDealerArrivals(dt);
       updateTrain();
       playerGroup.position.set(player.x, 0, player.y);

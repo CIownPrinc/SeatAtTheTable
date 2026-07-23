@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { GangRecruit } from '../config/types';
 import type { MapNpc } from './markers';
 import type { MapObject } from './objects';
-import { createRoamingActors, trafficCarRoutes, updateRoamingActors } from './roaming';
+import { createRoamingActors, settleRoamingActors, trafficCarRoutes, updateRoamingActors } from './roaming';
 import { roadNetwork } from './world';
 
 function npcObject(id: string, type: MapNpc['type']): MapObject<'npc', MapNpc> {
@@ -51,6 +51,51 @@ describe('roaming actors', function () {
     updateRoamingActors([actor], { dt:1, playSeconds:10, indoors:true, canMove:function(){ return true; } });
 
     expect(actor.x).toBe(100);
+  });
+
+  // LEGAL: An NPC authored inside a building used to stand in the wall forever: every
+  // LEGAL: candidate destination failed the walkability test, and being blocked sent it back
+  // LEGAL: to the home point it was already trapped in.
+  it('settles a pedestrian spawned inside a building onto standable ground, home included', function () {
+    const actors = createRoamingActors([npcObject('walled', 'named')]);
+    const blocked = function(x: number, y: number){ return x > 150; };
+
+    const moved = settleRoamingActors(actors, blocked, function(){ return { x:200, y:200 }; });
+
+    expect(moved).toBe(1);
+    expect(actors[0].x).toBe(200);
+    // LEGAL: Home moves too, or it simply walks back inside on the next retreat.
+    expect(actors[0].homeX).toBe(200);
+    expect(actors[0].object?.x).toBe(200);
+  });
+
+  it('leaves a pedestrian that spawned somewhere standable exactly where it is', function () {
+    const actors = createRoamingActors([npcObject('fine', 'named')]);
+
+    expect(settleRoamingActors(actors, function(){ return true; }, function(){ return { x:999, y:999 }; })).toBe(0);
+    expect(actors[0].x).toBe(100);
+  });
+
+  // LEGAL: Pedestrians walk in a straight line, so a clear DESTINATION is not enough — a
+  // LEGAL: target on the far side of a building sends the actor into the wall to pace against
+  // LEGAL: it. The wall here has clear ground BEYOND it, so a target past the wall passes the
+  // LEGAL: destination check and is only rejected if the path itself is tested.
+  it('never picks a target it would have to walk through a wall to reach', function () {
+    const actors = createRoamingActors([npcObject('pacer', 'named')]);
+    const actor = actors[0];
+    // LEGAL: A band north of home is solid; everything past it is open.
+    const wall = function(_x: number, y: number){ return !(y > 106 && y < 132); };
+    const chosen: Array<{ x: number; y: number }> = [];
+
+    for(let i=0;i<60;i++){
+      const before = actor.targetY;
+      updateRoamingActors([actor], { dt:1, playSeconds:i*5, indoors:false, canMove:wall });
+      if(actor.targetY !== before) chosen.push({ x:actor.targetX, y:actor.targetY });
+    }
+
+    // LEGAL: Home is at y=100, so anything beyond the band is only reachable through it.
+    expect(chosen.length).toBeGreaterThan(0);
+    expect(chosen.filter(point => point.y >= 132)).toEqual([]);
   });
 
   it('keeps traffic car routes on road centers with no diagonal shortcuts', function () {

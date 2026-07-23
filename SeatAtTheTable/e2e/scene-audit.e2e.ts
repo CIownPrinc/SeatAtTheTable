@@ -114,6 +114,29 @@ test.describe('scene audit — what the renderer actually drew', () => {
     expect(floating.slice(0, 24), `floating geometry:\n${floating.slice(0, 24).join('\n')}`).toEqual([]);
   });
 
+  // LEGAL: Pedestrians spawn on their map object's authored point. Nobody checked it was
+  // LEGAL: standable, so one authored inside a building stood in the wall forever: every
+  // LEGAL: candidate destination failed the walkability test, and being blocked sent it back
+  // LEGAL: to the home point it was already trapped in.
+  test('no pedestrian is standing inside a building', async ({ page }) => {
+    test.setTimeout(120000);
+    await waitForScene(page);
+
+    const stuck = await page.evaluate(() => {
+      const seat = (window as never as {
+        __seat: {
+          roamingActors: { id: string; kind: string; x: number; y: number }[];
+          canWalk: (x: number, y: number) => boolean;
+        };
+      }).__seat;
+      return seat.roamingActors
+        .filter(actor => actor.kind !== 'car' && !seat.canWalk(actor.x, actor.y))
+        .map(actor => `${actor.id} is stuck at (${Math.round(actor.x)}, ${Math.round(actor.y)})`);
+    });
+
+    expect(stuck.slice(0, 24), `pedestrians stuck in geometry:\n${stuck.slice(0, 24).join('\n')}`).toEqual([]);
+  });
+
   test('nothing is buried under the ground', async ({ page }) => {
     test.setTimeout(120000);
     await waitForScene(page);

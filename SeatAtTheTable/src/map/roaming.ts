@@ -31,6 +31,9 @@ export interface RoamingUpdateOptions {
   playSeconds: number;
   indoors: boolean;
   canMove: (x: number, y: number) => boolean;
+  // LEGAL: Nearest standable point to somewhere unstandable. Supplied by the caller so the
+  // LEGAL: pedestrians use the same escape the player does rather than a second opinion.
+  rescue?: (x: number, y: number) => Point;
 }
 
 function roamSeed(id: string): number {
@@ -97,6 +100,43 @@ export function createRoamingActors(mapObjects: MapObject[]): RoamingActor[] {
   return actors;
 }
 
+// LEGAL: Pedestrians spawn on their map object's authored point, which nobody ever checked
+// LEGAL: was standable. One authored inside a building was stuck there permanently: every
+// LEGAL: candidate target failed canMove, and the fallback was to walk back to the home point
+// LEGAL: it was already trapped in. Settling the spawn once, before anyone sees it, is the
+// LEGAL: fix — moving HOME too, so it does not simply wander back inside.
+export function settleRoamingActors(
+  actors: RoamingActor[],
+  canMove: (x: number, y: number) => boolean,
+  rescue: (x: number, y: number) => Point,
+): number {
+  let moved = 0;
+  actors.forEach(function(actor){
+    if(actor.kind === 'car' || canMove(actor.x, actor.y)) return;
+    const free = rescue(actor.x, actor.y);
+    actor.x = free.x; actor.y = free.y;
+    actor.homeX = free.x; actor.homeY = free.y;
+    actor.targetX = free.x; actor.targetY = free.y;
+    if(actor.object){ actor.object.x = free.x; actor.object.y = free.y; }
+    moved += 1;
+  });
+  return moved;
+}
+
+// LEGAL: Pedestrians walk in a straight line to their target, so a clear DESTINATION is not
+// LEGAL: enough — a target on the far side of a building sends the actor into the wall, where
+// LEGAL: it is blocked, retreats home, picks the same sort of target and does it again. That
+// LEGAL: pacing against a wall is what reads as an NPC stuck in a building. Sampling the
+// LEGAL: line means it only accepts somewhere it can actually walk to.
+function pathIsClear(fromX: number, fromY: number, toX: number, toY: number, canMove: (x: number, y: number) => boolean): boolean {
+  const steps = Math.max(2, Math.ceil(Math.hypot(toX - fromX, toY - fromY) / 12));
+  for(let i=1;i<=steps;i++){
+    const t = i / steps;
+    if(!canMove(fromX + (toX - fromX) * t, fromY + (toY - fromY) * t)) return false;
+  }
+  return true;
+}
+
 function choosePedestrianTarget(actor: RoamingActor, playSeconds: number, canMove: (x: number, y: number) => boolean): void {
   const rand = seededRandom(roamSeed(actor.id) + Math.floor(playSeconds / 5));
   for(let i=0;i<5;i++){
@@ -104,7 +144,7 @@ function choosePedestrianTarget(actor: RoamingActor, playSeconds: number, canMov
     const distance = actor.radius * (0.25 + rand() * 0.75);
     const nx = actor.homeX + Math.cos(angle) * distance;
     const ny = actor.homeY + Math.sin(angle) * distance;
-    if(canMove(nx, ny)){
+    if(canMove(nx, ny) && pathIsClear(actor.x, actor.y, nx, ny, canMove)){
       actor.targetX = nx;
       actor.targetY = ny;
       break;
@@ -138,9 +178,18 @@ function moveActorToward(actor: RoamingActor, options: RoamingUpdateOptions): vo
       actor.object.x = nx;
       actor.object.y = ny;
     }
-  } else {
+  } else if(options.canMove(actor.homeX, actor.homeY)){
     actor.targetX = actor.homeX;
     actor.targetY = actor.homeY;
+  } else if(options.rescue){
+    // LEGAL: Blocked AND with nowhere to retreat to — the world changed under the actor
+    // LEGAL: (a building appeared, a lot was re-allocated). Re-home it somewhere standable
+    // LEGAL: instead of leaving it shoving against a wall forever.
+    const free = options.rescue(actor.x, actor.y);
+    actor.x = free.x; actor.y = free.y;
+    actor.homeX = free.x; actor.homeY = free.y;
+    actor.targetX = free.x; actor.targetY = free.y;
+    if(actor.object){ actor.object.x = free.x; actor.object.y = free.y; }
   }
 }
 
