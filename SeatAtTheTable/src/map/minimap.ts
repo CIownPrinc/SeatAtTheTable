@@ -5,6 +5,7 @@ import type { RoadPath } from './mapModel';
 import { activeTrainSnapshot } from './queries';
 import { mapTerrainTheme, terrainForDistrict } from './renderTheme';
 import type { BlockHolding } from './territory';
+import type { RegionRecord } from './regions';
 import { OUTSKIRT_REGIONS, type OutskirtRegion } from './world';
 
 // LEGAL: Minimap tints for the outskirt belts. Lighter than the 3D terrain colours because
@@ -61,6 +62,10 @@ export interface MinimapRenderOptions {
   // LEGAL: Draw each block's name inside it. Only the full City Map has the room; the
   // LEGAL: 150px minimap would be unreadable, so it leaves this off.
   territoryLabels?: boolean;
+  // LEGAL: District overlay. Outlines every named region of the map and writes its name
+  // LEGAL: inside it, so "where am I" has a visual answer as well as a HUD one. Null leaves
+  // LEGAL: the map exactly as it was — additive, like the territory layer.
+  regions?: RegionRecord[] | null;
 }
 
 interface MinimapRenderFrame {
@@ -411,6 +416,33 @@ function drawDynamicMinimapLayer(mctx: CanvasRenderingContext2D, options: Minima
     mctx.clip();
   }
 
+  // LEGAL: District outlines sit below the territory tint and everything else. Outlines and
+  // LEGAL: a faint wash rather than a solid fill: the point is to show you where the seams
+  // LEGAL: are, and a map you cannot read through is not a map.
+  if(options.regions?.length){
+    options.regions.forEach(function(region){
+      region.areas.forEach(function(area){
+        if(!area.length) return;
+        mctx.beginPath();
+        area.forEach(function(point, index){
+          const p = proj(point.x, point.y);
+          if(index === 0) mctx.moveTo(p.x, p.y); else mctx.lineTo(p.x, p.y);
+        });
+        mctx.closePath();
+        mctx.globalAlpha = 0.16;
+        mctx.fillStyle = region.color;
+        mctx.fill();
+        mctx.globalAlpha = 0.85;
+        mctx.strokeStyle = region.color;
+        mctx.lineWidth = Math.max(1, 1.6 * glyphScale);
+        mctx.setLineDash([Math.max(3, 4 * glyphScale), Math.max(2, 3 * glyphScale)]);
+        mctx.stroke();
+        mctx.setLineDash([]);
+      });
+    });
+    mctx.globalAlpha = 1;
+  }
+
   // LEGAL: Territory tint sits under everything else so roads, glyphs and the player
   // LEGAL: marker stay readable. Drawn inside the landmass clip, so turf stops at the
   // LEGAL: shoreline instead of bleeding across the canals.
@@ -493,6 +525,32 @@ function drawDynamicMinimapLayer(mctx: CanvasRenderingContext2D, options: Minima
   });
 
   mctx.restore();
+
+  // LEGAL: Region names go on last and OUTSIDE the landmass clip, for the same reason the
+  // LEGAL: district names do: a label that crosses the shoreline was being erased at the
+  // LEGAL: waterline, which read as the text being cut in half. Only drawn at City Map scale
+  // LEGAL: — on the 150px minimap a region name is wider than the region.
+  if(options.regions?.length && glyphScale >= 1.5){
+    mctx.save();
+    mctx.textAlign = 'center';
+    mctx.textBaseline = 'middle';
+    mctx.font = `700 ${Math.round(11 * glyphScale)}px Oswald, sans-serif`;
+    options.regions.forEach(function(region){
+      // LEGAL: The base map already writes the three city district names (districtNames,
+      // LEGAL: static layer). Drawing them again from here printed each one twice at the
+      // LEGAL: same point in a different colour, which just looked like blurred text.
+      if(region.kind === 'city') return;
+      const p = proj(region.labelPoint.x, region.labelPoint.y);
+      if(!isOnMap(p, viewW, viewH)) return;
+      const label = region.name.toUpperCase();
+      mctx.lineWidth = 4;
+      mctx.strokeStyle = 'rgba(8,9,13,0.92)';
+      mctx.strokeText(label, p.x, p.y);
+      mctx.fillStyle = region.color;
+      mctx.fillText(label, p.x, p.y);
+    });
+    mctx.restore();
+  }
 
   const drawWaypoint = function(wp: Point): void {
     const p = proj(wp.x, wp.y);

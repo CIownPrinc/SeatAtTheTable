@@ -35,6 +35,7 @@ import { GARAGE_RETURN_SECONDS, PARKING_DISTRICT_IDS, carSpawnPositionForDistric
 import { renderMapPlaces, serviceBuildingSilhouette } from '../map/placeRendering';
 import { archetypeExtraSolids, serviceArchetype } from '../map/archetypes';
 import { bayParkSpot, bayStandSpot, garageBay, isCarInBay, type Bay } from '../map/driveIn';
+import { allRegions, regionNameAt } from '../map/regions';
 import { propertyPlaces, type PropertyPlace } from '../map/propertyPlaces';
 import { createMapPlaceRecords, mapPlaceCategoryLabel, type MapPlaceCategory, type MapPlaceRecord } from '../map/places';
 import { bridgeAtPoint, mapPointContext, nearestPlaceAtPoint, placesByCategory, routeHintBetween, routeSummary, trainCrossingBlockAtPoint } from '../map/queries';
@@ -3780,8 +3781,14 @@ import type * as ThreeNamespace from 'three';
   }
   function currentRoadLabel(): string {
     const road = nearestRoadAtPoint({ x: player.x, y: player.y });
-    const district = districts.find(function(d){return d.id===state.currentDistrict;})?.name ?? 'Windhaven';
-    return `${road.road.name}, ${district}`;
+    // LEGAL: Ask where you ARE, not which district you were last in. state.currentDistrict
+    // LEGAL: only ever holds one of the three city districts, so out in the belts the HUD
+    // LEGAL: used to keep announcing the district you had driven out of — half the landmass
+    // LEGAL: reporting somewhere you could see you were not.
+    const region = regionNameAt({ x: player.x, y: player.y })
+      ?? districts.find(function(d){return d.id===state.currentDistrict;})?.name
+      ?? 'Windhaven';
+    return `${road.road.name}, ${region}`;
   }
   const fillerLayout = createFillerLayoutProvider(mapObjects);
   function fillerFor(districtId: string){
@@ -5440,6 +5447,40 @@ import type * as ThreeNamespace from 'three';
   }
   byId('citymap-territory').addEventListener('click', function(){ setCityTerritoryShown(!cityTerritoryShown); });
 
+  // LEGAL: ---- District overlay (City Map) ----
+  // LEGAL: The map had a large part of itself that officially did not exist: stand in the
+  // LEGAL: outskirts and the HUD kept naming whichever district you were last in. The three
+  // LEGAL: outskirt districts in map/regions.ts fix the naming; this layer makes the seams
+  // LEGAL: visible, which is the thing you actually want when you are looking at a map.
+  // LEGAL: A view over map data only — it changes no game state, like the territory layer.
+  let cityDistrictsShown = false;
+  const mapRegions = allRegions();
+
+  function districtLegendHtml(){
+    const rows = mapRegions.map(function(region){
+      const detail = region.kind === 'city'
+        ? 'City district — turf, control, the war'
+        : 'Outskirts — open country, no turf';
+      return `<div class="territory-row">
+        <div class="t-name"><span class="territory-swatch" style="background:${region.color};"></span>${escapeHtml(region.name)}</div>
+        <div class="t-sub">${detail}</div>
+      </div>`;
+    }).join('');
+    return `<h4>Districts</h4>${rows}`;
+  }
+
+  function setCityDistrictsShown(on: boolean){
+    cityDistrictsShown = on;
+    byId('citymap-districts').classList.toggle('active', on);
+    const legend = byId('citymap-districts-legend');
+    legend.classList.toggle('hidden', !on);
+    // LEGAL: The legend never changes — regions are static map data — so it is built once
+    // LEGAL: on first show rather than rebuilt on every toggle.
+    if(on && !legend.innerHTML) legend.innerHTML = districtLegendHtml();
+    if(cityMapOpen) drawCityMap();
+  }
+  byId('citymap-districts').addEventListener('click', function(){ setCityDistrictsShown(!cityDistrictsShown); });
+
   // LEGAL: ================= CITY MAP (full-world overlay, GTA-style) =================
   const cityMapCanvas = byId<HTMLCanvasElement>('citymap-canvas');
   const cityCtx = cityMapCanvas.getContext('2d')!;
@@ -5537,6 +5578,7 @@ import type * as ThreeNamespace from 'three';
       territory: cityTerritoryShown ? currentHoldings() : null,
       warnObjectIds: cityTerritoryShown ? rivalTurfShopIds() : undefined,
       territoryLabels: cityTerritoryShown,
+      regions: cityDistrictsShown ? mapRegions : null,
       viewW:CITY_W, viewH:CITY_H, scale:cityViewport.scale, center:cityViewport.center, glyphScale:1.9,
       districtNames:windhavenMapModel.districts.map(function(district){ return { x: district.labelPoint.x, y: district.labelPoint.y, name: district.name }; }),
       highlightPoint:cityMapHoverPlace,
