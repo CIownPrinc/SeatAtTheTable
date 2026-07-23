@@ -1,7 +1,7 @@
 import type { FillerItem, MapZoneType, Solid } from '../config/types';
 import type { MapObject } from './objects';
 import { buildableBands, distancePointToSegment, localXForDistrict, rectsOverlap, rotatedHalfExtents } from './layout';
-import { DISTRICT_OFFSETS, DISTRICT_W, WORLD_H, districtParkSlots, districtSeeds, landmarks, roadNetwork } from './world';
+import { DISTRICT_OFFSETS, DISTRICT_W, WORLD_H, districtParkSlots, districtSeeds, landmarks, roadNetwork, widenAuthoredX } from './world';
 import { zoneForDistrictBlock } from './zoning';
 import { characterForDistrictBlock, characterProfile, type BlockCharacter } from './neighbourhoods';
 import { districtIdAtPlayablePoint } from './mapModel';
@@ -43,7 +43,10 @@ export function createFillerLayoutProvider(mapObjects: MapObject[]): FillerLayou
   function generateFillerLayout(districtId: string): FillerItem[] {
     const rand = seededRandom(districtSeeds[districtId]);
     const occupied = occupiedZones(districtId);
-    const localRoadXs = [270,700,1130];
+    // LEGAL: District-local road positions MUST be widened to match DISTRICT_W. Left
+    // LEGAL: authored, the filler carved its blocks around streets that are no longer there
+    // LEGAL: and dropped buildings squarely on the real ones.
+    const localRoadXs = [270,700,1130].map(widenAuthoredX);
     const xBands = buildableBands(localRoadXs, DISTRICT_W, ROAD_VISUAL_CLEARANCE_X);
     const yBands = buildableBands(roadNetwork.horizontal.map(r=>r.y), WORLD_H, ROAD_VISUAL_CLEARANCE_Y);
     const lotBand = { xi:xBands.length-1, yi: districtId==='hub' ? yBands.length-1 : 0 };

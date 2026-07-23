@@ -468,9 +468,15 @@ function drawDynamicMinimapLayer(mctx: CanvasRenderingContext2D, options: Minima
     if(!train) return;
     const p = proj(train.point.x, train.point.y);
     mctx.fillStyle='#b43a35';
-    mctx.fillRect(p.x - Math.max(3,6*glyphScale), p.y - Math.max(8,15*glyphScale), Math.max(6,12*glyphScale), Math.max(16,30*glyphScale));
+    // LEGAL: Sized off glyphScale with small floors. The old floors (6x30px) drew a train
+    // LEGAL: a fifth of the height of the 150px minimap — bigger than the districts it ran
+    // LEGAL: through.
+    const trainW = Math.max(2, 3.2*glyphScale);
+    const trainH = Math.max(5, 9*glyphScale);
+    mctx.fillRect(p.x - trainW/2, p.y - trainH/2, trainW, trainH);
     mctx.strokeStyle='#f0d38a';
-    mctx.strokeRect(p.x - Math.max(3,6*glyphScale), p.y - Math.max(8,15*glyphScale), Math.max(6,12*glyphScale), Math.max(16,30*glyphScale));
+    mctx.lineWidth = Math.max(0.6, 0.5*glyphScale);
+    mctx.strokeRect(p.x - trainW/2, p.y - trainH/2, trainW, trainH);
   });
 
   options.mapObjects.forEach(function(object){

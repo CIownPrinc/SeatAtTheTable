@@ -139,16 +139,17 @@ export function serviceBuildingSilhouette(building: ServiceBuilding): BuildingSi
   if(building.kind === 'realty') return { w:62, h:32, d:48, color:'#456f78', zoneType:'commercial' };
   if(building.kind === 'cityhall') return { w:88, h:48, d:64, color:'#74623c', zoneType:'service' };
   if(building.kind === 'heist') return { w:72, h:34, d:58, color:'#5a2a33', zoneType:'industrial' };
-  return { w:58, h:34, d:50, color:'#3e6b78', zoneType:'service' };
+  return { w:72, h:38, d:58, color:'#3e6b78', zoneType:'service' };
 }
 
 export function localBusinessSilhouette(business: LocalBusiness): BuildingSilhouette {
   const color = business.extorted ? '#8a6a1a' : '#4a4360';
-  if(business.id === 'bar' || business.id === 'marlowe') return { w:50, h:26, d:42, color:'#4c335a', zoneType:'commercial' };
+  // LEGAL: Enterable places were reading as smaller than the scenery around them.
+  if(business.id === 'bar' || business.id === 'marlowe') return { w:62, h:30, d:52, color:'#4c335a', zoneType:'commercial' };
   if(business.id === 'chopshop') return { w:64, h:25, d:48, color:'#3e464a', zoneType:'industrial' };
-  if(business.id === 'jewelers') return { w:46, h:30, d:38, color:'#5b5268', zoneType:'shop' };
-  if(business.id === 'liquor') return { w:48, h:24, d:40, color, zoneType:'shop' };
-  return { w:42, h:20, d:36, color, zoneType:'shop' };
+  if(business.id === 'jewelers') return { w:58, h:34, d:48, color:'#5b5268', zoneType:'shop' };
+  if(business.id === 'liquor') return { w:60, h:28, d:50, color, zoneType:'shop' };
+  return { w:56, h:26, d:46, color, zoneType:'shop' };
 }
 
 function renderAmenities(options: MapPlaceRenderOptions): void {

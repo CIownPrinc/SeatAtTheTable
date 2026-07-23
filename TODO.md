@@ -30,6 +30,51 @@ caused duplicate-feature merges (e.g. the "two heat bars" HUD bug).
 
 # ACTIVE — in priority order
 
+## 0. Post-expansion cleanup — REPORTED IN PLAY, MOSTLY OUTSTANDING
+
+The world expansion shipped green on every gate but plays badly. Several are regressions it
+introduced. **Fix these before building anything new.**
+
+**Fixed so far:**
+- Filler used un-widened road positions (`[270,700,1130]`) while the real roads moved to
+  `378/980/1582`, so it carved blocks around streets that no longer exist and dropped
+  buildings on the real ones. Root cause of "buildings on the road".
+- Two hard-coded shoreline polylines authored against the ORIGINAL coast ran straight across
+  the middle of the land as stray stripes. Root cause of "random lines everywhere". Now
+  derived from the real coastline.
+- Collision bounds were fixed constants (35x31) divorced from the drawn silhouette: you
+  clipped into wide dealerships and hit an invisible wall ~30 units short of small ones.
+  Now derived from the silhouette. Root cause of "invisible barriers around buildings".
+- Interactable buildings enlarged — they read smaller than the scenery around them.
+- Minimap train was ~6x30px on a 150px minimap. Now scales properly.
+- Movement no longer continues underneath the open City Map.
+
+**Still outstanding (reported, not yet fixed):**
+- Random floating blocks; some buildings appear to float.
+- NPCs stuck inside buildings and standing in roads.
+- You can walk through the train (only vehicles are blocked today).
+- Waypoint route hints do not show across bridges.
+- Waypoint/GPS gold is the same yellow as the road markings — shift the hue.
+- River and ocean read static; some water is miscoloured and has stray blocks in it.
+- Too many untextured white buildings — the Kenney GLB set is plain. Find or build a better
+  building collection.
+- Interior "read the room" hotspots mostly just restate your wanted level, which the HUD
+  already shows. Make them do something.
+- Remove the travel-nodes strip above the map.
+
+## 0b. New requests, not started
+
+- **Outskirts pass 2**: the ring is scenery. Add countryside/suburb/forest content and
+  places to stop at. Also extend the outskirts NORTH — pass 1 only widened the sides and
+  bottom, because the lake sits north. Needs a decision: move the lake out, or accept north
+  stays water.
+- **New districts** covering the outskirts (1-3 of them), plus a **district overlay toggle**
+  alongside the existing territory overlay.
+- **Casino in the outskirts** — poker, blackjack, roulette played with Arjun's cash.
+- **Vehicle customisation shop** — respray/modify your car.
+- **Drive-in garage**: somewhere you can actually drive in and park, rather than the car
+  teleporting home.
+
 ## 1. Onboarding / just-in-time tutorial
 
 Replace the advisor briefing, which the player finds "clunky and primitive". Wants

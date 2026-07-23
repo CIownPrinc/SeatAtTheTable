@@ -250,11 +250,21 @@ export function buildBaseGround(options: BaseSceneOptions): void {
   });
   addGroundLine(options, windhavenMapModel.landmass, mapTerrainTheme.coastline, 0.46, 0.13);
   addGroundLine(options, windhavenMapModel.landmass.filter(function(_point, index){ return index % 2 === 0; }), mapTerrainTheme.coastlineSecondary, 0.24, 0.14);
-  [
-    [{x:-220,y:118},{x:520,y:84},{x:1220,y:112},{x:2060,y:84},{x:2760,y:112},{x:3580,y:88},{x:4420,y:118},{x:5360,y:92}],
-    [{x:-180,y:142},{x:680,y:116},{x:1540,y:136},{x:2380,y:112},{x:3320,y:142},{x:4210,y:118},{x:5480,y:148}],
-  ].forEach(function(points, index){
-    addGroundLine(options, points, index === 0 ? '#8fb6c2' : '#e4efe8', index === 0 ? 0.2 : 0.12, 0.12 + index*0.01);
+  // LEGAL: Surf lines just inside the shore. These used to be two hard-coded polylines
+  // LEGAL: authored against the ORIGINAL coastline; once the districts widened and the
+  // LEGAL: coast was reshaped they ran straight across the middle of the land as stray
+  // LEGAL: stripes. Derived from the real coastline now, so they can never drift again.
+  [0, 1].forEach(function(index){
+    const inset = 16 + index * 22;
+    const surf = windhavenMapModel.landmass.map(function(point, i){
+      const next = windhavenMapModel.landmass[(i + 1) % windhavenMapModel.landmass.length];
+      const dx = next.x - point.x;
+      const dy = next.y - point.y;
+      const len = Math.hypot(dx, dy) || 1;
+      // LEGAL: Offset along the inward normal of each coast segment.
+      return { x: point.x + (dy / len) * inset, y: point.y - (dx / len) * inset };
+    });
+    addGroundLine(options, surf, index === 0 ? '#8fb6c2' : '#e4efe8', index === 0 ? 0.2 : 0.12, 0.12 + index*0.01);
   });
   addSurfaceGrain(options);
   addCoastlineTexture(options);

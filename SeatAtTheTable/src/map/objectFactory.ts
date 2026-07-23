@@ -5,6 +5,7 @@ import type { MapObject } from './objects';
 import type { PropertyPlace } from './propertyPlaces';
 import { createBounds } from './objects';
 import { minimapIconForLocalBusiness, minimapIconForService } from './places';
+import { localBusinessSilhouette, propertySilhouette, serviceBuildingSilhouette } from './placeRendering';
 
 export interface VentureFootprint {
   w: number;
@@ -46,15 +47,22 @@ export function buildMapObjects(input: MapObjectFactoryInput): MapObject[] {
       return { kind:'building', id:m.id, district:m.district, x:m.x, y:m.y, bounds:ventureBounds(m), interactRadius:46, minimapColor:legit?'#3e7c8c':'#a8394a', minimapSize:3, minimapIcon:legit?'legal':'illegal', ref:m };
     }),
     ...input.serviceBuildings.map(function(m): MapObject<'service', ServiceBuilding> {
-      return { kind:'service', id:m.id, district:m.district, x:m.x, y:m.y, bounds:createBounds(m.x,m.y,35,31), interactRadius:46, minimapColor:'#d4a017', minimapSize:3, minimapIcon:minimapIconForService(m), ref:m };
+      // LEGAL: Collision derived from the drawn silhouette instead of a fixed 35x31. Those
+      // LEGAL: constants stopped matching anything once buildings got their own footprints:
+      // LEGAL: you clipped into the wide dealerships and hit an invisible wall about 30
+      // LEGAL: units short of the small ones.
+      const shape = serviceBuildingSilhouette(m);
+      return { kind:'service', id:m.id, district:m.district, x:m.x, y:m.y, bounds:createBounds(m.x,m.y,shape.w/2,shape.d/2), interactRadius:Math.max(46, shape.w*0.62), minimapColor:'#d4a017', minimapSize:3, minimapIcon:minimapIconForService(m), ref:m };
     }),
     // LEGAL: Real estate you can own. Always in the world (a walk-up exists whether or not
     // LEGAL: you hold the deed); header filters the minimap to the ones you actually own.
     ...(input.propertyPlaces ?? []).map(function(m): MapObject<'property', PropertyPlace> {
-      return { kind:'property', id:m.id, district:m.district, x:m.x, y:m.y, bounds:createBounds(m.x,m.y,30,26), interactRadius:44, minimapColor:'#5fbf8f', minimapSize:2.6, minimapIcon:'estate', ref:m };
+      const shape = propertySilhouette(m);
+      return { kind:'property', id:m.id, district:m.district, x:m.x, y:m.y, bounds:createBounds(m.x,m.y,shape.w/2,shape.d/2), interactRadius:Math.max(44, shape.w*0.62), minimapColor:'#5fbf8f', minimapSize:2.6, minimapIcon:'estate', ref:m };
     }),
     ...input.localBusinesses.map(function(m): MapObject<'local', LocalBusiness> {
-      return { kind:'local', id:m.id, district:m.district, x:m.x, y:m.y, bounds:createBounds(m.x,m.y,27,24), interactRadius:46, minimapColor:'#7a6fb0', minimapSize:2.5, minimapIcon:minimapIconForLocalBusiness(m), ref:m };
+      const shape = localBusinessSilhouette(m);
+      return { kind:'local', id:m.id, district:m.district, x:m.x, y:m.y, bounds:createBounds(m.x,m.y,shape.w/2,shape.d/2), interactRadius:Math.max(46, shape.w*0.62), minimapColor:'#7a6fb0', minimapSize:2.5, minimapIcon:minimapIconForLocalBusiness(m), ref:m };
     }),
     ...input.amenities.map(function(m): MapObject<'amenity', MapAmenity> {
       const bounds = amenityHasSolidFootprint(m.kind) ? createBounds(m.x,m.y,27,24) : undefined;

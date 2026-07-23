@@ -5129,7 +5129,9 @@ import type * as ThreeNamespace from 'three';
     let dx=0, dy=0;
     // LEGAL: Freeze movement input while a minigame or the phone overlay is up so the
     // LEGAL: player token doesn't drift under it; the loop keeps running to hold the scene.
-    if(!minigameOpen() && !deviceOpen()){
+    // LEGAL: The expanded City Map is a full-screen overlay you read, not play through —
+    // LEGAL: moving underneath it meant you walked blind and came back somewhere else.
+    if(!minigameOpen() && !deviceOpen() && !cityMapOpen){
       if(keys['arrowup']||keys['w']) dy -= 1;
       if(keys['arrowdown']||keys['s']) dy += 1;
       if(keys['arrowleft']||keys['a']) dx -= 1;
