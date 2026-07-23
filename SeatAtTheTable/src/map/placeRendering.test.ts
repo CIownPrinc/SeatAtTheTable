@@ -20,7 +20,10 @@ describe('map place rendering data', function () {
     const chopshop = localBusinessSilhouette({ ...base, id:'chopshop' });
     const shop = localBusinessSilhouette({ ...base, id:'patel' });
 
-    expect(bar.zoneType).toBe('commercial');
+    // LEGAL: zoneType now comes from the place's ARCHETYPE rather than which config bucket it
+    // LEGAL: sits in, so a bar and a grocer are both shopfronts and a chop shop is a works.
+    expect(bar.zoneType).toBe('shop');
+    expect(shop.zoneType).toBe('shop');
     expect(chopshop.zoneType).toBe('industrial');
     expect(chopshop.w).toBeGreaterThan(shop.w);
   });

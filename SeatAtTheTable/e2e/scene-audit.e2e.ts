@@ -137,6 +137,31 @@ test.describe('scene audit — what the renderer actually drew', () => {
     expect(stuck.slice(0, 24), `pedestrians stuck in geometry:\n${stuck.slice(0, 24).join('\n')}`).toEqual([]);
   });
 
+  // LEGAL: The places that are NOT buildings must not behave like them. A back alley you
+  // LEGAL: bump into is still the map lying about what is there, even once it is drawn
+  // LEGAL: correctly — so this checks the world lets you walk in, not just that the config
+  // LEGAL: says it should.
+  test('you can walk into the places that are not buildings', async ({ page }) => {
+    test.setTimeout(120000);
+    await waitForScene(page);
+
+    const blocked = await page.evaluate(() => {
+      const seat = (window as never as {
+        __seat: {
+          mapObjects: { id: string; x: number; y: number }[];
+          canWalk: (x: number, y: number) => boolean;
+        };
+      }).__seat;
+      const walkable = ['devlinAlley', 'railyard', 'docksDockmaster', 'backroom_cards', 'wire_network', 'cab'];
+      return walkable
+        .map(id => ({ id, place: seat.mapObjects.find(object => object.id === id) }))
+        .filter(entry => entry.place && !seat.canWalk(entry.place.x, entry.place.y))
+        .map(entry => `${entry.id} blocks you at its own centre`);
+    });
+
+    expect(blocked, `places that should be open ground but are not:\n${blocked.join('\n')}`).toEqual([]);
+  });
+
   test('nothing is buried under the ground', async ({ page }) => {
     test.setTimeout(120000);
     await waitForScene(page);

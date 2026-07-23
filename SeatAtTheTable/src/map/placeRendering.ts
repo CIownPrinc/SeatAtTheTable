@@ -4,6 +4,17 @@ import type { MapBuilding } from './markers';
 import type { MapObject } from './objects';
 import type { VentureFootprint } from './objectFactory';
 import type { PropertyPlace } from './propertyPlaces';
+import {
+  archetypeForm,
+  archetypeSilhouette,
+  archetypeZoneType,
+  localArchetype,
+  propertyArchetype,
+  serviceArchetype,
+  ventureArchetype,
+  type PlaceArchetype,
+} from './archetypes';
+import { buildArchetypeShell } from './placeShells';
 
 export interface BuildingVisualState {
   color: string;
@@ -16,6 +27,31 @@ export interface BuildingSilhouette {
   d: number;
   color: string;
   zoneType: string;
+}
+
+// LEGAL: Applies the archetype's own footprint when it has one — an alley is a long narrow
+// LEGAL: gap and a yard is wide and low, neither of which a building silhouette can express.
+// LEGAL: Archetypes with a building shell keep the footprint their config gave them.
+function withArchetype(archetype: PlaceArchetype | null, base: BuildingSilhouette): BuildingSilhouette {
+  if(!archetype) return base;
+  const shape = archetypeSilhouette(archetype);
+  if(!shape) return { ...base, zoneType: archetypeZoneType(archetype) };
+  return { ...shape, zoneType: archetypeZoneType(archetype) };
+}
+
+// LEGAL: Draws a place with the shell its archetype demands. Stalls and open ground sit with
+// LEGAL: their origin ON the ground; buildings are centred on their mass, hence the two
+// LEGAL: different y values. Returns the group so callers can hang signage and markers on it.
+function buildPlaceShell(
+  options: MapPlaceRenderOptions,
+  archetype: PlaceArchetype | null,
+  silhouette: BuildingSilhouette,
+  variant: number,
+): { mesh: ThreeNamespace.Group; y: number; hasBuilding: boolean } {
+  const shell = archetype ? buildArchetypeShell(options.THREE, archetype, silhouette.w, silhouette.d, silhouette.h, silhouette.color) : null;
+  if(shell) return { mesh: shell, y: 0, hasBuilding: false };
+  const mesh = options.helpers.buildDetailedBuilding(silhouette.w, silhouette.h, silhouette.d, silhouette.color, silhouette.zoneType, variant);
+  return { mesh, y: silhouette.h / 2, hasBuilding: true };
 }
 
 export interface MapPlaceRenderHelpers {
@@ -56,13 +92,18 @@ function renderVentureBuildings(options: MapPlaceRenderOptions): void {
     const footprint = helpers.ventureFootprint(building);
     const height = Math.max(info.h, footprint.h);
     const color = building.zone === 'corporate' ? '#46516d' : (building.zone === 'entertainment' ? '#5a345e' : info.color);
-    const mesh = helpers.buildDetailedBuilding(footprint.w, height, footprint.d, color, footprint.zoneType, helpers.variantForId(building.id));
-    helpers.addVentureDetail(building, mesh);
-    helpers.addCategoryMarker(mesh, object.minimapIcon, building.biz.category === 'legit' ? '#8fd0e0' : '#f0a0ae', height / 2 + 12);
-    mesh.position.set(object.x, height / 2, object.y);
+    const archetype = ventureArchetype(building);
+    const silhouette = withArchetype(archetype, { w:footprint.w, h:height, d:footprint.d, color, zoneType:footprint.zoneType });
+    const built = buildPlaceShell(options, archetype, silhouette, helpers.variantForId(building.id));
+    const mesh = built.mesh;
+    // LEGAL: Facade detailing only makes sense on something with a facade.
+    if(built.hasBuilding) helpers.addVentureDetail(building, mesh);
+    const markerY = built.hasBuilding ? silhouette.h / 2 + 12 : silhouette.h + 14;
+    helpers.addCategoryMarker(mesh, object.minimapIcon, building.biz.category === 'legit' ? '#8fd0e0' : '#f0a0ae', markerY);
+    mesh.position.set(object.x, built.y, object.y);
     mesh.name = `venture:${building.id}:${building.biz.name}`;
     worldGroup.add(mesh);
-    helpers.addSign(mesh, building.biz.name, 34, 9, height / 2 + 10, building.biz.category === 'legit' ? '#8fd0e0' : '#f0a0ae');
+    helpers.addSign(mesh, building.biz.name, 34, 9, built.hasBuilding ? silhouette.h / 2 + 10 : silhouette.h + 12, building.biz.category === 'legit' ? '#8fd0e0' : '#f0a0ae');
   });
 }
 
@@ -70,14 +111,16 @@ function renderServiceBuildings(options: MapPlaceRenderOptions): void {
   const { worldGroup, mapObjects, helpers } = options;
   mapObjects.filter(object => object.kind === 'service').forEach(function(object){
     const building = object.ref as ServiceBuilding;
+    const archetype = serviceArchetype(building);
     const silhouette = serviceBuildingSilhouette(building);
-    const mesh = helpers.buildDetailedBuilding(silhouette.w, silhouette.h, silhouette.d, silhouette.color, silhouette.zoneType, helpers.variantForId(building.id));
-    helpers.addServiceDetail(building, mesh);
-    helpers.addCategoryMarker(mesh, object.minimapIcon, '#ffe6a0', silhouette.h - 3);
-    mesh.position.set(object.x, silhouette.h / 2, object.y);
+    const built = buildPlaceShell(options, archetype, silhouette, helpers.variantForId(building.id));
+    const mesh = built.mesh;
+    if(built.hasBuilding) helpers.addServiceDetail(building, mesh);
+    helpers.addCategoryMarker(mesh, object.minimapIcon, '#ffe6a0', built.hasBuilding ? silhouette.h - 3 : silhouette.h + 14);
+    mesh.position.set(object.x, built.y, object.y);
     mesh.name = `service:${building.id}:${building.name}`;
     worldGroup.add(mesh);
-    helpers.addSign(mesh, building.name, Math.min(54, silhouette.w * 0.72), 9, silhouette.h - 8, '#ffe6a0');
+    helpers.addSign(mesh, building.name, Math.min(54, silhouette.w * 0.72), 9, built.hasBuilding ? silhouette.h - 8 : silhouette.h + 12, '#ffe6a0');
   });
 }
 
@@ -89,9 +132,10 @@ function renderPropertyBuildings(options: MapPlaceRenderOptions): void {
   mapObjects.filter(object => object.kind === 'property').forEach(function(object){
     const place = object.ref as PropertyPlace;
     const silhouette = propertySilhouette(place);
-    const mesh = helpers.buildDetailedBuilding(silhouette.w, silhouette.h, silhouette.d, silhouette.color, silhouette.zoneType, helpers.variantForId(place.id));
-    helpers.addCategoryMarker(mesh, object.minimapIcon, '#5fbf8f', silhouette.h - 2);
-    mesh.position.set(object.x, silhouette.h / 2, object.y);
+    const built = buildPlaceShell(options, propertyArchetype(place), silhouette, helpers.variantForId(place.id));
+    const mesh = built.mesh;
+    helpers.addCategoryMarker(mesh, object.minimapIcon, '#5fbf8f', built.hasBuilding ? silhouette.h - 2 : silhouette.h + 14);
+    mesh.position.set(object.x, built.y, object.y);
     mesh.name = `property:${place.id}:${place.name}`;
     worldGroup.add(mesh);
     helpers.addSign(mesh, place.name, Math.min(46, silhouette.w * 0.8), 8, silhouette.h - 6, '#9fe0c0');
@@ -101,6 +145,10 @@ function renderPropertyBuildings(options: MapPlaceRenderOptions): void {
 // LEGAL: Footprint by the brand category the property belongs to — a vacant walk-up should
 // LEGAL: not look like a waterfront tower.
 export function propertySilhouette(place: PropertyPlace): BuildingSilhouette {
+  return withArchetype(propertyArchetype(place), basePropertySilhouette(place));
+}
+
+function basePropertySilhouette(place: PropertyPlace): BuildingSilhouette {
   const income = place.property.incomePerSec;
   if(income >= 700) return { w:56, h:96, d:48, color:'#4a5a6d', zoneType:'skyscraper' };
   if(income >= 150) return { w:54, h:62, d:46, color:'#54566a', zoneType:'residential' };
@@ -113,10 +161,11 @@ function renderLocalBusinesses(options: MapPlaceRenderOptions): void {
   mapObjects.filter(object => object.kind === 'local').forEach(function(object){
     const business = object.ref as LocalBusiness;
     const silhouette = localBusinessSilhouette(business);
-    const mesh = helpers.buildDetailedBuilding(silhouette.w, silhouette.h, silhouette.d, silhouette.color, silhouette.zoneType, helpers.variantForId(business.id));
-    helpers.addLocalBusinessDetail(business, mesh);
+    const built = buildPlaceShell(options, localArchetype(business), silhouette, helpers.variantForId(business.id));
+    const mesh = built.mesh;
+    if(built.hasBuilding) helpers.addLocalBusinessDetail(business, mesh);
     helpers.addCategoryMarker(mesh, object.minimapIcon, business.extorted ? '#ffd77a' : '#b8aee0', silhouette.h + 4);
-    mesh.position.set(object.x, silhouette.h / 2, object.y);
+    mesh.position.set(object.x, built.y, object.y);
     mesh.name = `local:${business.id}:${business.name}`;
     worldGroup.add(mesh);
     helpers.addSign(mesh, business.name, Math.min(42, silhouette.w * 0.82), 8, silhouette.h - 2, business.extorted ? '#ffd77a' : '#b8aee0');
@@ -124,6 +173,10 @@ function renderLocalBusinesses(options: MapPlaceRenderOptions): void {
 }
 
 export function serviceBuildingSilhouette(building: ServiceBuilding): BuildingSilhouette {
+  return withArchetype(serviceArchetype(building), baseServiceSilhouette(building));
+}
+
+function baseServiceSilhouette(building: ServiceBuilding): BuildingSilhouette {
   if(building.kind === 'bankHome') return { w:70, h:42, d:56, color:'#7a5f1a', zoneType:'service' };
   if(building.kind === 'garage') return { w:84, h:28, d:62, color:'#3e6b78', zoneType:'industrial' };
   // LEGAL: Your garage: a plain low workshop, deliberately unlike the glass dealerships.
@@ -147,6 +200,10 @@ export function serviceBuildingSilhouette(building: ServiceBuilding): BuildingSi
 }
 
 export function localBusinessSilhouette(business: LocalBusiness): BuildingSilhouette {
+  return withArchetype(localArchetype(business), baseLocalBusinessSilhouette(business));
+}
+
+function baseLocalBusinessSilhouette(business: LocalBusiness): BuildingSilhouette {
   const color = business.extorted ? '#8a6a1a' : '#4a4360';
   // LEGAL: Enterable places were reading as smaller than the scenery around them.
   if(business.id === 'bar' || business.id === 'marlowe') return { w:62, h:30, d:52, color:'#4c335a', zoneType:'commercial' };
