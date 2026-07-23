@@ -181,70 +181,107 @@ them. This is the pass that gives you a reason to drive out.
 
 ### The rule this pass is built on
 
-**Every outskirt place must offer something the city physically cannot.** That is the whole
-test. If a place would work just as well on a Devlin corner, it belongs on a Devlin corner —
-the city is where the empire is, and a second, worse city in the fields is the failure mode
-here. What the outskirts have that the city does not is *distance from the police*, *space*,
-and *nobody watching*. Every place below is one of those three.
+**The drive out must buy an EXPERIENCE you cannot get in the city or on the phone — and one
+you do not need often.** Player's rule, stated directly. The casino is the model: you go for
+an evening, not for an errand. The airfield is the model for the mission half: you go because
+the story took you there.
 
-Corollary: **the drive must be paid for.** A three-minute drive to a shop that saves you 5%
-is a chore. Each place either trades on heat (which nothing in the city can touch) or is
-somewhere a mission sends you.
+The corollary is the sharp edge, and it killed two items from the first draft. **A
+transaction fails this rule no matter how good its numbers are.** A grain co-op that
+launders product at zero heat and a scrapyard that buys whole cars are both things you would
+want to use *constantly* — so putting them 3 minutes out does not create an experience, it
+creates a commute. Anything you would do routinely belongs in the city or on the phone.
+Frequency is the test, not distance.
 
-### The places
+Second corollary, and the bigger one: **the drive is itself the experience, so there has to
+be something to drive past.** See "The built environment" below — that is the real reason
+the outskirts feel dead, and it is worth more than any single venue.
 
-Ranked by value-for-effort. Each names the belt it sits in and what it is *for*.
+### THE BUILT ENVIRONMENT — do this first, it is worth more than any venue
 
-**1. Sunset Shore Motel** — `northshore`, Kestrel Reach. *Cheap.*
-Lie low properly. The `lieLowButtons()` mechanic already exists in interiors and sheds up to
-30 heat for 45 seconds of clock. The motel is the same lever with the numbers turned up: pay
-cash, shed heat several times faster, and — the part nothing in the city offers — let a
-building **federal case** decay as well, not just heat. Nobody out here asks for a name.
-This is the strongest single reason to own a car and drive north.
+**Status check, because it is worse than it sounds.** Inside the three city districts the
+neighbourhood-character system is real and good: `neighbourhoods.ts` carries seven characters
+— `rough` (24% vacant lots, crooked, boarded), `working`, `affluent` (balconies, cornices,
+straight frontages), `shopping`, `corporate`, `entertainment`, `industrial` — each with its
+own height, density, vacancy, jitter, palette and trim, mapped over a 4x4 block grid per
+district. Run-down blocks, shopping strips, bougie blocks and downtown all exist and read
+correctly.
 
-**2. Cicero Outworks Scrapyard** — `eastworks`, Lakeridge County. *Cheap.*
-The natural other half of the respray shop. Respray a car to keep it; **scrap** it to make it
-never have existed. Sell any car you own for cash, no paperwork, and clear whatever heat is
-attached to it. `lot` archetype — it is open ground with a crusher, not a building.
+**None of it runs in the outskirts.** Every belt is a single flat-coloured polygon
+(`sceneBuilding.ts`, one `ShapeGeometry` per region). `northshore` and `lakeridge` are typed
+`kind: 'suburb'` and contain **zero houses**. `northfarms` is farmland with no farms. The
+filler generator is hard-scoped to `['devlin','westside','hub']` — see `districtSeeds` and
+`DISTRICT_OFFSETS` in `filler.ts`.
 
-**3. Harrow End Grain Co-op** — `northfarms`, Kestrel Reach. *Cheap.*
-A buyer who pays cash and files nothing. Move product at a **worse rate than the city but
-with zero heat**. Laundering as a place rather than a menu. Pairs with the banks: the co-op
-is how dirty cash gets clean slowly, the banks are how clean cash earns.
+So the outskirts are not empty because they lack a venue. They are empty because you drive
+past a green field with a label on it. Fix that and the drive becomes the thing the player
+described wanting; leave it and every venue below is a destination at the end of nothing.
 
-**4. Boundary Meadows Drive-In** — `southfields`, Kettle Reach. *Cheap, high charm.*
-A drive-in cinema. Park the car, sit through a picture: the clock runs fast, heat cools at
-the ordinary rate, and your crew gains a little respect for being taken somewhere. Mostly
-this is texture — but it is also the obvious place to stage a conversation, and it uses the
-drive-in bay geometry that already shipped with the garage.
+The work: extend the character generator outward with belt-appropriate characters, generated
+against the belt polygons rather than the district block grid.
+- `farmstead` (`northfarms`, `westfarms`, `southfields`) — sparse: a house, a barn, a silo,
+  long field lines, fence runs. Density an order of magnitude below the city.
+- `suburb` (`northshore`, `lakeridge`) — low single houses, wide plots, curving lanes,
+  driveways, garden trees. The middle-class ring.
+- `beachfront` (`northshore` where it meets the resort strip) — raised beach houses on the
+  sand side. The tropical strip already exists (palms, loungers, umbrellas); this gives it
+  somewhere to belong to.
+- `woodland` (`northwoods`, `ridgewood`) — no buildings, dense trees, a cabin or two, tracks
+  rather than roads.
+- `works` (`eastworks`) — the chained-up industrial edge: sheds, tanks, spoil heaps.
 
-**5. Kestrel Woods Fire Road** — `northwoods`, Kestrel Reach. *Medium — needs a minigame.*
-Unpoliced road. Driving offences cost **no heat** here, which makes it the one place in the
-world you can drive flat out. Wants a time trial to give it a score to beat; without one it
-is just a nice road. Defer the minigame if the budget is tight — the no-heat rule alone is
-worth shipping.
+Constraint: the scene audit applies out here too, and the belts are irregular polygons rather
+than a rectangular grid, so generated items must be tested against the belt polygon and the
+coastline, not against block bands. `circleInsidePolygon` already does this.
 
-**6. Ridgewood Stand Lodge** — `ridgewood`, Kettle Reach. *Medium — mission-shaped.*
-Neutral ground. Where the crews meet when nobody wants a meeting in the city. This is a
-**turf-war and politics** venue, so it should land *after* the mission chains (§2), not
-before — building it now would collide with Codex on the same trunk, which is exactly the
-setup that produced this repo's duplicate-feature merges.
+### Ambient life (cheap, do it alongside)
 
-**7. Kettle Flats Airfield** — `westfarms`, Kettle Reach. *Medium — mission-shaped.*
+Nothing moves out there either. Roaming actors exist and take a district. Add sparse,
+kind-appropriate life: a tractor working `northfarms`, walkers on `northshore`, deer in
+`northwoods`, a freight truck on the `eastworks` road. Low counts — the countryside should
+not be a painting, but it should not be busy either.
+
+### The venues
+
+Cut from the first draft, on the player's rule: **Harrow End Grain Co-op** and **Cicero
+Outworks Scrapyard**. Both were transactions you would use constantly, which makes them a
+commute rather than an experience. If zero-heat laundering and no-questions car disposal are
+wanted as mechanics, they belong in the city or on the phone.
+
+**1. Kettle Flats Airfield** — `westfarms`, Kettle Reach. *Mission-shaped.*
 A crop-duster strip where shipments arrive without troubling the docks. Hook for
-`stolen_shipment`. Same sequencing caveat as the Lodge.
+`stolen_shipment`. Exactly the casino's shape of reason-to-go: the story takes you there, and
+it could not be anywhere else, because an airstrip needs a mile of flat nothing.
+**Sequencing:** after the mission chains (§2). Codex owns missions; building it now would
+collide on the same trunk, which is the setup that produced this repo's duplicate-feature
+merges.
 
-**8. Lakeridge Country Club** — `lakeridge`, Lakeridge County. *Defer.*
-Where cash becomes standing. Genuinely good, but it overlaps the Politics tab, which §3 is
-already planning to move in-person. Build it as part of that, not separately.
+**2. Ridgewood Stand Lodge** — `ridgewood`, Kettle Reach. *Mission-shaped.*
+Neutral ground: where the crews meet when nobody wants a meeting in the city. A turf-war and
+politics venue. Same sequencing caveat as the airfield.
 
-### Ambient life (do this alongside, it is cheap)
+**3. Boundary Meadows Drive-In** — `southfields`, Kettle Reach. *Cheap, high charm.*
+A drive-in cinema. Park the car and sit through a picture: the clock runs fast, and it is an
+evening out rather than an errand — the casino's shape at a tenth of the cost. Reuses the
+`bay` drive-in geometry that shipped with the garage. Also the natural place to stage a
+conversation you do not want overheard.
 
-The belts read as empty even where there is something to stop at, because nothing moves out
-there. Roaming actors already exist and take a district. Add sparse, kind-appropriate life:
-a tractor working `northfarms`, walkers on `northshore`, deer in `northwoods`, a freight
-truck on the `eastworks` road. Low counts — the point is that the countryside is not a
-painting, not that it is busy.
+**4. Kestrel Woods Fire Road** — `northwoods`, Kestrel Reach. *Needs a minigame to land.*
+Unpoliced road: driving offences cost **no heat**, making it the one place in the world you
+can drive flat out. This is an experience by construction and you would do it rarely. Wants a
+time trial to give it a score to beat; without one it is a nice road and nothing else, so
+either build the time trial or do not build this.
+
+**5. Sunset Shore Motel** — `northshore`, Kestrel Reach. *Borderline — decide before building.*
+Lie low properly: `lieLowButtons()` already exists, and the motel would be that lever with
+the numbers up, plus the thing no city interior offers — letting a building **federal case**
+decay, not just heat. It survives the rule *only* if it stays rare. If it becomes the
+standard answer to being hot, it is a co-op with a bed in it and should be cut on the same
+grounds. Gate it hard: only worth the drive when a federal case is actually building.
+
+**6. Lakeridge Country Club** — `lakeridge`, Lakeridge County. *Defer.*
+Where cash becomes standing. Genuinely good, but it overlaps the Politics tab, which §3
+already plans to move in-person. Build it as part of that, not beside it.
 
 ### Constraints to respect (learned the hard way)
 
