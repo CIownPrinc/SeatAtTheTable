@@ -223,9 +223,9 @@ against the belt polygons rather than the district block grid.
   long field lines, fence runs. Density an order of magnitude below the city.
 - `suburb` (`northshore`, `lakeridge`) — low single houses, wide plots, curving lanes,
   driveways, garden trees. The middle-class ring.
-- `beachfront` (`northshore` where it meets the resort strip) — raised beach houses on the
-  sand side. The tropical strip already exists (palms, loungers, umbrellas); this gives it
-  somewhere to belong to.
+- `resort` (`northshore`, and the city blocks fronting the south beach) — raised beach
+  houses, cabanas, whitewash and sand. See "The resort strip" below: this is a real zoning
+  character, not just a filler flavour.
 - `woodland` (`northwoods`, `ridgewood`) — no buildings, dense trees, a cabin or two, tracks
   rather than roads.
 - `works` (`eastworks`) — the chained-up industrial edge: sheds, tanks, spoil heaps.
@@ -233,6 +233,82 @@ against the belt polygons rather than the district block grid.
 Constraint: the scene audit applies out here too, and the belts are irregular polygons rather
 than a rectangular grid, so generated items must be tested against the belt polygon and the
 coastline, not against block bands. `circleInsidePolygon` already does this.
+
+### The resort strip — zoning, amenities, and a geography correction
+
+**First, the correction, because the plan was about to be built on a wrong assumption.**
+"Sunset Shore" is NOT the tropical area. There are two different shores of the same enclosed
+lake:
+
+- **The existing beach** is `LAKEFRONT_BEACH` at y≈70-200 — the north edge of the *city*
+  districts, i.e. the lake's SOUTH shore. This is where the sand, palms, loungers and
+  umbrellas already are. It belongs to Devlin / West Side / the Hub.
+- **Sunset Shore** (`northshore`) is at y≈-600 to -960 — the lake's NORTH shore, in Kestrel
+  Reach, on the far side of the water. It is typed `kind:'suburb'` and currently contains
+  nothing whatsoever.
+
+They are ~800 units apart with a lake between them. Both face the same water, which makes the
+resort a **ring** rather than a strip, and that is the opportunity: the city's south shore is
+the public beach you can walk to, and Sunset Shore is the far-side resort you have to drive
+around the lake to reach. That single distinction gives Kestrel Reach its reason to exist and
+satisfies the drive-out rule without inventing anything — you go for a day at the good beach,
+which is exactly "an experience you don't need often".
+
+**Zoning character: `resort`.** Add to `BlockCharacter` in `neighbourhoods.ts` alongside the
+seven that exist. Proper planning term is *Resort Commercial* / *Recreational*; `resort` is
+the short form, labelled "Resort / recreational" by `characterLabel`. Profile: very low
+height, very low density, generous plots, near-zero vacancy, bright/pale palette (whitewash,
+sand, teal, coral) — the opposite of `rough` on every axis. Applies to Sunset Shore and to
+the city blocks fronting the south beach.
+
+**Amenities.** `MapAmenityKind` is currently `'basketball' | 'petstore' | 'shop' | 'parkgame'`
+and `basketball` already carries a skill minigame — so a beach amenity is a well-trodden
+path, not new machinery.
+- `volleyball` — a net, a court in the sand. Follows `basketball` exactly, including the
+  minigame hook. Best value of the three.
+- Loungers / umbrellas already exist as scenery on the south shore (`buildLakeshore`); extend
+  them to Sunset Shore with the `resort` character rather than re-authoring them.
+- A resort building proper (hotel front, pool, cabanas) on Sunset Shore — this is the
+  `resort` character's anchor building and can double as the Motel's better-behaved cousin.
+  Note the overlap with **Sunset Shore Motel** below: if the resort is built, the motel is
+  probably redundant and should be cut rather than sat next door to it.
+
+### Off-road dealership — `northwoods` or `northfarms`, Kestrel Reach
+
+Player's idea, and it passes the drive-out rule more cleanly than anything else on this list:
+you cannot buy an ATV in the city, you would buy one roughly once, and it is a purchase that
+changes what you can DO rather than a transaction you repeat.
+
+**It is also cheaper than it sounds, because the brand already exists.** `config/assets.ts`
+has a `mudster` brand commented "SUVs / off-road" with the Mudster XL already in it. This is
+that brand's country dealership — no new brand, no new economy, just a `dealership`-kind
+service building with an off-road inventory: ATV, quad, pickup, tractor.
+
+**The honest caveat, which decides whether this is worth building.** An ATV is only worth
+owning if there is terrain a car cannot use. Otherwise it is a reskin with different numbers,
+and the player will buy it once and never take it out. So this ships as a pair with **woodland
+tracks** — unpaved trails through `northwoods` and `ridgewood` that cars handle badly or not
+at all — or it does not ship. Same build-both-or-build-neither rule as the fire road, and
+conveniently the fire road is in the same belt.
+
+### The forest question — recommendation: keep it terrain, not a district
+
+There are already **two** forests, and they are in different districts: `northwoods` (Kestrel
+Woods) in Kestrel Reach, and `ridgewood` (Ridgewood Stand) in Kettle Reach. They sit at
+opposite ends of the map, roughly 5,000 units apart.
+
+**Recommendation: do not make forest its own outskirt district.** A district whose two halves
+are at opposite ends of the world with the entire city between them is a *category*, not a
+place — and the three outskirt districts were drawn to be contiguous geography precisely so
+they read as somewhere you can be. Grouping by terrain type instead would undo that.
+
+Give the two woods separate identities through content rather than through boundaries:
+- **Kestrel Woods** (north) — the wild one. Fire road, off-road tracks, the ATV dealership.
+- **Ridgewood Stand** (south) — the quiet one. The Lodge, and nothing else. Somewhere to meet
+  where nobody is watching.
+
+That answers "which region has the forest" with: both, deliberately, and they are different
+forests.
 
 ### Ambient life (cheap, do it alongside)
 
@@ -272,7 +348,10 @@ can drive flat out. This is an experience by construction and you would do it ra
 time trial to give it a score to beat; without one it is a nice road and nothing else, so
 either build the time trial or do not build this.
 
-**5. Sunset Shore Motel** — `northshore`, Kestrel Reach. *Borderline — decide before building.*
+**5. Sunset Shore Motel** — `northshore`, Kestrel Reach. *Borderline, and possibly redundant.*
+**Check the resort first.** If the Sunset Shore resort gets built, it occupies this exact
+site and this exact role, and two lie-low buildings on the same shore is one too many. Cut
+this in favour of the resort unless there is a reason for a seedy option beside a nice one.
 Lie low properly: `lieLowButtons()` already exists, and the motel would be that lever with
 the numbers up, plus the thing no city interior offers — letting a building **federal case**
 decay, not just heat. It survives the rule *only* if it stays rare. If it becomes the
