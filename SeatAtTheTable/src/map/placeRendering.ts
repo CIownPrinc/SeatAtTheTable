@@ -94,6 +94,17 @@ function renderLocalBusinesses(options: MapPlaceRenderOptions): void {
 export function serviceBuildingSilhouette(building: ServiceBuilding): BuildingSilhouette {
   if(building.kind === 'bankHome') return { w:70, h:42, d:56, color:'#7a5f1a', zoneType:'service' };
   if(building.kind === 'garage') return { w:84, h:28, d:62, color:'#3e6b78', zoneType:'industrial' };
+  // LEGAL: Your garage: a plain low workshop, deliberately unlike the glass dealerships.
+  if(building.kind === 'playerGarage') return { w:76, h:24, d:58, color:'#5a4a3e', zoneType:'industrial' };
+  // LEGAL: Stage 5 — branded shops finally get their own footprints instead of falling
+  // LEGAL: through to the generic service silhouette. This was written and reverted during
+  // LEGAL: Phase 4 because the bigger footprints walled off the shoreline near spawn and
+  // LEGAL: tripped the water/land guard. Two things changed since: the world is far larger
+  // LEGAL: with the stage-1c outskirts, and buildings are now placed by the lot allocator
+  // LEGAL: with proper setback rather than hand-picked coordinates on the waterfront.
+  // LEGAL: A dealership reads as a wide, low glass showroom; a brokerage as a narrow office.
+  if(building.kind === 'dealership') return { w:92, h:26, d:64, color:'#3e6b78', zoneType:'commercial' };
+  if(building.kind === 'brokerage') return { w:58, h:46, d:48, color:'#456f78', zoneType:'commercial' };
   // LEGAL: Branded shops were falling through to the generic default silhouette, which made
   // LEGAL: them smaller and blander than the generic buildings they replaced. Give
   // LEGAL: dealerships a wide showroom footprint and brokerages an office one.

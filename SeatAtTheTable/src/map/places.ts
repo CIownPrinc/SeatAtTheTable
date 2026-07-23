@@ -17,6 +17,8 @@ export interface MapPlaceRecord extends Point {
 
 export function minimapIconForService(service: ServiceBuilding): MinimapIcon {
   if(service.kind === 'bankHome') return 'bank';
+  // LEGAL: The player's own garage shares the garage glyph but is labelled distinctly.
+  if(service.kind === 'playerGarage') return 'garage';
   // LEGAL: Branded shops reuse the established garage / realty glyphs so the minimap
   // LEGAL: legend, search, and place labels keep working unchanged.
   if(service.kind === 'garage' || service.kind === 'dealership') return 'garage';

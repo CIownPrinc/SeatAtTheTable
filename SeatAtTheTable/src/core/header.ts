@@ -31,7 +31,7 @@ import { drawMinimap as drawMapMinimap, MINIMAP_SCALE } from '../map/minimap';
 import type { MapObject } from '../map/objects';
 import { solidsFromObjects } from '../map/objects';
 import { buildMapObjects, ventureFootprint } from '../map/objectFactory';
-import { defaultParkedCarPositions, parkedCarPositionForDistrict } from '../map/parking';
+import { GARAGE_RETURN_SECONDS, PARKING_DISTRICT_IDS, carSpawnPositionForDistrict, defaultParkedCarPositions, parkedCarPositionForDistrict, secondsUntilGarageReturn, shouldReturnToGarage } from '../map/parking';
 import { renderMapPlaces } from '../map/placeRendering';
 import { createMapPlaceRecords, mapPlaceCategoryLabel, type MapPlaceCategory, type MapPlaceRecord } from '../map/places';
 import { mapPointContext, nearestPlaceAtPoint, placesByCategory, routeHintBetween, routeSummary, trainCrossingBlockAtPoint } from '../map/queries';
@@ -489,7 +489,7 @@ import type * as ThreeNamespace from 'three';
     ownedCars: [], equippedCar: null, ownedProperties: [],
     // LEGAL: Phase 4 caveats: when each property was bought (waterfront rent appreciates
     // LEGAL: with how long you have held it) and which used cars are currently broken down.
-    propertyOwnedAt: {}, brokenCars: [],
+    propertyOwnedAt: {}, brokenCars: [], carParkedAt: null,
     currentDistrict: 'devlin', product: 0, productLevel: 0, currentInterior: null,
     inVehicle: false,
     waypoints: { devlin:null, westside:null, hub:null, global:null },
@@ -1379,6 +1379,55 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: map/brandEffects.ts; this only rolls the dice and applies the outcome.
   let nextRoughRaidCheckAt = 0;
   const ROUGH_RAID_CHECK_INTERVAL = 90; // LEGAL: seconds between crew-raid rolls
+
+  // LEGAL: The fleet board. Every car you own, which one you are driving, and a way to
+  // LEGAL: switch — the in-person counterpart to the phone's DRIVE button, and the answer
+  // LEGAL: to "where are my cars kept".
+  function openGarageFleet(){
+    const owned = state.ownedCars.map(id => cars.find(c => c.id === id)).filter((c): c is Car => !!c);
+    if(!owned.length){
+      showRoomBrief('Your Fleet', 'Your Garage', 'Empty bays and a spare set of keys to nothing. Buy a car at a dealership and it lives here.', '');
+      return;
+    }
+    const buttons: ModalButton[] = owned.map(function(car){
+      if(state.brokenCars.includes(car.id)){
+        return { label:`${car.name} — broken (repair at ${brandById(car.brand)?.name ?? 'its lot'})`, secondary:true };
+      }
+      if(state.equippedCar === car.id) return { label:`${car.name} — driving`, secondary:true };
+      return { label:`Take the ${car.name}`, onClick:function(){
+        state.equippedCar = car.id;
+        // LEGAL: Switching cars in the garage puts the new one at the door, not wherever the
+        // LEGAL: old one happened to be parked across the map.
+        state.parkedCarPos.devlin = garageDoorPoint();
+        state.carParkedAt = null;
+        log(`<i class="ph-duotone ph-key"></i> You take the ${car.name} out of the garage.`);
+        updateParkedCarMesh(); refreshPlayerModel(); renderAll();
+      } };
+    });
+    buttons.push({ label:'Leave', secondary:true });
+    showModal({ eyebrow:'Your Garage', title:'Your Fleet', body:`<p class="flavor">${owned.length} car${owned.length===1?'':'s'} in the bays. Whatever you leave in the street ends up back here.</p>`, buttons });
+  }
+
+  // LEGAL: ---- Return to garage (stage 6) ----
+  // LEGAL: A car left in the street sits there for GARAGE_RETURN_SECONDS, then goes home to
+  // LEGAL: your garage in Devlin. Prevents stranding your only car across the map without
+  // LEGAL: making parking meaningless.
+  function garageDoorPoint(): Point {
+    const garage = serviceBuildings.find(s => s.id === 'playerGarage');
+    return garage ? { x: garage.x, y: garage.y + 54 } : carSpawnPositionForDistrict('devlin');
+  }
+  function tickGarageReturn(){
+    if(state.inVehicle || !getEquippedCar()) return;
+    if(!shouldReturnToGarage(state.carParkedAt, state.playSeconds)) return;
+    state.carParkedAt = null;
+    const door = garageDoorPoint();
+    state.parkedCarPos.devlin = door;
+    PARKING_DISTRICT_IDS.filter(id => id !== 'devlin').forEach(function(id){
+      state.parkedCarPos[id] = carSpawnPositionForDistrict(id);
+    });
+    log('<i class="ph-duotone ph-garage"></i> Your car has been taken back to the garage in Devlin.');
+    updateParkedCarMesh();
+  }
 
   function tickBrandCaveats(dt: number){
     // LEGAL: Used cars die on you mid-drive. Rolled per second of actual driving, so
@@ -3482,6 +3531,18 @@ import type * as ThreeNamespace from 'three';
           briefRow('Banked (raid-safe)', fmt(bankedTotal()))) });
     } else if(kind==='heist'){
       spots.push({ id:'vault', x:ROOM_W/2, y:75, label:'Case the Banks', icon:'🔐', action:openHeistPlanning });
+    } else if(kind==='playerGarage'){
+      // LEGAL: Your own garage: the fleet lives here. Pick which car to drive, and repair
+      // LEGAL: anything that broke down. Nothing is for sale — that is what dealerships are.
+      spots.push({ id:'fleet', x:ROOM_W/2, y:80, label:'Your Fleet', icon:'🔑', action:openGarageFleet });
+      spots.push({ id:'bench', x:AMBIENT_X, y:AMBIENT_Y, label:'Work Bench', icon:'🔧', action:function(){
+        const parked = state.carParkedAt;
+        const left = secondsUntilGarageReturn(parked, state.playSeconds);
+        showRoomBrief('Work Bench', 'Your Garage', 'Oil, tools, and a radio nobody has retuned in years.',
+          briefRow('Cars owned', String(state.ownedCars.length))
+          + briefRow('Needing repair', String(state.brokenCars.length))
+          + briefRow('Car in the street', left === null ? 'No — it is here' : `Yes, returns in ${Math.ceil(left)}s`));
+      } });
     } else if(kind==='dealership' || kind==='brokerage'){
       // LEGAL: Branded shop. The counter sells only this brand's stock at this block's
       // LEGAL: price — no generic catalog, no jump to a tab.
@@ -3546,6 +3607,7 @@ import type * as ThreeNamespace from 'three';
       return;
     }
     state.inVehicle = true;
+    state.carParkedAt = null; // LEGAL: you are driving it; the garage clock stops.
     player.vx=0; player.vy=0;
     // LEGAL: A car is much wider than a pedestrian (radius 8 -> 24), so the spot you walked
     // LEGAL: to may sit inside a building's bounds once you're driving. Nudge clear on entry
@@ -3561,8 +3623,11 @@ import type * as ThreeNamespace from 'three';
     state.inVehicle = false;
     player.vx=0; player.vy=0;
     state.parkedCarPos[state.currentDistrict] = { x:player.x, y:player.y };
+    // LEGAL: Start the return-to-garage clock. The car stays exactly here for a few
+    // LEGAL: minutes, then goes home so you can never strand your only car.
+    state.carParkedAt = state.playSeconds;
     refreshPlayerModel(); updateParkedCarMesh();
-    log('You park up and get out.');
+    log(`You park up and get out. It'll head back to the garage in about ${Math.round(GARAGE_RETURN_SECONDS/60)} minutes.`);
     renderAll();
   }
 
@@ -5275,7 +5340,7 @@ import type * as ThreeNamespace from 'three';
       businesses: businesses.map(b=> ({ id:b.id, level:b.level, crew:b.crew, manager:b.manager, researched:b.researched, reinvestedIncome:b.reinvestedIncome })),
       bankAccounts: state.bankAccounts, selectedBank: state.selectedBank, nextHeistAt: state.nextHeistAt,
       ownedCars: state.ownedCars, equippedCar: state.equippedCar, ownedProperties: state.ownedProperties,
-      propertyOwnedAt: state.propertyOwnedAt, brokenCars: state.brokenCars,
+      propertyOwnedAt: state.propertyOwnedAt, brokenCars: state.brokenCars, carParkedAt: state.carParkedAt,
       localBusinesses: localBusinesses.map(b=> ({ id:b.id, extorted:b.extorted, extortTier:b.extortTier??0, resentment:b.resentment??0, nextRobAt:b.nextRobAt })),
       currentDistrict: state.currentDistrict, product: state.product, productLevel: state.productLevel,
       districts: districts.map(d=> ({ id:d.id, control:d.control, pushCount:d.pushCount, nextPushAt:d.nextPushAt })),
@@ -5348,6 +5413,7 @@ import type * as ThreeNamespace from 'three';
         // LEGAL: back then start their appreciation clock now rather than claiming credit
         // LEGAL: for time held before the mechanic existed, and no car starts broken.
         state.brokenCars = Array.isArray(d.brokenCars) ? d.brokenCars.filter((id: unknown)=> typeof id === 'string') : [];
+        state.carParkedAt = typeof d.carParkedAt === 'number' ? d.carParkedAt : null;
         state.propertyOwnedAt = (d.propertyOwnedAt && typeof d.propertyOwnedAt === 'object') ? { ...d.propertyOwnedAt } : {};
         state.ownedProperties.forEach(function(id){
           if(typeof state.propertyOwnedAt[id] !== 'number') state.propertyOwnedAt[id] = state.playSeconds;
@@ -5429,6 +5495,7 @@ import type * as ThreeNamespace from 'three';
     });
     checkMilestones();
     tickBrandCaveats(dt);
+    tickGarageReturn();
 
     if (state.playSeconds > state.nextMarketTickAt) {
       tickMarket();

@@ -164,6 +164,7 @@ export function drawInteriorRoom(ctx: Ctx2D, kind: string, room: InteriorRoom): 
     }
     // LEGAL: Branded dealerships and brokerages reuse the showroom / office decor; the
     // LEGAL: brand identity comes from the counter stock, not a bespoke room per lot.
+    case 'playerGarage':
     case 'dealership':
     case 'garage': {
       const wallH = drawFloor(ctx, room, pal, 'tile');

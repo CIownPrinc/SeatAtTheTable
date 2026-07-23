@@ -28,6 +28,12 @@ export const serviceBuildings: ServiceBuilding[] = [
 
   ...brandBuildings,
 
+  // LEGAL: The player's own garage — where the fleet lives and where cars come back to if
+  // LEGAL: you leave them parked in the street. Home turf, so there is one place you always
+  // LEGAL: know to find your cars. Distinct kind from 'dealership' so nothing that SELLS
+  // LEGAL: cars can be mistaken for it.
+  { id:'playerGarage', kind:'playerGarage', name:'Your Garage', icon:ICONS.garage, district:'devlin', x:700, y:750 },
+
   { id:'cityhall', kind:'cityhall', name:'City Hall Annex', icon:ICONS.gov, district:'hub', x:1150, y:250 },
   { id:'heistTarget', kind:'heist', name:'First Windhaven Trust', icon:ICONS.bank, district:'hub', x:280, y:650 },
   { id:'heraldHq', kind:'missionOffice', name:'Windhaven Herald HQ', icon:ICONS.phone, district:'hub', x:820, y:360 },
