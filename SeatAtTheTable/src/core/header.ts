@@ -34,6 +34,7 @@ import { buildMapObjects, ventureFootprint } from '../map/objectFactory';
 import { GARAGE_RETURN_SECONDS, PARKING_DISTRICT_IDS, carSpawnPositionForDistrict, defaultParkedCarPositions, parkedCarPositionForDistrict, secondsUntilGarageReturn, shouldReturnToGarage } from '../map/parking';
 import { renderMapPlaces, serviceBuildingSilhouette } from '../map/placeRendering';
 import { archetypeExtraSolids, serviceArchetype } from '../map/archetypes';
+import { bayParkSpot, bayStandSpot, garageBay, isCarInBay, type Bay } from '../map/driveIn';
 import { propertyPlaces, type PropertyPlace } from '../map/propertyPlaces';
 import { createMapPlaceRecords, mapPlaceCategoryLabel, type MapPlaceCategory, type MapPlaceRecord } from '../map/places';
 import { bridgeAtPoint, mapPointContext, nearestPlaceAtPoint, placesByCategory, routeHintBetween, routeSummary, trainCrossingBlockAtPoint } from '../map/queries';
@@ -1696,15 +1697,49 @@ import type * as ThreeNamespace from 'three';
     });
   }
 
+  // LEGAL: ---- The drive-in bay (section 0b) ----
+  // LEGAL: The garage is a room with an open mouth, so putting the car away is a thing you
+  // LEGAL: DO: line it up and drive in. Geometry lives in map/driveIn.ts and the walls come
+  // LEGAL: from the 'bay' archetype, so the space you can drive into is the space that is
+  // LEGAL: drawn. Read the garage's position live — the lot allocator chooses it.
+  function garageBayRect(): Bay | null {
+    const garage = serviceBuildings.find(s => s.id === 'playerGarage');
+    if(!garage) return null;
+    const shape = serviceBuildingSilhouette(garage);
+    return garageBay({ x: garage.x, y: garage.y }, shape.w, shape.d);
+  }
+
   // LEGAL: ---- Return to garage (stage 6) ----
   // LEGAL: A car left in the street sits there for GARAGE_RETURN_SECONDS, then goes home to
   // LEGAL: your garage in Devlin. Prevents stranding your only car across the map without
-  // LEGAL: making parking meaningless.
+  // LEGAL: making parking meaningless. It now comes home INTO the bay, which is the same spot
+  // LEGAL: driving it in yourself leaves it — there is one place a car lives, not two.
   function garageDoorPoint(): Point {
-    const garage = serviceBuildings.find(s => s.id === 'playerGarage');
-    // LEGAL: Beside the door, not on it. Parked dead centre it sat exactly where you stand
-    // LEGAL: to go inside, which is half of why pressing interact there got you the car.
-    return garage ? { x: garage.x + 66, y: garage.y + 46 } : carSpawnPositionForDistrict('devlin');
+    const bay = garageBayRect();
+    return bay ? bayParkSpot(bay) : carSpawnPositionForDistrict('devlin');
+  }
+
+  // LEGAL: Driving into the bay parks the car and puts you out beside it. Deliberately NOT a
+  // LEGAL: prompt: the bay is only enterable by aiming a car at it, so having driven in there
+  // LEGAL: is already an unambiguous statement of intent, and asking "park here? y/n" after
+  // LEGAL: you have parked is the kind of confirmation that makes a game feel like a form.
+  function tickDriveInGarage(): void {
+    if(!state.inVehicle || state.currentInterior) return;
+    const bay = garageBayRect();
+    if(!bay || !isCarInBay({ x: player.x, y: player.y }, bay)) return;
+
+    const spot = bayParkSpot(bay);
+    const stand = bayStandSpot(bay);
+    state.inVehicle = false;
+    player.vx = 0; player.vy = 0;
+    player.x = stand.x; player.y = stand.y;
+    player.facing = Math.PI/2;
+    state.parkedCarPos.devlin = spot;
+    // LEGAL: No return-to-garage clock: it is already in the garage.
+    state.carParkedAt = null;
+    refreshPlayerModel(); updateParkedCarMesh();
+    log('<i class="ph-duotone ph-garage"></i> You pull into the bay, kill the engine and get out. It stays here.');
+    renderAll();
   }
   function tickGarageReturn(){
     if(state.inVehicle || !getEquippedCar()) return;
@@ -5734,6 +5769,10 @@ import type * as ThreeNamespace from 'three';
         else { player.vx=0; player.vy=0; }
       }
     } else { player.vx=0; player.vy=0; }
+    // LEGAL: Checked right after the move, on the frame loop rather than the slower game
+    // LEGAL: tick, so the car stops where you drove it rather than a fraction of a second
+    // LEGAL: further into the workbench.
+    tickDriveInGarage();
     // LEGAL: Seamless district detection — update HUD when crossing a bridge
     if(!state.currentInterior){
       const detectedDist = playerDistrict();

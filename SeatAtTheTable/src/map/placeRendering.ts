@@ -179,8 +179,15 @@ export function serviceBuildingSilhouette(building: ServiceBuilding): BuildingSi
 function baseServiceSilhouette(building: ServiceBuilding): BuildingSilhouette {
   if(building.kind === 'bankHome') return { w:70, h:42, d:56, color:'#7a5f1a', zoneType:'service' };
   if(building.kind === 'garage') return { w:84, h:28, d:62, color:'#3e6b78', zoneType:'industrial' };
-  // LEGAL: Your garage: a plain low workshop, deliberately unlike the glass dealerships.
-  if(building.kind === 'playerGarage') return { w:76, h:24, d:58, color:'#5a4a3e', zoneType:'industrial' };
+  // LEGAL: Your garage: a plain low workshop, deliberately unlike the glass dealerships, and
+  // LEGAL: sized so a CAR FITS INSIDE IT — you drive in rather than pressing a button at the
+  // LEGAL: kerb. 84x70 is inside the lot allocator's own 80x72 footprint on depth and only 2
+  // LEGAL: over on each side, comfortably within the 16-unit gap the allocator keeps; the
+  // LEGAL: dealerships are 92 wide already. Any narrower and a car (radius 24) cannot pass
+  // LEGAL: the walls — see BAY_WALL. Depth is 68 and not 70 because the allocator keeps lot
+  // LEGAL: centres 72 from a road centre and the roads are 74 wide: at 70 deep the back of
+  // LEGAL: the garage would land exactly on the kerb line.
+  if(building.kind === 'playerGarage') return { w:84, h:26, d:68, color:'#7d6a54', zoneType:'industrial' };
   // LEGAL: Stage 5 — branded shops finally get their own footprints instead of falling
   // LEGAL: through to the generic service silhouette. This was written and reverted during
   // LEGAL: Phase 4 because the bigger footprints walled off the shoreline near spawn and

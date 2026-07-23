@@ -1,5 +1,5 @@
 import type * as ThreeNamespace from 'three';
-import { ALLEY_FLANK_W, archetypeForm, type PlaceArchetype } from './archetypes';
+import { ALLEY_FLANK_W, BAY_WALL, archetypeForm, type PlaceArchetype } from './archetypes';
 
 // LEGAL: ---- Shells for places that are NOT buildings ----
 // LEGAL: Section 0a, rule 2. A cart is a stall, an alley is a gap between two blocks and a
@@ -178,6 +178,104 @@ export function buildLotShell(THREE: typeof ThreeNamespace, w: number, d: number
   return group;
 }
 
+// LEGAL: A garage you drive into: three walls, a roof, and an open mouth on the +y face with
+// LEGAL: the roller door sitting UP in its housing. The opening is not decoration — the
+// LEGAL: matching solids (archetypeExtraSolids, 'bay') are the three walls only, so the car
+// LEGAL: goes exactly where the picture says it can. Everything inside is pushed against a
+// LEGAL: wall, because the middle of the floor is the parking space.
+export function buildBayShell(THREE: typeof ThreeNamespace, w: number, d: number, h: number, color: string): ThreeNamespace.Group {
+  const group = new THREE.Group();
+  group.add(groundPlate(THREE, w, d, archetypeForm('bay').ground ?? '#3a3833'));
+
+  // LEGAL: An apron of the same slab spilling out of the mouth, so the entrance reads as
+  // LEGAL: somewhere to aim a car from the street rather than a hole in a wall.
+  const apron = groundPlate(THREE, w - BAY_WALL * 2, 30, '#4c4a43');
+  apron.position.z = d/2 + 15;
+  group.add(apron);
+
+  // LEGAL: Chevrons on the apron pointing IN. The bay is the only place on the map you enter
+  // LEGAL: by driving rather than by pressing a key, so it has to say so without a tutorial.
+  [0, 1, 2].forEach(function(i){
+    const chevron = mesh(THREE, new THREE.BoxGeometry(w * 0.42, 0.4, 3), '#d8c37a', { roughness:1 });
+    chevron.position.set(0, 0.4, d/2 + 26 - i * 9);
+    group.add(chevron);
+  });
+
+  const sideGeometry = new THREE.BoxGeometry(BAY_WALL, h, d);
+  [-1, 1].forEach(function(side){
+    const wall = mesh(THREE, sideGeometry, color, { roughness:0.9 });
+    wall.position.set(side * (w/2 - BAY_WALL/2), h/2, 0);
+    group.add(wall);
+  });
+
+  const back = mesh(THREE, new THREE.BoxGeometry(w, h, BAY_WALL), color, { roughness:0.9 });
+  back.position.set(0, h/2, -(d/2 - BAY_WALL/2));
+  group.add(back);
+
+  // LEGAL: NO ROOF. A garage has one, obviously — and drawing it is exactly wrong here. The
+  // LEGAL: camera looks down from the south at a shallow angle, so a roof panel does not
+  // LEGAL: merely cover the ceiling, it hangs in front of the floor behind it: the first
+  // LEGAL: version was a featureless dark box in which you could not see the bay, the
+  // LEGAL: markings, or whether your own car was in there. Roofing only the back half was
+  // LEGAL: still enough to hide the lot. So the bay is drawn as a cutaway, which is what a
+  // LEGAL: top-down game is: walls, a lintel over the door, and an open floor you can read at
+  // LEGAL: a glance. The lintel and the cornice carry the "there is a building here" read
+  // LEGAL: that the missing roof would otherwise have carried.
+  const lintel = mesh(THREE, new THREE.BoxGeometry(w + 4, 7, 6), '#5c4f42', { roughness:0.85 });
+  lintel.position.set(0, h - 1.5, d/2 - 3);
+  group.add(lintel);
+
+  const cornice = mesh(THREE, new THREE.BoxGeometry(w + 4, 3, BAY_WALL + 4), '#5c4f42', { roughness:0.85 });
+  cornice.position.set(0, h + 1.5, -(d/2 - BAY_WALL/2));
+  group.add(cornice);
+
+  [-1, 1].forEach(function(side){
+    const capping = mesh(THREE, new THREE.BoxGeometry(BAY_WALL + 3, 3, d), '#5c4f42', { roughness:0.85 });
+    capping.position.set(side * (w/2 - BAY_WALL/2), h + 1.5, 0);
+    group.add(capping);
+  });
+
+  // LEGAL: The roller door, rolled up: a slatted drum tucked under the lintel. Drawn open
+  // LEGAL: because it IS open — a shut door you can drive through would be the same lie the
+  // LEGAL: back alley was telling.
+  const drum = mesh(THREE, new THREE.CylinderGeometry(4, 4, w - BAY_WALL * 2, 10), '#8a8f96', { roughness:0.5, metalness:0.5 });
+  drum.rotation.z = Math.PI/2;
+  drum.position.set(0, h - 5, d/2 - 4);
+  group.add(drum);
+
+  // LEGAL: Painted bay markings on the floor, which is what tells you where to stop.
+  [-1, 1].forEach(function(side){
+    const stripe = mesh(THREE, new THREE.PlaneGeometry(2, d - BAY_WALL - 14), '#c8b46a', { roughness:1 });
+    stripe.rotation.x = -Math.PI/2;
+    stripe.position.set(side * (w/2 - BAY_WALL - 12), 0.3, 4);
+    stripe.castShadow = false;
+    group.add(stripe);
+  });
+
+  // LEGAL: Workbench along the back wall, tool board above it, tyres stacked in a corner.
+  const bench = mesh(THREE, new THREE.BoxGeometry(w - BAY_WALL * 2 - 20, 9, 9), '#5c5348', { roughness:0.85 });
+  bench.position.set(0, 4.5, -(d/2 - BAY_WALL - 5));
+  group.add(bench);
+
+  const board = mesh(THREE, new THREE.PlaneGeometry(w - BAY_WALL * 2 - 24, 12), '#2f3a3f', { roughness:0.8 });
+  board.position.set(0, 20, -(d/2 - BAY_WALL - 0.5));
+  group.add(board);
+
+  for(let i = 0; i < 3; i += 1){
+    const tyre = mesh(THREE, new THREE.TorusGeometry(4.4, 1.8, 6, 12), '#26282c', { roughness:0.95 });
+    tyre.rotation.x = -Math.PI/2;
+    tyre.position.set(-(w/2 - BAY_WALL - 7), 2 + i * 3.6, -(d/2 - BAY_WALL - 16));
+    group.add(tyre);
+  }
+
+  // LEGAL: A strip light under the roof, so the bay is legible from the street at night.
+  const strip = mesh(THREE, new THREE.BoxGeometry(4, 1.4, d - BAY_WALL - 10), '#fff2cc', { roughness:0.3 });
+  strip.position.set(0, h - 2.5, -2);
+  group.add(strip);
+
+  return group;
+}
+
 // LEGAL: Single entry point so callers never have to know which builder goes with which
 // LEGAL: archetype. Returns null for archetypes that DO have a building shell, so the caller
 // LEGAL: falls through to the detailed-building renderer.
@@ -191,6 +289,7 @@ export function buildArchetypeShell(
 ): ThreeNamespace.Group | null {
   const shell = archetypeForm(archetype).shell;
   if(shell === 'stall') return buildStallShell(THREE, w, d, h, color);
+  if(shell === 'bay') return buildBayShell(THREE, w, d, h, color);
   if(shell === 'open') return archetype === 'alley' ? buildAlleyShell(THREE, w, d, h) : buildLotShell(THREE, w, d, h);
   return null;
 }

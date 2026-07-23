@@ -24,11 +24,12 @@ export type PlaceArchetype =
   | 'office'
   | 'tower'
   | 'civic'
-  | 'works';
+  | 'works'
+  | 'bay';
 
-// LEGAL: What to draw. `stall` and `open` deliberately have NO building shell — that is the
-// LEGAL: whole point of them.
-export type ArchetypeShell = 'building' | 'stall' | 'open';
+// LEGAL: What to draw. `stall`, `open` and `bay` deliberately have NO building shell — that
+// LEGAL: is the whole point of them.
+export type ArchetypeShell = 'building' | 'stall' | 'open' | 'bay';
 
 export interface ArchetypeForm {
   shell: ArchetypeShell;
@@ -52,6 +53,10 @@ const FORMS: Record<PlaceArchetype, ArchetypeForm> = {
   tower:      { shell:'building', solidScale:1 },
   civic:      { shell:'building', solidScale:1 },
   works:      { shell:'building', solidScale:1 },
+  // LEGAL: Three walls and an open mouth. solidScale 0 for the same reason the alley has it:
+  // LEGAL: the middle of a garage is not solid, it is where the car goes. The walls come back
+  // LEGAL: as extra solids below, so you can drive in but not through.
+  bay:        { shell:'bay',      solidScale:0, ground:'#6b6459' },
 };
 
 export function archetypeForm(archetype: PlaceArchetype): ArchetypeForm {
@@ -71,6 +76,7 @@ const ZONE_TYPES: Record<PlaceArchetype, string> = {
   tower: 'skyscraper',
   civic: 'service',
   works: 'industrial',
+  bay: 'industrial',
 };
 
 export function archetypeZoneType(archetype: PlaceArchetype): string {
@@ -131,7 +137,7 @@ export const SERVICE_ARCHETYPES: Record<string, PlaceArchetype> = {
   hubBusStation: 'civic',           // LEGAL: A public transit hall.
   heraldHq: 'office',               // LEGAL: Windhaven Herald HQ — a newsroom.
   marigoldLounge: 'storefront',     // LEGAL: The lounge's street entrance.
-  playerGarage: 'works',            // LEGAL: Your garage — a plain workshop.
+  playerGarage: 'bay',              // LEGAL: Your garage — you DRIVE INTO it. See BAY_WALL.
   devlinAlley: 'alley',             // LEGAL: Devlin Back ALLEY. Was drawn as a building.
   railyard: 'lot',                  // LEGAL: Open ground, fencing, a hut. Not a building.
   docksDockmaster: 'lot',           // LEGAL: A dockside yard.
@@ -183,10 +189,37 @@ export function propertyArchetype(place: PropertyPlace): PlaceArchetype | null {
 // LEGAL: so the collision and the drawn shell are sized from the same numbers.
 export const ALLEY_FLANK_W = 30;
 
+// LEGAL: Thickness of the garage's two side walls and its back wall. The mouth is the +y face
+// LEGAL: and is left entirely open, so a car (radius 24, see movement.actorRadius) drives in
+// LEGAL: under its own power. A 84-wide bay minus two 9-thick walls leaves 66 of clear
+// LEGAL: opening — 48 of car and 9 of slack either side, which is enough to aim at without
+// LEGAL: being so wide the walls stop reading as walls.
+export const BAY_WALL = 9;
+
 export function archetypeExtraSolids(archetype: PlaceArchetype | null, x: number, y: number, w: number, d: number): Solid[] {
-  if(archetype !== 'alley') return [];
-  const offset = w/2 + ALLEY_FLANK_W/2 - 2;
-  return [-1, 1].map(function(side){
-    return { x: x + side * offset, y, hw: ALLEY_FLANK_W/2, hd: d/2 };
-  });
+  if(archetype === 'alley'){
+    const offset = w/2 + ALLEY_FLANK_W/2 - 2;
+    return [-1, 1].map(function(side){
+      return { x: x + side * offset, y, hw: ALLEY_FLANK_W/2, hd: d/2 };
+    });
+  }
+  if(archetype === 'bay'){
+    return [
+      // LEGAL: Side walls, running the full depth.
+      ...[-1, 1].map(function(side): Solid {
+        return { x: x + side * (w/2 - BAY_WALL/2), y, hw: BAY_WALL/2, hd: d/2 };
+      }),
+      // LEGAL: Back wall, spanning between them. Nothing is added along the +y face: that
+      // LEGAL: absence IS the door.
+      { x, y: y - (d/2 - BAY_WALL/2), hw: w/2, hd: BAY_WALL/2 },
+    ];
+  }
+  return [];
+}
+
+// LEGAL: The drivable volume inside a bay: the footprint less its walls, with the mouth open.
+// LEGAL: Kept here beside the walls so the space you park in and the walls you would hit are
+// LEGAL: derived from one set of numbers.
+export function bayInterior(x: number, y: number, w: number, d: number): { x: number; y: number; hw: number; hd: number } {
+  return { x, y: y + BAY_WALL/2, hw: w/2 - BAY_WALL, hd: (d - BAY_WALL)/2 };
 }
