@@ -403,7 +403,10 @@ test.describe('game boot', () => {
     expect(cityBox).not.toBeNull();
     if(!cityBox) return;
 
-    await page.mouse.click(cityBox.x + cityBox.width * 0.13, cityBox.y + cityBox.height * 0.55);
+    // LEGAL: Aimed at the middle of Devlin. The City Map now frames the whole landmass
+    // LEGAL: including the stage-1c outskirts, so the old 13%/55% point fell in the
+    // LEGAL: countryside — and waypoints still require district land, not outskirt land.
+    await page.mouse.click(cityBox.x + cityBox.width * 0.26, cityBox.y + cityBox.height * 0.44);
     await expect(page.locator('#minimap-clear')).toHaveClass(/show/);
   });
 
@@ -421,10 +424,13 @@ test.describe('game boot', () => {
         import('/src/map/viewport.ts'),
         import('/src/map/world.ts'),
       ]);
+      // LEGAL: Must match how header.ts frames the City Map, which is on the whole
+      // LEGAL: landmass now that the stage-1c outskirts exist — framing on district land
+      // LEGAL: alone would put this hover somewhere else entirely.
       const viewport = viewportModule.createMapViewport(
         canvas.width,
         canvas.height,
-        windhavenMapModel.districts.flatMap(district => district.landArea),
+        windhavenMapModel.landmass,
       );
       // LEGAL: The bank's authored lot, widened the same way map/world.ts widens it.
       const point = viewportModule.worldToScreen(viewport, { x: worldModule.widenAuthoredX(485), y:450 });

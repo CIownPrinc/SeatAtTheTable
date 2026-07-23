@@ -10,6 +10,10 @@ export interface MapTerrainTheme {
   waterEmissive: string;
   waterHighlight: string;
   baseLand: string;
+  outskirtFarmland: string;
+  outskirtForest: string;
+  outskirtSuburb: string;
+  outskirtIndustrial: string;
   coastline: string;
   coastlineSecondary: string;
   districtStroke: string;
@@ -33,6 +37,12 @@ export const mapTerrainTheme: MapTerrainTheme = {
   waterEmissive: '#06496f',
   waterHighlight: '#7ecfff',
   baseLand: '#5f7445',
+  // LEGAL: Outskirt belts (stage 1c). Distinct enough from baseLand and from each other to
+  // LEGAL: read at City Map zoom, but all muted so the city core stays the focal point.
+  outskirtFarmland: '#7c8c46',
+  outskirtForest: '#3f5c38',
+  outskirtSuburb: '#6d7b58',
+  outskirtIndustrial: '#6a6a5a',
   coastline: '#f0e5bf',
   coastlineSecondary: '#f6efcf',
   districtStroke: '#f0e5bf',

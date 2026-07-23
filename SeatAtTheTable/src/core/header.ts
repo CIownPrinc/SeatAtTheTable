@@ -4761,7 +4761,9 @@ import type * as ThreeNamespace from 'three';
   const cityMapFilters = byId('citymap-filters');
   const cityMapResults = byId('citymap-results');
   const CITY_W = cityMapCanvas.width, CITY_H = cityMapCanvas.height;
-  const cityViewport = createMapViewport(CITY_W, CITY_H, windhavenMapModel.districts.flatMap(district => district.landArea));
+  // LEGAL: Framed on the whole landmass, not just the three districts — otherwise the
+  // LEGAL: outskirts added in stage 1c are cropped straight off the City Map.
+  const cityViewport = createMapViewport(CITY_W, CITY_H, windhavenMapModel.landmass);
   let cityMapOpen = false;
   let cityMapHoverPlace: MapPlaceRecord | null = null;
   let cityMapFilter: MapPlaceCategory | 'all' = 'all';

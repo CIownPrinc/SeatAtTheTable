@@ -142,41 +142,88 @@ export const WINDHAVEN_LANDMASS: Point[] = widenPoints([
   { x: 4770, y: 78 },
   { x: 4980, y: 98 },
   { x: 5260, y: 142 },
-  // LEGAL: East coast, north to south.
-  { x: 5560, y: 212 },
-  { x: 5680, y: 380 },
-  { x: 5600, y: 520 },
-  { x: 5720, y: 660 },
-  { x: 5560, y: 820 },
-  { x: 5640, y: 980 },
-  { x: 5480, y: 1140 },
-  // LEGAL: South coast, east to west — Hub inlet, then the long Devlin peninsula.
-  { x: 5260, y: 1228 },
-  { x: 5020, y: 1182 },
-  { x: 4820, y: 1096 },
-  { x: 4640, y: 1172 },
-  { x: 4380, y: 1224 },
-  { x: 4060, y: 1198 },
-  { x: 3840, y: 1162 },
-  { x: 3500, y: 1138 },
-  { x: 3180, y: 1122 },
-  { x: 2820, y: 1130 },
-  { x: 2460, y: 1150 },
-  { x: 2100, y: 1178 },
-  { x: 1705, y: 1222 },
-  { x: 1420, y: 1270 },
-  { x: 1120, y: 1316 },
-  { x: 820, y: 1344 },
-  { x: 520, y: 1320 },
-  { x: 220, y: 1268 },
-  { x: -130, y: 1216 },
-  // LEGAL: West coast, south to north.
-  { x: -245, y: 1006 },
-  { x: -120, y: 796 },
-  { x: -252, y: 600 },
-  { x: -96, y: 366 },
+  // LEGAL: ---- Outskirts (stage 1c) ----
+  // LEGAL: The lake is north, so the city only opens onto countryside on its landward
+  // LEGAL: sides. East, south and west the coast is replaced by an outskirts ring — the
+  // LEGAL: land simply keeps going. The districts' own southern edges survive as the
+  // LEGAL: boundary between district ground colour and outskirt terrain, so the shapes
+  // LEGAL: authored in stage 1b still read; they are just no longer waterfront.
+  { x: 5700, y: 182 },
+  { x: 6100, y: 302 },
+  { x: 6320, y: 560 },
+  { x: 6250, y: 862 },
+  { x: 6420, y: 1150 },
+  { x: 6200, y: 1500 },
+  { x: 5700, y: 1752 },
+  { x: 5100, y: 1880 },
+  { x: 4400, y: 1820 },
+  { x: 3700, y: 1902 },
+  { x: 3000, y: 1860 },
+  { x: 2300, y: 1922 },
+  { x: 1600, y: 1870 },
+  { x: 900, y: 1930 },
+  { x: 200, y: 1862 },
+  { x: -500, y: 1780 },
+  { x: -1000, y: 1560 },
+  { x: -1150, y: 1200 },
+  { x: -1050, y: 820 },
+  { x: -1200, y: 480 },
+  { x: -900, y: 222 },
+  { x: -520, y: 150 },
   { x: -210, y: 120 },
 ]);
+
+// LEGAL: Terrain belts in the outskirts. Scenery only for now — no interactable places out
+// LEGAL: here (that is the deferred second pass). They render like district ground: a
+// LEGAL: polygon in their own colour on top of the base land, so the ring reads as farmland
+// LEGAL: and forest rather than one flat green field.
+export interface OutskirtRegion {
+  id: string;
+  name: string;
+  kind: 'farmland' | 'forest' | 'suburb' | 'industrial';
+  area: Point[];
+}
+
+export const OUTSKIRT_REGIONS: OutskirtRegion[] = [
+  {
+    id: 'westfarms', name: 'Kettle Flats', kind: 'farmland',
+    area: widenPoints([
+      { x: -1200, y: 480 }, { x: -900, y: 222 }, { x: -520, y: 150 }, { x: -210, y: 120 },
+      { x: -140, y: 600 }, { x: -120, y: 1080 }, { x: -400, y: 1300 },
+      { x: -1000, y: 1240 }, { x: -1150, y: 900 },
+    ]),
+  },
+  {
+    id: 'southfields', name: 'Boundary Meadows', kind: 'farmland',
+    area: widenPoints([
+      { x: -400, y: 1300 }, { x: 400, y: 1360 }, { x: 1200, y: 1400 }, { x: 1900, y: 1330 },
+      { x: 2100, y: 1700 }, { x: 1400, y: 1800 }, { x: 600, y: 1820 }, { x: -200, y: 1720 },
+      { x: -800, y: 1560 },
+    ]),
+  },
+  {
+    id: 'ridgewood', name: 'Ridgewood Stand', kind: 'forest',
+    area: widenPoints([
+      { x: 1900, y: 1330 }, { x: 2900, y: 1300 }, { x: 3800, y: 1340 }, { x: 4200, y: 1420 },
+      { x: 4100, y: 1780 }, { x: 3200, y: 1820 }, { x: 2300, y: 1800 }, { x: 2100, y: 1700 },
+    ]),
+  },
+  {
+    id: 'lakeridge', name: 'Lakeridge', kind: 'suburb',
+    area: widenPoints([
+      { x: 4200, y: 1420 }, { x: 5100, y: 1300 }, { x: 5700, y: 1240 }, { x: 6100, y: 1400 },
+      { x: 5900, y: 1700 }, { x: 5100, y: 1800 }, { x: 4400, y: 1760 }, { x: 4100, y: 1780 },
+    ]),
+  },
+  {
+    id: 'eastworks', name: 'Cicero Outworks', kind: 'industrial',
+    area: widenPoints([
+      { x: 5700, y: 182 }, { x: 6100, y: 302 }, { x: 6320, y: 560 }, { x: 6250, y: 862 },
+      { x: 6400, y: 1140 }, { x: 5900, y: 1180 }, { x: 5560, y: 900 }, { x: 5520, y: 500 },
+      { x: 5460, y: 220 },
+    ]),
+  },
+];
 
 // LEGAL: Canals keep their authored 500 width — only their position moves, so the
 // LEGAL: crossings stay the same length and the bridges still fit.

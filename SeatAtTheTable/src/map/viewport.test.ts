@@ -42,7 +42,7 @@ describe('map viewport and geometry model', function () {
 
   it('clamps expanded-map clicks to authored landmass bounds', function () {
     const viewport = createMapViewport(900, 520, windhavenMapModel.landmass);
-    const point = clampPointToBounds({ x: -900, y: 2000 }, viewport.bounds);
+    const point = clampPointToBounds({ x: wx(-9000), y: 9000 }, viewport.bounds);
 
     expect(point.x).toBe(viewport.bounds.minX);
     expect(point.y).toBe(viewport.bounds.maxY);
@@ -53,7 +53,7 @@ describe('map viewport and geometry model', function () {
     expect(isPointOnWindhavenLand({ x: wx(18), y: 600 }, 8)).toBe(true);
     expect(isPointInWater({ x: wx(700), y: 30 }, 8)).toBe(true);
     expect(isPointInWater({ x: wx(-180), y: 40 }, 8)).toBe(true);
-    expect(isPointInWater({ x: wx(5700), y: 1180 }, 8)).toBe(true);
+    expect(isPointInWater({ x: wx(5700), y: -400 }, 8)).toBe(true);
     expect(isPointInWater({ x: wx(1700), y: 560 }, 24)).toBe(true);
     expect(isPointOnBridge({ x: wx(1700), y: 600 }, 24)).toBe(true);
     expect(isPointInWater({ x: wx(1700), y: 600 }, 24)).toBe(false);

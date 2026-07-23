@@ -5,6 +5,16 @@ import type { RoadPath } from './mapModel';
 import { activeTrainSnapshot } from './queries';
 import { mapTerrainTheme, terrainForDistrict } from './renderTheme';
 import type { BlockHolding } from './territory';
+import { OUTSKIRT_REGIONS, type OutskirtRegion } from './world';
+
+// LEGAL: Minimap tints for the outskirt belts. Lighter than the 3D terrain colours because
+// LEGAL: the minimap sits behind icons and must not compete with them.
+function minimapOutskirtColor(kind: OutskirtRegion['kind']): string {
+  if(kind === 'forest') return '#4a6b40';
+  if(kind === 'suburb') return '#7d8a63';
+  if(kind === 'industrial') return '#79786a';
+  return '#8c9c52';
+}
 
 export const MINIMAP_SIZE = 150;
 export const MINIMAP_SCALE = MINIMAP_SIZE / 600;
@@ -244,6 +254,13 @@ function drawStaticMinimapLayer(mctx: CanvasRenderingContext2D, options: Minimap
     mctx.stroke();
     mctx.clip();
   }
+
+  // LEGAL: Outskirt belts first, so the districts still draw on top of them. Without this
+  // LEGAL: the whole ring renders as one flat field on the minimap and City Map even though
+  // LEGAL: the 3D world shows farmland, forest, suburb and industrial edge.
+  OUTSKIRT_REGIONS.forEach(function(region){
+    drawPolygon(region.area, minimapOutskirtColor(region.kind), 'rgba(235,226,190,0.14)', Math.max(1, 0.8*glyphScale));
+  });
 
   windhavenMapModel.districts.forEach(function(district){
     drawPolygon(district.landArea, terrainForDistrict(district.id).minimapLand, 'rgba(235,226,190,0.32)', Math.max(1, 1.2*glyphScale));

@@ -248,7 +248,7 @@ describe('map layout helpers', function () {
     // LEGAL: Just inside the western shoreline, and well outside it — both widen with the
     // LEGAL: coastline, so these keep testing the radius rather than a fixed x.
     expect(canMoveTo(widenAuthoredX(18), 600, [], true)).toBe(true);
-    expect(canMoveTo(widenAuthoredX(-280), 600, [], false)).toBe(false);
+    expect(canMoveTo(widenAuthoredX(-3000), 600, [], false)).toBe(false);
     expect(canMoveTo(245, 200, solids, true)).toBe(true);
     expect(canMoveTo(243, 200, solids, true)).toBe(false);
   });

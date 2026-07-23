@@ -1,4 +1,14 @@
-import type { DiagonalRoad, HorizontalRoad, Landmark, VerticalRoad } from './world';
+import type { DiagonalRoad, HorizontalRoad, Landmark, OutskirtRegion, VerticalRoad } from './world';
+import { OUTSKIRT_REGIONS } from './world';
+
+// LEGAL: One colour per outskirt belt kind, read from the shared terrain theme so the 3D
+// LEGAL: world and any future minimap treatment cannot drift apart.
+function outskirtColor(kind: OutskirtRegion['kind']): string {
+  if(kind === 'forest') return mapTerrainTheme.outskirtForest;
+  if(kind === 'suburb') return mapTerrainTheme.outskirtSuburb;
+  if(kind === 'industrial') return mapTerrainTheme.outskirtIndustrial;
+  return mapTerrainTheme.outskirtFarmland;
+}
 import { districtIdAtPlayablePoint, roadLandSegments, windhavenMapModel } from './mapModel';
 import { mapTerrainTheme, mapTransportTheme, terrainForDistrict } from './renderTheme';
 import { addInstancedMesh, createMapSceneMaterials, type MapSceneMaterialCache, type SceneInstance } from './scenePerformance';
@@ -208,6 +218,21 @@ export function buildBaseGround(options: BaseSceneOptions): void {
   const waterBase = new THREE.Mesh(new THREE.PlaneGeometry(worldWidth + 920, worldHeight + 620), materials.standard('terrain:open-water', {color:mapTerrainTheme.openWater, emissive:mapTerrainTheme.waterEmissive, emissiveIntensity:0.26, roughness:0.18, metalness:0.18}));
   waterBase.rotation.x=-Math.PI/2; waterBase.position.set(worldWidth/2, -0.04, worldHeight/2); waterBase.receiveShadow=true; waterBase.renderOrder = 0; worldGroup.add(waterBase);
   addGroundShape(options, windhavenMapModel.landmass, mapTerrainTheme.baseLand, 0, 1);
+  // LEGAL: Outskirt belts sit between the base land and the districts, so the countryside
+  // LEGAL: reads as farmland / forest / suburb / industrial edge rather than one flat field,
+  // LEGAL: and the districts still draw on top of it.
+  OUTSKIRT_REGIONS.forEach(function(region){
+    const material = materials.standard(`terrain:outskirt:${region.id}`, {
+      color: outskirtColor(region.kind),
+      roughness: 1,
+      side: THREE.DoubleSide,
+    });
+    const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPoints(THREE, region.area)), material);
+    mesh.rotation.x = Math.PI/2;
+    mesh.position.y = 0.02;
+    mesh.receiveShadow = true;
+    worldGroup.add(mesh);
+  });
   windhavenMapModel.districts.forEach(function(district){
     const terrain = terrainForDistrict(district.id);
     const material = materials.standard(`terrain:district:${district.id}`, {
