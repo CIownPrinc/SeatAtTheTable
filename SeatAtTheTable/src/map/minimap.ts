@@ -79,7 +79,7 @@ export function minimapStaticLayerCacheKey(options: MinimapRenderOptions): strin
   const frame = minimapRenderFrame(options);
   const districtNames = options.districtNames?.map(name => `${name.name}:${Math.round(name.x)}:${Math.round(name.y ?? 6)}`).join('|') ?? '';
   const roadVersion = roadLandSegments().map(segment => `${segment.road.id}:${segment.road.roadClass}:${segment.road.width}:${Math.round(segment.path[0].x)}:${Math.round(segment.path[0].y)}:${Math.round(segment.path[1].x)}:${Math.round(segment.path[1].y)}`).join('|');
-  const waterVersion = `${windhavenMapModel.canals.length}:${windhavenMapModel.northRiver.length}:${windhavenMapModel.lakefrontBeach.length}`;
+  const waterVersion = `${windhavenMapModel.canals.length}:${windhavenMapModel.lake.length}:${windhavenMapModel.lakefrontBeach.length}`;
   const terrainVersion = [
     mapTerrainTheme.openWater,
     mapTerrainTheme.baseLand,
@@ -276,7 +276,7 @@ function drawStaticMinimapLayer(mctx: CanvasRenderingContext2D, options: Minimap
     drawPolyline([{x:x1-18,y:0},{x:x1-34,y:320},{x:x1-12,y:680},{x:x1-30,y:1030},{x:x1-18,y:options.worldHeight}], 'rgba(228,239,232,0.28)', Math.max(1, 1.1*glyphScale));
   });
 
-  drawPolygon(windhavenMapModel.northRiver, mapTerrainTheme.canalWater, 'rgba(228,239,232,0.28)', Math.max(1, 1.2*glyphScale));
+  drawPolygon(windhavenMapModel.lake, mapTerrainTheme.canalWater, 'rgba(228,239,232,0.28)', Math.max(1, 1.2*glyphScale));
 
   ['devlin','westside','hub'].forEach(function(distId){
     const off = options.districtOffsets[distId];

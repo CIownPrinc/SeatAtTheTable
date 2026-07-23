@@ -52,6 +52,14 @@ export const VIEW_W = 760;
 export const VIEW_H = 440;
 export const WORLD_H = 1200;
 
+// LEGAL: How far north of the city the world now reaches. The water north of Windhaven used
+// LEGAL: to be called a lake while being wide open to the ocean that surrounds the whole map,
+// LEGAL: which is not a lake, it is a bay. It is now a genuine ENCLOSED lake with land on all
+// LEGAL: sides — which is also what makes room for the northern outskirts, since the old
+// LEGAL: shoreline was the reason stage 1c could only widen the sides and the bottom.
+// LEGAL: Nothing clamps play to y >= 0; movement is bounded by the landmass polygon alone.
+export const WORLD_N = -1240;
+
 // LEGAL: ---- District widening (world expansion stage 1a) ----
 // LEGAL: Every coordinate in this file was authored against 1500-wide districts separated
 // LEGAL: by 500-wide canals. Widening the districts by hand would mean rewriting ~60
@@ -116,11 +124,61 @@ export const DEVLIN_NORTHWEST_LOT_X = widenAuthoredX(400);
 // LEGAL:               which suits a working industrial district hemmed in by freight.
 // LEGAL:   The Hub   — a headland pushing north into the lake, with a bay cut into its
 // LEGAL:               southern edge, so downtown sits on a promontory.
-// LEGAL: The north edge everywhere stays south of NORTH_RIVER's southern bank so the
-// LEGAL: shoreline never overlaps the drawn river, and far enough north of the y=205
-// LEGAL: north-shore lots that those buildings keep their footprints on land.
+// LEGAL: That coastline is now the lake's SOUTH shore rather than the edge of the world —
+// LEGAL: see WINDHAVEN_LAKE below. It still sits far enough north of the y=205 north-shore
+// LEGAL: lots that those buildings keep their footprints on land.
 export const WINDHAVEN_LANDMASS: Point[] = widenPoints([
-  // LEGAL: North coast, west to east.
+  // LEGAL: ---- North shore of the WORLD, west to east ----
+  // LEGAL: The land now wraps over the top of the lake. Everything between this line and the
+  // LEGAL: district coastline below is northern outskirts; the lake itself is punched out of
+  // LEGAL: it by WINDHAVEN_LAKE, the same way the canals are.
+  { x: -1150, y: -300 },
+  { x: -1010, y: -640 },
+  { x: -740, y: -910 },
+  { x: -300, y: -1080 },
+  { x: 300, y: -1165 },
+  { x: 1000, y: -1200 },
+  { x: 1800, y: -1215 },
+  { x: 2600, y: -1198 },
+  { x: 3400, y: -1216 },
+  { x: 4200, y: -1180 },
+  { x: 4900, y: -1120 },
+  { x: 5500, y: -1000 },
+  { x: 5990, y: -790 },
+  { x: 6290, y: -470 },
+  { x: 6410, y: -120 },
+  { x: 6450, y: 210 },
+  // LEGAL: ---- East, south and west outskirts ring (stage 1c), unchanged ----
+  { x: 5700, y: 182 },
+  { x: 6100, y: 302 },
+  { x: 6320, y: 560 },
+  { x: 6250, y: 862 },
+  { x: 6420, y: 1150 },
+  { x: 6200, y: 1500 },
+  { x: 5700, y: 1752 },
+  { x: 5100, y: 1880 },
+  { x: 4400, y: 1820 },
+  { x: 3700, y: 1902 },
+  { x: 3000, y: 1860 },
+  { x: 2300, y: 1922 },
+  { x: 1600, y: 1870 },
+  { x: 900, y: 1930 },
+  { x: 200, y: 1862 },
+  { x: -500, y: 1780 },
+  { x: -1000, y: 1560 },
+  { x: -1150, y: 1200 },
+  { x: -1050, y: 820 },
+  { x: -1200, y: 480 },
+  { x: -1180, y: 120 },
+  { x: -1150, y: -300 },
+]);
+
+// LEGAL: ---- The lake ----
+// LEGAL: Its SOUTH shore is the district coastline authored in stage 1b, point for point, so
+// LEGAL: Devlin's setback, the West Side's hard river edge and the Hub's northward headland
+// LEGAL: all still read exactly as before. Only the far side is new: the water now closes
+// LEGAL: back on itself instead of running away into the ocean.
+export const WINDHAVEN_LAKE: Point[] = widenPoints([
   { x: -210, y: 120 },
   { x: -40, y: 152 },
   { x: 300, y: 164 },
@@ -142,34 +200,24 @@ export const WINDHAVEN_LANDMASS: Point[] = widenPoints([
   { x: 4770, y: 78 },
   { x: 4980, y: 98 },
   { x: 5260, y: 142 },
-  // LEGAL: ---- Outskirts (stage 1c) ----
-  // LEGAL: The lake is north, so the city only opens onto countryside on its landward
-  // LEGAL: sides. East, south and west the coast is replaced by an outskirts ring — the
-  // LEGAL: land simply keeps going. The districts' own southern edges survive as the
-  // LEGAL: boundary between district ground colour and outskirt terrain, so the shapes
-  // LEGAL: authored in stage 1b still read; they are just no longer waterfront.
-  { x: 5700, y: 182 },
-  { x: 6100, y: 302 },
-  { x: 6320, y: 560 },
-  { x: 6250, y: 862 },
-  { x: 6420, y: 1150 },
-  { x: 6200, y: 1500 },
-  { x: 5700, y: 1752 },
-  { x: 5100, y: 1880 },
-  { x: 4400, y: 1820 },
-  { x: 3700, y: 1902 },
-  { x: 3000, y: 1860 },
-  { x: 2300, y: 1922 },
-  { x: 1600, y: 1870 },
-  { x: 900, y: 1930 },
-  { x: 200, y: 1862 },
-  { x: -500, y: 1780 },
-  { x: -1000, y: 1560 },
-  { x: -1150, y: 1200 },
-  { x: -1050, y: 820 },
-  { x: -1200, y: 480 },
-  { x: -900, y: 222 },
-  { x: -520, y: 150 },
+  // LEGAL: East end, curling back north.
+  { x: 5480, y: 20 },
+  { x: 5530, y: -240 },
+  { x: 5380, y: -470 },
+  // LEGAL: North shore, east to west.
+  { x: 5000, y: -600 },
+  { x: 4400, y: -662 },
+  { x: 3700, y: -690 },
+  { x: 3000, y: -668 },
+  { x: 2300, y: -700 },
+  { x: 1600, y: -672 },
+  { x: 900, y: -700 },
+  { x: 250, y: -658 },
+  { x: -180, y: -560 },
+  // LEGAL: West end, closing onto the start of the south shore.
+  { x: -380, y: -330 },
+  { x: -400, y: -80 },
+  { x: -300, y: 60 },
   { x: -210, y: 120 },
 ]);
 
@@ -215,6 +263,37 @@ export const OUTSKIRT_REGIONS: OutskirtRegion[] = [
       { x: 5900, y: 1700 }, { x: 5100, y: 1800 }, { x: 4400, y: 1760 }, { x: 4100, y: 1780 },
     ]),
   },
+  // LEGAL: ---- Northern belts (only possible now the lake is enclosed) ----
+  // LEGAL: Stage 1c could not extend north because the north edge WAS the water. With land
+  // LEGAL: wrapped over the top of the lake there is now a whole northern shore to fill.
+  {
+    id: 'northshore', name: 'Sunset Shore', kind: 'suburb',
+    area: widenPoints([
+      // LEGAL: Held clear of the waterline rather than sharing the lake's shore points, so a
+      // LEGAL: belt corner is never both on the beach and in the water.
+      { x: -150, y: -600 }, { x: 250, y: -700 }, { x: 900, y: -742 }, { x: 1600, y: -714 },
+      { x: 2300, y: -742 }, { x: 2400, y: -900 }, { x: 1700, y: -940 },
+      { x: 900, y: -960 }, { x: 200, y: -900 }, { x: -260, y: -780 },
+    ]),
+  },
+  {
+    id: 'northwoods', name: 'Kestrel Woods', kind: 'forest',
+    area: widenPoints([
+      { x: 2400, y: -900 }, { x: 2300, y: -742 }, { x: 3000, y: -710 }, { x: 3700, y: -732 },
+      { x: 4400, y: -704 }, { x: 4600, y: -880 }, { x: 3900, y: -960 }, { x: 3100, y: -980 },
+    ]),
+  },
+  {
+    id: 'northfarms', name: 'Harrow End', kind: 'farmland',
+    area: widenPoints([
+      // LEGAL: Inset from the world's north edge rather than sharing its points — a belt
+      // LEGAL: corner sitting exactly ON the landmass boundary is neither in nor out of it.
+      { x: -260, y: -1030 }, { x: 300, y: -1120 }, { x: 1000, y: -1155 }, { x: 1800, y: -1170 },
+      { x: 2600, y: -1152 }, { x: 3400, y: -1170 }, { x: 4180, y: -1135 },
+      { x: 4600, y: -880 }, { x: 3100, y: -980 }, { x: 2400, y: -900 },
+      { x: 900, y: -960 }, { x: 200, y: -900 }, { x: -260, y: -780 },
+    ]),
+  },
   {
     id: 'eastworks', name: 'Cicero Outworks', kind: 'industrial',
     area: widenPoints([
@@ -232,35 +311,34 @@ export const CANAL_CHANNELS: CanalChannel[] = [
   { x: widenAuthoredX(3500), width: CANAL_W, name: 'Lakefront Cut' },
 ];
 
-export const NORTH_RIVER: Point[] = widenPoints([
-  { x: -260, y: -140 },
-  { x: 5780, y: -140 },
-  { x: 5780, y: 118 },
-  { x: 5400, y: 88 },
-  { x: 5050, y: 110 },
-  { x: 4630, y: 72 },
-  { x: 4210, y: 96 },
-  { x: 3790, y: 70 },
-  { x: 3340, y: 92 },
-  { x: 2890, y: 64 },
-  { x: 2440, y: 84 },
-  { x: 1960, y: 60 },
-  { x: 1510, y: 86 },
-  { x: 1040, y: 62 },
-  { x: 610, y: 82 },
-  { x: 190, y: 58 },
-  { x: -260, y: 102 },
-]);
 
+// LEGAL: ---- Beach paradise ----
+// LEGAL: Now that the lake is genuinely enclosed, its southern shore is a resort strip rather
+// LEGAL: than a working waterfront: sand, palms, loungers and umbrellas (see buildLakeshore).
+// LEGAL: Runs from the Hub headland west along the whole city shore, following the same
+// LEGAL: coastline points so the sand can never drift off the water's edge.
 export const LAKEFRONT_BEACH: Point[] = widenPoints([
-  { x: 3970, y: 52 },
-  { x: 4240, y: 88 },
-  { x: 4560, y: 64 },
-  { x: 4860, y: 104 },
-  { x: 5180, y: 86 },
-  { x: 5520, y: 124 },
-  { x: 5520, y: 52 },
-]);
+  { x: 1290, y: 100 },
+  { x: 1705, y: 90 },
+  { x: 2210, y: 74 },
+  { x: 2600, y: 68 },
+  { x: 2980, y: 72 },
+  { x: 3500, y: 94 },
+  { x: 3840, y: 106 },
+  { x: 4310, y: 166 },
+  { x: 4770, y: 78 },
+  { x: 5260, y: 142 },
+  { x: 5300, y: 196 },
+  { x: 4770, y: 132 },
+  { x: 4310, y: 220 },
+  { x: 3840, y: 160 },
+  { x: 3500, y: 148 },
+  { x: 2980, y: 126 },
+  { x: 2600, y: 122 },
+  { x: 2210, y: 128 },
+  { x: 1705, y: 144 },
+  { x: 1290, y: 154 },
+])
 
 export const DISTRICT_OFFSETS: Record<string, number> = {
   devlin: widenAuthoredX(0),

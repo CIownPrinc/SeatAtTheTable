@@ -11,6 +11,7 @@ function outskirtColor(kind: OutskirtRegion['kind']): string {
   return mapTerrainTheme.outskirtFarmland;
 }
 import { districtIdAtPlayablePoint, roadLandSegments, windhavenMapModel } from './mapModel';
+import { boundsForPoints } from './geometry';
 import { mapTerrainTheme, mapTransportTheme, terrainForDistrict } from './renderTheme';
 import { addInstancedMesh, createMapSceneMaterials, type MapSceneMaterialCache, type SceneInstance } from './scenePerformance';
 import type { FillerItem, MapZoneType, Point } from '../config/types';
@@ -205,7 +206,7 @@ function addWaterMotion(options: BaseSceneOptions): void {
       addWaterMotionStrip(options, channel.x + channel.width/2 + Math.sin(y*0.03)*34, y, channel.width*0.5, 0.04, 0, 16, index + y*0.01);
     }
   });
-  windhavenMapModel.northRiver.slice(3, -1).forEach(function(point, index){
+  windhavenMapModel.lake.slice(3, -1).forEach(function(point, index){
     addWaterMotionStrip(options, point.x, point.y + 14, 86, 0.02, 24, 0, index*0.7);
   });
   windhavenMapModel.lakefrontBeach.slice(1, -1).forEach(function(point, index){
@@ -216,8 +217,14 @@ function addWaterMotion(options: BaseSceneOptions): void {
 export function buildBaseGround(options: BaseSceneOptions): void {
   const { THREE, worldGroup, worldWidth, worldHeight } = options;
   const materials = materialsFor(options);
-  const waterBase = new THREE.Mesh(new THREE.PlaneGeometry(worldWidth + 920, worldHeight + 620), materials.standard('terrain:open-water', {color:mapTerrainTheme.openWater, emissive:mapTerrainTheme.waterEmissive, emissiveIntensity:0.26, roughness:0.18, metalness:0.18}));
-  waterBase.rotation.x=-Math.PI/2; waterBase.position.set(worldWidth/2, -0.04, worldHeight/2); waterBase.receiveShadow=true; waterBase.renderOrder = 0; worldGroup.add(waterBase);
+  // LEGAL: Sized from the landmass rather than from worldWidth/worldHeight. Those describe
+  // LEGAL: the CITY, and the land now runs a long way north of it around the lake — a plane
+  // LEGAL: centred on the city left the northern outskirts hanging over nothing.
+  const land = boundsForPoints(windhavenMapModel.landmass);
+  const oceanW = (land.maxX - land.minX) + 1400;
+  const oceanD = (land.maxY - land.minY) + 1400;
+  const waterBase = new THREE.Mesh(new THREE.PlaneGeometry(oceanW, oceanD), materials.standard('terrain:open-water', {color:mapTerrainTheme.openWater, emissive:mapTerrainTheme.waterEmissive, emissiveIntensity:0.26, roughness:0.18, metalness:0.18}));
+  waterBase.rotation.x=-Math.PI/2; waterBase.position.set((land.minX+land.maxX)/2, -0.04, (land.minY+land.maxY)/2); waterBase.receiveShadow=true; waterBase.renderOrder = 0; worldGroup.add(waterBase);
   addGroundShape(options, windhavenMapModel.landmass, mapTerrainTheme.baseLand, 0, 1);
   // LEGAL: Outskirt belts sit between the base land and the districts, so the countryside
   // LEGAL: reads as farmland / forest / suburb / industrial edge rather than one flat field,
@@ -586,6 +593,91 @@ export function buildLandmarks(options: LandmarkSceneOptions): void {
   });
 }
 
+// LEGAL: ---- Beach paradise on the lake's south shore ----
+// LEGAL: The water north of the city was called a lake while being wide open to the ocean
+// LEGAL: that surrounds the whole map, which makes it a bay, not a lake. It is enclosed now,
+// LEGAL: so the shore is a resort strip: palms, loungers, parasols and a couple of jetties.
+// LEGAL: Placed along the SAME shoreline points the sand is cut from, so the furniture can
+// LEGAL: never end up floating on the water or stranded inland the way the old hard-coded
+// LEGAL: piers did once the coast moved.
+function buildBeachResort(options: BaseSceneOptions): void {
+  const { THREE, worldGroup } = options;
+  const materials = materialsFor(options);
+  const shore = windhavenMapModel.lakefrontBeach;
+  // LEGAL: First half of the ring is the waterline; the return leg is the inland edge.
+  const waterline = shore.slice(0, Math.floor(shore.length / 2));
+
+  const trunkMat = materials.standard('resort:palm-trunk', { color:'#8a6f4a', roughness:0.9 });
+  const frondMat = materials.standard('resort:palm-frond', { color:'#3f8a4a', roughness:0.8 });
+  const loungerMat = materials.standard('resort:lounger', { color:'#e8e2d2', roughness:0.7 });
+  const parasolMats = [
+    materials.standard('resort:parasol-a', { color:'#d9524a', roughness:0.65 }),
+    materials.standard('resort:parasol-b', { color:'#2f8fa8', roughness:0.65 }),
+    materials.standard('resort:parasol-c', { color:'#e6b23c', roughness:0.65 }),
+  ];
+
+  waterline.slice(0, -1).forEach(function(start, index){
+    const end = waterline[index + 1];
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const length = Math.hypot(dx, dy) || 1;
+    const angle = Math.atan2(dy, dx);
+    // LEGAL: Inland normal, so everything sits BEHIND the waterline rather than in the lake.
+    const nx = -Math.sin(angle);
+    const ny = Math.cos(angle);
+
+    for(let t = 40; t < length - 40; t += 96){
+      const bx = start.x + Math.cos(angle) * t;
+      const by = start.y + Math.sin(angle) * t;
+      const wave = Math.sin(index * 5.4 + t * 0.05);
+
+      // LEGAL: Palm — a leaning trunk with a crown of angled fronds.
+      const palm = new THREE.Group();
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 2.6, 34, 6), trunkMat);
+      trunk.position.y = 17;
+      trunk.rotation.z = wave * 0.14;
+      trunk.castShadow = true;
+      palm.add(trunk);
+      for(let f = 0; f < 6; f += 1){
+        const frond = new THREE.Mesh(new THREE.ConeGeometry(3.4, 19, 4), frondMat);
+        const spin = (f / 6) * Math.PI * 2 + wave;
+        frond.position.set(Math.cos(spin) * 7, 34 + wave * 2, Math.sin(spin) * 7);
+        frond.rotation.set(Math.PI / 2.5, spin, 0);
+        frond.castShadow = true;
+        palm.add(frond);
+      }
+      palm.position.set(bx + nx * 40, 0, by + ny * 40);
+      palm.name = 'resort:palm';
+      worldGroup.add(palm);
+
+      // LEGAL: A pair of loungers under a parasol, closer to the water than the palms.
+      const set = new THREE.Group();
+      [-7, 7].forEach(function(offset){
+        const lounger = new THREE.Mesh(new THREE.BoxGeometry(13, 2, 5), loungerMat);
+        lounger.position.set(offset, 3, 0);
+        lounger.rotation.y = wave * 0.2;
+        lounger.castShadow = true;
+        set.add(lounger);
+        const back = new THREE.Mesh(new THREE.BoxGeometry(5, 2, 5), loungerMat);
+        back.position.set(offset - 5, 5.4, 0);
+        back.rotation.z = -0.6;
+        set.add(back);
+      });
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 22, 5), trunkMat);
+      pole.position.y = 11;
+      set.add(pole);
+      const parasol = new THREE.Mesh(new THREE.ConeGeometry(13, 6, 9), parasolMats[index % parasolMats.length]);
+      parasol.position.y = 24;
+      parasol.castShadow = true;
+      set.add(parasol);
+      set.position.set(bx + nx * 16, 0, by + ny * 16);
+      set.rotation.y = -angle;
+      set.name = 'resort:loungers';
+      worldGroup.add(set);
+    }
+  });
+}
+
 export function buildRailAndRiver(options: BaseSceneOptions): void {
   const { THREE, worldGroup, worldHeight } = options;
   const materials = materialsFor(options);
@@ -607,9 +699,10 @@ export function buildRailAndRiver(options: BaseSceneOptions): void {
     }
     addInstancedMesh(THREE, worldGroup, new THREE.BoxGeometry(line.width-4,2,4), materials.standard('transport:rail-tie', {color:'#3a3530', roughness:0.85, metalness:0.05}), ties, { cast:true, receive:true });
   });
-  addWaterShape(options, windhavenMapModel.northRiver, 0.06);
-  addGroundShape(options, windhavenMapModel.lakefrontBeach, '#b9a777', 0.09, 1);
-  addGroundLine(options, windhavenMapModel.northRiver.slice(2), '#e4efe8', 0.18, 0.14);
+  addWaterShape(options, windhavenMapModel.lake, 0.06);
+  addGroundShape(options, windhavenMapModel.lakefrontBeach, '#d8c489', 0.09, 1);
+  buildBeachResort(options);
+  addGroundLine(options, windhavenMapModel.lake.slice(2), '#e4efe8', 0.18, 0.14);
   addGroundLine(options, windhavenMapModel.lakefrontBeach, '#d9d2b8', 0.22, 0.15);
   addWaterMotion(options);
   const pierMat = materials.standard('waterfront:pier', {color:'#736d5c', roughness:0.86});
@@ -625,16 +718,7 @@ export function buildRailAndRiver(options: BaseSceneOptions): void {
     light.position.set(x + 44, 12, 104 + index*12);
     worldGroup.add(light);
   });
-  const seawallMat = materials.standard('transport:seawall', {color:mapTransportTheme.seawall, roughness:0.9});
-  [
-    { x: 4300, y: 96, w: 340, d: 8, rot: 0.03 },
-    { x: 4820, y: 96, w: 360, d: 8, rot: -0.04 },
-    { x: 5320, y: 118, w: 300, d: 8, rot: 0.08 },
-  ].forEach(function(wall){
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(wall.w,4,wall.d), seawallMat);
-    mesh.position.set(wall.x,2,wall.y);
-    mesh.rotation.y = wall.rot;
-    mesh.receiveShadow = true;
-    worldGroup.add(mesh);
-  });
+  // LEGAL: The concrete seawall that used to run along here belonged to a working
+  // LEGAL: waterfront. This shore is a resort beach now — sand meets water directly.
+
 }

@@ -53,7 +53,12 @@ describe('map viewport and geometry model', function () {
     expect(isPointOnWindhavenLand({ x: wx(18), y: 600 }, 8)).toBe(true);
     expect(isPointInWater({ x: wx(700), y: 30 }, 8)).toBe(true);
     expect(isPointInWater({ x: wx(-180), y: 40 }, 8)).toBe(true);
-    expect(isPointInWater({ x: wx(5700), y: -400 }, 8)).toBe(true);
+    // LEGAL: The north-east used to be open ocean. The land now wraps over the top of the
+    // LEGAL: lake, so this is northern outskirts — see WINDHAVEN_LAKE.
+    expect(isPointInWater({ x: wx(5700), y: -400 }, 8)).toBe(false);
+    // LEGAL: Middle of the lake is water; north of its far shore is land again.
+    expect(isPointInWater({ x: wx(2600), y: -300 }, 8)).toBe(true);
+    expect(isPointInWater({ x: wx(2600), y: -900 }, 8)).toBe(false);
     expect(isPointInWater({ x: wx(1700), y: 560 }, 24)).toBe(true);
     expect(isPointOnBridge({ x: wx(1700), y: 600 }, 24)).toBe(true);
     expect(isPointInWater({ x: wx(1700), y: 600 }, 24)).toBe(false);

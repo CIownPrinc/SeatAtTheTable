@@ -1,5 +1,5 @@
 import type { Point } from '../config/types';
-import { CANAL_CHANNELS, DISTRICT_OFFSETS, DISTRICT_W, LAKEFRONT_BEACH, NORTH_RIVER, WINDHAVEN_LANDMASS, WORLD_H, WORLD_W, districtParkSlots, landmarks, roadNetwork, widenAuthoredX } from './world';
+import { CANAL_CHANNELS, DISTRICT_OFFSETS, DISTRICT_W, LAKEFRONT_BEACH, WINDHAVEN_LAKE, WINDHAVEN_LANDMASS, WORLD_H, WORLD_W, districtParkSlots, landmarks, roadNetwork, widenAuthoredX } from './world';
 import { boundsForPoints, isPointInWater, pointInPolygon, type Bounds } from './geometry';
 import { buildableBands, distancePointToSegment } from './layout';
 
@@ -62,7 +62,7 @@ export interface WindhavenMapModel {
   landBounds: Bounds;
   districts: MapDistrictRecord[];
   canals: typeof CANAL_CHANNELS;
-  northRiver: Point[];
+  lake: Point[];
   lakefrontBeach: Point[];
   roads: typeof roadNetwork;
   roadPaths: RoadPath[];
@@ -248,7 +248,7 @@ export const windhavenMapModel: WindhavenMapModel = {
     { id: 'hub', name: 'The Hub', labelPoint: { x: DISTRICT_OFFSETS.hub + DISTRICT_W/2, y: -118 }, centerX: DISTRICT_OFFSETS.hub + DISTRICT_W/2, landArea: districtLandAreas.hub },
   ],
   canals: CANAL_CHANNELS,
-  northRiver: NORTH_RIVER,
+  lake: WINDHAVEN_LAKE,
   lakefrontBeach: LAKEFRONT_BEACH,
   roads: roadNetwork,
   roadPaths,

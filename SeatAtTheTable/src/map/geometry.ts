@@ -1,5 +1,5 @@
 import type { Point } from '../config/types';
-import { CANAL_CHANNELS, WINDHAVEN_LANDMASS, roadNetwork } from './world';
+import { CANAL_CHANNELS, WINDHAVEN_LAKE, WINDHAVEN_LANDMASS, WORLD_N, roadNetwork } from './world';
 
 export interface Bounds {
   minX: number;
@@ -44,6 +44,24 @@ export function isPointOnWindhavenLand(point: Point, radius: number): boolean {
   return circleInsidePolygon(point, radius, WINDHAVEN_LANDMASS);
 }
 
+// LEGAL: Land tests ask whether the WHOLE circle is inside; water tests must ask whether ANY
+// LEGAL: of it is, or you can wade a body-width into the lake before it stops you.
+export function circleTouchesPolygon(point: Point, radius: number, polygon: Point[]): boolean {
+  return [
+    point,
+    { x: point.x - radius, y: point.y },
+    { x: point.x + radius, y: point.y },
+    { x: point.x, y: point.y - radius },
+    { x: point.x, y: point.y + radius },
+  ].some(check => pointInPolygon(check, polygon));
+}
+
+// LEGAL: The lake is enclosed land-side, so unlike the old open bay it cannot be expressed as
+// LEGAL: "north of the coast". It is punched out of the landmass exactly like the canals.
+export function isPointInLake(point: Point, radius: number): boolean {
+  return circleTouchesPolygon(point, radius, WINDHAVEN_LAKE);
+}
+
 export function isPointInCanal(point: Point, radius: number): boolean {
   return CANAL_CHANNELS.some(channel => point.x > channel.x + 30 - radius && point.x < channel.x + channel.width - 30 + radius);
 }
@@ -54,12 +72,11 @@ export function isPointOnBridge(point: Point, radius: number): boolean {
 
 export function isPointInWater(point: Point, radius: number): boolean {
   if(!isPointOnWindhavenLand(point, radius)) return true;
-  // LEGAL: This used to be a flat `y < 56` north-water rule, back when the landmass ran
-  // LEGAL: north past y=0 and the real shoreline was not in the polygon. The coastline now
-  // LEGAL: carries the actual north shore per district (stage 1b), so the polygon test
-  // LEGAL: above does this job — a flat cut-off here would override the shape and flatten
-  // LEGAL: every district's coast back to a straight line. Kept only as a backstop well
-  // LEGAL: north of any authored land.
-  if(point.y < 40 + radius) return true;
+  if(isPointInLake(point, radius)) return true;
+  // LEGAL: This was `y < 40`, from when the water north of the city was open ocean and the
+  // LEGAL: landmass simply stopped at the coast. The land now wraps over the top of the lake,
+  // LEGAL: so a cut-off at y=40 would have drowned every northern outskirt. The backstop is
+  // LEGAL: kept, moved to just beyond the northern edge of any authored land.
+  if(point.y < WORLD_N + radius) return true;
   return isPointInCanal(point, radius) && !isPointOnBridge(point, radius);
 }
