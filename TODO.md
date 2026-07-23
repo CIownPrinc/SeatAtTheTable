@@ -48,10 +48,34 @@ introduced. **Fix these before building anything new.**
 - Interactable buildings enlarged — they read smaller than the scenery around them.
 - Minimap train was ~6x30px on a 150px minimap. Now scales properly.
 - Movement no longer continues underneath the open City Map.
+- **Random floating blocks / floating buildings.** `createFittedModel` applied its fit to the
+  group it RETURNED, so asset-backed buildings came back scaled to e.g. `(30, 41.6, 22)`.
+  Every caller adds detail to that group in world units — awnings, cornices, fire escapes,
+  category markers, signs — and all of it was multiplied, putting a food cart's marker two
+  thousand units into the sky. The same function wrote its recentring offset to
+  `group.position`, which callers then overwrote with `position.set(x, h/2, y)`, so
+  asset-backed buildings sat off-centre too. Fit now lives on an inner child; the wrapper
+  behaves exactly like the procedural fallback. Guarded by `assets.test.ts`.
+- Street corners were three loose meshes (pole, orb, dealer), so the orb measured as a block
+  at y=21 with nothing beneath it. Landmarks were loose meshes too, so a dome floated above
+  its own base. Both are single named groups now.
+- The Potato's plaza (100 deep) sat at y=560 and reached into Roosevelt Road. Moved to y=500.
+- **NPCs pacing into walls.** Roam targets were accepted on the DESTINATION alone, but
+  pedestrians walk in a straight line, so a target behind a building sent the actor into the
+  wall, where it was blocked, retreated home, and repeated. Candidate targets are now sampled
+  along the path. Spawns are also settled against the world's solids (preventative — the
+  audit proves nothing is stuck at spawn today; verified by disabling the fix).
+
+**The detector.** `e2e/scene-audit.e2e.ts` walks the live three.js scene through the dev-only
+`window.__seat` hook and measures with three's own `Box3`. It asserts no building stands in a
+road, nothing floats, nothing is buried, and no pedestrian stands inside a building. Every
+world object is named where it is added, so a failure names the offender. Two traps worth
+remembering: `Box3.setFromObject` expands a **Sprite** by its scale on every axis (a name
+label gave one food cart a 4000-unit footprint), so measure solid `Mesh` geometry only; and
+the audit uses a **whitelist** of building prefixes, so new scenery cannot opt itself in and
+new buildings cannot opt themselves out.
 
 **Still outstanding (reported, not yet fixed):**
-- Random floating blocks; some buildings appear to float.
-- NPCs stuck inside buildings and standing in roads.
 - You can walk through the train (only vehicles are blocked today).
 - Waypoint route hints do not show across bridges.
 - Waypoint/GPS gold is the same yellow as the road markings — shift the hue.
