@@ -62,6 +62,43 @@ introduced. **Fix these before building anything new.**
   already shows. Make them do something.
 - Remove the travel-nodes strip above the map.
 
+## 0a. Places must look like what they are
+
+Everything on the map is currently a **box with a sign on it**, sized by a silhouette table
+and coloured by neighbourhood. That is why the world reads as noise: the map says one thing
+and draws another. Fixing the geometry does not fix this — a back alley rendered as a
+building is the map lying to you.
+
+The fix is an **archetype** per place, chosen by what the place IS, not by which config
+array it happens to live in:
+
+| Archetype | Should look like | Examples |
+| --- | --- | --- |
+| `cart` | A stall: canopy, counter, crates. No building shell. | Kailash's Cart |
+| `alley` | A gap between two blocks — walls, bins, a fire escape. **No building.** | Devlin Back Alley |
+| `lot` | Open ground, fencing, a hut | Railyard, Dockmaster |
+| `tenement` | Low, worn, boarded windows, fire escapes | Concrete Dreams stock |
+| `storefront` | Ground-floor shop, awning, signage band | Local businesses |
+| `showroom` | Wide glass frontage | Dealerships |
+| `office` | Mid-rise, clean, cornice | Brokerages, Horizon |
+| `tower` | Tall, glass, roof plant | Lakeshore, Hub corporate |
+| `civic` | Columns, steps, dome | City Hall, banks |
+| `works` | Shed, vents, water tank | Ironpoint, chop shop |
+
+Two rules this must enforce, both currently violated:
+
+1. **A property's archetype comes from its brand's character.** A Concrete Dreams walk-up
+   must be a run-down tenement standing on rough blocks — not the same clean box as a
+   Horizon apartment. The `rough` neighbourhood character and the `cheap` brand category
+   already encode this; the renderer just ignores them.
+2. **Not everything is a building.** `cart`, `alley` and `lot` must render as their thing
+   with NO building shell, and their collision must match — you should be able to walk INTO
+   an alley, not bump into a box where one should be.
+
+`map/neighbourhoods.ts` already has the per-character detailing (boarded windows, fire
+escapes, cornices, awnings) — this is about picking the right shell to hang it on, and
+about the places that should not be buildings at all.
+
 ## 0b. New requests, not started
 
 - **Outskirts pass 2**: the ring is scenery. Add countryside/suburb/forest content and
