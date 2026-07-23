@@ -56,6 +56,15 @@ async function worldBoxes(page: Page, prefixes: string[]): Promise<AuditBox[]> {
       child.traverse(function(node){
         const mesh = node as import('three').Mesh;
         if(!(mesh as { isMesh?: boolean }).isMesh || !mesh.geometry) return;
+        // LEGAL: An InstancedMesh's GEOMETRY box is one instance sitting at the origin, so
+        // LEGAL: measuring it that way reported every road marking in the city as a single
+        // LEGAL: object at (0,0). three knows how to account for the instance matrices.
+        const instanced = mesh as import('three').InstancedMesh;
+        if((instanced as { isInstancedMesh?: boolean }).isInstancedMesh){
+          instanced.computeBoundingBox();
+          if(instanced.boundingBox) box.union(instanced.boundingBox.clone().applyMatrix4(instanced.matrixWorld));
+          return;
+        }
         if(!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
         const local = mesh.geometry.boundingBox;
         if(!local) return;
@@ -160,6 +169,61 @@ test.describe('scene audit — what the renderer actually drew', () => {
     });
 
     expect(blocked, `places that should be open ground but are not:\n${blocked.join('\n')}`).toEqual([]);
+  });
+
+  // LEGAL: Solid scenery standing in the lake or out in the ocean is the "random blocks
+  // LEGAL: floating across the map" report. Nothing in the world's own name list is exempt by
+  // LEGAL: default: the only things allowed over water are the ones that are SUPPOSED to be
+  // LEGAL: there, and they say so in their name.
+  test('no solid scenery stands in the water', async ({ page }) => {
+    test.setTimeout(120000);
+    await waitForScene(page);
+
+    const offenders = await page.evaluate(() => {
+      const seat = (window as never as {
+        __seat: {
+          THREE: typeof import('three');
+          worldGroup: import('three').Group;
+          isWater: (x: number, y: number) => boolean;
+        };
+      }).__seat;
+      const bad: string[] = [];
+      // LEGAL: Water, terrain, coastline dressing, bridges, the rail crossing and jetties all
+      // LEGAL: legitimately sit on or over water.
+      const allowed = /water|terrain|coast|foam|bridge|rail|pier|jetty|waypoint|train/i;
+      seat.worldGroup.children.forEach(function(child){
+        if(allowed.test(child.name)) return;
+        child.updateWorldMatrix(true, true);
+        const box = new seat.THREE.Box3();
+        child.traverse(function(node){
+          const m = node as import('three').Mesh;
+          if(!(m as { isMesh?: boolean }).isMesh || !m.geometry) return;
+          const inst = m as import('three').InstancedMesh;
+          if((inst as { isInstancedMesh?: boolean }).isInstancedMesh){
+            inst.computeBoundingBox();
+            if(inst.boundingBox) box.union(inst.boundingBox.clone().applyMatrix4(inst.matrixWorld));
+            return;
+          }
+          if(!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+          const local = m.geometry.boundingBox;
+          if(!local) return;
+          box.union(local.clone().applyMatrix4(m.matrixWorld));
+        });
+        if(box.isEmpty()) return;
+        const h = box.max.y - box.min.y;
+        const w = box.max.x - box.min.x;
+        const d = box.max.z - box.min.z;
+        // LEGAL: Ground planes and hairline dressing are not "blocks".
+        if(h < 4) return;
+        if(w > 1200 || d > 1200) return;
+        const cx = (box.min.x + box.max.x) / 2;
+        const cz = (box.min.z + box.max.z) / 2;
+        if(seat.isWater(cx, cz)) bad.push(`${child.name || child.type} stands in water at (${Math.round(cx)}, ${Math.round(cz)})`);
+      });
+      return bad.slice(0, 24);
+    });
+
+    expect(offenders, 'solid scenery in the water:' + offenders.join('; ')).toEqual([]);
   });
 
   test('nothing is buried under the ground', async ({ page }) => {

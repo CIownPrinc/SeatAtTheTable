@@ -11,7 +11,7 @@ function outskirtColor(kind: OutskirtRegion['kind']): string {
   return mapTerrainTheme.outskirtFarmland;
 }
 import { districtIdAtPlayablePoint, roadLandSegments, windhavenMapModel } from './mapModel';
-import { boundsForPoints } from './geometry';
+import { boundsForPoints, isPointInWater } from './geometry';
 import { mapTerrainTheme, mapTransportTheme, terrainForDistrict } from './renderTheme';
 import { addInstancedMesh, createMapSceneMaterials, type MapSceneMaterialCache, type SceneInstance } from './scenePerformance';
 import type { FillerItem, MapZoneType, Point } from '../config/types';
@@ -285,7 +285,9 @@ export function buildCanalWater(options: BaseSceneOptions): void {
   const bankInstances: SceneInstance[] = [];
   windhavenMapModel.canals.forEach(function(channel){
     const canal = new THREE.Mesh(new THREE.PlaneGeometry(channel.width,worldHeight + 180), canalMat);
-    canal.rotation.x=-Math.PI/2; canal.position.set(channel.x+channel.width/2,0.04,worldHeight/2); worldGroup.add(canal);
+    // LEGAL: Above the beach sand (0.09), not below it — the resort strip crosses both canal
+    // LEGAL: mouths, and at 0.04 the sand paved straight over the water.
+    canal.rotation.x=-Math.PI/2; canal.position.set(channel.x+channel.width/2,0.12,worldHeight/2); canal.renderOrder = 3; worldGroup.add(canal);
     [channel.x+8, channel.x+channel.width-8].forEach(function(x){
       bankInstances.push({ x, y:2, z:worldHeight/2 });
     });
@@ -630,6 +632,11 @@ function buildBeachResort(options: BaseSceneOptions): void {
       const bx = start.x + Math.cos(angle) * t;
       const by = start.y + Math.sin(angle) * t;
       const wave = Math.sin(index * 5.4 + t * 0.05);
+      // LEGAL: The shore ring runs straight across both canal mouths, so a naive walk down it
+      // LEGAL: plants palms and loungers in the canal. Asked of the world's own water rule
+      // LEGAL: rather than a hand-picked x range, so new canals cannot reintroduce this.
+      if(isPointInWater({ x: bx + nx * 16, y: by + ny * 16 }, 14)) continue;
+      if(isPointInWater({ x: bx + nx * 40, y: by + ny * 40 }, 14)) continue;
 
       // LEGAL: Palm — a leaning trunk with a crown of angled fronds.
       const palm = new THREE.Group();

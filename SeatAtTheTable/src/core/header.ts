@@ -26,7 +26,7 @@ import { minigameOpen, playMinigame, type MinigameResult } from '../map/minigame
 import { buildAmenityModel as buildMapAmenityModel } from '../map/amenityRendering';
 import { createFillerLayoutProvider, seededRandom } from '../map/filler';
 import { applyMapWorldCoordinates, createMapBuildings, mapNpcs } from '../map/markers';
-import { actorRadius, canMoveTo, nearestFreePoint, penetrationDepth } from '../map/movement';
+import { actorRadius, canMoveTo, isWaterBlocked, nearestFreePoint, penetrationDepth } from '../map/movement';
 import { drawMinimap as drawMapMinimap, MINIMAP_SCALE } from '../map/minimap';
 import type { MapObject } from '../map/objects';
 import { solidsFromObjects } from '../map/objects';
@@ -4732,6 +4732,9 @@ import type * as ThreeNamespace from 'three';
         // LEGAL: The world's own walkability rule, so the audit asks the game where an actor
         // LEGAL: may stand instead of re-deriving collision and grading its own homework.
         canWalk: function(x: number, y: number){ return tryMove(x, y, currentSolids); },
+        // LEGAL: The world's own water rule, so the audit can ask whether a thing is standing
+        // LEGAL: in the lake or the ocean rather than re-deriving the coastline.
+        isWater: function(x: number, y: number){ return isWaterBlocked(x, y, 0); },
       };
     }
     playerGroup = new THREE.Group(); scene.add(playerGroup);
