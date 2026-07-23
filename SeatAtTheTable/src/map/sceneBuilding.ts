@@ -1,5 +1,6 @@
 import type { DiagonalRoad, HorizontalRoad, Landmark, OutskirtRegion, VerticalRoad } from './world';
 import { OUTSKIRT_REGIONS } from './world';
+import { characterProfile } from './neighbourhoods';
 
 // LEGAL: One colour per outskirt belt kind, read from the shared terrain theme so the 3D
 // LEGAL: world and any future minimap treatment cannot drift apart.
@@ -392,11 +393,16 @@ export function buildFillerCity(options: FillerSceneOptions): void {
     fillerFor(distId).forEach(function(f){
       if(f.kind==='building'){
         const zoneType = helpers.renderZoneType(f.zone);
-        const palette = f.style==='apartment'
-          ? ['#6a4b3f','#705848','#61564d','#7a6254','#5d4a46']
-          : (f.zone==='corporate'
-            ? ['#283247','#33405c','#4d445f','#2f5360','#57515a']
-            : (f.zone==='industrial' || f.zone==='logistics' ? ['#463f34','#55443c','#3f4542','#5c4638','#3d3946'] : (f.zone==='entertainment' ? ['#5a345e','#4a3f68','#6a3d4a','#3c5264'] : ['#394452','#4f463b','#365344','#58414a','#4f5159'])));
+        // LEGAL: Palette comes from the block's CHARACTER, not its zone. Zone only says
+        // LEGAL: what a block is for; two residential blocks should look like different
+        // LEGAL: worlds if one is Gilt Shore and the other is Canal Row.
+        // LEGAL: Walk-up apartments keep their own brick palette on top of that, which is
+        // LEGAL: what gives a single block two families of colour. Collapsing them into the
+        // LEGAL: character palette measurably flattened the view — the mobile colour-variety
+        // LEGAL: guard caught it.
+        const palette = f.style === 'apartment'
+          ? ['#6a4b3f', '#705848', '#61564d', '#7a6254', '#5d4a46']
+          : characterProfile(f.character).palette;
         const color = palette[Math.floor(f.hue * palette.length) % palette.length];
         const mesh = helpers.buildDetailedBuilding(f.w,f.h,f.d,color,zoneType,f.hue);
         if(f.style==='apartment'){

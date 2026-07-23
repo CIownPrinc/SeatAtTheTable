@@ -3,6 +3,7 @@ import type { MapObject } from './objects';
 import { buildableBands, distancePointToSegment, localXForDistrict, rectsOverlap, rotatedHalfExtents } from './layout';
 import { DISTRICT_OFFSETS, DISTRICT_W, WORLD_H, districtParkSlots, districtSeeds, landmarks, roadNetwork } from './world';
 import { zoneForDistrictBlock } from './zoning';
+import { characterForDistrictBlock, characterProfile, type BlockCharacter } from './neighbourhoods';
 import { districtIdAtPlayablePoint } from './mapModel';
 
 const ROAD_VISUAL_CLEARANCE_X = 56;
@@ -74,11 +75,11 @@ export function createFillerLayoutProvider(mapObjects: MapObject[]): FillerLayou
       })) return false;
       return !placed.some(s=>rectsOverlap(candidate, s, BUILDING_GAP));
     };
-    const pushBuilding = function(zone: MapZoneType, x: number, y: number, w: number, d: number, h: number, hue: number, rot: number, style?: 'apartment'): void {
+    const pushBuilding = function(zone: MapZoneType, character: BlockCharacter, x: number, y: number, w: number, d: number, h: number, hue: number, rot: number, style?: 'apartment'): void {
       const ext = rotatedHalfExtents(w, d, rot);
       const solid = { x, y, hw:ext.hw, hd:ext.hd };
       if(!fitsSolid(solid)) return;
-      filler.push({kind:'building', zone, x, y, w, d, h, hue, rot, style});
+      filler.push({kind:'building', zone, character, x, y, w, d, h, hue, rot, style});
       placed.push(solid);
     };
     for(let xi=0; xi<xBands.length; xi++){
@@ -100,16 +101,22 @@ export function createFillerLayoutProvider(mapObjects: MapObject[]): FillerLayou
         const cellW = bw/cols, cellD = bd/rows;
         for(let ci=0; ci<cols; ci++){
           for(let ri=0; ri<rows; ri++){
-            if(rand()<0.08) continue;
             const zone = zoneForDistrictBlock(districtId, xi, yi);
-            const apartment = zone === 'residential' && rand() > 0.55;
-            const w = Math.max(MIN_FILLER_BUILDING_W, cellW*(apartment ? 0.72+rand()*0.18 : 0.58+rand()*0.28));
-            const d = Math.max(MIN_FILLER_BUILDING_D, cellD*(apartment ? 0.68+rand()*0.2 : 0.58+rand()*0.28));
-            const h = apartment ? 42 + rand()*48 : (districtId==='hub' && yi < 2 ? 70 + rand()*rand()*210 : MIN_FILLER_BUILDING_H + rand()*rand()*82);
+            // LEGAL: Stage 3 — the block's character drives how built-up, how tall, how
+            // LEGAL: crooked and how neglected it looks. A rough block leaves real gaps;
+            // LEGAL: an affluent one is dense, straight and barely ever empty.
+            const character = characterForDistrictBlock(districtId, xi, yi);
+            const profile = characterProfile(character);
+            if(rand() < profile.vacancyChance) continue;
+            const apartment = zone === 'residential' && rand() < profile.apartmentChance;
+            const w = Math.max(MIN_FILLER_BUILDING_W, cellW*(apartment ? 0.72+rand()*0.18 : 0.58+rand()*0.28)*profile.footprintMult);
+            const d = Math.max(MIN_FILLER_BUILDING_D, cellD*(apartment ? 0.68+rand()*0.2 : 0.58+rand()*0.28)*profile.footprintMult);
+            const baseH = apartment ? 42 + rand()*48 : (districtId==='hub' && yi < 2 ? 70 + rand()*rand()*210 : MIN_FILLER_BUILDING_H + rand()*rand()*82);
+            const h = Math.max(MIN_FILLER_BUILDING_H, baseH * profile.heightMult);
             const px = x0 + ci*cellW + (cellW-w)/2 + jit()*cellW*0.2;
             const py = y0 + ri*cellD + (cellD-d)/2 + jit()*cellD*0.2;
-            const rot = jit()*0.18 + (rand()<0.12 ? jit()*0.6 : 0);
-            pushBuilding(zone, px+w/2, py+d/2, w, d, h, rand(), rot, apartment ? 'apartment' : undefined);
+            const rot = (jit()*0.18 + (rand()<0.12 ? jit()*0.6 : 0)) * profile.jitterMult;
+            pushBuilding(zone, character, px+w/2, py+d/2, w, d, h, rand(), rot, apartment ? 'apartment' : undefined);
           }
         }
       }

@@ -1,3 +1,5 @@
+import type { BlockCharacter } from '../map/neighbourhoods';
+
 export type VentureCategory = 'legit' | 'street';
 
 export type UnlockRule =
@@ -263,7 +265,10 @@ export type MapZoneType = 'smallBusiness' | 'residential' | 'industrial' | 'corp
 export type FillerItem =
   | { kind: 'park'; name: string; x0: number; y0: number; x1: number; y1: number }
   | { kind: 'lot'; x0: number; y0: number; x1: number; y1: number }
-  | { kind: 'building'; zone: MapZoneType; x: number; y: number; w: number; d: number; h: number; hue: number; rot: number; style?: 'apartment' }
+  // LEGAL: `character` is the stage-3 neighbourhood axis (affluent / rough / shopping...),
+  // LEGAL: independent of `zone`, which is only land use. The renderer picks its palette
+  // LEGAL: from character so two residential blocks can look like different worlds.
+  | { kind: 'building'; zone: MapZoneType; character: BlockCharacter; x: number; y: number; w: number; d: number; h: number; hue: number; rot: number; style?: 'apartment' }
   // LEGAL: 'edge' = cheap background block forming the city's rough outer skyline.
   | { kind: 'edge'; x: number; y: number; w: number; d: number; h: number; hue: number; rot: number };
 
