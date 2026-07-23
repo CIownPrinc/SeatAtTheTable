@@ -63,15 +63,57 @@ const PROFILES: Record<BlockCharacter, CharacterProfile> = {
     heightMult: 1.05, vacancyChance: 0.06, apartmentChance: 0.12, footprintMult: 1.06, jitterMult: 0.8,
     palette: ['#5a345e', '#4a3f68', '#6a3d4a', '#3c5264', '#63385a', '#7a4a3a', '#455a4a'],
   },
-  // LEGAL: Works and yards: big low sheds, plenty of open ground.
+  // LEGAL: Works and yards: big low sheds, plenty of open ground. footprintMult is kept
+  // LEGAL: close to 1 — pushing it to 1.15 made sheds so wide that the layout rejected most
+  // LEGAL: of them for overlap and the whole West Side came out nearly empty (19 buildings).
   industrial: {
-    heightMult: 0.72, vacancyChance: 0.14, apartmentChance: 0, footprintMult: 1.15, jitterMult: 0.6,
+    heightMult: 0.72, vacancyChance: 0.1, apartmentChance: 0, footprintMult: 1.02, jitterMult: 0.6,
     palette: ['#463f34', '#55443c', '#3f4542', '#5c4638', '#3d3946', '#4e5148', '#6a5a44'],
   },
 };
 
 export function characterProfile(character: BlockCharacter): CharacterProfile {
   return PROFILES[character];
+}
+
+// LEGAL: ---- Facade detailing (stage 4) ----
+// LEGAL: Palette alone still left every building the same box. These are the details that
+// LEGAL: make a block legible at a glance: boarded windows and fire escapes on run-down
+// LEGAL: blocks, cornices and balconies where there is money, awnings and signage on a
+// LEGAL: retail strip, roof plant downtown, vents and tanks on the works.
+export interface CharacterDetail {
+  /** Boarded-up openings and patched frontages. */
+  boarded: boolean;
+  /** Zig-zag fire escape down the front. */
+  fireEscape: boolean;
+  /** Projecting balconies. */
+  balcony: boolean;
+  /** Decorative cornice along the roofline. */
+  cornice: boolean;
+  /** Shopfront awning plus a signage band. */
+  shopfront: boolean;
+  /** Rooftop plant / aircon housings. */
+  roofPlant: boolean;
+  /** Neon sign band. */
+  neon: boolean;
+  /** Roof vents and a water tank. */
+  vents: boolean;
+  /** Accent colour for whichever trim this character uses. */
+  trim: string;
+}
+
+const DETAILS: Record<BlockCharacter, CharacterDetail> = {
+  affluent: { boarded:false, fireEscape:false, balcony:true, cornice:true, shopfront:false, roofPlant:false, neon:false, vents:false, trim:'#c9bfa4' },
+  working: { boarded:false, fireEscape:true, balcony:false, cornice:false, shopfront:false, roofPlant:false, neon:false, vents:false, trim:'#8a7f6b' },
+  rough: { boarded:true, fireEscape:true, balcony:false, cornice:false, shopfront:false, roofPlant:false, neon:false, vents:false, trim:'#5a5148' },
+  shopping: { boarded:false, fireEscape:false, balcony:false, cornice:false, shopfront:true, roofPlant:false, neon:false, vents:false, trim:'#b8452f' },
+  corporate: { boarded:false, fireEscape:false, balcony:false, cornice:true, shopfront:false, roofPlant:true, neon:false, vents:false, trim:'#8fa8bd' },
+  entertainment: { boarded:false, fireEscape:false, balcony:false, cornice:false, shopfront:true, roofPlant:false, neon:true, vents:false, trim:'#d44d96' },
+  industrial: { boarded:false, fireEscape:false, balcony:false, cornice:false, shopfront:false, roofPlant:false, neon:false, vents:true, trim:'#7a6a4a' },
+};
+
+export function characterDetail(character: BlockCharacter): CharacterDetail {
+  return DETAILS[character];
 }
 
 // LEGAL: Character over the 4x4 block grid of each district. Kept in one readable table

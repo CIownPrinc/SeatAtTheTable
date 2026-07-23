@@ -1,6 +1,6 @@
 import type { DiagonalRoad, HorizontalRoad, Landmark, OutskirtRegion, VerticalRoad } from './world';
 import { OUTSKIRT_REGIONS } from './world';
-import { characterProfile } from './neighbourhoods';
+import { characterDetail, characterProfile } from './neighbourhoods';
 
 // LEGAL: One colour per outskirt belt kind, read from the shared terrain theme so the 3D
 // LEGAL: world and any future minimap treatment cannot drift apart.
@@ -385,6 +385,71 @@ export function buildStreetTrees(options: TreeSceneOptions): void {
   });
 }
 
+// LEGAL: Stage 4 — facade detailing per neighbourhood character, so a run-down block and a
+// LEGAL: bougie one read differently at a glance rather than being the same box in a
+// LEGAL: different colour. Boxes only, added to the building's own group so they inherit
+// LEGAL: its rotation and position.
+function addCharacterDetail(
+  helpers: FillerSceneHelpers,
+  mesh: ThreeNamespace.Group,
+  f: Extract<FillerItem, { kind: 'building' }>,
+): void {
+  const detail = characterDetail(f.character);
+  const front = f.d / 2;
+  const top = f.h / 2;
+
+  if(detail.cornice){
+    const cornice = helpers.box(f.w * 1.06, 3, f.d * 1.06, detail.trim);
+    cornice.position.set(0, top - 2, 0); mesh.add(cornice);
+  }
+  if(detail.balcony){
+    // LEGAL: A couple of storeys of projecting balconies down the frontage.
+    for(let i = 1; i <= 2; i += 1){
+      const y = -top + (f.h * i) / 3;
+      const slab = helpers.box(f.w * 0.52, 1.6, 5, detail.trim);
+      slab.position.set(0, y, front + 2.4); mesh.add(slab);
+    }
+  }
+  if(detail.fireEscape){
+    // LEGAL: Zig-zag ladder stack — the single clearest "walk-up" read from above.
+    const rungs = Math.max(2, Math.floor(f.h / 22));
+    for(let i = 0; i < rungs; i += 1){
+      const y = -top + 8 + i * (f.h / (rungs + 1));
+      const platform = helpers.box(f.w * 0.34, 1.2, 4, detail.trim);
+      platform.position.set(i % 2 === 0 ? -f.w * 0.2 : f.w * 0.2, y, front + 2); mesh.add(platform);
+    }
+  }
+  if(detail.boarded){
+    // LEGAL: Boarded openings — pale patches where windows used to be.
+    const boards = Math.max(1, Math.floor(f.w / 26));
+    for(let i = 0; i < boards; i += 1){
+      const bx = -f.w / 2 + (f.w * (i + 0.5)) / boards;
+      const board = helpers.box(Math.min(11, f.w * 0.2), 7, 1.4, '#8a7f6b');
+      board.position.set(bx, -top + f.h * 0.34, front + 0.9); mesh.add(board);
+    }
+  }
+  if(detail.shopfront){
+    const awning = helpers.box(f.w * 0.82, 2.6, 7, detail.trim);
+    awning.position.set(0, -top + 13, front + 3.2); mesh.add(awning);
+    const sign = helpers.box(f.w * 0.66, 5, 1.4, detail.trim);
+    sign.position.set(0, -top + 21, front + 0.9); mesh.add(sign);
+  }
+  if(detail.neon){
+    const strip = helpers.box(f.w * 0.7, 2.2, 1.2, detail.trim);
+    strip.position.set(0, top - f.h * 0.28, front + 0.9); mesh.add(strip);
+  }
+  if(detail.roofPlant){
+    const plant = helpers.box(f.w * 0.34, 6, f.d * 0.34, detail.trim);
+    plant.position.set(f.w * 0.16, top + 3, -f.d * 0.14); mesh.add(plant);
+  }
+  if(detail.vents){
+    const tank = helpers.box(f.w * 0.24, 8, f.d * 0.24, detail.trim);
+    tank.position.set(-f.w * 0.2, top + 4, f.d * 0.16); mesh.add(tank);
+    const duct = helpers.box(f.w * 0.5, 2.4, 3, detail.trim);
+    duct.position.set(0, top + 1.4, -f.d * 0.24); mesh.add(duct);
+  }
+}
+
 export function buildFillerCity(options: FillerSceneOptions): void {
   const { THREE, worldGroup, districtOffsets, fillerFor, helpers } = options;
   const materials = materialsFor(options);
@@ -411,6 +476,7 @@ export function buildFillerCity(options: FillerSceneOptions): void {
           const awning = helpers.box(Math.min(26,f.w*0.55),3,7,'#2f5360');
           awning.position.set(0,-f.h/2+16,f.d/2+3); mesh.add(awning);
         }
+        addCharacterDetail(helpers, mesh, f);
         mesh.position.set(f.x+off,f.h/2,f.y); mesh.rotation.y = f.rot; worldGroup.add(mesh);
       } else if(f.kind==='park'){
         const cx=(f.x0+f.x1)/2+off, cy=(f.y0+f.y1)/2, w=f.x1-f.x0, d=f.y1-f.y0;
