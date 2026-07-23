@@ -1,4 +1,4 @@
-import type { LocalBusiness, ServiceBuilding } from '../config/types';
+import type { LocalBusiness, ServiceBuilding, Solid } from '../config/types';
 import { brandById } from '../config/brands';
 import type { MapBuilding } from './markers';
 import type { PropertyPlace } from './propertyPlaces';
@@ -174,4 +174,19 @@ export function propertyArchetype(place: PropertyPlace): PlaceArchetype | null {
   const category = brandById(place.property.brand)?.category;
   if(!category) return null;
   return PROPERTY_CATEGORY_ARCHETYPES[category] ?? null;
+}
+
+// LEGAL: Solids an archetype needs BEYOND its own bounds. An alley is the gap between two
+// LEGAL: buildings, so the gap itself must stay walkable (solidScale 0) while the buildings
+// LEGAL: forming it are solid. One bounds box cannot express "blocked, open, blocked", so the
+// LEGAL: flanks come from here. Kept next to the archetype table rather than in the renderer
+// LEGAL: so the collision and the drawn shell are sized from the same numbers.
+export const ALLEY_FLANK_W = 30;
+
+export function archetypeExtraSolids(archetype: PlaceArchetype | null, x: number, y: number, w: number, d: number): Solid[] {
+  if(archetype !== 'alley') return [];
+  const offset = w/2 + ALLEY_FLANK_W/2 - 2;
+  return [-1, 1].map(function(side){
+    return { x: x + side * offset, y, hw: ALLEY_FLANK_W/2, hd: d/2 };
+  });
 }

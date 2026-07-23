@@ -32,13 +32,32 @@ import type { MapObject } from '../map/objects';
 import { solidsFromObjects } from '../map/objects';
 import { buildMapObjects, ventureFootprint } from '../map/objectFactory';
 import { GARAGE_RETURN_SECONDS, PARKING_DISTRICT_IDS, carSpawnPositionForDistrict, defaultParkedCarPositions, parkedCarPositionForDistrict, secondsUntilGarageReturn, shouldReturnToGarage } from '../map/parking';
-import { renderMapPlaces } from '../map/placeRendering';
+import { renderMapPlaces, serviceBuildingSilhouette } from '../map/placeRendering';
+import { archetypeExtraSolids, serviceArchetype } from '../map/archetypes';
 import { propertyPlaces, type PropertyPlace } from '../map/propertyPlaces';
 import { createMapPlaceRecords, mapPlaceCategoryLabel, type MapPlaceCategory, type MapPlaceRecord } from '../map/places';
 import { bridgeAtPoint, mapPointContext, nearestPlaceAtPoint, placesByCategory, routeHintBetween, routeSummary, trainCrossingBlockAtPoint } from '../map/queries';
 import { outskirtPlaceLabel } from '../map/outskirts';
 import { allocateServiceLots } from '../map/serviceLots';
 import { createRoamingActors, settleRoamingActors, updateRoamingActors } from '../map/roaming';
+import {
+  POKER_PAYOUTS,
+  blackjackReturn,
+  cardLabel,
+  drawReplacements,
+  freshDeck,
+  handValue,
+  playDealerHand,
+  pokerReturn,
+  rankPokerHand,
+  rouletteColor,
+  rouletteReturn,
+  settleBlackjack,
+  shuffle,
+  spinRoulette,
+  type Card,
+  type RouletteBet,
+} from '../map/casino';
 import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, buildLandmarks, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
 import { createMapSceneMaterials, createSceneBuildTimer } from '../map/scenePerformance';
 import { buildIntersectionFurniture as buildMapIntersectionFurniture } from '../map/streetFurniture';
@@ -490,7 +509,7 @@ import type * as ThreeNamespace from 'three';
     ownedCars: [], equippedCar: null, ownedProperties: [],
     // LEGAL: Phase 4 caveats: when each property was bought (waterfront rent appreciates
     // LEGAL: with how long you have held it) and which used cars are currently broken down.
-    propertyOwnedAt: {}, brokenCars: [], carParkedAt: null,
+    propertyOwnedAt: {}, brokenCars: [], carColors: {}, carParkedAt: null,
     currentDistrict: 'devlin', product: 0, productLevel: 0, currentInterior: null,
     inVehicle: false,
     waypoints: { devlin:null, westside:null, hub:null, global:null },
@@ -1407,6 +1426,246 @@ import type * as ThreeNamespace from 'three';
     });
     buttons.push({ label:'Leave', secondary:true });
     showModal({ eyebrow:'Your Garage', title:'Your Fleet', body:`<p class="flavor">${owned.length} car${owned.length===1?'':'s'} in the bays. Whatever you leave in the street ends up back here.</p>`, buttons });
+  }
+
+  // LEGAL: ================= THE GILDED KETTLE =================
+  // LEGAL: The rules live in map/casino.ts and are unit tested; everything here is table
+  // LEGAL: dressing and the cash. One stake used by every game so the player sets it once.
+
+  const CASINO_STAKES = [50, 250, 1000, 5000];
+  let casinoStake = 250;
+
+  function casinoCanBet(): boolean {
+    if(state.cash >= casinoStake) return true;
+    log(`<i class="ph-duotone ph-spades"></i> The Kettle does not take markers. You need ${fmt(casinoStake)} on the table.`);
+    return false;
+  }
+
+  // LEGAL: Settles a round: the stake is already gone, so `returned` is what comes back.
+  function casinoSettle(returned: number, description: string): void {
+    state.cash += returned;
+    const net = returned - casinoStake;
+    if(net > 0) log(`<i class="ph-duotone ph-spades"></i> ${description} — up ${fmt(net)}.`);
+    else if(net === 0) log(`<i class="ph-duotone ph-spades"></i> ${description} — stake back.`);
+    else log(`<i class="ph-duotone ph-spades"></i> ${description} — down ${fmt(-net)}.`);
+    renderAll();
+  }
+
+  function cardRow(cards: Card[], hidden = 0): string {
+    return cards.map(function(card, index){
+      if(index < hidden) return `<span style="display:inline-block;padding:6px 9px;margin:2px;border-radius:6px;background:#2b3040;color:#6a7080;">?</span>`;
+      const red = card.suit === 'H' || card.suit === 'D';
+      return `<span style="display:inline-block;padding:6px 9px;margin:2px;border-radius:6px;background:#f2efe6;color:${red ? '#b3261e' : '#16181d'};font-weight:700;">${cardLabel(card)}</span>`;
+    }).join('');
+  }
+
+  function openCasinoFloor(): void {
+    showModal({
+      eyebrow:'The Gilded Kettle',
+      title:'The Floor',
+      body:`<p class="flavor">Carpet loud enough to hide a stain, and no clocks anywhere. The house is polite and patient and it is going to win.</p>`
+        + briefRow('Your cash', fmt(state.cash))
+        + briefRow('Table stake', fmt(casinoStake)),
+      buttons:[
+        { label:'Blackjack', onClick:openBlackjack },
+        { label:'Roulette', onClick:openRoulette },
+        { label:'Five-card draw', onClick:openPoker },
+        { label:`Change stake (${fmt(casinoStake)})`, secondary:true, onClick:openStakePicker },
+        { label:'Cash out', secondary:true },
+      ],
+    });
+  }
+
+  function openStakePicker(): void {
+    showModal({
+      eyebrow:'The Gilded Kettle', title:'Table Stake',
+      body:`<p class="flavor">Every game on the floor plays for the same money.</p>`,
+      buttons:[
+        ...CASINO_STAKES.map(function(amount){
+          return { label:`${fmt(amount)}${casinoStake === amount ? ' — current' : ''}`, secondary:casinoStake === amount, onClick:function(){
+            casinoStake = amount;
+            openCasinoFloor();
+          } };
+        }),
+        { label:'Back', secondary:true, onClick:openCasinoFloor },
+      ],
+    });
+  }
+
+  // LEGAL: ---- Blackjack ----
+  function openBlackjack(): void {
+    if(!casinoCanBet()) { openCasinoFloor(); return; }
+    state.cash -= casinoStake;
+    let shoe = shuffle(freshDeck(), Math.random);
+    const player: Card[] = [shoe.shift() as Card, shoe.shift() as Card];
+    const dealer: Card[] = [shoe.shift() as Card, shoe.shift() as Card];
+
+    function finish(): void {
+      const played = playDealerHand(dealer, shoe);
+      const outcome = settleBlackjack(player, played.hand);
+      const returned = blackjackReturn(outcome, casinoStake);
+      const wording: Record<string, string> = {
+        blackjack:'Blackjack', win:'You take it', push:'Push', lose:'Dealer takes it', bust:'Bust',
+      };
+      showModal({
+        eyebrow:'Blackjack', title:wording[outcome],
+        body:`<p class="flavor">Dealer ${handValue(played.hand)} — ${cardRow(played.hand)}</p>`
+          + `<p class="flavor">You ${handValue(player)} — ${cardRow(player)}</p>`,
+        buttons:[
+          { label:'Deal again', onClick:openBlackjack },
+          { label:'Back to the floor', secondary:true, onClick:openCasinoFloor },
+        ],
+      });
+      casinoSettle(returned, wording[outcome]);
+    }
+
+    function turn(): void {
+      const total = handValue(player);
+      if(total >= 21){ finish(); return; }
+      showModal({
+        eyebrow:'Blackjack', title:`You have ${total}`,
+        body:`<p class="flavor">Dealer shows ${cardRow(dealer, 1)}</p>`
+          + `<p class="flavor">Your hand — ${cardRow(player)}</p>`
+          + briefRow('Stake', fmt(casinoStake)),
+        buttons:[
+          { label:'Hit', onClick:function(){ player.push(shoe.shift() as Card); turn(); } },
+          { label:'Stand', onClick:finish },
+        ],
+      });
+    }
+    turn();
+  }
+
+  // LEGAL: ---- Roulette ----
+  function openRoulette(): void {
+    if(!casinoCanBet()) { openCasinoFloor(); return; }
+    const bets: Array<{ label: string; bet: RouletteBet }> = [
+      { label:'Red', bet:{ kind:'color', color:'red' } },
+      { label:'Black', bet:{ kind:'color', color:'black' } },
+      { label:'Even', bet:{ kind:'parity', even:true } },
+      { label:'19 to 36', bet:{ kind:'half', high:true } },
+      // LEGAL: The only inside bet offered, and the reason anyone stays at the wheel.
+      { label:'Straight up on 17 (35:1)', bet:{ kind:'straight', pocket:17 } },
+    ];
+    showModal({
+      eyebrow:'Roulette', title:'Place Your Bet',
+      body:`<p class="flavor">Single zero. The green pocket takes every outside bet, which is exactly how the room pays for the carpet.</p>`
+        + briefRow('Stake', fmt(casinoStake)),
+      buttons:[
+        ...bets.map(function(entry){
+          return { label:entry.label, onClick:function(){
+            state.cash -= casinoStake;
+            const pocket = spinRoulette(Math.random);
+            const returned = rouletteReturn(entry.bet, pocket, casinoStake);
+            const color = rouletteColor(pocket);
+            showModal({
+              eyebrow:'Roulette', title:`${pocket} ${color}`,
+              body:`<p class="flavor">You were on ${entry.label.toLowerCase()}.</p>`,
+              buttons:[
+                { label:'Spin again', onClick:openRoulette },
+                { label:'Back to the floor', secondary:true, onClick:openCasinoFloor },
+              ],
+            });
+            casinoSettle(returned, `${pocket} ${color}`);
+          } };
+        }),
+        { label:'Back', secondary:true, onClick:openCasinoFloor },
+      ],
+    });
+  }
+
+  // LEGAL: ---- Five-card draw against the pay table ----
+  function openPoker(): void {
+    if(!casinoCanBet()) { openCasinoFloor(); return; }
+    state.cash -= casinoStake;
+    const shoe = shuffle(freshDeck(), Math.random);
+    let hand: Card[] = shoe.splice(0, 5);
+    const held = new Set<number>();
+
+    function payTable(): string {
+      return (Object.keys(POKER_PAYOUTS) as Array<keyof typeof POKER_PAYOUTS>)
+        .filter(key => POKER_PAYOUTS[key] > 0)
+        .map(key => briefRow(key, `${POKER_PAYOUTS[key]}x`))
+        .join('');
+    }
+
+    function draw(): void {
+      const result = drawReplacements(hand, [...held], shoe);
+      hand = result.hand;
+      const ranked = rankPokerHand(hand);
+      const returned = pokerReturn(ranked, casinoStake);
+      showModal({
+        eyebrow:'Five-card draw', title:ranked === 'nothing' ? 'Nothing' : ranked,
+        body:`<p class="flavor">${cardRow(hand)}</p>` + briefRow('Pays', `${POKER_PAYOUTS[ranked]}x`),
+        buttons:[
+          { label:'Deal again', onClick:openPoker },
+          { label:'Back to the floor', secondary:true, onClick:openCasinoFloor },
+        ],
+      });
+      casinoSettle(returned, ranked === 'nothing' ? 'No hand' : ranked);
+    }
+
+    function chooseHolds(): void {
+      showModal({
+        eyebrow:'Five-card draw', title:'Hold and Draw',
+        body:`<p class="flavor">${cardRow(hand)}</p>`
+          + `<p class="flavor">Held: ${[...held].sort().map(i => cardLabel(hand[i])).join(' ') || 'nothing yet'}</p>`
+          + payTable(),
+        buttons:[
+          ...hand.map(function(card, index){
+            return { label:`${held.has(index) ? 'Release' : 'Hold'} ${cardLabel(card)}`, secondary:held.has(index), onClick:function(){
+              if(held.has(index)) held.delete(index); else held.add(index);
+              chooseHolds();
+            } };
+          }),
+          { label:'Draw', onClick:draw },
+        ],
+      });
+    }
+    chooseHolds();
+  }
+
+  // LEGAL: ================= RESPRAY =================
+  // LEGAL: Paint is cosmetic and permanent until you change it again, so it is stored per car
+  // LEGAL: rather than swapping the catalogue entry, which every other car of that model
+  // LEGAL: shares.
+  const RESPRAY_COLORS: Array<{ name: string; hex: string; price: number }> = [
+    { name:'Factory Black', hex:'#1c1e24', price:900 },
+    { name:'Oxblood', hex:'#5e1d22', price:1400 },
+    { name:'Kettle Gold', hex:'#c9a227', price:3200 },
+    { name:'Lakeridge Teal', hex:'#1f6f78', price:1800 },
+    { name:'Bone White', hex:'#ddd8c8', price:1200 },
+    { name:'Devlin Rust', hex:'#8a4b2a', price:1100 },
+  ];
+
+  function openResprayBay(): void {
+    const car = getEquippedCar();
+    if(!car){
+      showRoomBrief('Paint Bay', 'Vega Custom', 'Compressors idling, masking tape on the bench, nothing on the ramp. Bring a car back.', '');
+      return;
+    }
+    showModal({
+      eyebrow:'Vega Custom Paint & Trim',
+      title:`Respray the ${car.name}`,
+      body:`<p class="flavor">Vega will shoot anything you can pay for and asks no questions about the plates.</p>`
+        + briefRow('On the ramp', car.name)
+        + briefRow('Current colour', state.carColors?.[car.id] ? 'Custom' : 'Factory')
+        + briefRow('Your cash', fmt(state.cash)),
+      buttons:[
+        ...RESPRAY_COLORS.map(function(paint){
+          return { label:`${paint.name} — ${fmt(paint.price)}`, onClick:function(){
+            if(state.cash < paint.price){ log(`Vega wants ${fmt(paint.price)} up front.`); return; }
+            state.cash -= paint.price;
+            
+            state.carColors[car.id] = paint.hex;
+            log(`<i class="ph-duotone ph-spray-bottle"></i> The ${car.name} comes out of the booth in ${paint.name}.`);
+            refreshPlayerModel(); updateParkedCarMesh(); renderAll();
+            openResprayBay();
+          } };
+        }),
+        { label:'Leave it', secondary:true },
+      ],
+    });
   }
 
   // LEGAL: ---- Return to garage (stage 6) ----
@@ -3462,6 +3721,14 @@ import type * as ThreeNamespace from 'three';
   function buildAllSolids(){
     const list: Solid[] = solidsFromObjects(mapObjects);
     list.push(...fillerLayout.fillerSolids());
+    // LEGAL: An alley is the gap BETWEEN two buildings: the gap is walkable and the buildings
+    // LEGAL: forming it are not. A single bounds box cannot say "blocked, open, blocked", so
+    // LEGAL: the flanks are added here, sized from the same constant the shell is drawn with.
+    mapObjects.filter(object => object.kind === 'service').forEach(function(object){
+      const building = object.ref as ServiceBuilding;
+      const shape = serviceBuildingSilhouette(building);
+      list.push(...archetypeExtraSolids(serviceArchetype(building), object.x, object.y, shape.w, shape.d));
+    });
     return list;
   }
   let currentSolids: Solid[] = [];
@@ -3555,6 +3822,13 @@ import type * as ThreeNamespace from 'three';
           + briefRow('Needing repair', String(state.brokenCars.length))
           + briefRow('Car in the street', left === null ? 'No — it is here' : `Yes, returns in ${Math.ceil(left)}s`));
       } });
+    } else if(kind==='casino'){
+      spots.push({ id:'tables', x:ROOM_W/2, y:78, label:'The Floor', icon:'🂡', action:openCasinoFloor });
+      spots.push({ id:'bar', x:AMBIENT_X, y:AMBIENT_Y, label:'Bar', icon:'🥃', action:()=>
+        showRoomBrief('The Bar', 'The Gilded Kettle', 'Free while you are losing. The moment you stop, so does the service.',
+          briefRow('Table stake', fmt(casinoStake)) + briefRow('Your cash', fmt(state.cash))) });
+    } else if(kind==='respray'){
+      spots.push({ id:'bay', x:ROOM_W/2, y:80, label:'Paint Bay', icon:'🎨', action:openResprayBay });
     } else if(kind==='dealership' || kind==='brokerage'){
       // LEGAL: Branded shop. The counter sells only this brand's stock at this block's
       // LEGAL: price — no generic catalog, no jump to a tab.
@@ -4125,7 +4399,14 @@ import type * as ThreeNamespace from 'three';
     return shape;
   }
 
-  function buildCarModel(car: Car, withRider = true){
+  // LEGAL: The respray colour wins over the catalogue colour, for this car only.
+  function carPaint(car: Car): Car {
+    const custom = state.carColors?.[car.id];
+    return custom ? { ...car, color: custom } : car;
+  }
+
+  function buildCarModel(base: Car, withRider = true){
+    const car = carPaint(base);
     if(isBikeCar(car)) return buildBikeModel(car, withRider);
     const g = new THREE.Group();
     const bodyH = car.id==='escalade'?18:(car.id==='bentley'?16:14);
@@ -5571,7 +5852,7 @@ import type * as ThreeNamespace from 'three';
       businesses: businesses.map(b=> ({ id:b.id, level:b.level, crew:b.crew, manager:b.manager, researched:b.researched, reinvestedIncome:b.reinvestedIncome })),
       bankAccounts: state.bankAccounts, selectedBank: state.selectedBank, nextHeistAt: state.nextHeistAt,
       ownedCars: state.ownedCars, equippedCar: state.equippedCar, ownedProperties: state.ownedProperties,
-      propertyOwnedAt: state.propertyOwnedAt, brokenCars: state.brokenCars, carParkedAt: state.carParkedAt,
+      propertyOwnedAt: state.propertyOwnedAt, brokenCars: state.brokenCars, carColors: state.carColors, carParkedAt: state.carParkedAt,
       localBusinesses: localBusinesses.map(b=> ({ id:b.id, extorted:b.extorted, extortTier:b.extortTier??0, resentment:b.resentment??0, nextRobAt:b.nextRobAt })),
       currentDistrict: state.currentDistrict, product: state.product, productLevel: state.productLevel,
       districts: districts.map(d=> ({ id:d.id, control:d.control, pushCount:d.pushCount, nextPushAt:d.nextPushAt })),
@@ -5644,6 +5925,8 @@ import type * as ThreeNamespace from 'three';
         // LEGAL: back then start their appreciation clock now rather than claiming credit
         // LEGAL: for time held before the mechanic existed, and no car starts broken.
         state.brokenCars = Array.isArray(d.brokenCars) ? d.brokenCars.filter((id: unknown)=> typeof id === 'string') : [];
+        // LEGAL: Older saves predate respray, so an absent map is normal, not corrupt.
+        state.carColors = (d.carColors && typeof d.carColors === 'object') ? d.carColors as Record<string,string> : {};
         state.carParkedAt = typeof d.carParkedAt === 'number' ? d.carParkedAt : null;
         state.propertyOwnedAt = (d.propertyOwnedAt && typeof d.propertyOwnedAt === 'object') ? { ...d.propertyOwnedAt } : {};
         state.ownedProperties.forEach(function(id){

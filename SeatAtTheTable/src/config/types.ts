@@ -400,6 +400,10 @@ export interface GameState {
   propertyOwnedAt: Record<string, number>;
   // LEGAL: Used cars that have broken down and need paying to repair before they drive.
   brokenCars: string[];
+  // LEGAL: Respray colour per OWNED car, keyed by car id. Stored on the save rather than on
+  // LEGAL: the catalogue entry, which every car of that model shares — repainting yours must
+  // LEGAL: not repaint every taxi in the city.
+  carColors: Record<string, string>;
   // LEGAL: playSeconds when the car was last left in the street, or null if it is in the
   // LEGAL: garage / being driven. Drives the return-to-garage timer.
   carParkedAt: number | null;

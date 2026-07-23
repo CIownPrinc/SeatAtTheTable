@@ -1,5 +1,5 @@
 import type * as ThreeNamespace from 'three';
-import { archetypeForm, type PlaceArchetype } from './archetypes';
+import { ALLEY_FLANK_W, archetypeForm, type PlaceArchetype } from './archetypes';
 
 // LEGAL: ---- Shells for places that are NOT buildings ----
 // LEGAL: Section 0a, rule 2. A cart is a stall, an alley is a gap between two blocks and a
@@ -67,22 +67,53 @@ export function buildStallShell(THREE: typeof ThreeNamespace, w: number, d: numb
   return group;
 }
 
-// LEGAL: A gap between two blocks. The flanking walls sit at the very edges so the middle
-// LEGAL: stays walkable — that is the whole point of an alley, and why it has no collision.
+// LEGAL: An alley is the GAP BETWEEN TWO BUILDINGS. The first version drew thin walls at the
+// LEGAL: edges of the gap, which read as a fenced strip standing on its own in the open —
+// LEGAL: correct as a walkway, wrong as an alley, because there was nothing for it to be
+// LEGAL: between. It now builds the two buildings that form it: full-height blocks either
+// LEGAL: side, with windows on their outward faces and fire escapes on the inward ones, so
+// LEGAL: the alley exists because they do. They are part of the alley object rather than
+// LEGAL: separate places, so nothing can allocate a lot into the middle of them.
 export function buildAlleyShell(THREE: typeof ThreeNamespace, w: number, d: number, h: number): ThreeNamespace.Group {
   const group = new THREE.Group();
   group.add(groundPlate(THREE, w, d, archetypeForm('alley').ground ?? '#2b2b30'));
 
+  // LEGAL: Deep enough to read as a building from the street, not a screen wall.
+  const flankW = ALLEY_FLANK_W;
+  const flankOffset = w/2 + flankW/2 - 2;
+
   [-1, 1].forEach(function(side){
-    const wall = mesh(THREE, new THREE.BoxGeometry(3, h, d), side < 0 ? '#4a423c' : '#443c39', { roughness:0.95 });
-    wall.position.set(side * (w/2 - 1.5), h/2, 0);
-    group.add(wall);
+    const wallHeight = h * (side < 0 ? 1.55 : 1.25);
+    const flank = mesh(THREE, new THREE.BoxGeometry(flankW, wallHeight, d), side < 0 ? '#4a423c' : '#443c39', { roughness:0.95 });
+    flank.position.set(side * flankOffset, wallHeight/2, 0);
+    group.add(flank);
+
+    // LEGAL: Windows on the OUTWARD face only — an alley wall is a blind party wall, which
+    // LEGAL: is exactly why the alley is dark.
+    const glass = mesh(THREE, new THREE.PlaneGeometry(6, 7), '#20303c', { roughness:0.3 });
+    for(let row = 0; row < Math.max(2, Math.floor(wallHeight / 22)); row += 1){
+      for(let col = -1; col <= 1; col += 1){
+        const pane = glass.clone();
+        pane.position.set(side * (flankOffset + flankW/2 + 0.3), 16 + row * 20, col * d * 0.28);
+        pane.rotation.y = side > 0 ? Math.PI/2 : -Math.PI/2;
+        group.add(pane);
+      }
+    }
+
+    // LEGAL: A parapet, so the roofline is not a bare cut.
+    const cornice = mesh(THREE, new THREE.BoxGeometry(flankW + 2.5, 2.5, d + 2.5), '#38322e', { roughness:0.9 });
+    cornice.position.set(side * flankOffset, wallHeight + 1, 0);
+    group.add(cornice);
 
     // LEGAL: Fire escape — the clearest "this is the back of a building" read there is.
+    // LEGAL: On the INWARD face, hanging over the alley.
     for(let i = 0; i < 3; i += 1){
-      const platform = mesh(THREE, new THREE.BoxGeometry(5, 1, d * 0.26), '#33383c', { roughness:0.6, metalness:0.4 });
-      platform.position.set(side * (w/2 - 5), h * (0.34 + i * 0.2), (i % 2 === 0 ? -1 : 1) * d * 0.2);
+      const platform = mesh(THREE, new THREE.BoxGeometry(6, 1, d * 0.26), '#33383c', { roughness:0.6, metalness:0.4 });
+      platform.position.set(side * (w/2 - 3), h * (0.34 + i * 0.24), (i % 2 === 0 ? -1 : 1) * d * 0.2);
       group.add(platform);
+      const rail = mesh(THREE, new THREE.BoxGeometry(0.6, 5, d * 0.26), '#33383c', { roughness:0.6, metalness:0.4 });
+      rail.position.set(side * (w/2 - 6), h * (0.34 + i * 0.24) + 2.5, (i % 2 === 0 ? -1 : 1) * d * 0.2);
+      group.add(rail);
     }
   });
 
