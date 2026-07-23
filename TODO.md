@@ -86,7 +86,7 @@ new buildings cannot opt themselves out.
   already shows. Make them do something.
 - Remove the travel-nodes strip above the map.
 
-## 0a. Places must look like what they are
+## 0a. Places must look like what they are — DONE
 
 Everything on the map is currently a **box with a sign on it**, sized by a silhouette table
 and coloured by neighbourhood. That is why the world reads as noise: the map says one thing
@@ -122,6 +122,25 @@ Two rules this must enforce, both currently violated:
 `map/neighbourhoods.ts` already has the per-character detailing (boarded windows, fire
 escapes, cornices, awnings) — this is about picking the right shell to hang it on, and
 about the places that should not be buildings at all.
+
+**Shipped.** `map/archetypes.ts` is the single source of truth. Every venture, local
+business, service building and property is assigned an archetype BY HAND with the reasoning
+in a comment beside it — never derived from a config bucket, because that is what produced
+the bug: twelve service buildings shared one `missionOffice` kind, so the Back Alley, the
+Railyard, the Bus Station, the Herald newsroom, the Dockmaster's yard and the Marigold
+Lounge were all drawn as the same box.
+
+- `archetypes.test.ts` fails if any place in any config lacks an archetype, so a new place
+  cannot quietly inherit a wrong shape.
+- `map/placeShells.ts` draws the three archetypes that are NOT buildings: `cart` (counter,
+  canopy, crates), `alley` (flanking walls at the extreme edges, fire escapes, bins down one
+  side, centre left clear) and `lot` (chain-link fence with a gate gap, site hut, containers).
+- **Collision comes from the archetype**, in one place, so what a place blocks is what it
+  draws. `solidScale: 0` on cart/alley/lot means you walk in. A scene-audit e2e walks the
+  live world at each open place to prove it — bounds maintained separately from the drawn
+  silhouette are what produced the invisible barriers in the first place.
+- Rule 1 holds: property archetype comes from the brand's category, so a Concrete Dreams
+  walk-up is a `tenement` and a Horizon one is a `tower`.
 
 ## 0b. New requests, not started
 
