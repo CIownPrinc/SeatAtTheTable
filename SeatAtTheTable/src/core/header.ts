@@ -4684,6 +4684,18 @@ import type * as ThreeNamespace from 'three';
     scene.add(moonLight); scene.add(moonLight.target);
 
     worldGroup = new THREE.Group(); scene.add(worldGroup);
+    // LEGAL: Dev-only inspection hook. The unit tests check placement DATA, which is why a
+    // LEGAL: world that passed all of them still rendered buildings on top of roads — the
+    // LEGAL: data was self-consistent, it just no longer agreed with the scene. This exposes
+    // LEGAL: the real three.js scene so e2e can audit what is actually drawn. Stripped from
+    // LEGAL: production by the import.meta.env.DEV guard.
+    // LEGAL: import.meta.env is not in this project's lib types, so read it defensively.
+    if((import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV){
+      (window as unknown as { __seat?: unknown }).__seat = {
+        THREE, scene, worldGroup, player, state, mapObjects, mapPlaces,
+        roadNetwork, districtOffsets: DISTRICT_OFFSETS,
+      };
+    }
     playerGroup = new THREE.Group(); scene.add(playerGroup);
 
     buildCityScene();
