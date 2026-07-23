@@ -638,21 +638,50 @@ function buildBeachResort(options: BaseSceneOptions): void {
       if(isPointInWater({ x: bx + nx * 16, y: by + ny * 16 }, 14)) continue;
       if(isPointInWater({ x: bx + nx * 40, y: by + ny * 40 }, 14)) continue;
 
-      // LEGAL: Palm — a leaning trunk with a crown of angled fronds.
+      // LEGAL: Palm. The fronds were cones radiating from the crown, which read as a sea
+      // LEGAL: urchin on a stick. A frond is a long flat blade that ARCHES: it leaves the
+      // LEGAL: crown rising and its tip falls below where it started. Built as a segmented
+      // LEGAL: strip so the arch is a curve rather than one tilted spike.
       const palm = new THREE.Group();
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 2.6, 34, 6), trunkMat);
-      trunk.position.y = 17;
-      trunk.rotation.z = wave * 0.14;
-      trunk.castShadow = true;
-      palm.add(trunk);
-      for(let f = 0; f < 6; f += 1){
-        const frond = new THREE.Mesh(new THREE.ConeGeometry(3.4, 19, 4), frondMat);
-        const spin = (f / 6) * Math.PI * 2 + wave;
-        frond.position.set(Math.cos(spin) * 7, 34 + wave * 2, Math.sin(spin) * 7);
-        frond.rotation.set(Math.PI / 2.5, spin, 0);
-        frond.castShadow = true;
+      const lean = wave * 0.12;
+      const trunkH = 30 + Math.abs(wave) * 8;
+      // LEGAL: Stacked segments so the trunk curves with the lean instead of shearing.
+      const segments = 5;
+      for(let t = 0; t < segments; t += 1){
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(1.5 + (segments - t) * 0.22, 1.7 + (segments - t) * 0.26, trunkH / segments + 0.6, 7), trunkMat);
+        const frac = t / segments;
+        seg.position.set(Math.sin(lean) * frac * trunkH * 0.5, trunkH * (frac + 0.5 / segments), 0);
+        seg.rotation.z = lean;
+        seg.castShadow = true;
+        palm.add(seg);
+      }
+      const crownX = Math.sin(lean) * trunkH * 0.5;
+      const crownY = trunkH;
+      for(let f = 0; f < 7; f += 1){
+        const spin = (f / 7) * Math.PI * 2 + wave;
+        const frond = new THREE.Group();
+        const blades = 4;
+        for(let b = 0; b < blades; b += 1){
+          const along = b / blades;
+          // LEGAL: Rises then falls — the arch. Width tapers to the tip.
+          const drop = -14 * along * along + 5 * along;
+          const width = 3.4 * (1 - along * 0.72);
+          const blade = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.5, width), frondMat);
+          blade.position.set(4 + along * 20, drop, 0);
+          blade.rotation.z = -0.5 * along - 0.12;
+          blade.castShadow = true;
+          frond.add(blade);
+        }
+        frond.rotation.y = spin;
+        frond.position.set(crownX, crownY, 0);
         palm.add(frond);
       }
+      // LEGAL: A couple of coconuts tucked under the crown.
+      [0.6, 2.4].forEach(function(angle){
+        const nut = new THREE.Mesh(new THREE.SphereGeometry(1.5, 8, 6), trunkMat);
+        nut.position.set(crownX + Math.cos(angle + wave) * 3, crownY - 2.2, Math.sin(angle + wave) * 3);
+        palm.add(nut);
+      });
       palm.position.set(bx + nx * 40, 0, by + ny * 40);
       palm.name = 'resort:palm';
       worldGroup.add(palm);
@@ -670,11 +699,14 @@ function buildBeachResort(options: BaseSceneOptions): void {
         back.rotation.z = -0.6;
         set.add(back);
       });
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 22, 5), trunkMat);
-      pole.position.y = 11;
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 17, 5), trunkMat);
+      pole.position.y = 8.5;
       set.add(pole);
-      const parasol = new THREE.Mesh(new THREE.ConeGeometry(13, 6, 9), parasolMats[index % parasolMats.length]);
-      parasol.position.y = 24;
+      // LEGAL: Was a 13-radius, 6-deep cone — a mushroom cap twice the size of the loungers
+      // LEGAL: under it. A parasol is wide and SHALLOW, and it is open underneath.
+      const parasol = new THREE.Mesh(new THREE.ConeGeometry(8.5, 2.6, 10, 1, true), parasolMats[index % parasolMats.length]);
+      parasol.material.side = THREE.DoubleSide;
+      parasol.position.y = 18;
       parasol.castShadow = true;
       set.add(parasol);
       set.position.set(bx + nx * 16, 0, by + ny * 16);

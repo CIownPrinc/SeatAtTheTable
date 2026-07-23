@@ -6,7 +6,7 @@ import { mapAmenities } from './amenities';
 import { allocateLots, districtLotSlots, spreadSlots } from './lots';
 import { applyMapWorldCoordinates } from './markers';
 import { districtIdAtPlayablePoint } from './mapModel';
-import { DISTRICT_OFFSETS, DISTRICT_W, WORLD_H, roadNetwork, ventureMapLots, widenAuthoredX } from './world';
+import { DISTRICT_OFFSETS, DISTRICT_W, OUTSKIRT_PLACE_LOTS, WORLD_H, roadNetwork, ventureMapLots, widenAuthoredX } from './world';
 
 // LEGAL: Where every service building actually ends up. Lives here rather than inline in
 // LEGAL: header.ts so the game and the layout tests allocate from one implementation — a
@@ -29,13 +29,21 @@ export function serviceLotObstacles(): Solid[] {
   return [
     ...Object.values(ventureMapLots).map(lot => ({ x: lot.x, y: lot.y, hw: 46, hd: 42 })),
     ...mapAmenities.map(a => ({ x: a.x, y: a.y, hw: 34, hd: 30 })),
+    // LEGAL: Hand-placed outskirt lots are real footprints too, so nothing gets allocated
+    // LEGAL: on top of them.
+    ...Object.values(OUTSKIRT_PLACE_LOTS).map(lot => ({ x: lot.x, y: lot.y, hw: 70, hd: 56 })),
   ];
 }
 
 export function allocateServiceLots() {
   return allocateLots({
     requests: [
-      ...serviceBuildings.map(s => ({ id: s.id, district: s.district, hw: SERVICE_HALF_W, hd: SERVICE_HALF_D })),
+      // LEGAL: Anything with a hand-placed outskirt lot is NOT allocated — the allocator only
+      // LEGAL: knows about district blocks, and an assignment would silently overwrite the
+      // LEGAL: authored position (allocator lots win in applyMapWorldCoordinates).
+      ...serviceBuildings
+        .filter(s => !OUTSKIRT_PLACE_LOTS[s.id])
+        .map(s => ({ id: s.id, district: s.district, hw: SERVICE_HALF_W, hd: SERVICE_HALF_D })),
       ...localBusinesses.map(b => ({ id: b.id, district: b.district, hw: 36, hd: 32 })),
     ],
     slotsByDistrict: Object.fromEntries(districts.map(function(d){

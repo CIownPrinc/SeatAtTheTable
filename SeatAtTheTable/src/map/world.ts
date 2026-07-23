@@ -385,6 +385,18 @@ export const ventureMapLots: Record<string, VentureMapLot> = {
   family_office: { district: 'hub', x: lotX(4120), y: 750, zone: 'corporate' },
 };
 
+// LEGAL: ---- Hand-placed outskirt lots ----
+// LEGAL: The lot allocator works district by district, and the outskirts are not a district,
+// LEGAL: so anything out here is placed by hand in ABSOLUTE world coordinates. These are
+// LEGAL: merged into namedBuildingLots below, which is the branch of applyMapWorldCoordinates
+// LEGAL: that takes a position as given rather than treating it as district-local — and
+// LEGAL: serviceLots excludes them from allocation so a district lot cannot overwrite them.
+export const OUTSKIRT_PLACE_LOTS: Record<string, Point> = {
+  // LEGAL: Out in Lakeridge, the suburb belt on the south-east edge. Deliberately a drive
+  // LEGAL: rather than a stroll: a casino you can walk to from your own block is not a trip.
+  casinoLakeridge: { x: widenAuthoredX(5500), y: 1560 },
+};
+
 export const namedBuildingLots: Record<string, Point> = {
   bankHome: { x: lotX(485), y: 450 },
   patel: { x: lotX(485), y: 750 },
@@ -397,6 +409,7 @@ export const namedBuildingLots: Record<string, Point> = {
   marlowe: { x: lotX(4915), y: 450 },
   cityhall: { x: lotX(5330), y: 450 },
   heistTarget: { x: lotX(4120), y: 750 },
+  ...OUTSKIRT_PLACE_LOTS,
 };
 
 export const landmarks: Landmark[] = [

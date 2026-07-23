@@ -23,7 +23,11 @@ export function buildStreetLight(options: StreetFurnitureOptions, x: number, z: 
   const bulbMat = new THREE.MeshStandardMaterial({color:'#ffe6a0', emissive:'#ffd27a', emissiveIntensity:1.4});
   const bulb = new THREE.Mesh(new THREE.SphereGeometry(3.2,10,8), bulbMat);
   bulb.position.set(13,32,0); group.add(bulb);
-  const light = new THREE.PointLight(0xffcc7a, 0, 230, 1.65);
+  // LEGAL: three has had physically-correct lighting as the only mode since r165, so a
+  // LEGAL: PointLight's intensity is candela and falls off as 1/d^decay. The old value of
+  // LEGAL: ~2 was invisible from a lamp head 32 units up: 2/32^2 is nothing. Intensity is
+  // LEGAL: set per frame in updateDayNightLighting; the scale lives there.
+  const light = new THREE.PointLight(0xffcc7a, 0, 300, 2);
   light.position.set(13,32,0); group.add(light);
   group.position.set(x,0,z);
   worldGroup.add(group);

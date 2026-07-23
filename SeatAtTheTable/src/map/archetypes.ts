@@ -135,6 +135,8 @@ export const SERVICE_ARCHETYPES: Record<string, PlaceArchetype> = {
   devlinAlley: 'alley',             // LEGAL: Devlin Back ALLEY. Was drawn as a building.
   railyard: 'lot',                  // LEGAL: Open ground, fencing, a hut. Not a building.
   docksDockmaster: 'lot',           // LEGAL: A dockside yard.
+  casinoLakeridge: 'civic',         // LEGAL: The Gilded Kettle — a big lit hall out of town.
+  resprayShop: 'works',             // LEGAL: A paint shop is a workshop, not a showroom.
 };
 
 // LEGAL: Branded shops are generated per brand rather than authored one by one, so they are

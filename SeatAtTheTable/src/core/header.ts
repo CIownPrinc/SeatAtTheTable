@@ -3999,6 +3999,7 @@ import type * as ThreeNamespace from 'three';
     const bars = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, car.wid*1.7, 6), chromeMat);
     bars.position.set(frontX - 4.5, wheelR + 13, 0); bars.rotation.x = Math.PI/2; g.add(bars);
     const lamp = new THREE.Mesh(new THREE.SphereGeometry(2.6, 12, 10), new THREE.MeshStandardMaterial({color:'#ffe9b0', emissive:'#ffd97a', emissiveIntensity:0.7}));
+    lamp.name = 'lamp:head';
     lamp.position.set(frontX + 1.4, wheelR + 10, 0); g.add(lamp);
     const guard = new THREE.Mesh(new THREE.TorusGeometry(wheelR + 2.4, 1.1, 6, 12, Math.PI*0.55), bodyMat);
     guard.position.set(frontX, wheelR, 0); guard.rotation.z = Math.PI*0.22; g.add(guard);
@@ -4187,8 +4188,9 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: Lamps are lozenges set into the nose and tail, not flat squares stuck on them.
     const headlightMat = new THREE.MeshStandardMaterial({color:'#fffbe0', emissive:'#fff3c0', emissiveIntensity:1.1});
     [-car.wid*0.32,car.wid*0.32].forEach(function(wz){
-      const hl = new THREE.Mesh(new THREE.SphereGeometry(2.5,10,8), headlightMat);
+      const hl = new THREE.Mesh(new THREE.SphereGeometry(2.5,10,8), headlightMat.clone());
       hl.scale.set(0.55,0.72,1.25);
+      hl.name = 'lamp:head';
       hl.position.set(car.len/2+0.4, bodyH*0.72, wz); g.add(hl);
     });
     const taillightMat = new THREE.MeshStandardMaterial({color:'#e02616', emissive:'#c81c0e', emissiveIntensity:0.85});
@@ -4236,7 +4238,10 @@ import type * as ThreeNamespace from 'three';
     const night = 1 - sun;
     nightLevel = night;
     updateHeadlight();
-    ambientLight.intensity = 0.5 + sun * 0.5 + dusk * 0.1;
+    // LEGAL: Night ambient was 0.5, which lit the whole city evenly and left nothing for
+    // LEGAL: the street lights or headlights to contribute. Dropped so lamps actually read,
+    // LEGAL: but not to black — you still have to be able to play.
+    ambientLight.intensity = 0.28 + sun * 0.62 + dusk * 0.1;
     sunLight.intensity = 0.25 + sun * 1.15;
     sunLight.color.set(sun < 0.18 ? '#9fb4ff' : (dusk > 0.45 ? '#ffc37a' : '#fff2d0'));
     sunLight.position.set(WORLD_W*0.5 + Math.cos(phase) * 900, 130 + sun * 520, WORLD_H*0.35 + Math.sin(phase) * 260);
@@ -4248,8 +4253,11 @@ import type * as ThreeNamespace from 'three';
     moonLight.target.updateMatrixWorld();
     scene.background = new THREE.Color(sun < 0.18 ? '#111827' : (dusk > 0.45 ? '#241b20' : '#0a0b10'));
     scene.fog = new THREE.Fog(sun < 0.18 ? 0x111827 : 0x0a0b10, 520 + night * 80, 1150 + sun * 180);
+    // LEGAL: Candela, not the old 0-1 scale — see buildStreetLight. A lamp head sits ~32
+    // LEGAL: units above the road, so with decay 2 the ground under it gets intensity/1024;
+    // LEGAL: ~2600 puts a readable pool of light on the pavement.
     streetLights.forEach(function(light){
-      light.intensity = Math.max(0, night - 0.2) * 2.35;
+      light.intensity = Math.max(0, night - 0.2) * 2600;
     });
   }
   function mapClockLabel(): string {
@@ -4697,9 +4705,14 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: One light reused rather than one per model — spot lights are not free, and the
   // LEGAL: renderer has to recompile materials when their count changes.
   let headlightBeam: ThreeNamespace.SpotLight | null = null;
+  // LEGAL: Lamp lenses on whichever vehicle model is currently built, so they can be driven
+  // LEGAL: by the clock. Rebuilt with the model.
+  let lampLenses: ThreeNamespace.Mesh[] = [];
   function ensureHeadlight(){
     if(headlightBeam || !playerGroup) return;
-    const beam = new THREE.SpotLight('#fff3cf', 0, 340, Math.PI / 5.2, 0.45, 1.1);
+    // LEGAL: Also candela. Decay 1.4 over a ~420 unit throw, so the beam still reaches the
+    // LEGAL: far kerb; the peak intensity is applied in updateHeadlight.
+    const beam = new THREE.SpotLight('#fff3cf', 0, 420, Math.PI / 5.2, 0.45, 1.4);
     beam.position.set(0, 12, 6);
     // LEGAL: The player group's forward is +z (see the model rotation convention), so the
     // LEGAL: target sits ahead on +z and inherits every turn for free.
@@ -4713,8 +4726,14 @@ import type * as ThreeNamespace from 'three';
   function updateHeadlight(){
     if(!headlightBeam) return;
     const lit = state.inVehicle && !state.currentInterior;
+    // LEGAL: The lamp lenses on the model are separate from the beam — they are what makes
+    // LEGAL: the vehicle look lit from the outside, the beam is what lights the road.
+    lampLenses.forEach(function(lens){
+      const mat = lens.material as ThreeNamespace.MeshStandardMaterial;
+      mat.emissiveIntensity = lit ? 0.6 + nightLevel * 2.2 : 0.5;
+    });
     // LEGAL: Comes up through dusk rather than snapping on, and stays off in daylight.
-    headlightBeam.intensity = lit ? Math.max(0, nightLevel - 0.35) / 0.65 * 3.2 : 0;
+    headlightBeam.intensity = lit ? Math.max(0, nightLevel - 0.35) / 0.65 * 2200 : 0;
     headlightBeam.visible = headlightBeam.intensity > 0.01;
   }
 
@@ -4725,6 +4744,11 @@ import type * as ThreeNamespace from 'three';
     else playerGroup.add(buildPedestrianModel('#f0efe8', 'arjun'));
     // LEGAL: clearGroup strips the beam with the model, so it is re-attached every rebuild.
     headlightBeam = null;
+    lampLenses = [];
+    playerGroup.traverse(function(node){
+      const mesh = node as ThreeNamespace.Mesh;
+      if((mesh as { isMesh?: boolean }).isMesh && mesh.name === 'lamp:head') lampLenses.push(mesh);
+    });
     ensureHeadlight();
     updateHeadlight();
   }

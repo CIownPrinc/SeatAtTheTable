@@ -4,10 +4,11 @@ import { amenityHasSolidFootprint, mapAmenities } from './amenities';
 import { createFillerLayoutProvider } from './filler';
 import { buildableBands, distancePointToSegment, localXForDistrict, rectsOverlap, rotatedHalfExtents } from './layout';
 import { districtIdAtPlayablePoint } from './mapModel';
+import { isPointOnPlayableLand } from './queries';
 import { applyMapWorldCoordinates, createMapBuildings } from './markers';
 import { actorRadius, canMoveTo, isWaterBlocked } from './movement';
 import { buildMapObjects, ventureFootprint } from './objectFactory';
-import { DISTRICT_OFFSETS, districtParkSlots, namedBuildingLots, roadNetwork, ventureDistricts, ventureLots, ventureMapLots, widenAuthoredX } from './world';
+import { DISTRICT_OFFSETS, OUTSKIRT_PLACE_LOTS, districtParkSlots, namedBuildingLots, roadNetwork, ventureDistricts, ventureLots, ventureMapLots, widenAuthoredX } from './world';
 import { zoneForDistrictBlock } from './zoning';
 import { allocateServiceLots } from './serviceLots';
 import { serviceBuildings } from '../config/serviceBuildings';
@@ -47,7 +48,14 @@ describe('map layout helpers', function () {
   });
 
   it('keeps named business lots clear of roads', function () {
-    const lots = [...Object.values(namedBuildingLots), ...Object.values(ventureLots).flat()];
+    // LEGAL: The road grid only exists inside the districts, so a lot out in the outskirts
+    // LEGAL: is not near a road by construction and the clearance check does not apply.
+    // LEGAL: Those lots are covered instead by the land and overlap checks below.
+    const outskirtIds = new Set(Object.keys(OUTSKIRT_PLACE_LOTS));
+    const lots = [
+      ...Object.entries(namedBuildingLots).filter(([id]) => !outskirtIds.has(id)).map(([, lot]) => lot),
+      ...Object.values(ventureLots).flat(),
+    ];
 
     lots.forEach(function(lot){
       expect(roadNetwork.vertical.some(r=>Math.abs(lot.x - r.x) < 77)).toBe(false);
@@ -160,7 +168,16 @@ describe('map layout helpers', function () {
     applyMapWorldCoordinates(cornerCopies);
     applyMapWorldCoordinates(recruitCopies);
 
+    // LEGAL: Places out in the outskirts are deliberately NOT in a district — that is what
+    // LEGAL: makes them a drive rather than a stroll. They still have to be on solid ground,
+    // LEGAL: which is the invariant that actually matters, so they are checked for that
+    // LEGAL: instead of for district membership.
+    const outskirtIds = new Set(Object.keys(OUTSKIRT_PLACE_LOTS));
     [...serviceCopies, ...localCopies, ...cornerCopies, ...recruitCopies, ...mapAmenities].forEach(function(item){
+      if(outskirtIds.has(item.id)){
+        expect(isPointOnPlayableLand({ x:item.x, y:item.y }, 16), `${item.id} should stand on solid ground`).toBe(true);
+        return;
+      }
       expect(districtIdAtPlayablePoint({ x:item.x, y:item.y }, 16), `${item.id} should sit on ${item.district} land`).toBe(item.district);
     });
   });
@@ -197,7 +214,9 @@ describe('map layout helpers', function () {
     applyMapWorldCoordinates(serviceCopies, allocateServiceLots().placed);
     applyMapWorldCoordinates(localCopies, allocateServiceLots().placed);
 
-    [...serviceCopies, ...localCopies].forEach(function(place){
+    // LEGAL: Outskirt places sit beyond the district road grid; the roads do not reach them.
+    const outskirtIds = new Set(Object.keys(OUTSKIRT_PLACE_LOTS));
+    [...serviceCopies, ...localCopies].filter(place => !outskirtIds.has(place.id)).forEach(function(place){
       roadNetwork.vertical.forEach(function(road){
         expect(Math.abs(place.x - road.x), `${place.id} sits on ${road.name}`).toBeGreaterThan(road.w / 2);
       });
@@ -226,6 +245,7 @@ describe('map layout helpers', function () {
       gangRecruits:recruitCopies,
     });
 
+    const outskirtPlaceIds = new Set(Object.keys(OUTSKIRT_PLACE_LOTS));
     objects.forEach(function(object){
       if(!object.bounds) return;
       [
@@ -234,6 +254,12 @@ describe('map layout helpers', function () {
         { x:object.bounds.x-object.bounds.hw, y:object.bounds.y+object.bounds.hd },
         { x:object.bounds.x+object.bounds.hw, y:object.bounds.y+object.bounds.hd },
       ].forEach(function(point){
+        // LEGAL: Outskirt places are deliberately outside every district; solid ground is the
+        // LEGAL: invariant that matters for them.
+        if(outskirtPlaceIds.has(object.id)){
+          expect(isPointOnPlayableLand(point, 0), `${object.id} footprint should stay on solid ground`).toBe(true);
+          return;
+        }
         expect(districtIdAtPlayablePoint(point, 0), `${object.id} footprint should stay on ${object.district} land`).toBe(object.district);
       });
     });
