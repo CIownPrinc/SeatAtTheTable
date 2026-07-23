@@ -4084,66 +4084,131 @@ import type * as ThreeNamespace from 'three';
 
   // LEGAL: `withRider` only matters for bikes — a car hides you inside it, a bike does not,
   // LEGAL: so a parked bike must not have a rider still sitting on it.
+  // LEGAL: ---- Car bodywork ----
+  // LEGAL: Cars used to be a stack of boxes: body, hood, boot and cabin, every edge square.
+  // LEGAL: A real car is ONE shell with a continuous profile, so the body is now a side
+  // LEGAL: silhouette — bonnet rise, raked windscreen, roof, sloped rear — extruded across
+  // LEGAL: the width with a bevel, which is what rounds every edge at once. Same approach
+  // LEGAL: that made the bike read: build the shape the thing actually has, then let three's
+  // LEGAL: own geometry tools do the smoothing.
+  function carBodyProfile(car: Car, bodyH: number): ThreeNamespace.Shape {
+    const length = car.len;
+    const nose = length * 0.5;
+    const tail = -length * 0.5;
+    const isTall = car.id === 'escalade';
+    const sillY = 3.5;
+    const beltY = bodyH + 1;
+    const roofY = beltY + (isTall ? 15 : 11);
+    const screenBase = length * (isTall ? 0.16 : 0.1);
+    const roofFront = length * (isTall ? 0.05 : -0.02);
+    const roofBack = -length * (isTall ? 0.3 : 0.24);
+    const backlightBase = -length * (isTall ? 0.4 : 0.36);
+
+    const shape = new THREE.Shape();
+    shape.moveTo(tail, sillY);
+    shape.lineTo(nose - 2, sillY);
+    // LEGAL: Rounded nose rather than a cut-off block.
+    shape.quadraticCurveTo(nose + 2.5, sillY, nose + 2.5, sillY + 4);
+    shape.quadraticCurveTo(nose + 2.5, bodyH * 0.72, nose - 1, bodyH * 0.86);
+    // LEGAL: Bonnet rising gently towards the screen.
+    shape.lineTo(screenBase + length * 0.12, beltY - 1);
+    // LEGAL: Raked windscreen into the roof.
+    shape.quadraticCurveTo(screenBase, beltY + 4, roofFront, roofY);
+    shape.lineTo(roofBack, roofY);
+    // LEGAL: Rear screen dropping onto the boot.
+    shape.quadraticCurveTo(backlightBase, roofY - 4, backlightBase - length * 0.04, beltY);
+    shape.lineTo(tail + 2, beltY - 2);
+    shape.quadraticCurveTo(tail - 2.5, beltY - 3, tail - 2.5, bodyH * 0.5);
+    shape.quadraticCurveTo(tail - 2.5, sillY, tail, sillY);
+    shape.closePath();
+    return shape;
+  }
+
   function buildCarModel(car: Car, withRider = true){
     if(isBikeCar(car)) return buildBikeModel(car, withRider);
     const g = new THREE.Group();
     const bodyH = car.id==='escalade'?18:(car.id==='bentley'?16:14);
-    const body = box(car.len, bodyH, car.wid, car.color);
-    body.position.y = bodyH/2+1; g.add(body);
-    const hood = box(car.len*0.32, bodyH*0.55, car.wid*0.94, car.color);
-    hood.position.set(car.len*0.31, bodyH+1, 0); g.add(hood);
-    const trunk = box(car.len*0.25, bodyH*0.48, car.wid*0.9, car.color);
-    trunk.position.set(-car.len*0.35, bodyH+0.3, 0); g.add(trunk);
-    const cabinW = car.id==='escalade'?car.len*0.55:car.len*0.42;
-    const cabin = box(cabinW, car.id==='escalade'?13:10, car.wid*0.82, '#1c1e24');
-    cabin.position.set(car.len*0.04, bodyH+6, 0); g.add(cabin);
-    const glassMat = new THREE.MeshStandardMaterial({color:'#78a9c8', emissive:'#1b3342', emissiveIntensity:0.1, transparent:true, opacity:0.72, roughness:0.2, metalness:0.1});
-    const windshield = new THREE.Mesh(new THREE.PlaneGeometry(car.wid*0.68, 8), glassMat);
-    windshield.rotation.y = Math.PI/2; windshield.rotation.x = -0.24; windshield.position.set(car.len*0.25, bodyH+10.5, 0); g.add(windshield);
-    const rearWindow = new THREE.Mesh(new THREE.PlaneGeometry(car.wid*0.62, 7), glassMat);
-    rearWindow.rotation.y = -Math.PI/2; rearWindow.rotation.x = 0.2; rearWindow.position.set(-car.len*0.18, bodyH+10, 0); g.add(rearWindow);
+    const halfW = car.wid/2;
+    const isTall = car.id === 'escalade';
+
+    // LEGAL: The bevel is what actually rounds the edges — without it this is still a box,
+    // LEGAL: just a car-shaped one. Extrusion depth is reduced by twice the bevel so the
+    // LEGAL: finished width is the car's real width rather than the width plus the bevel.
+    const bevel = 1.6;
+    const bodyGeo = new THREE.ExtrudeGeometry(carBodyProfile(car, bodyH), {
+      depth: car.wid - bevel*2,
+      bevelEnabled: true,
+      bevelThickness: bevel,
+      bevelSize: bevel,
+      bevelSegments: 3,
+      curveSegments: 10,
+    });
+    // LEGAL: Extrusion runs along +z from the profile plane; recentre it on the car's axis.
+    bodyGeo.translate(0, 0, -(car.wid - bevel*2)/2);
+    const paint = new THREE.MeshStandardMaterial({ color:car.color, metalness:0.45, roughness:0.34 });
+    const body = new THREE.Mesh(bodyGeo, paint);
+    body.castShadow = true; body.receiveShadow = true;
+    g.add(body);
+
+    // LEGAL: Greenhouse — a dark inset band at the window line, so the glass reads as glass
+    // LEGAL: instead of the body colour carrying on over the roof.
+    const glassMat = new THREE.MeshStandardMaterial({color:'#7fb0cf', emissive:'#16303f', emissiveIntensity:0.18, transparent:true, opacity:0.62, roughness:0.12, metalness:0.35});
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(car.len * (isTall ? 0.44 : 0.38), isTall ? 12 : 9, car.wid + 0.6), glassMat);
+    cabin.position.set(-car.len * (isTall ? 0.05 : 0.08), bodyH + (isTall ? 7.5 : 6), 0);
+    g.add(cabin);
+
     [-1,1].forEach(function(side){
-      const sideGlass = new THREE.Mesh(new THREE.PlaneGeometry(cabinW*0.58, 7), glassMat);
-      sideGlass.position.set(car.len*0.03, bodyH+10.4, side*car.wid*0.414); sideGlass.rotation.y = side>0 ? 0 : Math.PI; g.add(sideGlass);
       const mirror = new THREE.Mesh(new THREE.BoxGeometry(3,2,5), new THREE.MeshStandardMaterial({color:'#17191f', roughness:0.35}));
-      mirror.position.set(car.len*0.25, bodyH+7, side*(car.wid/2+3)); g.add(mirror);
+      mirror.position.set(car.len*0.16, bodyH+4, side*(halfW+2)); g.add(mirror);
     });
-    const wheelMat = new THREE.MeshStandardMaterial({color:'#151515'});
-    const rimColor = car.id==='bentley'?'#c9a227':'#888888';
-    const wheelR = (car.id==='escalade'||car.id==='bentley')?7:5;
-    [[car.len*0.34,car.wid/2+1],[car.len*0.34,-car.wid/2-1],[-car.len*0.34,car.wid/2+1],[-car.len*0.34,-car.wid/2-1]].forEach(function(pair){
+
+    // LEGAL: Wheels sit in dark arches with a dished rim, and carry enough radial segments to
+    // LEGAL: still read as round at city zoom — the old 12 showed their corners.
+    const wheelMat = new THREE.MeshStandardMaterial({color:'#131315', roughness:0.9});
+    const archMat = new THREE.MeshStandardMaterial({color:'#101114', roughness:0.9});
+    const rimColor = car.id==='bentley'?'#c9a227':'#9aa0a8';
+    const wheelR = (car.id==='escalade'||car.id==='bentley')?7:5.6;
+    [[car.len*0.32,halfW+0.6],[car.len*0.32,-halfW-0.6],[-car.len*0.32,halfW+0.6],[-car.len*0.32,-halfW-0.6]].forEach(function(pair){
       const wx=pair[0], wz=pair[1];
-      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(wheelR,wheelR,5,12), wheelMat);
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(wheelR,wheelR,5.4,20), wheelMat);
       wheel.rotation.x=Math.PI/2; wheel.position.set(wx,wheelR,wz); wheel.castShadow=true; g.add(wheel);
-      const rim = new THREE.Mesh(new THREE.CylinderGeometry(wheelR*0.5,wheelR*0.5,5.2,8), new THREE.MeshStandardMaterial({color:rimColor, metalness:0.9, roughness:0.1}));
+      const rim = new THREE.Mesh(new THREE.CylinderGeometry(wheelR*0.62,wheelR*0.62,5.6,14), new THREE.MeshStandardMaterial({color:rimColor, metalness:0.95, roughness:0.12}));
       rim.rotation.x=Math.PI/2; rim.position.set(wx,wheelR,wz); g.add(rim);
+      const arch = new THREE.Mesh(new THREE.CylinderGeometry(wheelR+1.6,wheelR+1.6,2,16,1,false,0,Math.PI), archMat);
+      arch.rotation.x=Math.PI/2; arch.position.set(wx, wheelR, wz > 0 ? halfW-0.4 : -halfW+0.4); g.add(arch);
     });
-    const bumperMat = new THREE.MeshStandardMaterial({color:'#202229', metalness:0.4, roughness:0.4});
-    const frontBumper = new THREE.Mesh(new THREE.BoxGeometry(4,5,car.wid*0.95), bumperMat);
-    frontBumper.position.set(car.len/2+2,5,0); g.add(frontBumper);
-    const rearBumper = new THREE.Mesh(new THREE.BoxGeometry(4,5,car.wid*0.95), bumperMat);
-    rearBumper.position.set(-car.len/2-2,5,0); g.add(rearBumper);
-    const headlightMat = new THREE.MeshStandardMaterial({color:'#fffbcc', emissive:'#fffbcc', emissiveIntensity:0.8});
-    [-car.wid*0.3,car.wid*0.3].forEach(function(wz){
-      const hl = new THREE.Mesh(new THREE.PlaneGeometry(6,4), headlightMat);
-      hl.position.set(car.len/2+0.1, bodyH/2+1, wz); hl.rotation.y=Math.PI/2; g.add(hl);
+
+    const chrome = new THREE.MeshStandardMaterial({color:'#262a31', metalness:0.55, roughness:0.35});
+    const frontBumper = new THREE.Mesh(new THREE.BoxGeometry(3.5,4.5,car.wid*0.98), chrome);
+    frontBumper.position.set(car.len/2+0.8,4.6,0); g.add(frontBumper);
+    const rearBumper = new THREE.Mesh(new THREE.BoxGeometry(3.5,4.5,car.wid*0.98), chrome);
+    rearBumper.position.set(-car.len/2-0.8,4.6,0); g.add(rearBumper);
+
+    // LEGAL: Lamps are lozenges set into the nose and tail, not flat squares stuck on them.
+    const headlightMat = new THREE.MeshStandardMaterial({color:'#fffbe0', emissive:'#fff3c0', emissiveIntensity:1.1});
+    [-car.wid*0.32,car.wid*0.32].forEach(function(wz){
+      const hl = new THREE.Mesh(new THREE.SphereGeometry(2.5,10,8), headlightMat);
+      hl.scale.set(0.55,0.72,1.25);
+      hl.position.set(car.len/2+0.4, bodyH*0.72, wz); g.add(hl);
     });
-    const taillightMat = new THREE.MeshStandardMaterial({color:'#cc2200', emissive:'#cc2200', emissiveIntensity:0.6});
-    [-car.wid*0.3,car.wid*0.3].forEach(function(wz){
-      const tl = new THREE.Mesh(new THREE.PlaneGeometry(5,3), taillightMat);
-      tl.position.set(-car.len/2-0.1, bodyH/2+1, wz); tl.rotation.y=-Math.PI/2; g.add(tl);
+    const taillightMat = new THREE.MeshStandardMaterial({color:'#e02616', emissive:'#c81c0e', emissiveIntensity:0.85});
+    [-car.wid*0.32,car.wid*0.32].forEach(function(wz){
+      const tl = new THREE.Mesh(new THREE.SphereGeometry(2.2,10,8), taillightMat);
+      tl.scale.set(0.5,0.62,1.15);
+      tl.position.set(-car.len/2-0.3, bodyH*0.74, wz); g.add(tl);
     });
+
     if(car.id==='bentley'){
-      const grille = new THREE.Mesh(new THREE.BoxGeometry(4,10,car.wid*0.6), new THREE.MeshStandardMaterial({color:'#c9a227', metalness:1, roughness:0.1}));
-      grille.position.set(car.len/2+2, bodyH/2+1, 0); g.add(grille);
+      const grille = new THREE.Mesh(new THREE.BoxGeometry(2.5,8,car.wid*0.5), new THREE.MeshStandardMaterial({color:'#c9a227', metalness:1, roughness:0.1}));
+      grille.position.set(car.len/2+0.9, bodyH*0.66, 0); g.add(grille);
     }
     if(car.id==='impala'){
-      const spoiler = new THREE.Mesh(new THREE.BoxGeometry(5,5,car.wid), new THREE.MeshStandardMaterial({color:'#282c38', roughness:0.6}));
-      spoiler.position.set(-car.len/2+2, bodyH+8, 0); g.add(spoiler);
+      const spoiler = new THREE.Mesh(new THREE.BoxGeometry(4,2,car.wid*0.92), new THREE.MeshStandardMaterial({color:'#282c38', roughness:0.6}));
+      spoiler.position.set(-car.len*0.44, bodyH+3, 0); g.add(spoiler);
     }
     if(car.id==='escalade'){
-      const rack = new THREE.Mesh(new THREE.BoxGeometry(car.len*0.7,2,car.wid*0.8), new THREE.MeshStandardMaterial({color:'#555555', metalness:0.7}));
-      rack.position.set(0, bodyH+11, 0); g.add(rack);
+      const rack = new THREE.Mesh(new THREE.BoxGeometry(car.len*0.6,1.6,car.wid*0.72), new THREE.MeshStandardMaterial({color:'#4c5058', metalness:0.7, roughness:0.4}));
+      rack.position.set(-car.len*0.04, bodyH+14.2, 0); g.add(rack);
     }
     g.castShadow=true;
     // LEGAL: The body is modeled facing +x; wrap and rotate so its forward becomes
@@ -4169,6 +4234,8 @@ import type * as ThreeNamespace from 'three';
     const sun = Math.max(0, Math.sin(phase - Math.PI / 2));
     const dusk = Math.max(0, 1 - Math.abs(sun * 2 - 1));
     const night = 1 - sun;
+    nightLevel = night;
+    updateHeadlight();
     ambientLight.intensity = 0.5 + sun * 0.5 + dusk * 0.1;
     sunLight.intensity = 0.25 + sun * 1.15;
     sunLight.color.set(sun < 0.18 ? '#9fb4ff' : (dusk > 0.45 ? '#ffc37a' : '#fff2d0'));
@@ -4623,11 +4690,43 @@ import type * as ThreeNamespace from 'three';
     }
   }
 
+  // LEGAL: ---- Working headlight ----
+  // LEGAL: The lamp on the front of the bike was an emissive sphere: it LOOKED lit but threw
+  // LEGAL: no light, so riding at night lit nothing. This is a real SpotLight parented to the
+  // LEGAL: player, aimed down the direction of travel, so it sweeps the road as you turn.
+  // LEGAL: One light reused rather than one per model — spot lights are not free, and the
+  // LEGAL: renderer has to recompile materials when their count changes.
+  let headlightBeam: ThreeNamespace.SpotLight | null = null;
+  function ensureHeadlight(){
+    if(headlightBeam || !playerGroup) return;
+    const beam = new THREE.SpotLight('#fff3cf', 0, 340, Math.PI / 5.2, 0.45, 1.1);
+    beam.position.set(0, 12, 6);
+    // LEGAL: The player group's forward is +z (see the model rotation convention), so the
+    // LEGAL: target sits ahead on +z and inherits every turn for free.
+    beam.target.position.set(0, -2, 90);
+    playerGroup.add(beam);
+    playerGroup.add(beam.target);
+    headlightBeam = beam;
+  }
+  // LEGAL: 0 at midday, 1 at midnight. Written by updateDayNightLighting.
+  let nightLevel = 0;
+  function updateHeadlight(){
+    if(!headlightBeam) return;
+    const lit = state.inVehicle && !state.currentInterior;
+    // LEGAL: Comes up through dusk rather than snapping on, and stays off in daylight.
+    headlightBeam.intensity = lit ? Math.max(0, nightLevel - 0.35) / 0.65 * 3.2 : 0;
+    headlightBeam.visible = headlightBeam.intensity > 0.01;
+  }
+
   function refreshPlayerModel(){
     if(!sceneInitialized || !playerGroup) return;
     clearGroup(playerGroup);
     if(state.inVehicle){ const car=getEquippedCar(); if(car) playerGroup.add(buildCarModel(car)); }
     else playerGroup.add(buildPedestrianModel('#f0efe8', 'arjun'));
+    // LEGAL: clearGroup strips the beam with the model, so it is re-attached every rebuild.
+    headlightBeam = null;
+    ensureHeadlight();
+    updateHeadlight();
   }
   function updateParkedCarMesh(){
     if(!sceneInitialized || !worldGroup) return;
