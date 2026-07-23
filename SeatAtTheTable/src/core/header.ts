@@ -36,7 +36,7 @@ import { renderMapPlaces } from '../map/placeRendering';
 import { createMapPlaceRecords, mapPlaceCategoryLabel, type MapPlaceCategory, type MapPlaceRecord } from '../map/places';
 import { mapPointContext, nearestPlaceAtPoint, placesByCategory, routeHintBetween, routeSummary, trainCrossingBlockAtPoint } from '../map/queries';
 import { outskirtPlaceLabel } from '../map/outskirts';
-import { allocateLots, districtLotSlots, spreadSlots } from '../map/lots';
+import { allocateServiceLots } from '../map/serviceLots';
 import { createRoamingActors, updateRoamingActors } from '../map/roaming';
 import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, buildLandmarks, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
 import { createMapSceneMaterials, createSceneBuildTimer } from '../map/scenePerformance';
@@ -3356,7 +3356,6 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: buttons, which can swallow a click landing mid-rebuild.
   let lastLocPanelAt = 0;
 
-  applyMapWorldCoordinates(localBusinesses);
 
   // LEGAL: ---- Stage 2: allocate lots for the branded shops ----
   // LEGAL: The nine brand buildings were the ones crowding blocks, because each was given a
@@ -3365,32 +3364,16 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: would collide with an already-placed building. Everything already positioned —
   // LEGAL: ventures, local businesses, corners, banks, civic buildings — is passed in as an
   // LEGAL: obstacle so the allocator works around the authored city rather than over it.
-  const brandedShops = serviceBuildings.filter(s => !!s.brandId);
-  const fixedServices = serviceBuildings.filter(s => !s.brandId);
-  applyMapWorldCoordinates(fixedServices);
-
-  const lotObstacles: Solid[] = [
-    ...fixedServices.map(s => ({ x: s.x, y: s.y, hw: 46, hd: 42 })),
-    ...localBusinesses.map(b => ({ x: b.x, y: b.y, hw: 38, hd: 34 })),
-    ...Object.values(ventureMapLots).map(lot => ({ x: lot.x, y: lot.y, hw: 46, hd: 42 })),
-    ...mapAmenities.map(a => ({ x: a.x, y: a.y, hw: 34, hd: 30 })),
-  ];
-  const shopLots = allocateLots({
-    requests: brandedShops.map(s => ({ id: s.id, district: s.district, hw: 40, hd: 36 })),
-    slotsByDistrict: Object.fromEntries(districts.map(d => [d.id, spreadSlots(districtLotSlots({
-      districtOffset: DISTRICT_OFFSETS[d.id] ?? 0,
-      districtWidth: DISTRICT_W,
-      worldHeight: WORLD_H,
-      roadXs: [270, 700, 1130].map(widenAuthoredX),
-      roadYs: roadNetwork.horizontal.map(r => r.y),
-      roadClearance: 72,
-      perCell: 2,
-    }))])),
-    obstacles: lotObstacles,
-    gap: 16,
-  });
-  if(shopLots.unplaced.length) console.warn('[lots] no free lot for', shopLots.unplaced.join(', '));
-  applyMapWorldCoordinates(serviceBuildings, shopLots.placed);
+  // LEGAL: EVERY service building goes through the allocator (see map/serviceLots.ts), not
+  // LEGAL: just the branded shops. The authored lots had real collisions — cityhall sat
+  // LEGAL: exactly on top of the realestate venture, and hubBusStation stood in the middle
+  // LEGAL: of Cermak Road — which is precisely the overlapping-buildings and
+  // LEGAL: buildings-in-streets problem. Ventures and local businesses keep their authored
+  // LEGAL: spots and are passed in as obstacles.
+  const serviceLots = allocateServiceLots();
+  if(serviceLots.unplaced.length) console.warn('[lots] no free lot for', serviceLots.unplaced.join(', '));
+  applyMapWorldCoordinates(serviceBuildings, serviceLots.placed);
+  applyMapWorldCoordinates(localBusinesses, serviceLots.placed);
   // LEGAL: Blocks use the same district-local x convention as the buildings that sit on
   // LEGAL: them, so they must be converted before any ownership hit test runs.
   applyMapWorldCoordinates(territoryBlocks);
@@ -4813,8 +4796,10 @@ import type * as ThreeNamespace from 'three';
     { icon:'legal',    label:'Owned business',          color:'#3e7c8c', ph:'ph-storefront' },
     { icon:'illegal',  label:'Underground business',    color:'#a8394a', ph:'ph-mask-happy' },
     { icon:'bank',     label:'Bank',                    color:'#d4a017', ph:'ph-bank' },
-    { icon:'garage',   label:'Garage / dealer',         color:'#2a87ff', ph:'ph-car-profile' },
-    { icon:'realty',   label:'Real estate office',      color:'#7a6fb0', ph:'ph-house-line' },
+    // LEGAL: These are shops that SELL you things, not anywhere you keep things. Labelled
+    // LEGAL: "Garage" they read as the player's own garage, which does not exist yet.
+    { icon:'garage',   label:'Car dealership',          color:'#2a87ff', ph:'ph-car-profile' },
+    { icon:'realty',   label:'Realty office',           color:'#7a6fb0', ph:'ph-house-line' },
     { icon:'cityhall', label:'City Hall',               color:'#f0efe8', ph:'ph-buildings' },
     { icon:'heist',    label:'Heist target',            color:'#f04848', ph:'ph-lock-key' },
     { icon:'shop',     label:'Local shop',              color:'#7a6fb0', ph:'ph-t-shirt' },

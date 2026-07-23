@@ -287,8 +287,7 @@ test.describe('game boot', () => {
       if(startLabel?.includes('New Game')) await page.locator('#confirm-new-game-btn').click();
       await expect(page.locator('#start-screen')).toHaveClass(/hidden/);
       await page.locator('.tab-btn[data-tab="map"]').click();
-      const canvas = page.locator('#scene3d-container canvas.webgl-canvas');
-      await expect(canvas).toBeVisible();
+      await waitForMapScene(page);
       await page.waitForTimeout(900);
 
       const box = await page.locator('#scene3d-container').evaluate((element: HTMLElement) => {
@@ -419,10 +418,10 @@ test.describe('game boot', () => {
     await expect(page.locator('#citymap-overlay')).not.toHaveClass(/hidden/);
 
     const target = await page.locator('#citymap-canvas').evaluate(async (canvas: HTMLCanvasElement) => {
-      const [{ windhavenMapModel }, viewportModule, worldModule] = await Promise.all([
+      const [{ windhavenMapModel }, viewportModule, serviceLotsModule] = await Promise.all([
         import('/src/map/mapModel.ts'),
         import('/src/map/viewport.ts'),
-        import('/src/map/world.ts'),
+        import('/src/map/serviceLots.ts'),
       ]);
       // LEGAL: Must match how header.ts frames the City Map, which is on the whole
       // LEGAL: landmass now that the stage-1c outskirts exist — framing on district land
@@ -432,8 +431,10 @@ test.describe('game boot', () => {
         canvas.height,
         windhavenMapModel.landmass,
       );
-      // LEGAL: The bank's authored lot, widened the same way map/world.ts widens it.
-      const point = viewportModule.worldToScreen(viewport, { x: worldModule.widenAuthoredX(485), y:450 });
+      // LEGAL: The bank's position now comes from the stage-2 lot allocator, not an
+      // LEGAL: authored lot, so ask the allocator where it actually put it.
+      const bank = serviceLotsModule.allocateServiceLots().placed.bankHome;
+      const point = viewportModule.worldToScreen(viewport, bank);
       const rect = canvas.getBoundingClientRect();
       return {
         x: rect.left + point.x * (rect.width / canvas.width),

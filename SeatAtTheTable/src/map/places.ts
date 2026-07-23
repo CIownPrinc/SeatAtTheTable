@@ -35,8 +35,9 @@ export function minimapIconForLocalBusiness(business: LocalBusiness): MinimapIco
 
 export function mapPlaceCategoryLabel(place: Pick<MapPlaceRecord, 'category' | 'icon' | 'sourceKind'>): string {
   if(place.icon === 'bank') return 'Bank';
-  if(place.icon === 'garage') return 'Garage';
-  if(place.icon === 'realty') return 'Real estate office';
+  // LEGAL: "Garage" implied the player's own garage — these are dealerships that sell cars.
+  if(place.icon === 'garage') return 'Car dealership';
+  if(place.icon === 'realty') return 'Realty office';
   if(place.icon === 'cityhall') return 'City Hall';
   if(place.icon === 'heist') return 'Heist target';
   if(place.icon === 'bar') return 'Bar / club';

@@ -9,6 +9,7 @@ import { actorRadius, canMoveTo, isWaterBlocked } from './movement';
 import { buildMapObjects, ventureFootprint } from './objectFactory';
 import { DISTRICT_OFFSETS, districtParkSlots, namedBuildingLots, roadNetwork, ventureDistricts, ventureLots, ventureMapLots, widenAuthoredX } from './world';
 import { zoneForDistrictBlock } from './zoning';
+import { allocateServiceLots } from './serviceLots';
 import { serviceBuildings } from '../config/serviceBuildings';
 import { localBusinesses } from '../config/localBusinesses';
 import { corners } from '../config/trade';
@@ -154,8 +155,8 @@ describe('map layout helpers', function () {
     const localCopies = localBusinesses.map(business => ({ ...business }));
     const cornerCopies = corners.map(corner => ({ ...corner }));
     const recruitCopies = gangRecruits.map(recruit => ({ ...recruit }));
-    applyMapWorldCoordinates(serviceCopies);
-    applyMapWorldCoordinates(localCopies);
+    applyMapWorldCoordinates(serviceCopies, allocateServiceLots().placed);
+    applyMapWorldCoordinates(localCopies, allocateServiceLots().placed);
     applyMapWorldCoordinates(cornerCopies);
     applyMapWorldCoordinates(recruitCopies);
 
@@ -164,13 +165,55 @@ describe('map layout helpers', function () {
     });
   });
 
+  it('never places two interactable buildings on top of each other, whoever positioned them', function () {
+    // LEGAL: The invariant the player actually cares about: no overlapping buildings,
+    // LEGAL: regardless of whether a building got its spot from the stage-2 allocator or
+    // LEGAL: from an authored lot. If this ever fails for the authored anchors, that is the
+    // LEGAL: evidence for moving them onto the allocator too.
+    const serviceCopies = serviceBuildings.map(service => ({ ...service }));
+    const localCopies = localBusinesses.map(business => ({ ...business }));
+    applyMapWorldCoordinates(serviceCopies, allocateServiceLots().placed);
+    applyMapWorldCoordinates(localCopies, allocateServiceLots().placed);
+
+    const footprints = [
+      ...serviceCopies.map(s => ({ id: s.id, x: s.x, y: s.y, hw: 40, hd: 36 })),
+      ...localCopies.map(b => ({ id: b.id, x: b.x, y: b.y, hw: 34, hd: 30 })),
+      ...createMapBuildings(businesses).map(function(marker){
+        const footprint = ventureFootprint(marker);
+        return { id: marker.id, x: marker.x, y: marker.y, hw: footprint.w / 2, hd: footprint.d / 2 };
+      }),
+    ];
+
+    footprints.forEach(function(a, index){
+      footprints.slice(index + 1).forEach(function(b){
+        expect(rectsOverlap(a, b, 0), `${a.id} overlaps ${b.id}`).toBe(false);
+      });
+    });
+  });
+
+  it('never places an interactable building in the middle of a street', function () {
+    const serviceCopies = serviceBuildings.map(service => ({ ...service }));
+    const localCopies = localBusinesses.map(business => ({ ...business }));
+    applyMapWorldCoordinates(serviceCopies, allocateServiceLots().placed);
+    applyMapWorldCoordinates(localCopies, allocateServiceLots().placed);
+
+    [...serviceCopies, ...localCopies].forEach(function(place){
+      roadNetwork.vertical.forEach(function(road){
+        expect(Math.abs(place.x - road.x), `${place.id} sits on ${road.name}`).toBeGreaterThan(road.w / 2);
+      });
+      roadNetwork.horizontal.forEach(function(road){
+        expect(Math.abs(place.y - road.y), `${place.id} sits on ${road.name}`).toBeGreaterThan(road.w / 2);
+      });
+    });
+  });
+
   it('keeps every bounded authored map object footprint inside playable land', function () {
     const serviceCopies = serviceBuildings.map(service => ({ ...service }));
     const localCopies = localBusinesses.map(business => ({ ...business }));
     const cornerCopies = corners.map(corner => ({ ...corner }));
     const recruitCopies = gangRecruits.map(recruit => ({ ...recruit }));
-    applyMapWorldCoordinates(serviceCopies);
-    applyMapWorldCoordinates(localCopies);
+    applyMapWorldCoordinates(serviceCopies, allocateServiceLots().placed);
+    applyMapWorldCoordinates(localCopies, allocateServiceLots().placed);
     applyMapWorldCoordinates(cornerCopies);
     applyMapWorldCoordinates(recruitCopies);
     const objects = buildMapObjects({
