@@ -106,43 +106,76 @@ export const WORLD_W = WIDENED_BREAKPOINTS[WIDENED_BREAKPOINTS.length - 1];
 export const NORTH_SHORE_LOT_Y = 205;
 export const DEVLIN_NORTHWEST_LOT_X = widenAuthoredX(400);
 
+// LEGAL: ---- Coastline (world expansion stage 1b) ----
+// LEGAL: The old outline was a rounded rectangle with a near-uniform north edge (y about
+// LEGAL: -70 to 64) and south edge (1224 to 1332), which is why the city read as three
+// LEGAL: identical squares in a row. Each district now has its own shape:
+// LEGAL:   Devlin    — set back from the water at the north, running out into a long
+// LEGAL:               peninsula in the south. The oldest, most sprawling district.
+// LEGAL:   West Side — compact and pushed hard up against the river; short in the south,
+// LEGAL:               which suits a working industrial district hemmed in by freight.
+// LEGAL:   The Hub   — a headland pushing north into the lake, with a bay cut into its
+// LEGAL:               southern edge, so downtown sits on a promontory.
+// LEGAL: The north edge everywhere stays south of NORTH_RIVER's southern bank so the
+// LEGAL: shoreline never overlaps the drawn river, and far enough north of the y=205
+// LEGAL: north-shore lots that those buildings keep their footprints on land.
 export const WINDHAVEN_LANDMASS: Point[] = widenPoints([
-  { x: -210, y: 64 },
-  { x: -42, y: -18 },
-  { x: 320, y: -52 },
-  { x: 780, y: -18 },
-  { x: 1250, y: -70 },
-  { x: 1705, y: -10 },
-  { x: 2210, y: -46 },
-  { x: 2760, y: -4 },
-  { x: 3290, y: -58 },
-  { x: 3840, y: -12 },
-  { x: 4310, y: -64 },
-  { x: 4770, y: -22 },
-  { x: 5260, y: 18 },
-  { x: 5685, y: 128 },
-  { x: 5780, y: 292 },
-  { x: 5660, y: 456 },
-  { x: 5810, y: 650 },
-  { x: 5650, y: 838 },
-  { x: 5752, y: 1022 },
-  { x: 5540, y: 1228 },
-  { x: 5050, y: 1302 },
-  { x: 4520, y: 1260 },
-  { x: 4040, y: 1322 },
-  { x: 3490, y: 1272 },
-  { x: 2970, y: 1316 },
-  { x: 2420, y: 1266 },
-  { x: 1900, y: 1328 },
-  { x: 1390, y: 1288 },
-  { x: 900, y: 1332 },
-  { x: 420, y: 1284 },
-  { x: -130, y: 1224 },
+  // LEGAL: North coast, west to east.
+  { x: -210, y: 120 },
+  { x: -40, y: 152 },
+  { x: 300, y: 164 },
+  { x: 640, y: 148 },
+  { x: 980, y: 120 },
+  { x: 1290, y: 100 },
+  { x: 1500, y: 94 },
+  { x: 1705, y: 90 },
+  { x: 1960, y: 84 },
+  { x: 2210, y: 74 },
+  { x: 2600, y: 68 },
+  { x: 2980, y: 72 },
+  { x: 3290, y: 84 },
+  { x: 3500, y: 94 },
+  { x: 3840, y: 106 },
+  { x: 4060, y: 134 },
+  { x: 4310, y: 166 },
+  { x: 4560, y: 118 },
+  { x: 4770, y: 78 },
+  { x: 4980, y: 98 },
+  { x: 5260, y: 142 },
+  // LEGAL: East coast, north to south.
+  { x: 5560, y: 212 },
+  { x: 5680, y: 380 },
+  { x: 5600, y: 520 },
+  { x: 5720, y: 660 },
+  { x: 5560, y: 820 },
+  { x: 5640, y: 980 },
+  { x: 5480, y: 1140 },
+  // LEGAL: South coast, east to west — Hub inlet, then the long Devlin peninsula.
+  { x: 5260, y: 1228 },
+  { x: 5020, y: 1182 },
+  { x: 4820, y: 1096 },
+  { x: 4640, y: 1172 },
+  { x: 4380, y: 1224 },
+  { x: 4060, y: 1198 },
+  { x: 3840, y: 1162 },
+  { x: 3500, y: 1138 },
+  { x: 3180, y: 1122 },
+  { x: 2820, y: 1130 },
+  { x: 2460, y: 1150 },
+  { x: 2100, y: 1178 },
+  { x: 1705, y: 1222 },
+  { x: 1420, y: 1270 },
+  { x: 1120, y: 1316 },
+  { x: 820, y: 1344 },
+  { x: 520, y: 1320 },
+  { x: 220, y: 1268 },
+  { x: -130, y: 1216 },
+  // LEGAL: West coast, south to north.
   { x: -245, y: 1006 },
   { x: -120, y: 796 },
   { x: -252, y: 600 },
   { x: -96, y: 366 },
-  { x: -210, y: 64 },
+  { x: -210, y: 120 },
 ]);
 
 // LEGAL: Canals keep their authored 500 width — only their position moves, so the

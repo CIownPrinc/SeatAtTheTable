@@ -54,6 +54,12 @@ export function isPointOnBridge(point: Point, radius: number): boolean {
 
 export function isPointInWater(point: Point, radius: number): boolean {
   if(!isPointOnWindhavenLand(point, radius)) return true;
-  if(point.y < 56 + radius) return true;
+  // LEGAL: This used to be a flat `y < 56` north-water rule, back when the landmass ran
+  // LEGAL: north past y=0 and the real shoreline was not in the polygon. The coastline now
+  // LEGAL: carries the actual north shore per district (stage 1b), so the polygon test
+  // LEGAL: above does this job — a flat cut-off here would override the shape and flatten
+  // LEGAL: every district's coast back to a straight line. Kept only as a backstop well
+  // LEGAL: north of any authored land.
+  if(point.y < 40 + radius) return true;
   return isPointInCanal(point, radius) && !isPointOnBridge(point, radius);
 }

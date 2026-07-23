@@ -3905,44 +3905,58 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: hips on the seat, torso pitched forward toward the bars, arms reaching them,
     // LEGAL: legs folded down to the pegs. Uses the player's own palette so the rider
     // LEGAL: matches the pedestrian you were a moment ago.
+    // LEGAL: Built from the SAME palette and features as buildPedestrianModel with the
+    // LEGAL: same identity ('arjun'), so the rider is visibly the person who was walking a
+    // LEGAL: moment ago: cream coat body and arms, skin head with hair, dark shoes. The
+    // LEGAL: first attempt invented a black jacket and a helmet and used look.shirt (a dark
+    // LEGAL: accent) for the torso, which read as a different, much darker character.
     const look = appearanceForPerson('arjun', '#f0efe8');
-    const hipX = -car.len*0.14, hipY = wheelR + 10;
+    const coatMat = new THREE.MeshStandardMaterial({color: look.coat, roughness:0.74});
+    const skinMat = new THREE.MeshStandardMaterial({color: look.skin, roughness:0.65});
+    const pantsMat = new THREE.MeshStandardMaterial({color: look.pants, roughness:0.82});
     const rider = new THREE.Group();
     if(!withRider) rider.visible = false;
 
-    const pelvis = new THREE.Mesh(new THREE.BoxGeometry(7, 5, car.wid*0.66), new THREE.MeshStandardMaterial({color:look.pants, roughness:0.85}));
-    pelvis.position.set(hipX, hipY, 0); rider.add(pelvis);
+    const pelvis = new THREE.Mesh(new THREE.CylinderGeometry(4.6, 5.2, 6, 8), pantsMat);
+    pelvis.position.set(0, 6, 0); rider.add(pelvis);
 
-    // LEGAL: Torso pitched forward — rotation about z tips the +x-facing body toward the bars.
-    const torso = new THREE.Mesh(new THREE.BoxGeometry(8.5, 12, car.wid*0.62), new THREE.MeshStandardMaterial({color:look.shirt, roughness:0.8}));
-    torso.position.set(hipX + 3.4, hipY + 5.4, 0); torso.rotation.z = -0.52; rider.add(torso);
+    // LEGAL: Torso pitched forward toward the bars — rotation about z tips the +x-facing body.
+    const torso = new THREE.Mesh(new THREE.CylinderGeometry(5.2*look.scaleX, 6.6*look.scaleX, 15*look.scaleY, 8), coatMat);
+    torso.position.set(3.2, 14, 0); torso.rotation.z = -0.46; rider.add(torso);
+    const shirt = new THREE.Mesh(new THREE.BoxGeometry(7*look.scaleX, 7, 3.4), new THREE.MeshStandardMaterial({color: look.shirt, roughness:0.8}));
+    shirt.position.set(6.2, 16.5, 0); shirt.rotation.z = -0.46; rider.add(shirt);
 
-    const jacket = new THREE.Mesh(new THREE.BoxGeometry(6, 6.5, car.wid*0.7), new THREE.MeshStandardMaterial({color:'#241f27', roughness:0.9}));
-    jacket.position.set(hipX + 2.2, hipY + 4.2, 0); jacket.rotation.z = -0.52; rider.add(jacket);
-
-    const head = new THREE.Mesh(new THREE.SphereGeometry(3.2, 12, 10), new THREE.MeshStandardMaterial({color:'#1b1d24', roughness:0.35, metalness:0.25}));
-    head.position.set(hipX + 7.6, hipY + 11.6, 0); rider.add(head);
-    // LEGAL: Visor, so which way the head is pointing is readable from above.
-    const visor = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.8, 4.4), new THREE.MeshStandardMaterial({color:'#8fd0e0', emissive:'#2b4a58', emissiveIntensity:0.4}));
-    visor.position.set(hipX + 10.1, hipY + 11.4, 0); rider.add(visor);
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.3, 2.6, 8), skinMat);
+    neck.position.set(7.4, 21.4, 0); rider.add(neck);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(5.6*look.scaleX, 12, 10), skinMat);
+    head.position.set(8.4, 25.4, 0); rider.add(head);
+    const hair = new THREE.Mesh(new THREE.SphereGeometry(5.8*look.scaleX, 12, 8, 0, Math.PI*2, 0, Math.PI*0.48), new THREE.MeshStandardMaterial({color: look.hair, roughness:0.9}));
+    hair.rotation.x = Math.PI; hair.position.set(8.0, 28.2, 0); rider.add(hair);
+    // LEGAL: Nose, same as the pedestrian, so the head reads as facing forward from above.
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(1.6, 4, 6), skinMat);
+    nose.rotation.z = -Math.PI/2; nose.position.set(13.4, 25.0, 0); rider.add(nose);
 
     [-1, 1].forEach(function(side){
-      const arm = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 11, 6), new THREE.MeshStandardMaterial({color:look.shirt, roughness:0.8}));
-      arm.position.set(hipX + 8.2, hipY + 7.4, side * car.wid*0.34);
-      arm.rotation.z = Math.PI/2 - 0.55; rider.add(arm);
+      const arm = new THREE.Mesh(new THREE.CapsuleGeometry(1.7, 11, 4, 6), coatMat);
+      arm.position.set(9.4, 16.6, side * 4.4);
+      arm.rotation.z = Math.PI/2 - 0.42; rider.add(arm);
+      const hand = new THREE.Mesh(new THREE.SphereGeometry(1.9, 8, 6), skinMat);
+      hand.position.set(15.2, 14.6, side * 4.6); rider.add(hand);
 
-      const thigh = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.9, 9, 6), new THREE.MeshStandardMaterial({color:look.pants, roughness:0.88}));
-      thigh.position.set(hipX + 3.4, hipY - 1.6, side * car.wid*0.34);
-      thigh.rotation.z = Math.PI/2 - 0.35; rider.add(thigh);
-
-      const shin = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 8, 6), new THREE.MeshStandardMaterial({color:look.pants, roughness:0.88}));
-      shin.position.set(hipX + 6.2, hipY - 6.4, side * car.wid*0.34);
-      shin.rotation.z = 0.28; rider.add(shin);
-
-      const boot = new THREE.Mesh(new THREE.BoxGeometry(4, 2.4, 2.6), new THREE.MeshStandardMaterial({color:'#15161a', roughness:0.95}));
-      boot.position.set(hipX + 7.4, hipY - 10, side * car.wid*0.34); rider.add(boot);
+      const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(2.0, 7, 4, 6), pantsMat);
+      thigh.position.set(3.6, 4.6, side * 4.4);
+      thigh.rotation.z = Math.PI/2 - 0.3; rider.add(thigh);
+      const shin = new THREE.Mesh(new THREE.CapsuleGeometry(1.7, 6, 4, 6), pantsMat);
+      shin.position.set(7.2, -1.4, side * 4.4);
+      shin.rotation.z = 0.26; rider.add(shin);
+      const shoe = new THREE.Mesh(new THREE.BoxGeometry(5, 2, 3.4), new THREE.MeshStandardMaterial({color:'#111217', roughness:0.8}));
+      shoe.position.set(9.4, -5.2, side * 4.4); rider.add(shoe);
     });
 
+    // LEGAL: The bike group is scaled up by 1.45 on the way out, so shrink the rider by the
+    // LEGAL: same factor — otherwise he is noticeably bigger riding than walking.
+    rider.scale.setScalar(1 / 1.45);
+    rider.position.set(-car.len*0.14, wheelR + 6.5, 0);
     rider.traverse(function(part){ part.castShadow = true; });
     g.add(rider);
 
