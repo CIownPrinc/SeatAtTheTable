@@ -3803,9 +3803,31 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: Opens a small in-world brief: a line of flavour, the shared status rows, then
   // LEGAL: any type-specific rows. Defaults to a single dismiss button.
   function showRoomBrief(eyebrow: string, title: string, lead: string, extraRows: string, buttons?: ModalOptions['buttons']){
+    // LEGAL: These used to open with statusRows() — wanted level, federal case, turf — on
+    // LEGAL: EVERY brief in the game. The HUD already shows all of it, so a hotspot that
+    // LEGAL: restated it was a button that did nothing you could not already see. Briefs now
+    // LEGAL: carry only what is specific to the place, plus somewhere to actually lie low.
     showModal({ eyebrow, title,
-      body:`<p class="flavor">${lead}</p><div style="margin-top:10px;">${statusRows()}${extraRows}</div>`,
-      buttons: buttons ?? [{ label:'Step back' }] });
+      body:`<p class="flavor">${lead}</p><div style="margin-top:10px;">${extraRows}</div>`,
+      buttons: buttons ?? lieLowButtons() });
+  }
+
+  // LEGAL: Being indoors is the one thing an interior can offer that the street cannot, so
+  // LEGAL: that is what the ambient hotspots do now. Heat decays while you wait it out; the
+  // LEGAL: cost is the clock, which matters because income and rivals run on it.
+  const LIE_LOW_SECONDS = 45;
+  function lieLowButtons(): ModalOptions['buttons'] {
+    if(state.heat < 5) return [{ label:'Step back' }];
+    return [
+      { label:`Lie low for a while (-${Math.min(30, Math.round(state.heat))} heat)`, onClick:function(){
+        const shed = Math.min(30, state.heat);
+        state.heat = Math.max(0, state.heat - shed);
+        state.playSeconds += LIE_LOW_SECONDS;
+        log(`<i class="ph-duotone ph-hourglass"></i> You sit it out. The street cools off — heat down ${Math.round(shed)}.`);
+        renderAll();
+      } },
+      { label:'Step back', secondary:true },
+    ];
   }
   // LEGAL: Shared placement for the secondary "ambient" hotspot so it never collides with
   // LEGAL: the primary counter (top-centre) or the door (bottom-centre).
@@ -4745,7 +4767,7 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: ---- procedural building with windows, door, and zone-specific roof ----
   function buildDetailedBuilding(w: number, h: number, d: number, color: number | string, zoneType: string, variant = 0){
     const assetKey = assetKeyForBuilding(zoneType, variant, h);
-    const assetModel = assetKey ? mapAssets?.createFittedModel(assetKey, w, h, d) : null;
+    const assetModel = assetKey ? mapAssets?.createFittedModel(assetKey, w, h, d, String(color)) : null;
     if(assetModel) return assetModel;
 
     const g = new THREE.Group();
@@ -4861,9 +4883,18 @@ import type * as ThreeNamespace from 'three';
     worldGroup.children.forEach(function(child){
       const motion = child.userData.waterMotion as { baseX: number; baseZ: number; driftX: number; driftZ: number; phase: number } | undefined;
       if(!motion) return;
-      const wave = Math.sin(state.playSeconds * 2.2 + motion.phase);
-      child.position.x = motion.baseX + wave * motion.driftX;
-      child.position.z = motion.baseZ + wave * motion.driftZ;
+      // LEGAL: These used to oscillate around their base position, which averages out to
+      // LEGAL: standing still — the water read as a painted surface with a shimmer on it.
+      // LEGAL: Water FLOWS: the highlight travels in one direction and wraps, so the eye
+      // LEGAL: gets a direction of travel instead of a twitch.
+      const span = 150;
+      const travel = ((state.playSeconds * 12 + motion.phase * span) % span) - span/2;
+      const swell = Math.sin(state.playSeconds * 1.6 + motion.phase) * 4;
+      child.position.x = motion.baseX + Math.sign(motion.driftX || 0) * travel + (motion.driftZ ? swell : 0);
+      child.position.z = motion.baseZ + Math.sign(motion.driftZ || 0) * travel + (motion.driftX ? swell : 0);
+      // LEGAL: Fade in and out at the ends of the run so the wrap is not a visible jump.
+      const material = (child as ThreeNamespace.Mesh).material as ThreeNamespace.MeshBasicMaterial;
+      if(material) material.opacity = 0.26 * (1 - Math.abs(travel) / (span/2));
     });
   }
 

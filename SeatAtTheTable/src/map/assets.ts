@@ -4,7 +4,7 @@ import { EAGER_MAP_ASSET_KEYS, MAP_ASSET_PATHS, type MapAssetKey } from './asset
 export type { MapAssetKey } from './assetManifest';
 
 export interface MapAssetLibrary {
-  createFittedModel(key: MapAssetKey, width: number, height: number, depth: number): ThreeNamespace.Group | null;
+  createFittedModel(key: MapAssetKey, width: number, height: number, depth: number, tint?: string): ThreeNamespace.Group | null;
 }
 
 const FALLBACK_TEXTURE_DATA_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAI0lEQVR4AYTIoQ0AAAwCwYb9R+wQNdVgCYZP3hz+lj4m6iAAAAD//+qR2V4AAAAGSURBVAMAfjEPCeZvlw0AAAAASUVORK5CYII=';
@@ -13,7 +13,16 @@ export function resolveMapAssetUrl(url: string): string {
   return url.endsWith('Textures/colormap.png') ? FALLBACK_TEXTURE_DATA_URL : url;
 }
 
-function cloneScene(THREE: typeof ThreeNamespace, scene: ThreeNamespace.Group): ThreeNamespace.Group {
+// LEGAL: The Kenney GLBs reference Textures/colormap.png, which is not shipped — there is no
+// LEGAL: Textures directory at all. Every one of them therefore loads the 4x4 placeholder
+// LEGAL: above and renders as the same washed-out pale box. That is the "why are there so
+// LEGAL: many white buildings" report: not too FEW models, the models had no colour.
+// LEGAL:
+// LEGAL: So the caller passes the colour the building was meant to be, and it is applied to
+// LEGAL: the cloned materials. Materials are cloned per instance first — a GLB scene shares
+// LEGAL: its materials between every clone, so tinting in place would repaint every building
+// LEGAL: in the city the colour of whichever one was built last.
+function cloneScene(THREE: typeof ThreeNamespace, scene: ThreeNamespace.Group, tint?: string): ThreeNamespace.Group {
   const clone = scene.clone(true);
 
   clone.traverse(function(child){
@@ -21,6 +30,18 @@ function cloneScene(THREE: typeof ThreeNamespace, scene: ThreeNamespace.Group): 
     if(!mesh.isMesh) return;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
+    if(!tint) return;
+    const source = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    mesh.material = source.map(function(material){
+      const copy = (material as ThreeNamespace.MeshStandardMaterial).clone();
+      copy.color = new THREE.Color(tint);
+      // LEGAL: The placeholder texture is a flat 4x4 and multiplies the colour towards white;
+      // LEGAL: dropping it lets the tint actually show.
+      copy.map = null;
+      copy.needsUpdate = true;
+      return copy;
+    }) as ThreeNamespace.Material[] as unknown as ThreeNamespace.Material;
+    if(source.length === 1) mesh.material = (mesh.material as unknown as ThreeNamespace.Material[])[0];
   });
 
   return clone;
@@ -76,10 +97,10 @@ export async function loadMapAssetLibrary(THREE: typeof ThreeNamespace): Promise
   });
 
   return {
-    createFittedModel(key: MapAssetKey, width: number, height: number, depth: number): ThreeNamespace.Group | null {
+    createFittedModel(key: MapAssetKey, width: number, height: number, depth: number, tint?: string): ThreeNamespace.Group | null {
       const scene = scenes.get(key);
       if(!scene) return null;
-      return fitToBox(THREE, cloneScene(THREE, scene), width, height, depth);
+      return fitToBox(THREE, cloneScene(THREE, scene, tint), width, height, depth);
     },
   };
 }
