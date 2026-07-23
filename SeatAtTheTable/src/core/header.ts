@@ -35,7 +35,7 @@ import { GARAGE_RETURN_SECONDS, PARKING_DISTRICT_IDS, carSpawnPositionForDistric
 import { renderMapPlaces } from '../map/placeRendering';
 import { propertyPlaces, type PropertyPlace } from '../map/propertyPlaces';
 import { createMapPlaceRecords, mapPlaceCategoryLabel, type MapPlaceCategory, type MapPlaceRecord } from '../map/places';
-import { mapPointContext, nearestPlaceAtPoint, placesByCategory, routeHintBetween, routeSummary, trainCrossingBlockAtPoint } from '../map/queries';
+import { bridgeAtPoint, mapPointContext, nearestPlaceAtPoint, placesByCategory, routeHintBetween, routeSummary, trainCrossingBlockAtPoint } from '../map/queries';
 import { outskirtPlaceLabel } from '../map/outskirts';
 import { allocateServiceLots } from '../map/serviceLots';
 import { createRoamingActors, settleRoamingActors, updateRoamingActors } from '../map/roaming';
@@ -1415,7 +1415,9 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: making parking meaningless.
   function garageDoorPoint(): Point {
     const garage = serviceBuildings.find(s => s.id === 'playerGarage');
-    return garage ? { x: garage.x, y: garage.y + 54 } : carSpawnPositionForDistrict('devlin');
+    // LEGAL: Beside the door, not on it. Parked dead centre it sat exactly where you stand
+    // LEGAL: to go inside, which is half of why pressing interact there got you the car.
+    return garage ? { x: garage.x + 66, y: garage.y + 46 } : carSpawnPositionForDistrict('devlin');
   }
   function tickGarageReturn(){
     if(state.inVehicle || !getEquippedCar()) return;
@@ -3770,15 +3772,26 @@ import type * as ThreeNamespace from 'three';
       return best;
     }
     if(state.inVehicle) return null;
-    let best: MapMarker | null = null, bestDist=46;
+    // LEGAL: Doors beat the parked car on a contested press. The car used to be tested first
+    // LEGAL: and won every tie, so standing at your own garage door — where the car is parked
+    // LEGAL: by design — pressing interact got you INTO the car instead of into the garage.
+    // LEGAL: You can always reach the car by walking to it; you cannot reach a door any other
+    // LEGAL: way, so the door is the safer thing to resolve a tie towards.
+    const REACH = 46;
+    let best: MapMarker | null = null;
+    let bestDist = REACH;
+    const place = nearestPlaceAtPoint(mapPlaces, { x: player.x, y: player.y }, REACH);
+    if(place?.sourceObject){
+      best = { type:place.sourceObject.kind, ref:place.sourceObject.ref } as MapMarker;
+      bestDist = Math.hypot(player.x - place.x, player.y - place.y);
+    }
     const car = getEquippedCar();
     if(car){
       const parked = parkedCarPositionForDistrict(state.parkedCarPos, state.currentDistrict);
       const d = Math.hypot(player.x-parked.x, player.y-parked.y);
-      if(d<bestDist){ bestDist=d; best={type:'car', ref:parked}; }
+      // LEGAL: The car takes a contested press only when it is CLEARLY the nearer thing.
+      if(d < bestDist - 14) best = { type:'car', ref:parked };
     }
-    const place = nearestPlaceAtPoint(mapPlaces, { x: player.x, y: player.y }, bestDist);
-    if(place?.sourceObject) best = { type:place.sourceObject.kind, ref:place.sourceObject.ref } as MapMarker;
     return best;
   }
   function tryInteract(){
@@ -3821,7 +3834,10 @@ import type * as ThreeNamespace from 'three';
     return 150;
   }
   function tryMove(nx: number, ny: number, solids: Solid[]){
-    const trainBlock = state.inVehicle ? trainCrossingBlockAtPoint({ x:nx, y:ny }, Date.now(), actorRadius(true)) : null;
+    // LEGAL: The crossing used to be checked only while driving, so on foot you walked
+    // LEGAL: straight through a moving train. Four cars of rolling stock stop a pedestrian
+    // LEGAL: rather more decisively than they stop a car; radius follows the actor.
+    const trainBlock = trainCrossingBlockAtPoint({ x:nx, y:ny }, Date.now(), actorRadius(state.inVehicle));
     if(trainBlock){
       const now = Date.now();
       if(now - lastTrainWarningAt > 3500){
@@ -4640,6 +4656,15 @@ import type * as ThreeNamespace from 'three';
     });
     return dots.slice(0, 48);
   }
+  // LEGAL: Deliberately NOT the road-marking yellow — see rebuildWaypointBeacon.
+  const WAYPOINT_COLOR = '#35e0ff';
+
+  // LEGAL: Height of the walking surface at a point, so route dots sit ON it. Only bridges
+  // LEGAL: raise the surface today; everything else is ground level.
+  const BRIDGE_DECK_TOP = 4.35;
+  function guideHeightAt(point: Point): number {
+    return bridgeAtPoint(point, 6) ? BRIDGE_DECK_TOP : 0.15;
+  }
   function computeRoadGuide(px: number, py: number, wx: number, wy: number): Point[] {
     return sampleRouteGuide(routeHintBetween({ x:px, y:py }, { x:wx, y:wy }).waypoints, 55);
   }
@@ -4666,20 +4691,27 @@ import type * as ThreeNamespace from 'three';
     const wp = currentWaypoint();
     if(!wp) return;
     const g = new THREE.Group();
-    // LEGAL: Flat cross marker on the ground — no floating tower
-    const markerMat = new THREE.MeshStandardMaterial({color:'#d4a017', emissive:'#d4a017', emissiveIntensity:0.7});
+    // LEGAL: Flat cross marker on the ground — no floating tower.
+    // LEGAL: Cyan, not gold. The old #d4a017 was the same yellow as the road lane markings,
+    // LEGAL: so the route trail disappeared into the centre line of the road it was drawn on.
+    const markerMat = new THREE.MeshStandardMaterial({color:WAYPOINT_COLOR, emissive:WAYPOINT_COLOR, emissiveIntensity:0.7});
     const arm1 = new THREE.Mesh(new THREE.PlaneGeometry(30,6), markerMat);
     arm1.rotation.x=-Math.PI/2; arm1.position.set(0,0.2,0); g.add(arm1);
     const arm2 = new THREE.Mesh(new THREE.PlaneGeometry(6,30), markerMat);
     arm2.rotation.x=-Math.PI/2; arm2.position.set(0,0.2,0); g.add(arm2);
-    const ring = new THREE.Mesh(new THREE.RingGeometry(18,22,20), new THREE.MeshBasicMaterial({color:'#d4a017', transparent:true, opacity:0.38, side:THREE.DoubleSide}));
+    const ring = new THREE.Mesh(new THREE.RingGeometry(18,22,20), new THREE.MeshBasicMaterial({color:WAYPOINT_COLOR, transparent:true, opacity:0.38, side:THREE.DoubleSide}));
     ring.rotation.x=-Math.PI/2; ring.position.y=0.3; g.add(ring);
     // LEGAL: Flat road-guide dots from player position to waypoint
     const dots = computeRoadGuide(player.x, player.y, wp.x, wp.y);
-    const dotMat = new THREE.MeshBasicMaterial({color:'#d4a017'});
+    const dotMat = new THREE.MeshBasicMaterial({color:WAYPOINT_COLOR});
     dots.forEach(function(pt){
       const dot = new THREE.Mesh(new THREE.CircleGeometry(4,8), dotMat);
-      dot.rotation.x=-Math.PI/2; dot.position.set(pt.x-wp.x,0.15,pt.y-wp.y); g.add(dot);
+      // LEGAL: Every dot used to be pinned to y=0.15, which is UNDER a bridge: the deck sits
+      // LEGAL: at y=2 and is 4 thick, so the whole trail was hidden inside the deck exactly
+      // LEGAL: where you most need directions. Dots ride the surface they are actually on.
+      dot.rotation.x=-Math.PI/2;
+      dot.position.set(pt.x-wp.x, guideHeightAt(pt), pt.y-wp.y);
+      g.add(dot);
     });
     g.position.set(wp.x,0,wp.y);
     g.name = 'waypoint:beacon';
