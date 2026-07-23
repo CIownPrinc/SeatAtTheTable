@@ -3,6 +3,7 @@ import type * as ThreeNamespace from 'three';
 import type { MapBuilding } from './markers';
 import type { MapObject } from './objects';
 import type { VentureFootprint } from './objectFactory';
+import type { PropertyPlace } from './propertyPlaces';
 
 export interface BuildingVisualState {
   color: string;
@@ -41,6 +42,7 @@ export interface MapPlaceRenderOptions {
 export function renderMapPlaces(options: MapPlaceRenderOptions): void {
   renderVentureBuildings(options);
   renderServiceBuildings(options);
+  renderPropertyBuildings(options);
   renderLocalBusinesses(options);
   renderAmenities(options);
   renderCorners(options);
@@ -75,6 +77,32 @@ function renderServiceBuildings(options: MapPlaceRenderOptions): void {
     worldGroup.add(mesh);
     helpers.addSign(mesh, building.name, Math.min(54, silhouette.w * 0.72), 9, silhouette.h - 8, '#ffe6a0');
   });
+}
+
+// LEGAL: Stage 7 — real estate exists in the world whether or not you hold the deed, so
+// LEGAL: these always render. Ownership is shown on the minimap and by the marker colour,
+// LEGAL: not by the building appearing out of nowhere when you buy it.
+function renderPropertyBuildings(options: MapPlaceRenderOptions): void {
+  const { worldGroup, mapObjects, helpers } = options;
+  mapObjects.filter(object => object.kind === 'property').forEach(function(object){
+    const place = object.ref as PropertyPlace;
+    const silhouette = propertySilhouette(place);
+    const mesh = helpers.buildDetailedBuilding(silhouette.w, silhouette.h, silhouette.d, silhouette.color, silhouette.zoneType, helpers.variantForId(place.id));
+    helpers.addCategoryMarker(mesh, object.minimapIcon, '#5fbf8f', silhouette.h - 2);
+    mesh.position.set(object.x, silhouette.h / 2, object.y);
+    worldGroup.add(mesh);
+    helpers.addSign(mesh, place.name, Math.min(46, silhouette.w * 0.8), 8, silhouette.h - 6, '#9fe0c0');
+  });
+}
+
+// LEGAL: Footprint by the brand category the property belongs to — a vacant walk-up should
+// LEGAL: not look like a waterfront tower.
+export function propertySilhouette(place: PropertyPlace): BuildingSilhouette {
+  const income = place.property.incomePerSec;
+  if(income >= 700) return { w:56, h:96, d:48, color:'#4a5a6d', zoneType:'skyscraper' };
+  if(income >= 150) return { w:54, h:62, d:46, color:'#54566a', zoneType:'residential' };
+  if(income >= 30) return { w:60, h:32, d:44, color:'#6a5a48', zoneType:'commercial' };
+  return { w:46, h:30, d:38, color:'#5d4a46', zoneType:'residential' };
 }
 
 function renderLocalBusinesses(options: MapPlaceRenderOptions): void {

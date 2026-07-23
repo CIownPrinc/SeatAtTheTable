@@ -33,6 +33,7 @@ import { solidsFromObjects } from '../map/objects';
 import { buildMapObjects, ventureFootprint } from '../map/objectFactory';
 import { GARAGE_RETURN_SECONDS, PARKING_DISTRICT_IDS, carSpawnPositionForDistrict, defaultParkedCarPositions, parkedCarPositionForDistrict, secondsUntilGarageReturn, shouldReturnToGarage } from '../map/parking';
 import { renderMapPlaces } from '../map/placeRendering';
+import { propertyPlaces, type PropertyPlace } from '../map/propertyPlaces';
 import { createMapPlaceRecords, mapPlaceCategoryLabel, type MapPlaceCategory, type MapPlaceRecord } from '../map/places';
 import { mapPointContext, nearestPlaceAtPoint, placesByCategory, routeHintBetween, routeSummary, trainCrossingBlockAtPoint } from '../map/queries';
 import { outskirtPlaceLabel } from '../map/outskirts';
@@ -3434,7 +3435,9 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: rel-x 270/700/1130 (±37) and horizontal roads at y 300/600/900 (±37), so
   // LEGAL: these column/row centers keep every venture fully clear of the streets.
   const mapBuildings = createMapBuildings(businesses);
-  const mapObjects = buildMapObjects({ mapBuildings, serviceBuildings, localBusinesses, amenities:mapAmenities, corners, npcs:mapNpcs, gangRecruits });
+  // LEGAL: Stage 7 — every property has a real lot, so owned real estate is findable.
+  const mapPropertyPlaces = propertyPlaces();
+  const mapObjects = buildMapObjects({ mapBuildings, serviceBuildings, propertyPlaces:mapPropertyPlaces, localBusinesses, amenities:mapAmenities, corners, npcs:mapNpcs, gangRecruits });
   const mapPlaces = createMapPlaceRecords(mapObjects, landmarks);
   const roamingActors = createRoamingActors(mapObjects);
   // LEGAL: District landmarks — unique, recognisable "spots" so each area reads as a
@@ -4691,6 +4694,17 @@ import type * as ThreeNamespace from 'three';
   const mctx = minimapCanvas.getContext('2d')!;
   const minimapPan = { x:0, y:0 };
   let minimapDragging=false, minimapDragStart: { clientX: number; clientY: number; panX: number; panY: number } | null =null, minimapDragMoved=false;
+  // LEGAL: Real estate is in the world whether or not you own it, but the minimap should
+  // LEGAL: only flag YOUR holdings — otherwise every buyable building clutters the map with
+  // LEGAL: markers for things that are not yours.
+  function ownsPropertyPlace(object: MapObject): boolean {
+    if(object.kind !== 'property') return true;
+    return state.ownedProperties.includes((object.ref as PropertyPlace).property.id);
+  }
+  function minimapObjects(): MapObject[] {
+    return mapObjects.filter(ownsPropertyPlace);
+  }
+
   function currentWaypoint(): Point | null {
     return state.waypoints.global || null;
   }
@@ -4733,7 +4747,7 @@ import type * as ThreeNamespace from 'three';
       dragging:minimapDragging,
       pan:minimapPan,
       player,
-      mapObjects,
+      mapObjects: minimapObjects(),
       districtOffsets:DISTRICT_OFFSETS,
       fillerFor,
       worldWidth:WORLD_W,
@@ -4873,6 +4887,7 @@ import type * as ThreeNamespace from 'three';
     { icon:'amenity',  label:'Amenity',                 color:'#5fbf8f', ph:'ph-basketball' },
     { icon:'person',   label:'Person',                  color:'#f0efe8', ph:'ph-user' },
     { icon:'gang',     label:'Gang recruit',            color:'#f0efe8', ph:'ph-users-three' },
+    { icon:'estate',   label:'Real estate you own',      color:'#5fbf8f', ph:'ph-house' },
     { icon:'landmark', label:'Landmark — incl. The Potato', color:'#e0c860', ph:'ph-star' },
     { icon:'you',      label:'You',                     color:'#e8e6de', ph:'ph-navigation-arrow' },
     { icon:'waypoint', label:'Waypoint',                color:'#d4a017', ph:'ph-crosshair' },
@@ -4888,7 +4903,13 @@ import type * as ThreeNamespace from 'three';
     { id:'amenity', label:'Amenities' },
     { id:'landmark', label:'Landmarks' },
   ];
+  // LEGAL: Search and the results list only offer real estate you actually own, matching
+  // LEGAL: what the map shows — otherwise searching "lofts" finds a building that is not
+  // LEGAL: yours and drops a waypoint on it.
   function cityFilteredPlaces(): MapPlaceRecord[] {
+    return cityFilteredPlacesAll().filter(place => !place.sourceObject || ownsPropertyPlace(place.sourceObject));
+  }
+  function cityFilteredPlacesAll(): MapPlaceRecord[] {
     const filteredByCategory = cityMapFilter === 'all' ? mapPlaces : placesByCategory(mapPlaces, cityMapFilter);
     const search = cityMapSearchTerm.trim().toLowerCase();
     if(!search) return filteredByCategory;
@@ -4897,9 +4918,9 @@ import type * as ThreeNamespace from 'three';
     });
   }
   function cityVisibleMapObjects(): MapObject[] {
-    if(cityMapFilter === 'all' && !cityMapSearchTerm.trim()) return mapObjects;
+    if(cityMapFilter === 'all' && !cityMapSearchTerm.trim()) return minimapObjects();
     const ids = new Set(cityFilteredPlaces().map(place => place.sourceObject?.id).filter((id): id is string => !!id));
-    return mapObjects.filter(object => ids.has(object.id));
+    return minimapObjects().filter(object => ids.has(object.id));
   }
   function renderCityMapSearch(): void {
     cityMapFilters.innerHTML = cityMapFiltersList.map(function(filter){

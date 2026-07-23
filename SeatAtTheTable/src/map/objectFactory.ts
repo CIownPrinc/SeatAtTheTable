@@ -2,6 +2,7 @@ import type { Corner, GangRecruit, LocalBusiness, MapAmenity, ServiceBuilding, S
 import { amenityHasSolidFootprint } from './amenities';
 import type { MapBuilding, MapNpc } from './markers';
 import type { MapObject } from './objects';
+import type { PropertyPlace } from './propertyPlaces';
 import { createBounds } from './objects';
 import { minimapIconForLocalBusiness, minimapIconForService } from './places';
 
@@ -15,6 +16,7 @@ export interface VentureFootprint {
 export interface MapObjectFactoryInput {
   mapBuildings: MapBuilding[];
   serviceBuildings: ServiceBuilding[];
+  propertyPlaces?: PropertyPlace[];
   localBusinesses: LocalBusiness[];
   amenities: MapAmenity[];
   corners: Corner[];
@@ -45,6 +47,11 @@ export function buildMapObjects(input: MapObjectFactoryInput): MapObject[] {
     }),
     ...input.serviceBuildings.map(function(m): MapObject<'service', ServiceBuilding> {
       return { kind:'service', id:m.id, district:m.district, x:m.x, y:m.y, bounds:createBounds(m.x,m.y,35,31), interactRadius:46, minimapColor:'#d4a017', minimapSize:3, minimapIcon:minimapIconForService(m), ref:m };
+    }),
+    // LEGAL: Real estate you can own. Always in the world (a walk-up exists whether or not
+    // LEGAL: you hold the deed); header filters the minimap to the ones you actually own.
+    ...(input.propertyPlaces ?? []).map(function(m): MapObject<'property', PropertyPlace> {
+      return { kind:'property', id:m.id, district:m.district, x:m.x, y:m.y, bounds:createBounds(m.x,m.y,30,26), interactRadius:44, minimapColor:'#5fbf8f', minimapSize:2.6, minimapIcon:'estate', ref:m };
     }),
     ...input.localBusinesses.map(function(m): MapObject<'local', LocalBusiness> {
       return { kind:'local', id:m.id, district:m.district, x:m.x, y:m.y, bounds:createBounds(m.x,m.y,27,24), interactRadius:46, minimapColor:'#7a6fb0', minimapSize:2.5, minimapIcon:minimapIconForLocalBusiness(m), ref:m };

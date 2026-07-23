@@ -1,14 +1,15 @@
 import type { Corner, GangRecruit, LocalBusiness, MapAmenity, ServiceBuilding, Solid } from '../config/types';
 import type { MapBuilding, MapNpc } from './markers';
+import type { PropertyPlace } from './propertyPlaces';
 
-export type MapObjectKind = 'building' | 'service' | 'local' | 'amenity' | 'corner' | 'npc' | 'gangnpc';
+export type MapObjectKind = 'building' | 'service' | 'local' | 'amenity' | 'corner' | 'npc' | 'gangnpc' | 'property';
 
 // LEGAL: Icon category for the minimap / city map, so each thing on the map reads with
 // LEGAL: a consistent GTA-style symbol (square = legal business, triangle = illegal
 // LEGAL: venture, house = home/local shop, etc.) explained by the on-screen legend.
-export type MinimapIcon = 'legal' | 'illegal' | 'bank' | 'garage' | 'realty' | 'cityhall' | 'heist' | 'shop' | 'bar' | 'service' | 'amenity' | 'corner' | 'person' | 'gang';
+export type MinimapIcon = 'legal' | 'illegal' | 'bank' | 'garage' | 'realty' | 'cityhall' | 'heist' | 'shop' | 'bar' | 'service' | 'amenity' | 'corner' | 'person' | 'gang' | 'estate';
 
-export type MapObjectRef = MapBuilding | ServiceBuilding | LocalBusiness | MapAmenity | Corner | MapNpc | GangRecruit;
+export type MapObjectRef = MapBuilding | ServiceBuilding | LocalBusiness | MapAmenity | Corner | MapNpc | GangRecruit | PropertyPlace;
 
 export interface MapBounds extends Solid {}
 

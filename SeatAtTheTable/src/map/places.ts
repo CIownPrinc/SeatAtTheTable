@@ -2,7 +2,7 @@ import type { LocalBusiness, Point, ServiceBuilding } from '../config/types';
 import type { Landmark } from './world';
 import type { MapObject, MinimapIcon } from './objects';
 
-export type MapPlaceCategory = 'business' | 'service' | 'local' | 'amenity' | 'corner' | 'person' | 'gang' | 'landmark';
+export type MapPlaceCategory = 'business' | 'service' | 'local' | 'amenity' | 'corner' | 'person' | 'gang' | 'landmark' | 'property';
 
 export interface MapPlaceRecord extends Point {
   id: string;
@@ -36,6 +36,7 @@ export function minimapIconForLocalBusiness(business: LocalBusiness): MinimapIco
 }
 
 export function mapPlaceCategoryLabel(place: Pick<MapPlaceRecord, 'category' | 'icon' | 'sourceKind'>): string {
+  if(place.icon === 'estate') return 'Real estate';
   if(place.icon === 'bank') return 'Bank';
   // LEGAL: "Garage" implied the player's own garage — these are dealerships that sell cars.
   if(place.icon === 'garage') return 'Car dealership';
@@ -63,6 +64,7 @@ function nameForMapObject(object: MapObject): string {
 
 function categoryForMapObject(object: MapObject): MapPlaceCategory {
   if(object.kind === 'building') return 'business';
+  if(object.kind === 'property') return 'property';
   if(object.kind === 'gangnpc') return 'gang';
   if(object.kind === 'npc') return 'person';
   return object.kind;
