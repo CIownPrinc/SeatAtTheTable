@@ -207,3 +207,60 @@ export function drawReplacements(hand: Card[], holdIndexes: number[], shoe: Card
   });
   return { hand: next, shoe: rest };
 }
+
+// LEGAL: ---- Slots ----
+// LEGAL: Three reels, one payline. The reel STRIP is written out symbol by symbol rather
+// LEGAL: than picking a symbol at random, because that is how a real machine works and it is
+// LEGAL: the only way the odds are inspectable: the cherry appears often, the seven almost
+// LEGAL: never, and you can count them. Change the strip and you change the edge, visibly.
+
+export type SlotSymbol = 'cherry' | 'lemon' | 'bell' | 'bar' | 'seven';
+
+export const SLOT_STRIP: SlotSymbol[] = [
+  'lemon', 'cherry', 'lemon', 'bell', 'lemon', 'cherry', 'bar', 'lemon',
+  'bell', 'lemon', 'cherry', 'bell', 'bar', 'lemon', 'bell', 'cherry',
+  'lemon', 'bar', 'lemon', 'seven',
+];
+
+// LEGAL: Paid on three of a kind, plus a small consolation for any cherries showing — which
+// LEGAL: is what keeps a losing spin from feeling like nothing happened.
+export const SLOT_PAYOUTS: Record<SlotSymbol, number> = {
+  seven: 200,
+  bar: 50,
+  bell: 20,
+  cherry: 10,
+  lemon: 5,
+};
+
+// LEGAL: Indexed by how many cherries are showing. The first pass paid 1x for a single
+// LEGAL: cherry and 2x for two, which sounds like small change and is not: a single cherry
+// LEGAL: shows up on well over a third of spins, and the machine returned 160% — the house
+// LEGAL: lost money on every pull. The long-run test below is what caught it.
+export const SLOT_CHERRY_PAYOUTS = [0, 0, 1];
+
+export interface SlotSpin {
+  reels: [SlotSymbol, SlotSymbol, SlotSymbol];
+  // LEGAL: Multiplier on the stake. 0 is a loss.
+  multiplier: number;
+  label: string;
+}
+
+export function spinSlots(rand: Random): SlotSpin {
+  const reels = [0, 1, 2].map(function(){
+    return SLOT_STRIP[Math.floor(rand() * SLOT_STRIP.length)];
+  }) as [SlotSymbol, SlotSymbol, SlotSymbol];
+  return { reels, ...slotOutcome(reels) };
+}
+
+export function slotOutcome(reels: [SlotSymbol, SlotSymbol, SlotSymbol]): { multiplier: number; label: string } {
+  if(reels[0] === reels[1] && reels[1] === reels[2]){
+    return { multiplier: SLOT_PAYOUTS[reels[0]], label: `Three ${reels[0]}s` };
+  }
+  const cherries = reels.filter(symbol => symbol === 'cherry').length;
+  if(cherries > 0) return { multiplier: SLOT_CHERRY_PAYOUTS[cherries] ?? 0, label: `${cherries} cherry` };
+  return { multiplier: 0, label: 'No line' };
+}
+
+export function slotReturn(spin: SlotSpin, stake: number): number {
+  return spin.multiplier * stake;
+}

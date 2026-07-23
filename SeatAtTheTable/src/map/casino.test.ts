@@ -8,12 +8,18 @@ import {
   playDealerHand,
   pokerReturn,
   rankPokerHand,
+  SLOT_PAYOUTS,
+  SLOT_STRIP,
   rouletteColor,
   rouletteReturn,
   settleBlackjack,
   shuffle,
+  slotOutcome,
+  slotReturn,
   spinRoulette,
+  spinSlots,
   type Card,
+  type SlotSymbol,
 } from './casino';
 
 function cards(spec: string): Card[] {
@@ -168,5 +174,74 @@ describe('casino — poker', function () {
     expect(result.hand.map(c => c.rank)).toEqual([1, 2, 3, 4, 10]);
     expect(result.hand[0].suit).toBe('S');
     expect(result.shoe).toHaveLength(0);
+  });
+});
+
+describe('casino — slots', function () {
+  // LEGAL: The strip IS the odds. Writing the reel out symbol by symbol is what makes the
+  // LEGAL: house edge countable instead of a number someone picked; these pin the shape of
+  // LEGAL: it, so changing the strip has to be a deliberate act rather than a typo.
+  it('keeps the jackpot rare and the low symbols common', function () {
+    const count = (symbol: SlotSymbol) => SLOT_STRIP.filter(s => s === symbol).length;
+
+    expect(count('seven')).toBe(1);
+    expect(count('bar')).toBe(3);
+    expect(count('lemon')).toBeGreaterThan(count('cherry'));
+    expect(count('lemon')).toBeGreaterThan(count('bar'));
+    expect(SLOT_STRIP).toHaveLength(20);
+  });
+
+  it('pays the rarest symbol the most', function () {
+    const order: SlotSymbol[] = ['seven', 'bar', 'bell', 'cherry', 'lemon'];
+    order.slice(0, -1).forEach(function(symbol, index){
+      expect(SLOT_PAYOUTS[symbol]).toBeGreaterThan(SLOT_PAYOUTS[order[index + 1]]);
+    });
+  });
+
+  it('pays three of a kind at the symbol rate', function () {
+    expect(slotOutcome(['seven', 'seven', 'seven']).multiplier).toBe(SLOT_PAYOUTS.seven);
+    expect(slotOutcome(['bell', 'bell', 'bell']).multiplier).toBe(SLOT_PAYOUTS.bell);
+  });
+
+  // LEGAL: The consolation line. Without it, most spins return literally nothing and the
+  // LEGAL: machine stops feeling like a machine.
+  it('gives a small return for cherries showing without a full line', function () {
+    expect(slotOutcome(['cherry', 'lemon', 'bar']).multiplier).toBe(0);
+    expect(slotOutcome(['cherry', 'cherry', 'bar']).multiplier).toBe(1);
+    expect(slotOutcome(['lemon', 'bell', 'bar']).multiplier).toBe(0);
+  });
+
+  it('only ever lands on symbols that are actually on the strip', function () {
+    [0, 0.33, 0.5, 0.99999].forEach(function(value){
+      spinSlots(() => value).reels.forEach(function(symbol){
+        expect(SLOT_STRIP).toContain(symbol);
+      });
+    });
+  });
+
+  it('scales the return by the stake', function () {
+    const spin = spinSlots(() => 0.99999);
+    expect(slotReturn(spin, 100)).toBe(spin.multiplier * 100);
+  });
+
+  // LEGAL: The number that matters. Anything at or above 1 means the house loses money.
+  it('keeps the house ahead over a long run', function () {
+    let staked = 0;
+    let returned = 0;
+    // LEGAL: Deterministic sweep of the whole reel space — every combination exactly once,
+    // LEGAL: which is the true return-to-player rather than a sample of it.
+    SLOT_STRIP.forEach(function(a){
+      SLOT_STRIP.forEach(function(b){
+        SLOT_STRIP.forEach(function(c){
+          staked += 1;
+          returned += slotOutcome([a, b, c]).multiplier;
+        });
+      });
+    });
+
+    const rtp = returned / staked;
+    expect(rtp).toBeLessThan(1);
+    // LEGAL: ...but not a mugging. A machine that never pays is not a game.
+    expect(rtp).toBeGreaterThan(0.7);
   });
 });

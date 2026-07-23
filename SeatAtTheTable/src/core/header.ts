@@ -42,6 +42,9 @@ import { allocateServiceLots } from '../map/serviceLots';
 import { createRoamingActors, settleRoamingActors, updateRoamingActors } from '../map/roaming';
 import {
   POKER_PAYOUTS,
+  SLOT_PAYOUTS,
+  slotReturn,
+  spinSlots,
   blackjackReturn,
   cardLabel,
   drawReplacements,
@@ -1470,6 +1473,7 @@ import type * as ThreeNamespace from 'three';
         { label:'Blackjack', onClick:openBlackjack },
         { label:'Roulette', onClick:openRoulette },
         { label:'Five-card draw', onClick:openPoker },
+        { label:'Slots', onClick:openSlots },
         { label:`Change stake (${fmt(casinoStake)})`, secondary:true, onClick:openStakePicker },
         { label:'Cash out', secondary:true },
       ],
@@ -1572,6 +1576,30 @@ import type * as ThreeNamespace from 'three';
         { label:'Back', secondary:true, onClick:openCasinoFloor },
       ],
     });
+  }
+
+  // LEGAL: ---- Slots ----
+  const SLOT_FACES: Record<string, string> = {
+    cherry:'🍒', lemon:'🍋', bell:'🔔', bar:'🍫', seven:'7️⃣',
+  };
+
+  function openSlots(): void {
+    if(!casinoCanBet()) { openCasinoFloor(); return; }
+    state.cash -= casinoStake;
+    const spin = spinSlots(Math.random);
+    const returned = slotReturn(spin, casinoStake);
+    const reels = spin.reels.map(symbol => `<span style="font-size:34px;padding:0 8px;">${SLOT_FACES[symbol] ?? '?'}</span>`).join('');
+    showModal({
+      eyebrow:'Slots', title:spin.multiplier > 0 ? spin.label : 'No line',
+      body:`<p class="flavor" style="text-align:center;background:#16181d;border-radius:10px;padding:10px 0;">${reels}</p>`
+        + briefRow('Pays', `${spin.multiplier}x`)
+        + briefRow('Three sevens', `${SLOT_PAYOUTS.seven}x`),
+      buttons:[
+        { label:'Pull again', onClick:openSlots },
+        { label:'Back to the floor', secondary:true, onClick:openCasinoFloor },
+      ],
+    });
+    casinoSettle(returned, spin.label);
   }
 
   // LEGAL: ---- Five-card draw against the pay table ----
@@ -2597,7 +2625,10 @@ import type * as ThreeNamespace from 'three';
   }
 
   function renderDistrictBar(){
-    const wrap = byId('district-bar');
+    // LEGAL: byId THROWS when an element is missing, by design. The Travel Nodes strip has
+    // LEGAL: been removed from the map tab, so this has to ask for it the optional way or the
+    // LEGAL: whole game fails to boot.
+    const wrap = byIdOrNull('district-bar');
     if(!wrap) return;
     wrap.innerHTML = districts.map(d=>{
       const here = state.currentDistrict===d.id;
@@ -3228,7 +3259,10 @@ import type * as ThreeNamespace from 'three';
     byId('politics-panel').addEventListener('click', handlePoliticsAction);
     byId('gang-panel').addEventListener('click', handleGangAction);
     byId('missions-panel').addEventListener('click', handleMissionPhoneAction);
-    byId('district-bar').addEventListener('click', handleDistrictAction);
+    // LEGAL: The Travel Nodes strip is gone — you walk or drive between districts, which is
+    // LEGAL: the whole point of having a city. The handler is kept because the same
+    // LEGAL: data-travel action is used by the territory panel.
+    byIdOrNull('district-bar')?.addEventListener('click', handleDistrictAction);
   }
 
   // LEGAL: ================= RENDER: STREET PANEL =================
@@ -3824,6 +3858,7 @@ import type * as ThreeNamespace from 'three';
       } });
     } else if(kind==='casino'){
       spots.push({ id:'tables', x:ROOM_W/2, y:78, label:'The Floor', icon:'🂡', action:openCasinoFloor });
+      spots.push({ id:'slots', x:ROOM_W/2 - 90, y:110, label:'Slots', icon:'🎰', action:openSlots });
       spots.push({ id:'bar', x:AMBIENT_X, y:AMBIENT_Y, label:'Bar', icon:'🥃', action:()=>
         showRoomBrief('The Bar', 'The Gilded Kettle', 'Free while you are losing. The moment you stop, so does the service.',
           briefRow('Table stake', fmt(casinoStake)) + briefRow('Your cash', fmt(state.cash))) });
