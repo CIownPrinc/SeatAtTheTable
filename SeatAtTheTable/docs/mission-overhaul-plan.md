@@ -4,6 +4,8 @@
 
 Turn random popups into mission starters that use the map, phone, interiors, NPC dialogue, and saved world memory.
 
+Every mission definition must also declare its onboarding mode. Read [`onboarding-plan.md`](onboarding-plan.md): use `mission` for a guided mechanic or sequence, `contextual` for a small reinforcement of an existing mechanic, and `none` for narrative or familiar content. A mission is not complete until its teaching responsibility is explicit.
+
 The player should not feel like events are disconnected modal interruptions. A message, call, or street encounter should point to a real place, create a clear objective, and leave behind consequences that can shape later missions.
 
 ## Current Shipped State

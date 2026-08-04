@@ -278,6 +278,12 @@ main{max-width:1240px;margin:0 auto;padding:26px 24px 60px;}
 .advisor-badge{font-family:var(--font-display);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);border:1px solid var(--gold);border-radius:999px;padding:5px 9px;white-space:nowrap;background:rgba(242,186,24,0.08);}
 .advisor-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;}
 .advisor-item{display:flex;flex-direction:column;gap:8px;background:var(--bg-row);border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:8px;padding:12px;min-height:100%;}
+.advisor-item.lesson{border-left-color:var(--blue);}
+.advisor-item.warning{border-left-color:var(--red);}
+.advisor-item.opportunity{border-left-color:var(--green);}
+.advisor-item-header{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;}
+.advisor-item-title{font-family:var(--font-display);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--text);}
+.advisor-item-badge{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);}
 .advisor-message{font-size:13px;line-height:1.45;color:var(--text);}
 .advisor-action{align-self:flex-start;font-family:var(--font-display);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--blue);background:transparent;border:1px solid var(--blue);border-radius:6px;padding:6px 10px;cursor:pointer;}
 .advisor-action:hover{background:var(--blue);color:var(--bg-panel);}

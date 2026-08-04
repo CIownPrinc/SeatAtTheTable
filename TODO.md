@@ -409,12 +409,15 @@ so it needs a decision rather than a quiet reversal.
 
 Replace the advisor briefing, which the player finds "clunky and primitive". Wants
 progressive, contextual, mission-based teaching rather than a static priority list.
-**Design questions still open — ask before building.**
+The product and implementation rules live in [`docs/onboarding-plan.md`](SeatAtTheTable/docs/onboarding-plan.md).
+Every mission must classify its onboarding responsibility as `mission`, `contextual`, or
+`none`; every new feature must make the same decision before it is considered complete.
+**Status:** the first implementation slice is underway. The next slice is the early-game
+teaching sequence, followed by mission-specific teaching paths and browser coverage.
 
-**Sequencing note:** this is mission-shaped, and Codex owns the mission system. Building it
-now would collide on the same trunk — the setup that caused the duplicate-feature merges
-this repo has already been bitten by. Do it *after* the mission chains land, so it builds
-on them rather than beside them. Read `mission-overhaul-plan.md` first.
+**Design rule:** keep onboarding mission-shaped where the player must travel, choose, or
+see consequences over time. Use contextual cards for small nudges and bottleneck diagnosis.
+The detailed decision rules live in `docs/onboarding-plan.md`.
 
 ## 2. Finish the mission chains
 
