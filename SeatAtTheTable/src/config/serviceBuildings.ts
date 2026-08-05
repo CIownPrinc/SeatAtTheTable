@@ -42,6 +42,12 @@ export const serviceBuildings: ServiceBuilding[] = [
   { id:'docksDockmaster', kind:'missionOffice', name:'Docks Dockmaster', icon:ICONS.box, district:'westside', x:1220, y:890 },
   { id:'railyard', kind:'missionOffice', name:'Railyard', icon:ICONS.box, district:'westside', x:780, y:180 },
   { id:'marigoldLounge', kind:'missionOffice', name:'Marigold Lounge', icon:ICONS.person, district:'westside', x:1050, y:520 },
+  { id:'airfieldKettle', kind:'missionOffice', name:'Kettle Flats Airfield', icon:ICONS.car, district:'hub', x:0, y:0 },
+  { id:'lodgeRidgewood', kind:'missionOffice', name:'Ridgewood Stand Lodge', icon:ICONS.person, district:'hub', x:0, y:0 },
+  { id:'driveInBoundary', kind:'missionOffice', name:'Boundary Meadows Drive-In', icon:ICONS.car, district:'hub', x:0, y:0 },
+  { id:'motelSunset', kind:'missionOffice', name:'Sunset Shore Motel', icon:ICONS.bld3, district:'hub', x:0, y:0 },
+  { id:'fireRoadKestrel', kind:'missionOffice', name:'Kestrel Woods Fire Road', icon:ICONS.car, district:'hub', x:0, y:0 },
+  { id:'mudsterTrailhead', kind:'dealership', name:'Mudster Kestrel Trailhead', icon:ICONS.garage, district:'hub', x:0, y:0, brandId:'mudster' },
   // LEGAL: Out past the city limits in the Lakeridge belt — see OUTSKIRT_PLACE_LOTS for why
   // LEGAL: its position is absolute rather than district-local. Somewhere you drive TO.
   { id:'casinoLakeridge', kind:'casino', name:'The Gilded Kettle', icon:ICONS.cards, district:'hub', x:0, y:0 },

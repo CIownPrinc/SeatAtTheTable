@@ -171,7 +171,7 @@ test.describe('game boot', () => {
   test('loads with the full-screen start page', async ({ page }) => {
     await page.goto('/');
 
-    await expect(page).toHaveTitle('Seat at the Table');
+    await expect(page).toHaveTitle('Seat at the Table — V5.0');
     await expect(page.locator('#hud-cash')).toHaveText('$47');
     await expect(page.locator('#start-screen')).not.toHaveClass(/hidden/);
     await expect(page.locator('#modal-overlay')).toHaveClass(/hidden/);
@@ -185,6 +185,8 @@ test.describe('game boot', () => {
     await page.getByRole('button', { name: 'Start', exact: true }).click();
     await expect(page.locator('#start-screen')).toHaveClass(/hidden/);
     await expect(page.locator('#modal-overlay')).toHaveClass(/hidden/);
+    await expect(page.locator('.tab-btn[data-tab="politics"]')).toHaveCount(0);
+    await expect(page.locator('.tab-btn[data-tab="gang"]')).toHaveCount(0);
 
     await page.locator('.tab-btn[data-tab="map"]').click();
     await expect(page.locator('.tab-panel[data-tab="map"]')).toHaveClass(/active/);

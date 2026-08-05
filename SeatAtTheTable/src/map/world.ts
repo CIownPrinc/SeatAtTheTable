@@ -395,6 +395,12 @@ export const OUTSKIRT_PLACE_LOTS: Record<string, Point> = {
   // LEGAL: Out in Lakeridge, the suburb belt on the south-east edge. Deliberately a drive
   // LEGAL: rather than a stroll: a casino you can walk to from your own block is not a trip.
   casinoLakeridge: { x: widenAuthoredX(5500), y: 1560 },
+  airfieldKettle: { x: widenAuthoredX(-760), y: 760 },
+  lodgeRidgewood: { x: widenAuthoredX(3100), y: 1560 },
+  driveInBoundary: { x: widenAuthoredX(800), y: 1570 },
+  motelSunset: { x: widenAuthoredX(1100), y: -790 },
+  fireRoadKestrel: { x: widenAuthoredX(3300), y: -830 },
+  mudsterTrailhead: { x: widenAuthoredX(4186), y: -820 },
 };
 
 export const namedBuildingLots: Record<string, Point> = {

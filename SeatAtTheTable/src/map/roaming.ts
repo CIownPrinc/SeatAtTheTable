@@ -51,6 +51,12 @@ export const trafficCarRoutes: Array<{ id: string; color: string; speed: number;
   { id:'hub-cab', color:'#d4a017', speed:84, route:[{x:4270,y:600},{x:5130,y:600},{x:5130,y:300},{x:4700,y:300},{x:4270,y:300}] },
 ]).map(entry => ({ ...entry, route: entry.route.map(p => ({ x: widenAuthoredX(p.x), y: p.y })) }));
 
+export const outskirtVehicleRoutes: Array<{ id: string; color: string; speed: number; route: Point[] }> = ([
+  { id:'kettle-tractor', color:'#5d753e', speed:34, route:[{x:-1000,y:680},{x:-620,y:680},{x:-620,y:1030},{x:-1000,y:1030}] },
+  { id:'harrow-tractor', color:'#b37a32', speed:31, route:[{x:420,y:-1120},{x:1000,y:-1120},{x:1500,y:-1120},{x:1000,y:-1120}] },
+  { id:'cicero-freight', color:'#59616c', speed:55, route:[{x:5800,y:500},{x:6200,y:500},{x:6200,y:1020},{x:5800,y:1020}] },
+]).map(entry => ({ ...entry, route: entry.route.map(p => ({ x: widenAuthoredX(p.x), y: p.y })) }));
+
 export function createRoamingActors(mapObjects: MapObject[]): RoamingActor[] {
   const actors: RoamingActor[] = [];
   mapObjects.filter(o=>o.kind==='npc' || o.kind==='gangnpc').forEach(function(object){
@@ -76,7 +82,7 @@ export function createRoamingActors(mapObjects: MapObject[]): RoamingActor[] {
       routeIndex: 0,
     });
   });
-  trafficCarRoutes.forEach(function(route){
+  [...trafficCarRoutes, ...outskirtVehicleRoutes].forEach(function(route){
     const start = route.route[0];
     const target = route.route[1];
     actors.push({

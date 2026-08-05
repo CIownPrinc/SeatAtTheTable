@@ -43,6 +43,15 @@ export function activeMissionCount(save: MissionSaveState): number {
   return Object.values(save.activeMissions).filter(function(mission){ return mission.status === 'active'; }).length;
 }
 
+export function scheduleDelayedMission(save: MissionSaveState, key: string, now: number, delaySeconds: number): void {
+  save.worldMemory[key] = now + delaySeconds;
+}
+
+export function delayedMissionReady(save: MissionSaveState, key: string, now: number, legacyCondition: boolean): boolean {
+  const scheduledAt = save.worldMemory[key];
+  return typeof scheduledAt === 'number' ? now >= scheduledAt : legacyCondition;
+}
+
 export function missionCompleted(save: MissionSaveState, missionId: string): boolean {
   return save.eventHistory[missionId] === 'completed' || !!save.completedMissions[missionId];
 }

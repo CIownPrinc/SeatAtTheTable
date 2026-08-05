@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Seat at the Table</title>
+<title>Seat at the Table — V5.0</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -20,7 +20,7 @@
     </div>
     <div class="start-copy">
       <div class="start-eyebrow">Case File - A. Malhotra</div>
-      <h1 id="start-title">Seat at the Table</h1>
+      <h1 id="start-title">Seat at the Table · V5.0</h1>
       <p>Forty-seven dollars. A folding cart. One Devlin Street corner nobody wanted badly enough to fight for.</p>
       <p><strong>Cash buys property. Crew runs the property. Respect takes territory.</strong></p>
     </div>
@@ -74,8 +74,6 @@
 <div class="tab-bar" id="tab-bar">
   <button class="tab-btn active" data-tab="empire">Empire</button>
   <button class="tab-btn" data-tab="map">Map</button>
-  <button class="tab-btn" data-tab="politics">Politics</button>
-  <button class="tab-btn" data-tab="gang">Gang</button>
   <button class="tab-btn" data-tab="settings">Settings</button>
 </div>
 
@@ -142,13 +140,13 @@
     <div id="territory-panel" class="data-table"></div>
   </div>
 
-  <div class="tab-panel" data-tab="politics">
+  <div hidden aria-hidden="true">
     <div class="section-eyebrow">City Hall Influence</div>
     <p class="pillar-desc">City Hall influence. Cash buys leverage with local politicians. Accumulate enough favor to claim a council seat directly.</p>
     <div id="politics-panel" class="data-table"></div>
   </div>
   
-  <div class="tab-panel" data-tab="gang">
+  <div hidden aria-hidden="true">
     <div class="section-eyebrow">Crew Manifest</div>
     <p class="pillar-desc">Your inner circle. Recruits can be initiated once you hold enough **Respect**. Assign them to active ventures or turf protection.</p>
     <div id="gang-panel" class="data-table"></div>
@@ -237,6 +235,7 @@
         <button class="device-app" data-app="missions"><span class="device-app-ico"><i class="ph-duotone ph-envelope-simple"></i><span class="mission-badge app-badge" id="mission-app-badge">0</span></span><span class="device-app-name">Missions</span></button>
         <button class="device-app" data-app="automart"><span class="device-app-ico">🚗</span><span class="device-app-name">AutoMart</span></button>
         <button class="device-app" data-app="realty"><span class="device-app-ico">🏠</span><span class="device-app-name">Realty</span></button>
+        <button class="device-app" data-app="contacts"><span class="device-app-ico">📇</span><span class="device-app-name">Contacts</span></button>
       </div>
     </div>
 
@@ -251,6 +250,13 @@
       <div class="device-appbar"><button class="device-back" data-back><i class="ph-duotone ph-caret-left"></i> Apps</button><span class="device-appbar-title">Missions</span></div>
       <div class="device-scroll">
         <div id="missions-panel"></div>
+      </div>
+    </div>
+
+    <div class="device-screen hidden" data-screen="contacts">
+      <div class="device-appbar"><button class="device-back" data-back><i class="ph-duotone ph-caret-left"></i> Apps</button><span class="device-appbar-title">Contacts</span></div>
+      <div class="device-scroll">
+        <div id="contacts-panel"></div>
       </div>
     </div>
 

@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { GangRecruit } from '../config/types';
 import type { MapNpc } from './markers';
 import type { MapObject } from './objects';
-import { createRoamingActors, settleRoamingActors, trafficCarRoutes, updateRoamingActors } from './roaming';
+import { createRoamingActors, outskirtVehicleRoutes, settleRoamingActors, trafficCarRoutes, updateRoamingActors } from './roaming';
+import { isPointInWater } from './geometry';
 import { roadNetwork } from './world';
 
 function npcObject(id: string, type: MapNpc['type']): MapObject<'npc', MapNpc> {
@@ -22,7 +23,7 @@ describe('roaming actors', function () {
     expect(actors.find(a=>a.id==='dice')?.radius).toBe(82);
     expect(actors.find(a=>a.id==='reyes')?.radius).toBe(115);
     expect(actors.find(a=>a.id==='maria')?.radius).toBe(95);
-    expect(actors.filter(a=>a.kind==='car').length).toBe(3);
+    expect(actors.filter(a=>a.kind==='car').length).toBe(6);
   });
 
   it('syncs pedestrian movement back into the shared map object', function () {
@@ -110,6 +111,13 @@ describe('roaming actors', function () {
         if(point.x === next.x) expect(verticalRoads.has(point.x)).toBe(true);
         if(point.y === next.y) expect(horizontalRoads.has(point.y)).toBe(true);
       });
+    });
+  });
+
+  it('keeps sparse rural vehicles on dry outskirt ground', function(){
+    expect(outskirtVehicleRoutes.map(function(route){ return route.id; })).toEqual(['kettle-tractor', 'harrow-tractor', 'cicero-freight']);
+    outskirtVehicleRoutes.forEach(function(route){
+      route.route.forEach(function(point){ expect(isPointInWater(point, 16), `${route.id} at ${point.x},${point.y}`).toBe(false); });
     });
   });
 });

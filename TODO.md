@@ -30,7 +30,7 @@ caused duplicate-feature merges (e.g. the "two heat bars" HUD bug).
 
 # ACTIVE — in priority order
 
-## 0. Post-expansion cleanup — REPORTED IN PLAY, MOSTLY OUTSTANDING
+## 0. Post-expansion cleanup — COMPLETE
 
 The world expansion shipped green on every gate but plays badly. Several are regressions it
 introduced. **Fix these before building anything new.**
@@ -93,14 +93,18 @@ new buildings cannot opt themselves out.
 - The motorcycle headlamp was an emissive sphere that threw no light. Real SpotLight,
   parented to the player, comes up through dusk.
 
-**Still outstanding (reported, not yet fixed):**
-- Too many untextured white buildings — the Kenney GLB set is plain. Find or build a better
-  building collection.
-- Interior "read the room" hotspots mostly just restate your wanted level, which the HUD
-  already shows. Make them do something.
-- Remove the travel-nodes strip above the map.
-- River and ocean still read static (the miscolouring and stray blocks are fixed; the
-  ANIMATION is still weak).
+**Closed after the report:**
+- The Kenney models now clone and receive the intended neighborhood tint, so blocks no longer
+  collapse into identical white buildings when their source colormap is missing.
+- Interior ambient hotspots now provide place-specific information and a meaningful lie-low
+  action instead of repeating HUD status.
+- The Travel Nodes strip is removed; district travel is physical.
+- River, canal, lake, and ocean highlights now travel continuously with a directional swell,
+  rather than oscillating in place and reading as static texture.
+
+**Visual pass closed:** the map screenshot review now passes at desktop, laptop, and mobile
+sizes after the outskirt content landed. It checks usable map dimensions plus water, land,
+and colour variety; no asset family failed the current live render review.
 
 ## 0a. Places must look like what they are — DONE
 
@@ -158,7 +162,7 @@ Lounge were all drawn as the same box.
 - Rule 1 holds: property archetype comes from the brand's category, so a Concrete Dreams
   walk-up is a `tenement` and a Horizon one is a `tower`.
 
-## 0b. New requests — ALL DONE EXCEPT OUTSKIRTS CONTENT
+## 0b. New requests — COMPLETE
 
 - ~~**Extend NORTH**~~ — DONE. The north question is settled: the "lake" was open to the
   ocean, which makes it a bay, so it is now genuinely enclosed with land wrapped over the top
@@ -172,9 +176,12 @@ Lounge were all drawn as the same box.
 - ~~**Vehicle customisation shop**~~ — DONE. Respray bay.
 - ~~**Drive-in garage**~~ — DONE. The `bay` archetype: three walls and an open mouth, so you
   line the car up and drive in. See `driveIn.ts`.
-- **Outskirts pass 2** — THE ONE THING LEFT. Planned below.
+- **Outskirts pass 2** — FUNCTIONALLY COMPLETE. The scenery, destinations, mission hooks,
+  Fire Road, motel, Mudster trail capability, and sparse rural traffic are shipped. The
+  Country Club remains intentionally deferred to in-person Politics; resort/wildlife variety
+  remains optional visual polish.
 
-## 0c. Outskirts content — planned, not started
+## 0c. Outskirts content — functionally complete
 
 Three outskirt districts now exist, are named, and have exactly one thing to stop at between
 them. This is the pass that gives you a reason to drive out.
@@ -207,7 +214,12 @@ own height, density, vacancy, jitter, palette and trim, mapped over a 4x4 block 
 district. Run-down blocks, shopping strips, bougie blocks and downtown all exist and read
 correctly.
 
-**None of it runs in the outskirts.** Every belt is a single flat-coloured polygon
+**The first scenery pass now runs in the outskirts.** Deterministic farmsteads, woodland,
+suburban homes, and industrial works are sampled inside each irregular belt, reject water,
+and are guarded by `outskirtScenery.test.ts` plus the live water scene audit. It is still a
+scenery pass, not a venue pass.
+
+Before this pass, every belt was a single flat-coloured polygon
 (`sceneBuilding.ts`, one `ShapeGeometry` per region). `northshore` and `lakeridge` are typed
 `kind: 'suburb'` and contain **zero houses**. `northfarms` is farmland with no farms. The
 filler generator is hard-scoped to `['devlin','westside','hub']` — see `districtSeeds` and
@@ -310,6 +322,11 @@ tracks** — unpaved trails through `northwoods` and `ridgewood` that cars handl
 at all — or it does not ship. Same build-both-or-build-neither rule as the fire road, and
 conveniently the fire road is in the same belt.
 
+**Shipped:** Mudster Kestrel Trailhead is a second, country dealership in `northwoods`. Its
+vehicles now keep full speed across both woodland belts, while every other car is reduced to
+52% speed there. The terrain rule is isolated in `map/offRoad.ts` and covered by a unit test,
+so the dealership is a capability purchase rather than another remote catalog.
+
 ### The forest question — recommendation: keep it terrain, not a district
 
 There are already **two** forests, and they are in different districts: `northwoods` (Kestrel
@@ -336,6 +353,11 @@ kind-appropriate life: a tractor working `northfarms`, walkers on `northshore`, 
 `northwoods`, a freight truck on the `eastworks` road. Low counts — the countryside should
 not be a painting, but it should not be busy either.
 
+**Shipped first slice:** three sparse rural vehicles now move through the world — a Kettle
+Flats tractor, a Harrow End tractor, and a Cicero freight truck. Their routes are separately
+configured from city traffic and unit-tested to stay on dry land. Pedestrians and wildlife
+remain optional visual variety rather than a reason to delay the functional outskirts pass.
+
 ### The venues
 
 Cut from the first draft, on the player's rule: **Harrow End Grain Co-op** and **Cicero
@@ -347,6 +369,8 @@ wanted as mechanics, they belong in the city or on the phone.
 A crop-duster strip where shipments arrive without troubling the docks. Hook for
 `stolen_shipment`. Exactly the casino's shape of reason-to-go: the story takes you there, and
 it could not be anywhere else, because an airstrip needs a mile of flat nothing.
+**Shipped:** Deke's Black Market route now continues from the chop shop to a physical
+airfield scene, where the player chooses a street payout or a riskier permanent trade route.
 **Sequencing:** after the mission chains (§2). Codex owns missions; building it now would
 collide on the same trunk, which is the setup that produced this repo's duplicate-feature
 merges.
@@ -354,6 +378,8 @@ merges.
 **2. Ridgewood Stand Lodge** — `ridgewood`, Kettle Reach. *Mission-shaped.*
 Neutral ground: where the crews meet when nobody wants a meeting in the city. A turf-war and
 politics venue. Same sequencing caveat as the airfield.
+**Shipped for turf:** accepting the lounge truce now sends the player to a final in-person
+Ridgewood negotiation, with a low-heat compromise or a riskier crew-exposure outcome.
 
 **3. Boundary Meadows Drive-In** — `southfields`, Kettle Reach. *Cheap, high charm.*
 A drive-in cinema. Park the car and sit through a picture: the clock runs fast, and it is an
@@ -366,6 +392,10 @@ Unpoliced road: driving offences cost **no heat**, making it the one place in th
 can drive flat out. This is an experience by construction and you would do it rarely. Wants a
 time trial to give it a score to beat; without one it is a nice road and nothing else, so
 either build the time trial or do not build this.
+
+**Shipped:** the Fire Road trailhead now runs a six-gate skill time trial. Three gates pays
+$350, five pays $700, and a clean six pays $1,100. Every paid finish unlocks a persistent
+Fire Road stripe on the car used for the run.
 
 **5. Sunset Shore Motel** — `northshore`, Kestrel Reach. *Borderline on frequency.*
 The resorts around it are cosmetic filler, so this is the one enterable building on that
@@ -421,14 +451,83 @@ The detailed decision rules live in `docs/onboarding-plan.md`.
 
 ## 2. Finish the mission chains
 
-`home_safe_robbery`, `stolen_shipment`, `alderman_fixer`, `turf_war`, `first_heist` have
-initial playable implementations only. Lana Vance's Herald interview is the one fully
-realised map → interior → dialogue mission and is the model to follow.
+**Current status:** the five core chains now have phone or popup offers, GPS, physical
+destinations, interior contacts or the outdoor Devlin corner, choices, saved outcomes,
+dedicated onboarding where needed, connected follow-ups, and typed mission definitions in
+`src/config/missions.ts`. Remaining work in this section is depth: richer scene writing,
+more comic encounters and fuller browser coverage. Connected consequences now arrive as
+delayed in-game messages, and active objectives have a distinct map marker instead of
+looking like ordinary places.
 
-## 3. Initiative Phase 5 — retire the last redundant tabs
+### Mission scene standard
 
-Politics and Gang move off flat tabs and become in-person (city hall, gang spots), closing
-the diegetic-device initiative. Phases 1-4 are done — see "Shipped" below.
+A major mission cannot resolve as “arrive, choose one popup answer, leave.” It must feel
+like a scene the player participates in.
+
+- Give the player a conversation or encounter with multiple exchanges, not one question.
+- Include at least two meaningful decisions: an approach, a response, a sacrifice, or a
+  piece of information to reveal or withhold.
+- Decisions must create distinct immediate numbers and saved world memory that changes later
+  dialogue, contact availability, offers, or city conditions.
+- The Herald interview should be expanded first: Lana responds to earlier answers, asks
+  follow-up questions, and produces several distinct public narratives rather than one
+  single-tone choice.
+- Use mission stages to move between conversation beats, physical objectives, and outcomes;
+  do not use a modal as a substitute for the whole scene.
+- In-person destinations must resolve in the place itself: an interior counter, NPC, desk,
+  or scene. Do not redirect the player to a phone app after they travelled there, except
+  when the phone is explicitly the story object they came to use.
+
+### Comic-relief mission lane
+
+Add optional, absurd city encounters to break up the serious campaign. They must be playful
+detours with temporary chaos and a funny reward, never a punishment for interacting with an
+unfamiliar object or accepting a mission.
+
+- Start with a mystery-tonic encounter at a local business: a short surreal map state that
+  changes normal interactions and ends safely with a small reward.
+- The `pigeon_summit` civic farce now uses City Hall and the Wabash Newsstand, and
+  `mayors_parrot` uses City Hall and Rockwell Pet Supply; `goose_permit` uses City Hall and
+  Boundary Meadows Drive-In; `raccoon_keycard` uses City Hall and Golden Lotus Herbalist.
+  Add further over-the-top side jobs
+  with the same map, phone, interiors, and NPC dialogue standard.
+- Keep comic missions clearly optional and separate from the main consequence-chain priority.
+
+### Phone contacts and taxi dispatch
+
+Add a Contacts app to the phone. Contacts are unlocked through missions and can offer
+direct, contextual actions instead of only story dialogue.
+
+- Start with Taxi Dispatch: choose a waypoint, pay a fixed fare, and ride to the selected
+  destination. The taxi must have clear fare, destination, and cancellation feedback.
+- Mission contacts should unlock as saved relationships, then expose only actions that fit
+  their story role: a dockmaster can offer dock information, for example, while a reporter
+  cannot become a universal menu.
+- Contacts must be optional convenience or narrative tools; they cannot bypass active
+  mission travel objectives unless that mission explicitly grants it.
+
+**Shipped:** completing Missing Cargo unlocks Dockmaster Bell in Contacts. In addition to a
+docks GPS route, Bell can report whether the Black Market route is active and how much live
+investigation is sitting on the manifests; it never completes or redirects an active mission.
+
+`home_safe_robbery`, `stolen_shipment`, `alderman_fixer`, `turf_war`, and `first_heist`
+now have map, interior, dialogue, and saved-consequence flows. Missing Cargo now begins with
+a dockside manifest-evidence beat that changes Bell's conversation before the chop-shop lead.
+Lana Vance's Herald interview remains the model for a fully
+realised map → interior → dialogue mission.
+
+## 3. Initiative Phase 5 — COMPLETE
+
+Politics and Gang moved off flat tabs and became in-person (City Hall, the Chop Shop,
+Marigold Lounge, and recruit locations), closing the diegetic-device initiative. Phases 1-4
+are done — see "Shipped" below.
+
+**Shipped:** the City Hall Clerk's Window now handles influence funding, political favors,
+politician meetings, and campaign discussion in the building itself instead of redirecting
+the player to the Politics tab. The Chop Shop Armory now sells gun crates in person, and the
+Marigold Lounge Back-Room Table now begins West Side operations. Recruit initiation and
+check-ins already happen with the people on the map. The redundant Politics and Gang tabs
+are removed from navigation, with stale routes safely redirecting to the map.
 
 ---
 
@@ -444,8 +543,9 @@ smoother, gameplay better, and more visually pleasing."
 
 ### Building interiors
 Per-type decor (`src/map/interiorScene.ts`) and per-type "read the room" hotspots are done.
-- **Optional:** deepen into recurring events (the block board rotating real requests), and
-  give the heist room more than the single vault hotspot.
+- The heist room now has both the vault board and a Security Office desk. The desk gives
+  exact, in-world odds and payout comparisons for every bank before a job is chosen.
+- **Optional:** deepen into recurring events (the block board rotating real requests).
 
 ### Map engine
 **Asset rule:** when a library or asset pack is added, future map work should actively use

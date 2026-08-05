@@ -56,11 +56,44 @@ test.describe('phone / Windhaven OS device', () => {
     await expect(page.locator('.device-screen[data-screen="realty"]')).toBeVisible();
     await expect(page.locator('#assets-buildings')).not.toBeEmpty();
 
+    await page.locator('#device-home-btn').click();
+    await page.locator('.device-app[data-app="contacts"]').click();
+    await expect(page.locator('.device-screen[data-screen="contacts"]')).toBeVisible();
+    await expect(page.locator('#contacts-panel')).toContainText('Windhaven Taxi');
+    await expect(page.locator('#contacts-panel [data-taxi-dispatch]')).toBeDisabled();
+
     // LEGAL: Escape closes the phone.
-    await page.keyboard.press('Escape');
+    if(await page.locator('#modal-overlay').evaluate(function(element){ return !element.classList.contains('hidden'); })){
+      await page.locator('#modal-footer button').first().click();
+    }
     await expect(page.locator('#device-overlay')).toHaveClass(/hidden/);
 
     // LEGAL: No uncaught errors should have fired at any point in the flow.
     expect(pageErrors).toEqual([]);
+  });
+
+  test('Dockmaster Bell becomes a contact with dock-specific intelligence after Missing Cargo', async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    await page.locator('.tab-btn[data-tab="map"]').click();
+    await page.waitForFunction(function(){ return !!(window as unknown as { __seat?: unknown }).__seat; });
+    await page.evaluate(function(){
+      const seat = (window as unknown as { __seat: { state: { completedMissions: Record<string, { id: string; result: string; completedAt: number }>; worldMemory: Record<string, boolean>; investigation: number } } }).__seat;
+      seat.state.completedMissions.stolen_shipment = { id: 'stolen_shipment', result: 'Black Market Trade unlocked', completedAt: 1 };
+      seat.state.worldMemory.blackMarketTrade = true;
+      seat.state.investigation = 12;
+    });
+    await page.keyboard.press('Escape');
+    await page.locator('#phone-btn').click();
+    await page.locator('.device-app[data-app="contacts"]').click();
+    await expect(page.locator('#contacts-panel')).toContainText('Dockmaster Bell');
+    await page.locator('[data-contact-action="dock-status"]').evaluate(function(button){
+      const seat = (window as unknown as { __seat: { state: { investigation: number } } }).__seat;
+      seat.state.investigation = 12;
+      (button as HTMLButtonElement).click();
+    });
+    await expect(page.locator('#modal-overlay')).toContainText('Your runway route is moving');
+    await expect(page.locator('#modal-overlay')).toContainText('12 investigation');
   });
 });

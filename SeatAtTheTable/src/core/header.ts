@@ -22,7 +22,8 @@ import type { MapAssetKey, MapAssetLibrary } from '../map/assets';
 import { loadMapAssetLibrary } from '../map/assets';
 import { renderRoamingActors } from '../map/actorRendering';
 import { createAmenityModal, mapAmenities } from '../map/amenities';
-import { minigameOpen, playMinigame, type MinigameResult } from '../map/minigames';
+import { fireRoadPayout, isFireRoadBest, minigameOpen, playMinigame, type MinigameResult } from '../map/minigames';
+import { offRoadSpeedMultiplier } from '../map/offRoad';
 import { buildAmenityModel as buildMapAmenityModel } from '../map/amenityRendering';
 import { createFillerLayoutProvider, seededRandom } from '../map/filler';
 import { applyMapWorldCoordinates, createMapBuildings, mapNpcs } from '../map/markers';
@@ -63,7 +64,7 @@ import {
   type Card,
   type RouletteBet,
 } from '../map/casino';
-import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, buildLandmarks, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
+import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, buildLandmarks, buildOutskirtScenery, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
 import { createMapSceneMaterials, createSceneBuildTimer } from '../map/scenePerformance';
 import { buildIntersectionFurniture as buildMapIntersectionFurniture } from '../map/streetFurniture';
 import { DISTRICT_OFFSETS, DISTRICT_W, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints, ventureMapLots, widenAuthoredX } from '../map/world';
@@ -71,49 +72,11 @@ import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from
 import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/viewport';
 import { renderZoneType } from '../map/zoning';
 import { drawInteriorRoom } from '../map/interiorScene';
-import { activeMissionCount, advanceMissionStage, canOfferRepeatableEvent, canOfferUniqueEvent, completeMission, declineMission, missionCompleted, missionSaveDefaults, recordEventOffer, startMission } from './missions';
-import { getOnboardingSteps, type MissionOnboardingDefinition, type OnboardingMissionSnapshot, type OnboardingPanelTarget } from './onboarding';
+import { activeMissionCount, advanceMissionStage, canOfferRepeatableEvent, canOfferUniqueEvent, completeMission, declineMission, delayedMissionReady, missionCompleted, missionSaveDefaults, recordEventOffer, scheduleDelayedMission, startMission } from './missions';
+import { getOnboardingSteps, type OnboardingMissionSnapshot, type OnboardingPanelTarget } from './onboarding';
+import { MISSION_CONFIG as PHASE2_MISSION_CONFIG, OUTSKIRT_VENUE_CONFIG, missionEventPool, type MissionEventDefinition } from '../config/missions';
 import type * as ThreeNamespace from 'three';
 
-  type MissionEntry = 'popup' | 'phone';
-  type MissionEventDefinition = {
-    id: string;
-    title: string;
-    sender: string;
-    neg: boolean;
-    unique: boolean;
-    maxRepeats?: number;
-    entry: MissionEntry;
-    body: string;
-    consequence: string;
-    acceptLabel: string;
-    declineLabel: string;
-    onboarding: MissionOnboardingDefinition;
-  };
-  const PHASE2_MISSION_CONFIG = {
-    blackMarketIncome: 6,
-    blackMarketHeat: 0.25,
-    politicalFavorCost: 1200,
-    politicalFavorHeatReduction: 18,
-    homeSafeRobberyLossPct: 0.35,
-    heistPrepRespectReq: 45,
-    heistPrepCrewReq: 1,
-  };
-  const missionEventPool: MissionEventDefinition[] = [
-    { id:'tribune', title:'The Herald Wants an Interview', sender:'Lana Vance', neg:false, unique:true, entry:'phone', body:"<p class='flavor'>Lana Vance from the Windhaven Herald wants a sit-down about the person building an empire out of a folding cart.</p>", consequence:'Interview tones can raise legit income, respect, heat, prestige, and future press tone.', acceptLabel:'Take the interview', declineLabel:'Stay quiet', onboarding:{mode:'contextual', teaches:'mission dialogue and consequence choices'} },
-    { id:'rival', title:'Rival Crew Confrontation', sender:'West Side runner', neg:true, unique:true, entry:'popup', body:"<p class='flavor'>A West Side crew thinks your runners are working streets that belong to them. Their capo is waiting near one of your active corners.</p>", consequence:'Choices can cost cash, raise respect and heat, split income, or spark a gang war.', acceptLabel:'Meet the capo', declineLabel:'Avoid the meeting', onboarding:{mode:'mission', teaches:'territory pressure and gang consequences'} },
-    { id:'inspector', title:'Inspector Kowalski Visits', sender:'Health Department', neg:true, unique:false, maxRepeats:2, entry:'popup', body:"<p class='flavor'>Inspector Kowalski has a clipboard and a look that says he already knows the price of looking away.</p>", consequence:'Bribes cost cash; compliance slows legit income; blackmail can block future inspections.', acceptLabel:'Meet Kowalski', declineLabel:'Keep him waiting', onboarding:{mode:'contextual', teaches:'inspection choices and compliance tradeoffs'} },
-    { id:'cousin', title:'Amit Calls From the Bus Station', sender:'Cousin Amit', neg:false, unique:true, entry:'phone', body:"<p class='flavor'>Amit just arrived with a suitcase and a debt following close behind. He is waiting at the Hub Bus Station.</p>", consequence:'Paying costs $600; hiring can add crew and unlock a later family mistake; refusal costs respect.', acceptLabel:'Go get Amit', declineLabel:'Turn him away', onboarding:{mode:'contextual', teaches:'crew hiring and family consequences'} },
-    { id:'cops', title:'Detective Miller Wants a Back-Alley Talk', sender:'Burner phone', neg:true, unique:true, entry:'phone', body:"<p class='flavor'>Detective Miller sends a short message: Devlin back alley, no uniforms, no second chances.</p>", consequence:'Pay cash to cut heat, snitch to reduce the case but lose respect, or risk enforcement.', acceptLabel:'Take the meeting', declineLabel:'Ignore the burner', onboarding:{mode:'contextual', teaches:'heat reduction choices'} },
-    { id:'hustler', title:'A Talented Hustler Wants In', sender:"O'Malley's Bar", neg:false, unique:true, entry:'popup', body:"<p class='flavor'>Sharp, hungry, and risky. The pitch is waiting at O'Malley's Bar.</p>", consequence:'Risky scores can pay cash or add heat; legit hiring can add crew; rejection helps rivals.', acceptLabel:'Hear the pitch', declineLabel:'Pass on it', onboarding:{mode:'contextual', teaches:'crew recruitment choices'} },
-    { id:'investor', title:'Silent Investor Invitation', sender:'Whitfield Realty', neg:false, unique:true, entry:'phone', body:"<p class='flavor'>Cash up front, no questions, in exchange for a slice of everything going forward. The meeting is at Whitfield Realty.</p>", consequence:'Accept for cash with a permanent income cut, negotiate with leverage, or gain respect by rejecting.', acceptLabel:'Take the meeting', declineLabel:'Stay independent', onboarding:{mode:'none'} },
-    { id:'fire', title:"Grease Fire at Kailash's Cart", sender:'Kailash', neg:true, unique:true, entry:'popup', body:"<p class='flavor'>Where it all started nearly goes up in smoke. Kailash says this does not smell accidental.</p>", consequence:'Rebuild costs cash or time; hunting the arsonist raises respect and heat and opens revenge memory.', acceptLabel:'Go to the cart', declineLabel:'Handle it quietly', onboarding:{mode:'none'} },
-    { id:'home_safe_robbery', title:'Cash on Hand Is Not Safe', sender:'First Windhaven Trust', neg:true, unique:true, entry:'phone', body:"<p class='flavor'>Word comes in after a back-room safe gets cleaned out. The bank branches are safer than a shoebox under the bed.</p>", consequence:'You can lose 35% of on-hand cash, then deposit or set GPS to a bank for safer storage.', acceptLabel:'Learn the bank route', declineLabel:'Risk the cash', onboarding:{mode:'mission', teaches:'banking and cash safety'} },
-    { id:'stolen_shipment', title:'Missing Cargo', sender:'Dockmaster Bell', neg:true, unique:true, entry:'phone', body:"<p class='flavor'>A cargo pallet disappears between the docks and West Side. The dockmaster says somebody at a chop shop knows where it went.</p>", consequence:'Buy cargo back, take it by force, or unlock Black Market Trade passive income with case risk.', acceptLabel:'Go to the docks', declineLabel:'Write it off', onboarding:{mode:'mission', teaches:'Black Market Trade unlock'} },
-    { id:'alderman_fixer', title:'The Bagman at City Hall', sender:'City Hall Annex', neg:false, unique:true, entry:'phone', body:"<p class='flavor'>A bagman says an alderman can become useful if a railyard union problem goes quiet.</p>", consequence:'Spend cash or pressure the union to gain influence and unlock Political Favors.', acceptLabel:'Hear the favor', declineLabel:'Avoid City Hall', onboarding:{mode:'mission', teaches:'Political Favors unlock'} },
-    { id:'turf_war', title:'West Side Pressure', sender:'Street lookout', neg:true, unique:true, entry:'popup', body:"<p class='flavor'>West Side pressure spills toward Devlin. Defend the block before the capo moves the line.</p>", consequence:'Defend Devlin, then choose truce for lower heat or assassination for high-risk turf gain.', acceptLabel:'Defend Devlin', declineLabel:'Let it cool', onboarding:{mode:'mission', teaches:'turf defense and gang war choices'} },
-    { id:'first_heist', title:'The First Real Heist', sender:'The Vault Job', neg:true, unique:true, entry:'phone', body:"<p class='flavor'>The old smash-and-grab board is not enough for your first real vault job. Pick a target, case it, choose an approach, then execute.</p>", consequence:'Preparation sets the target, approach, heat risk, payout odds, and escape result.', acceptLabel:'Start casing', declineLabel:'Not tonight', onboarding:{mode:'mission', teaches:'multi-stage heist preparation'} },
-  ];
 
   const eventPool = [
     { id:'rival', title:'A RIVAL CREW EYES YOUR CORNER', neg:true, body:"<p class='flavor'>Word is a West Side crew thinks your runners are working streets that belong to them.</p>", choices:[
@@ -245,7 +208,9 @@ import type * as ThreeNamespace from 'three';
   }
   function rivalStrength(){
     const ws = districts.find(d=>d.id==='westside')!;
-    return 20 + (100-ws.control)*0.3;
+    return 20 + (100-ws.control)*0.3
+      + (state.worldMemory.snitchOnRival === true ? PHASE2_MISSION_CONFIG.snitchRivalStrengthPenalty : 0)
+      + (state.worldMemory.rejectedHustler === true ? PHASE2_MISSION_CONFIG.rejectedHustlerRivalStrengthPenalty : 0);
   }
   // LEGAL: Black-market arms. Bought in packs; price climbs as you stockpile.
   const GUN_PACK = 5;
@@ -516,7 +481,7 @@ import type * as ThreeNamespace from 'three';
     ownedCars: [], equippedCar: null, ownedProperties: [],
     // LEGAL: Phase 4 caveats: when each property was bought (waterfront rent appreciates
     // LEGAL: with how long you have held it) and which used cars are currently broken down.
-    propertyOwnedAt: {}, brokenCars: [], carColors: {}, carParkedAt: null,
+    propertyOwnedAt: {}, brokenCars: [], carColors: {}, carDecals: {}, carParkedAt: null,
     currentDistrict: 'devlin', product: 0, productLevel: 0, currentInterior: null,
     inVehicle: false,
     waypoints: { devlin:null, westside:null, hub:null, global:null },
@@ -619,6 +584,22 @@ import type * as ThreeNamespace from 'three';
   function tempMultActive(b: Business){ return b.tempMultExpire > Date.now() ? b.tempMult : 1; }
   function applyTempMult(filter: string, mult: number, seconds: number){
     businesses.forEach(b=>{ if(filter==='all' || b.category===filter){ b.tempMult = mult; b.tempMultExpire = Date.now() + seconds*1000; } });
+  }
+  function applyBusinessTempMult(businessId: string, mult: number, seconds: number): void {
+    const business = businesses.find(function(entry){ return entry.id === businessId; });
+    if(!business) return;
+    business.tempMult = mult;
+    business.tempMultExpire = Date.now() + seconds * 1000;
+  }
+  function tonicVisionActive(): boolean {
+    return typeof state.worldMemory.tonicUntil === 'number' && state.playSeconds < state.worldMemory.tonicUntil;
+  }
+  function syncTonicVision(): void {
+    if(!sceneInitialized) return;
+    const wild = state.worldMemory.tonicVision === 'wild';
+    renderer.domElement.style.filter = tonicVisionActive()
+      ? (wild ? 'hue-rotate(135deg) saturate(1.45) contrast(1.1)' : 'hue-rotate(42deg) saturate(1.18)')
+      : '';
   }
   function hireFreeCrew(){
     const eligible = businesses.filter(b=> b.researched && !b.manager && b.level>0 && b.crew < crewNeeded(b)+2 && crewUsedGlobal() < crewCapGlobal());
@@ -756,7 +737,7 @@ import type * as ThreeNamespace from 'three';
         if(event.onboarding.mode === 'none') return [];
         const activeMission = state.activeMissions[event.id];
         if(activeMission){
-          return [{ id:event.id, title:event.title, mode:event.onboarding.mode, status:'active' as const, objectiveLabel:activeMission.objective?.label }];
+          return [{ id:event.id, title:event.title, mode:event.onboarding.mode, status:'active' as const, stageId:activeMission.stageId, objectiveLabel:activeMission.objective?.label }];
         }
         if(state.eventHistory[event.id] === 'offered'){
           return [{ id:event.id, title:event.title, mode:event.onboarding.mode, status:'offered' as const }];
@@ -877,12 +858,22 @@ import type * as ThreeNamespace from 'three';
     byId('start-screen').classList.add('hidden');
   }
 
+  const pendingMilestones: string[] = [];
+  let missionResultPending = false;
+  function showNextMilestone(): void {
+    const id = pendingMilestones.shift();
+    if(!id) return;
+    const milestone = milestones.find(function(entry){ return entry.id === id; });
+    if(!milestone) return;
+    showModal({ eyebrow:'Windhaven Herald — West Side Edition', title:milestone.title, body:milestone.body, buttons:[{label:'Keep Going', onClick:showNextMilestone}] });
+  }
   function triggerMilestone(id: string){
     if(state.seenMilestones.has(id)) return;
     const m = milestones.find(x => x.id === id);
     if(!m) return;
     state.seenMilestones.add(id);
-    showModal({ eyebrow:'Windhaven Herald — West Side Edition', title:m.title, body:m.body, buttons:[{label:'Keep Going'}] });
+    if(activeMissionCount(missionSaveState()) > 0 || missionResultPending) pendingMilestones.push(id);
+    else showModal({ eyebrow:'Windhaven Herald — West Side Edition', title:m.title, body:m.body, buttons:[{label:'Keep Going', onClick:showNextMilestone}] });
     log(`<i class="ph-duotone ph-newspaper"></i> Headline: "${m.title.charAt(0)}${m.title.slice(1).toLowerCase()}"`);
     if(id === 'chaat_house') byId('delhi-theme-row').style.display = 'flex';
     scheduleSave();
@@ -896,6 +887,59 @@ import type * as ThreeNamespace from 'three';
       completedMissions: state.completedMissions,
       worldMemory: state.worldMemory,
     };
+  }
+  interface MissionOutcomeSnapshot {
+    cash: number;
+    product: number;
+    respect: number;
+    heat: number;
+    investigation: number;
+    influence: number;
+    muscle: number;
+    crew: number;
+    investorPenalty: number;
+  }
+  const missionOutcomeSnapshots = new Map<string, MissionOutcomeSnapshot>();
+  function captureMissionOutcome(id: string): void {
+    missionOutcomeSnapshots.set(id, {
+      cash: state.cash,
+      product: state.product,
+      respect: state.respect,
+      heat: state.heat,
+      investigation: state.investigation,
+      influence: state.influence,
+      muscle: state.muscleCount,
+      crew: businesses.reduce(function(total, business){ return total + business.crew; }, 0),
+      investorPenalty: state.investorPenalty ?? 0,
+    });
+  }
+  function signedMissionDelta(value: number): string {
+    return value > 0 ? `+${value}` : `${value}`;
+  }
+  function exactMissionChanges(id: string): string[] {
+    const before = missionOutcomeSnapshots.get(id);
+    missionOutcomeSnapshots.delete(id);
+    if(!before) return [];
+    const changes: string[] = [];
+    const cash = Math.round(state.cash - before.cash);
+    const product = Math.round(state.product - before.product);
+    const respect = Math.round(state.respect - before.respect);
+    const heat = Math.round(state.heat - before.heat);
+    const investigation = Math.round(state.investigation - before.investigation);
+    const influence = Math.round(state.influence - before.influence);
+    const muscle = Math.round(state.muscleCount - before.muscle);
+    const crew = Math.round(businesses.reduce(function(total, business){ return total + business.crew; }, 0) - before.crew);
+    const investorPenalty = Math.round(((state.investorPenalty ?? 0) - before.investorPenalty) * 100);
+    if(cash) changes.push(`${cash > 0 ? '+' : '-'}$${Math.abs(cash).toLocaleString()}`);
+    if(product) changes.push(`product ${signedMissionDelta(product)}`);
+    if(respect) changes.push(`respect ${signedMissionDelta(respect)}`);
+    if(heat) changes.push(`heat ${signedMissionDelta(heat)}`);
+    if(investigation) changes.push(`investigation ${signedMissionDelta(investigation)}`);
+    if(influence) changes.push(`influence ${signedMissionDelta(influence)}`);
+    if(muscle) changes.push(`muscle ${signedMissionDelta(muscle)}`);
+    if(crew) changes.push(`crew ${signedMissionDelta(crew)}`);
+    if(investorPenalty) changes.push(`permanent income ${signedMissionDelta(-investorPenalty)}%`);
+    return changes;
   }
   function missionDefinition(id: string): MissionEventDefinition | null {
     return missionEventPool.find(function(event){ return event.id === id; }) ?? null;
@@ -918,6 +962,7 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: the luxury brokerage, which suits a silent money man better anyway.
     if(id === 'investor') return missionObjectiveFromPlace(missionPlaceByService('brand-horizon'), 'Meet the silent investor');
     if(id === 'hustler') return missionObjectiveFromPlace(missionPlaceByObjectId('bar'), "Hear the pitch at O'Malley's");
+    if(id === 'hustler_score') return missionObjectiveFromPlace(missionPlaceByObjectId('bar'), "Hear the score result at O'Malley's");
     if(id === 'fire') return missionObjectiveFromPlace(missionPlaceByObjectId('cart'), "Check Kailash's Cart");
     if(id === 'inspector') {
       const venture = flagshipLegit() ?? businesses.find(function(b){ return b.id === 'cart'; }) ?? businesses[0];
@@ -935,6 +980,17 @@ import type * as ThreeNamespace from 'three';
       return missionObjectiveFromPlace(missionPlaceByObjectId(corner.id), `Defend ${corner.name}`);
     }
     if(id === 'first_heist') return missionObjectiveFromPlace(missionPlaceByService('heistTarget'), 'Case First Windhaven Trust');
+    if(id === 'amit_mistake') return missionObjectiveFromPlace(missionPlaceByService('hubBusStation'), 'Meet Amit at the bus station');
+    if(id === 'hostile_press') return missionObjectiveFromPlace(missionPlaceByService('heraldHq'), 'Return to the Windhaven Herald');
+    if(id === 'press_followup') return missionObjectiveFromPlace(missionPlaceByService('heraldHq'), 'Meet the Herald profile visitor');
+    if(id === 'black_market_investigation') return missionObjectiveFromPlace(missionPlaceByService('docksDockmaster'), 'Meet Dockmaster Bell at the docks');
+    if(id === 'arsonist_revenge') return missionObjectiveFromPlace(missionPlaceByService('devlinAlley'), 'Find the arsonist in Devlin Back Alley');
+    if(id === 'tax_audit') return missionObjectiveFromPlace(missionPlaceByService('cityhall'), 'Meet the City Hall auditor');
+    if(id === 'mystery_tonic') return missionObjectiveFromPlace(missionPlaceByObjectId('herbalist'), 'Visit Golden Lotus Herbalist');
+    if(id === 'pigeon_summit') return missionObjectiveFromPlace(missionPlaceByService('cityhall'), 'Hear City Hall’s pigeon emergency');
+    if(id === 'mayors_parrot') return missionObjectiveFromPlace(missionPlaceByService('cityhall'), "Hear City Hall's parrot emergency");
+    if(id === 'goose_permit') return missionObjectiveFromPlace(missionPlaceByService('cityhall'), 'Review the goose permit at City Hall');
+    if(id === 'raccoon_keycard') return missionObjectiveFromPlace(missionPlaceByService('cityhall'), 'Meet the City Hall clerk about the raccoon');
     return null;
   }
   function advanceMissionToObjective(id: string, stageId: string, serviceOrObjectId: string, label: string): void {
@@ -957,6 +1013,17 @@ import type * as ThreeNamespace from 'three';
     const definition = missionDefinition(id);
     const objective = objectiveForMission(id);
     if(!definition || !objective) return;
+    captureMissionOutcome(id);
+    if(id === 'home_safe_robbery'){
+      const loss = Math.round(state.cash * PHASE2_MISSION_CONFIG.homeSafeRobberyLossPct);
+      state.cash = Math.max(0, state.cash - loss);
+      state.worldMemory.homeSafeRobbed = true;
+      log(`<i class="ph-duotone ph-vault"></i> The safe is already empty. You lost ${fmt(loss)} in exposed cash; get the rest to a bank.`);
+    }
+    if(id === 'inspector'){
+      const venture = flagshipLegit() ?? businesses.find(function(business){ return business.id === 'cart'; }) ?? businesses[0];
+      state.worldMemory.inspectionVentureId = venture?.id;
+    }
     startMission(missionSaveState(), { id, stageId:'travel', status:'active', startedAt:state.playSeconds, updatedAt:state.playSeconds, objective });
     setMissionGps(id);
     log(`<i class="ph-duotone ph-map-pin"></i> Mission started: ${definition.title}. GPS set to ${objective.label}.`);
@@ -964,20 +1031,30 @@ import type * as ThreeNamespace from 'three';
     scheduleSave();
   }
   function declineMissionOffer(id: string): void {
+    captureMissionOutcome(id);
     declineMission(missionSaveState(), id);
-    if(id === 'tribune'){ state.respect += 10; state.worldMemory.pressTone = 'quiet'; log('<i class="ph-duotone ph-star"></i> You decline Lana Vance. Some people respect a man who does not need the attention.'); }
-    else if(id === 'cousin'){ state.respect = Math.max(0, state.respect - 5); state.worldMemory.amitTurnedAway = true; log('<i class="ph-duotone ph-users"></i> Amit gets the message. Family will remember it.'); }
-    else if(id === 'hustler'){ state.cash += 500; state.worldMemory.rejectedHustler = true; log('<i class="ph-duotone ph-users-three"></i> You pass. They leave a finder fee, then start talking to rivals.'); }
-    else if(id === 'investor'){ state.respect += 8; state.worldMemory.investorRejected = true; log('<i class="ph-duotone ph-star"></i> You show the investor the door. Independence has its own price.'); }
-    else if(id === 'fire'){ applyTempMult('legit', 0.7, 30); state.worldMemory.cartRebuiltQuietly = true; log('<i class="ph-duotone ph-warning-circle"></i> You rebuild quietly. Business limps while the smoke clears.'); }
-    else if(id === 'home_safe_robbery'){ state.worldMemory.ignoredBankLesson = true; log('<i class="ph-duotone ph-vault"></i> You keep cash close. Convenient, and exposed.'); }
-    else if(id === 'stolen_shipment'){ state.product = Math.max(0, state.product - 30); state.worldMemory.shipmentWrittenOff = true; log('<i class="ph-duotone ph-package"></i> You write off the missing cargo. Supply tightens.'); }
-    else if(id === 'alderman_fixer'){ state.worldMemory.avoidedBagman = true; log('<i class="ph-duotone ph-courthouse"></i> You avoid the bagman. City Hall remains useful only from a distance.'); }
-    else if(id === 'turf_war'){ state.heat = Math.max(0, state.heat - 5); state.worldMemory.avoidedTurfWar = true; log('<i class="ph-duotone ph-map-pin"></i> You let the pressure cool instead of answering it.'); }
-    else if(id === 'first_heist'){ state.worldMemory.firstHeistDelayed = true; log('<i class="ph-duotone ph-lock"></i> You leave the vault job on the board.'); }
+    let outcome = 'You let the opportunity pass for now.';
+    if(id === 'tribune'){ state.respect += 10; state.worldMemory.pressTone = 'quiet'; outcome = 'You decline Lana Vance and stay quiet.'; log('<i class="ph-duotone ph-star"></i> You decline Lana Vance. Some people respect a man who does not need the attention.'); }
+    else if(id === 'cousin'){ state.respect = Math.max(0, state.respect - 5); state.worldMemory.amitTurnedAway = true; state.worldMemory.familyLoyalty = -2; outcome = 'You turn Amit away; family loyalty -2 and the family will remember it.'; log('<i class="ph-duotone ph-users"></i> Amit gets the message. Family loyalty falls.'); }
+    else if(id === 'hustler'){ state.cash += 500; state.worldMemory.rejectedHustler = true; outcome = 'You take the finder fee and leave the hustler to the rivals.'; log('<i class="ph-duotone ph-users-three"></i> You pass. They leave a finder fee, then start talking to rivals.'); }
+    else if(id === 'investor'){ state.respect += 8; state.worldMemory.investorRejected = true; outcome = 'You reject the investor and keep the operation independent.'; log('<i class="ph-duotone ph-star"></i> You show the investor the door. Independence has its own price.'); }
+    else if(id === 'fire'){ const cart = businesses.find(function(business){ return business.id === 'cart'; }); if(cart){ cart.tempMult = 0.7; cart.tempMultExpire = Date.now() + 30_000; } state.worldMemory.cartRebuiltQuietly = true; outcome = 'Kailash’s Cart income is -30% for 30 seconds.'; log('<i class="ph-duotone ph-warning-circle"></i> You rebuild quietly. Kailash’s Cart limps while the smoke clears.'); }
+    else if(id === 'home_safe_robbery'){ state.worldMemory.ignoredBankLesson = true; outcome = 'You keep carrying exposed cash.'; log('<i class="ph-duotone ph-vault"></i> You keep cash close. Convenient, and exposed.'); }
+    else if(id === 'stolen_shipment'){ state.product = Math.max(0, state.product - 30); state.worldMemory.shipmentWrittenOff = true; outcome = 'You write off the missing cargo.'; log('<i class="ph-duotone ph-package"></i> You write off the missing cargo. Supply tightens.'); }
+    else if(id === 'alderman_fixer'){ state.worldMemory.avoidedBagman = true; state.worldMemory.taxAuditPending = true; scheduleFollowUp('tax_audit'); outcome = 'You avoid the bagman; Political Favors stay locked and a City Hall audit arrives in 2 minutes.'; log('<i class="ph-duotone ph-courthouse"></i> You avoid the bagman. The next call from City Hall is an audit notice.'); }
+    else if(id === 'turf_war'){ state.heat = Math.max(0, state.heat - 5); state.worldMemory.avoidedTurfWar = true; outcome = 'You let the pressure cool instead of answering it.'; log('<i class="ph-duotone ph-map-pin"></i> You let the pressure cool instead of answering it.'); }
+    else if(id === 'first_heist'){ state.worldMemory.firstHeistDelayed = true; outcome = 'You leave the vault job on the board.'; log('<i class="ph-duotone ph-lock"></i> You leave the vault job on the board.'); }
     else { log('<i class="ph-duotone ph-info"></i> You let the opportunity pass for now.'); }
     renderAll();
     scheduleSave();
+    const changes = exactMissionChanges(id);
+    const changesMarkup = changes.length ? `<p><strong>Exact changes:</strong> ${escapeHtml(changes.join('; '))}</p>` : '';
+    showModal({
+      eyebrow:'Mission Offer Declined',
+      title:missionDefinition(id)?.title ?? id,
+      body:`<p class="flavor">${escapeHtml(outcome)}</p>${changesMarkup}`,
+      buttons:[{ label:'Continue' }],
+    });
   }
   function activeMissionEntries() {
     return Object.values(state.activeMissions).filter(function(mission){ return mission.status === 'active'; });
@@ -995,107 +1072,333 @@ import type * as ThreeNamespace from 'three';
     return place ? activeMissionForPlace(place.id) : null;
   }
   function finishMission(id: string, result: string): void {
+    missionResultPending = true;
     completeMission(missionSaveState(), id, result, state.playSeconds);
     setGlobalWaypoint(null);
     rebuildWaypointBeacon();
     byId('minimap-clear').classList.remove('show');
     renderAll();
     scheduleSave();
+    const definition = missionDefinition(id);
+    const changes = exactMissionChanges(id);
+    const changesMarkup = changes.length ? `<p><strong>Exact changes:</strong> ${escapeHtml(changes.join('; '))}</p>` : '';
+    showModal({
+      eyebrow:'Mission Result',
+      title:definition?.title ?? id,
+      stamp:'Completed',
+      body:`<p class="flavor">${escapeHtml(result)}</p>${changesMarkup}<p>Your decision is saved and its effects are now reflected in your cash, heat, respect, territory, case, and unlocks where applicable.</p>`,
+      buttons:[{ label:'Continue', onClick:function(){ missionResultPending = false; showNextMilestone(); } }],
+    });
+  }
+  function scheduleFollowUp(missionId: string): void {
+    scheduleDelayedMission(missionSaveState(), `${missionId}DueAt`, state.playSeconds, PHASE2_MISSION_CONFIG.followUpDelaySeconds);
+    const followUpLine: Record<string, string> = {
+      amit_mistake:'Amit says the lender will circle back in about two minutes.',
+      hostile_press:'Lana says the Herald will decide whether to keep the story alive in about two minutes.',
+      press_followup:'Lana says the person who read the profile will arrive in about two minutes.',
+      black_market_investigation:'Bell warns that questions about the manifests will arrive in about two minutes.',
+      arsonist_revenge:'Kailash says a name should reach you in about two minutes.',
+      tax_audit:'City Hall says its audit notice will be ready in about two minutes.',
+      cops:'Kowalski says the detective will want a word in about two minutes.',
+      hustler_score:"O'Malley's says the hustler will report back in about two minutes.",
+    };
+    const line = followUpLine[missionId];
+    if(line) log(`<i class="ph-duotone ph-clock"></i> ${line}`);
+  }
+  function delayedFollowUpReady(missionId: string): boolean {
+    if(missionId === 'amit_mistake') return delayedMissionReady(missionSaveState(), 'amit_mistakeDueAt', state.playSeconds, state.worldMemory.amitHired === true && missionCompleted(missionSaveState(), 'cousin'));
+    if(missionId === 'hostile_press') return delayedMissionReady(missionSaveState(), 'hostile_pressDueAt', state.playSeconds, state.worldMemory.pressTone === 'hostile');
+    if(missionId === 'press_followup') return delayedMissionReady(missionSaveState(), 'press_followupDueAt', state.playSeconds, ['professional', 'guarded', 'warm', 'scandal'].includes(String(state.worldMemory.pressTone)) && missionCompleted(missionSaveState(), 'tribune'));
+    if(missionId === 'black_market_investigation') return delayedMissionReady(missionSaveState(), 'black_market_investigationDueAt', state.playSeconds, state.worldMemory.blackMarketTrade === true);
+    if(missionId === 'arsonist_revenge') return delayedMissionReady(missionSaveState(), 'arsonist_revengeDueAt', state.playSeconds, state.worldMemory.arsonistHunted === true);
+    if(missionId === 'tax_audit') return delayedMissionReady(missionSaveState(), 'tax_auditDueAt', state.playSeconds, state.worldMemory.taxAuditPending === true);
+    if(missionId === 'cops') return delayedMissionReady(missionSaveState(), 'copsDueAt', state.playSeconds, state.worldMemory.kowalskiIntimidated === true);
+    if(missionId === 'hustler_score') return delayedMissionReady(missionSaveState(), 'hustler_scoreDueAt', state.playSeconds, state.worldMemory.hustlerScoreApproved === true);
+    return true;
+  }
+  function removeCrewMember(): boolean {
+    const staffed = businesses.find(function(business){ return business.crew > 0; });
+    if(!staffed) return false;
+    staffed.crew -= 1;
+    return true;
   }
   function resolveTribuneInterview(tone: string): void {
-    if(tone === 'professional'){ applyTempMult('legit', 1.25, 75); state.prestigeCount = Math.max(state.prestigeCount, 1); state.worldMemory.pressTone = 'professional'; log('<i class="ph-duotone ph-microphone-stage"></i> Lana runs a clean profile. Legit traffic rises and the city starts treating you like a business owner.'); }
-    else if(tone === 'evasive'){ state.respect += 8; state.heat = Math.max(0, state.heat - 8); state.worldMemory.pressTone = 'guarded'; log('<i class="ph-duotone ph-newspaper"></i> The piece says less than Lana wanted. People notice the discipline.'); }
-    else if(tone === 'humorous'){ state.respect += 14; applyTempMult('legit', 1.12, 60); state.worldMemory.pressTone = 'warm'; log('<i class="ph-duotone ph-smiley"></i> You make Windhaven laugh without giving much away. Foot traffic and street talk both improve.'); }
-    else if(tone === 'controversial'){ state.respect += 22; state.heat = Math.min(100, state.heat + 16); state.investigation = Math.min(100, state.investigation + 4); state.worldMemory.pressTone = 'scandal'; log('<i class="ph-duotone ph-warning"></i> The quotes travel fast. Respect jumps, but so does attention.'); }
-    else { state.respect += 12; state.heat = Math.min(100, state.heat + 24); state.worldMemory.pressTone = 'hostile'; log('<i class="ph-duotone ph-warning"></i> You turn the interview into a threat. The street likes it. City Hall does not.'); }
-    finishMission('tribune', tone);
+    const opening = String(state.worldMemory.interviewOpening || 'builder');
+    const article = opening === 'builder'
+      ? tone === 'professional' ? 'The Builder of Devlin' : tone === 'guarded' ? 'The Quiet Builder' : tone === 'warm' ? 'The Block Has a Joke for Him' : tone === 'scandal' ? 'Growth at Any Cost?' : 'A Warning From Devlin'
+      : opening === 'family'
+        ? tone === 'professional' ? 'A Family Business With Ambition' : tone === 'guarded' ? 'The Family Keeps Its Counsel' : tone === 'warm' ? 'A Cousin, a Cart, and a Crowd' : tone === 'scandal' ? 'What the Family Will Not Say' : 'A Family Dares the City'
+        : tone === 'professional' ? 'The Challenger Makes His Case' : tone === 'guarded' ? 'A Challenger Behind Closed Doors' : tone === 'warm' ? 'The City Gets the Last Laugh' : tone === 'scandal' ? 'City Hall Faces a New Critic' : 'A Threat Printed in Full';
+    state.worldMemory.pressArticle = article;
+    let result: string;
+    if(tone === 'professional'){ applyTempMult('legit', 1.25, 75); state.prestigeCount = Math.max(state.prestigeCount, 1); state.worldMemory.pressTone = 'professional'; scheduleFollowUp('press_followup'); result = `legit income +25% for 75 seconds; prestige tier unlocked; “${article}” follow-up in 2 minutes`; log('<i class="ph-duotone ph-microphone-stage"></i> Lana runs a clean profile. Legit traffic rises and a reader asks to meet.'); }
+    else if(tone === 'evasive'){ state.respect += 8; state.heat = Math.max(0, state.heat - 8); state.worldMemory.pressTone = 'guarded'; scheduleFollowUp('press_followup'); result = `respect +8; heat -8; “${article}” source follow-up in 2 minutes`; log('<i class="ph-duotone ph-newspaper"></i> The piece says less than Lana wanted. A careful reader asks to meet.'); }
+    else if(tone === 'humorous'){ state.respect += 14; applyTempMult('legit', 1.12, 60); state.worldMemory.pressTone = 'warm'; scheduleFollowUp('press_followup'); result = `respect +14; legit income +12% for 60 seconds; “${article}” community follow-up in 2 minutes`; log('<i class="ph-duotone ph-smiley"></i> You make Windhaven laugh without giving much away. A neighborhood organizer asks to meet.'); }
+    else if(tone === 'controversial'){ state.respect += 22; state.heat = Math.min(100, state.heat + 16); state.investigation = Math.min(100, state.investigation + 4); state.worldMemory.pressTone = 'scandal'; scheduleFollowUp('press_followup'); result = `respect +22; heat +16; investigation +4; “${article}” response in 2 minutes`; log('<i class="ph-duotone ph-warning"></i> The quotes travel fast. An activist asks to meet at the Herald.'); }
+    else { state.respect += 12; state.heat = Math.min(100, state.heat + 24); state.worldMemory.pressTone = 'hostile'; scheduleFollowUp('hostile_press'); result = 'respect +12; heat +24; hostile press follow-up in 2 minutes'; log('<i class="ph-duotone ph-warning"></i> You turn the interview into a threat. The street likes it. City Hall does not.'); }
+    finishMission('tribune', result);
+  }
+  function openHomeSafeTellerLesson(): void {
+    showModal({
+      eyebrow:'Rentport City National',
+      title:'The Teller Has Seen This Before',
+      body:"<p class='flavor'>The teller does not ask where the missing money went. She only points to the deposit slip. \"Cash in your pocket is cash somebody can take. Money in an account stays there when the street gets loud.\"</p>",
+      buttons:[
+        { label:'Use the teller after this', onClick:function(){
+          state.worldMemory.homeSafeBankingChoice = 'use-teller';
+          log('<i class="ph-duotone ph-bank"></i> The teller leaves a deposit slip on the counter. Banking is available here whenever you need it.');
+          finishMission('home_safe_robbery', 'Banking lesson completed; deposit protection explained; teller banking available in this room');
+        } },
+        { label:'Keep the remaining cash close', onClick:function(){
+          state.worldMemory.homeSafeBankingChoice = 'carry-cash';
+          log('<i class="ph-duotone ph-vault"></i> You leave the deposit slip blank. The cash stays exposed.');
+          finishMission('home_safe_robbery', 'Banking lesson completed; remaining cash deliberately kept exposed');
+        } },
+      ],
+    });
   }
   function openTribuneInterview(): void {
     advanceMissionStage(missionSaveState(), 'tribune', 'interview', state.playSeconds, null);
     showModal({
       eyebrow:'Windhaven Herald Studio',
       title:'Lana Vance',
-      body:"<p class='flavor'>Lana checks the recorder, then looks up. \"Three questions. How do you explain the money, the loyalty, and the rumors that follow you?\"</p>",
+      body:"<p class='flavor'>Lana checks the recorder, then looks up. \"We can do this as a profile, a warning, or a spectacle. First: what do you want Windhaven to think you are building?\"</p>",
       buttons:[
-        { label:'Professional: business, payroll, neighborhood', onClick:function(){ resolveTribuneInterview('professional'); } },
-        { label:'Evasive: keep the answers narrow', onClick:function(){ resolveTribuneInterview('evasive'); } },
-        { label:'Humorous: make it charming', onClick:function(){ resolveTribuneInterview('humorous'); } },
-        { label:'Controversial: call out City Hall', onClick:function(){ resolveTribuneInterview('controversial'); } },
-        { label:'Aggressive: dare anyone to test you', onClick:function(){ resolveTribuneInterview('aggressive'); } },
+        { label:'A business that belongs to the neighborhood', onClick:function(){ openTribuneFollowUp('builder'); } },
+        { label:'A family operation that keeps its own counsel', onClick:function(){ openTribuneFollowUp('family'); } },
+        { label:'A city that finally answers to somebody', onClick:function(){ openTribuneFollowUp('challenger'); } },
       ],
     });
     renderAll();
     scheduleSave();
   }
+  function openTribuneFollowUp(opening: string): void {
+    state.worldMemory.interviewOpening = opening;
+    advanceMissionStage(missionSaveState(), 'tribune', 'followup', state.playSeconds, null);
+    const prompt = opening === 'builder'
+      ? 'Lana asks who pays when growth changes the block.'
+      : opening === 'family'
+        ? 'Lana asks what your family refuses to put on the record.'
+        : 'Lana asks whether City Hall should be afraid of you.';
+    const answers = opening === 'builder'
+      ? ['Give her the hiring and neighborhood plan', 'Keep the books and names private', 'Tell her growth needs a better punchline', 'Name the officials blocking the block', 'Tell the competitors to get out of the way']
+      : opening === 'family'
+        ? ['Explain the family rules and responsibilities', 'Protect the people who did not ask for a headline', 'Tell the story with a family joke', 'Name the institutions that made the family wait', 'Say nobody gets to test your family']
+        : ['Lay out a public plan for City Hall', 'Keep the leverage off the record', 'Make the room laugh at City Hall', 'Call out the people running the city', 'Tell City Hall to test you'];
+    showModal({
+      eyebrow:'Windhaven Herald Studio',
+      title:'Lana Vance',
+      body:"<p class='flavor'>" + prompt + " She leaves the recorder running and waits for a real answer.</p>",
+      buttons:[
+        { label:answers[0], onClick:function(){ resolveTribuneInterview('professional'); } },
+        { label:answers[1], onClick:function(){ resolveTribuneInterview('evasive'); } },
+        { label:answers[2], onClick:function(){ resolveTribuneInterview('humorous'); } },
+        { label:answers[3], onClick:function(){ resolveTribuneInterview('controversial'); } },
+        { label:answers[4], onClick:function(){ resolveTribuneInterview('aggressive'); } },
+      ],
+    });
+  }
   function resolveMissionAtObjective(id: string): void {
     if(id === 'tribune'){ openTribuneInterview(); return; }
+    if(id === 'amit_mistake'){
+      showModal({ eyebrow:'Hub Bus Station', title:"Amit's Mistake", body:"<p class='flavor'>Amit took a shortcut with the books. The lender wants money, or someone from your operation to carry the blame.</p>", buttons:[
+        { label:'Contain it ($2,500, +Heat)', onClick:function(){ state.cash = Math.max(0, state.cash - 2500); state.heat = Math.min(100, state.heat + 12); state.worldMemory.amitMistakeContained = true; state.worldMemory.familyLoyalty = Number(state.worldMemory.familyLoyalty || 0) + 2; log('<i class="ph-duotone ph-envelope-simple"></i> You bury Amit\'s debt before it names anyone else. Family remembers who covered it.'); finishMission('amit_mistake', '$2,500 spent; heat +12; family loyalty +2'); } },
+        { label:'Let a crew member take the fall', onClick:function(){ const lostCrew = removeCrewMember(); state.respect = Math.max(0, state.respect - 10); state.worldMemory.amitMistakeCrewLost = lostCrew; state.worldMemory.familyLoyalty = Number(state.worldMemory.familyLoyalty || 0) - 3; log(lostCrew ? '<i class="ph-duotone ph-users-three"></i> One crew member disappears to settle Amit\'s mistake. Family will not forget the price.' : '<i class="ph-duotone ph-users-three"></i> Amit takes the fall; there was no crew left to lose.'); finishMission('amit_mistake', lostCrew ? 'one crew member permanently lost; respect -10; family loyalty -3' : 'Amit took the fall; respect -10; family loyalty -3'); } },
+      ]}); return;
+    }
+    if(id === 'hostile_press'){
+      showModal({ eyebrow:'Windhaven Herald', title:'Damage Control', body:"<p class='flavor'>Lana cannot retract the story, but she can decide how long it stays on the front page. Your legitimate fronts have to weather the backlash.</p>", buttons:[
+        { label:'Buy a response ($1,800)', onClick:function(){ state.cash = Math.max(0, state.cash - 1800); applyTempMult('legit', 0.75, 120); state.worldMemory.pressRecovery = 'paid'; log('<i class="ph-duotone ph-newspaper"></i> Your response shortens the bad press: legit income -25% for two minutes.'); finishMission('hostile_press', '$1,800 spent; legit income -25% for 2 minutes'); } },
+        { label:'Ride out the backlash', onClick:function(){ applyTempMult('legit', 0.55, 240); state.worldMemory.pressRecovery = 'endured'; log('<i class="ph-duotone ph-warning"></i> The story bites hard: legit income -45% for four minutes.'); finishMission('hostile_press', 'legit income -45% for 4 minutes'); } },
+      ]}); return;
+    }
+    if(id === 'press_followup'){
+      const tone = String(state.worldMemory.pressTone || 'guarded');
+      const article = String(state.worldMemory.pressArticle || 'the profile');
+      if(tone === 'professional'){
+        showModal({ eyebrow:'Windhaven Herald Studio', title:'A Sponsor Who Read the Profile', body:`<p class='flavor'>A local trade group read “${escapeHtml(article)}” and wants its name next to yours. Lana makes clear that they are buying access to your legitimate story, not your silence.</p>`, buttons:[
+          { label:'Take the clean sponsorship (+$1,200)', onClick:function(){ state.cash += 1200; applyTempMult('legit', 1.1, 90); state.worldMemory.pressFollowup = 'sponsor'; finishMission('press_followup', '$1,200 gained; legit income +10% for 90 seconds; trade-group sponsor contact recorded'); } },
+          { label:'Keep the profile independent (+8 respect)', onClick:function(){ state.respect += 8; state.worldMemory.pressFollowup = 'independent'; finishMission('press_followup', 'respect +8; independent Herald relationship recorded'); } },
+        ]}); return;
+      }
+      if(tone === 'warm'){
+        showModal({ eyebrow:'Windhaven Herald Studio', title:'The Neighborhood Organizer', body:`<p class='flavor'>A block organizer brings a stack of clippings from “${escapeHtml(article)}.” They want a public fundraiser or a quiet introduction to shop owners who trust the story.</p>`, buttons:[
+          { label:'Fund the block night ($350, +18 respect)', onClick:function(){ state.cash = Math.max(0, state.cash - 350); state.respect += 18; state.worldMemory.pressFollowup = 'block-night'; finishMission('press_followup', '$350 spent; respect +18; neighborhood supporter network recorded'); } },
+          { label:'Take the quiet introductions (+10 respect, heat -4)', onClick:function(){ state.respect += 10; state.heat = Math.max(0, state.heat - 4); state.worldMemory.pressFollowup = 'shop-intros'; finishMission('press_followup', 'respect +10; heat -4; shop-owner introductions recorded'); } },
+        ]}); return;
+      }
+      if(tone === 'scandal'){
+        showModal({ eyebrow:'Windhaven Herald Studio', title:'A Public Challenge', body:`<p class='flavor'>A neighborhood advocate arrives with the clipping “${escapeHtml(article)}.” They want you to back the accusations publicly, or give them documents quietly and let the story keep moving.</p>`, buttons:[
+          { label:'Back the challenge (+16 respect, +8 heat)', onClick:function(){ state.respect += 16; state.heat = Math.min(100, state.heat + 8); state.worldMemory.pressFollowup = 'public-challenge'; finishMission('press_followup', 'respect +16; heat +8; City Hall challenge relationship recorded'); } },
+          { label:'Give a quiet lead (investigation -6)', onClick:function(){ state.investigation = Math.max(0, state.investigation - 6); state.worldMemory.pressFollowup = 'quiet-lead'; finishMission('press_followup', 'investigation -6; confidential Herald source relationship recorded'); } },
+        ]}); return;
+      }
+      showModal({ eyebrow:'Windhaven Herald Studio', title:'A Careful Source', body:`<p class='flavor'>A source who liked “${escapeHtml(article)}” wants to trade a quiet lead for your promise not to turn every private fact into a public war.</p>`, buttons:[
+        { label:'Protect the source (heat -6)', onClick:function(){ state.heat = Math.max(0, state.heat - 6); state.worldMemory.pressFollowup = 'protected-source'; finishMission('press_followup', 'heat -6; protected Herald source recorded'); } },
+        { label:'Ask for the full lead (+10 respect, +4 heat)', onClick:function(){ state.respect += 10; state.heat = Math.min(100, state.heat + 4); state.worldMemory.pressFollowup = 'full-lead'; finishMission('press_followup', 'respect +10; heat +4; aggressive Herald source relationship recorded'); } },
+      ]}); return;
+    }
+    if(id === 'black_market_investigation'){
+      showModal({ eyebrow:'Docks', title:'The Case File', body:"<p class='flavor'>Bell has copied manifests and one unhappy detective. You can buy silence, or burn the records before they become a case.</p>", buttons:[
+        { label:'Pay to close it ($2,200)', onClick:function(){ state.cash = Math.max(0, state.cash - 2200); state.investigation = Math.max(0, state.investigation - 16); state.worldMemory.blackMarketCaseClosed = true; log('<i class="ph-duotone ph-envelope-simple"></i> The file closes: $2,200 spent and case -16.'); finishMission('black_market_investigation', '$2,200 spent; investigation -16'); } },
+        { label:'Burn the records (-50 product)', onClick:function(){ state.product = Math.max(0, state.product - 50); state.investigation = Math.max(0, state.investigation - 8); state.worldMemory.blackMarketRecordsBurned = true; log('<i class="ph-duotone ph-fire"></i> The manifests burn: 50 product lost and case -8.'); finishMission('black_market_investigation', '50 product lost; investigation -8'); } },
+      ]}); return;
+    }
+    if(id === 'arsonist_revenge'){
+      const mission = state.activeMissions.arsonist_revenge;
+      if(mission?.stageId !== 'lounge'){
+        showModal({ eyebrow:'Devlin Back Alley', title:'The Arsonist', body:"<p class='flavor'>The name leads to a scared runner with a lighter and a thin envelope. Kailash is waiting to hear what you do. The runner says the person who paid him is drinking at Marigold Lounge.</p>", buttons:[
+          { label:'Take the payoff ($900)', onClick:function(){ state.cash += 900; state.worldMemory.arsonistPaid = true; log('<i class="ph-duotone ph-handshake"></i> The arsonist pays: $900 gained.'); finishMission('arsonist_revenge', '$900 gained; the fire ends quietly'); } },
+          { label:'Follow the money to Marigold Lounge', onClick:function(){ state.worldMemory.arsonistTrail = 'marigold'; advanceMissionToObjective('arsonist_revenge', 'lounge', 'marigoldLounge', 'Confront the arsonist’s employer at Marigold Lounge'); } },
+        ]}); return;
+      }
+      showModal({ eyebrow:'Marigold Lounge', title:'The One Who Ordered It', body:"<p class='flavor'>The employer expected the runner to disappear, not for you to walk into the lounge. He offers a bigger envelope, then realizes you did not come for money alone.</p>", buttons:[
+        { label:'Take the larger payoff ($1,500)', onClick:function(){ state.cash += 1500; state.worldMemory.arsonistPaid = true; finishMission('arsonist_revenge', '$1,500 gained; arson employer bought peace'); } },
+        { label:'Make an example (+18 respect, +16 heat)', onClick:function(){ state.respect += 18; state.heat = Math.min(100, state.heat + 16); state.worldMemory.arsonistPunished = true; finishMission('arsonist_revenge', 'respect +18; heat +16; arson employer punished'); } },
+      ]}); return;
+    }
+    if(id === 'mystery_tonic'){
+      showModal({ eyebrow:'Golden Lotus Herbalist', title:'The Tonic', body:"<p class='flavor'>Mrs. Lin puts a bright green bottle on the counter. \"One sip, then tell me whether the pigeons are giving advice again.\"</p>", buttons:[
+        { label:'Take one careful sip', onClick:function(){ state.respect += 6; state.worldMemory.tonicVision = 'careful'; state.worldMemory.tonicUntil = state.playSeconds + PHASE2_MISSION_CONFIG.tonicCarefulDuration; syncTonicVision(); log('<i class="ph-duotone ph-eye"></i> The street becomes extremely sincere. Respect +6; surreal vision for 45 seconds.'); finishMission('mystery_tonic', 'respect +6; surreal map vision for 45 seconds'); } },
+        { label:'Take the whole bottle', onClick:function(){ state.cash += 300; state.heat = Math.max(0, state.heat - 8); state.worldMemory.tonicVision = 'wild'; state.worldMemory.tonicUntil = state.playSeconds + PHASE2_MISSION_CONFIG.tonicWildDuration; syncTonicVision(); log('<i class="ph-duotone ph-sparkle"></i> You argue with a parking meter and somehow win: $300 gained, heat -8; surreal vision for 75 seconds.'); finishMission('mystery_tonic', '$300 gained; heat -8; surreal map vision for 75 seconds'); } },
+      ]}); return;
+    }
+    if(id === 'pigeon_summit'){
+      const mission = state.activeMissions.pigeon_summit;
+      if(mission?.stageId === 'travel'){
+        showModal({ eyebrow:'City Hall Annex', title:'Emergency Pigeon Summit', body:"<p class='flavor'>A clerk slides over a folder marked URGENT. The city’s pigeons have occupied the Wabash Newsstand, rejected a reasonable eviction notice, and started taking pastries in shifts.</p>", buttons:[
+          { label:'Sign the official bird liaison waiver', onClick:function(){ state.worldMemory.pigeonApproach = 'liaison'; advanceMissionToObjective('pigeon_summit', 'newsstand', 'wicker-news', 'Meet the pigeon delegation at Wabash Newsstand'); } },
+          { label:'Bill City Hall $300 for “consulting”', onClick:function(){ state.cash += 300; state.worldMemory.pigeonApproach = 'consulting'; advanceMissionToObjective('pigeon_summit', 'newsstand', 'wicker-news', 'Meet the pigeon delegation at Wabash Newsstand'); } },
+        ]}); return;
+      }
+      showModal({ eyebrow:'Wabash Newsstand', title:'The Delegation', body:"<p class='flavor'>The flock watches from the awning. One pigeon has a pastry wrapper tucked under its wing. The newsstand owner insists it is the negotiator.</p>", buttons:[
+        { label:'Offer seed decoys ($120)', onClick:function(){ state.cash = Math.max(0, state.cash - 120); state.respect += 8; state.worldMemory.pigeonSummit = 'seed'; log('<i class="ph-duotone ph-bird"></i> The delegation accepts seed, leaves the pastries, and awards you a respectful nod.'); finishMission('pigeon_summit', '$120 spent; respect +8; pigeon truce recorded'); } },
+        { label:'Give the flock a public apology', onClick:function(){ state.respect += 12; state.heat = Math.max(0, state.heat - 4); state.worldMemory.pigeonSummit = 'apology'; log('<i class="ph-duotone ph-megaphone"></i> The pigeons accept your apology. The crowd loves it more than they should.'); finishMission('pigeon_summit', 'respect +12; heat -4; pigeon truce recorded'); } },
+      ]}); return;
+    }
+    if(id === 'mayors_parrot'){
+      const mission = state.activeMissions.mayors_parrot;
+      if(mission?.stageId === 'travel'){
+        showModal({ eyebrow:'City Hall Annex', title:"The Mayor's Parrot", body:"<p class='flavor'>A clerk points at an empty brass perch. The mayor's parrot escaped with a budget notebook, learned the phrase “expedite my permit,” and has been directing traffic toward Rockwell Pet Supply.</p>", buttons:[
+          { label:'Give the city an official statement', onClick:function(){ state.worldMemory.parrotApproach = 'official'; advanceMissionToObjective('mayors_parrot', 'petstore', 'rockwell-pets', 'Find the parrot at Rockwell Pet Supply'); } },
+          { label:'Invoice City Hall $250 for bird consulting', onClick:function(){ state.cash += 250; state.worldMemory.parrotApproach = 'consulting'; advanceMissionToObjective('mayors_parrot', 'petstore', 'rockwell-pets', 'Find the parrot at Rockwell Pet Supply'); } },
+        ]}); return;
+      }
+      showModal({ eyebrow:'Rockwell Pet Supply', title:'A Bird with a Platform', body:"<p class='flavor'>The parrot is on the highest cage, notebook under one claw. It is repeating “no comment” with enough confidence that three reporters are taking notes.</p>", buttons:[
+        { label:'Buy sunflower seeds ($75)', onClick:function(){ state.cash = Math.max(0, state.cash - 75); state.respect += 10; state.worldMemory.parrotResolution = 'seeds'; log('<i class="ph-duotone ph-bird"></i> The parrot accepts the seeds, returns the notebook, and receives a tiny civic commendation.'); finishMission('mayors_parrot', '$75 spent; respect +10; parrot returned to City Hall'); } },
+        { label:'Let it give one press conference', onClick:function(){ state.respect += 16; state.heat = Math.min(100, state.heat + 6); state.worldMemory.parrotResolution = 'press'; log('<i class="ph-duotone ph-microphone-stage"></i> The parrot denounces parking meters, then voluntarily returns to its perch.'); finishMission('mayors_parrot', 'respect +16; heat +6; parrot press conference recorded'); } },
+      ]}); return;
+    }
+    if(id === 'goose_permit'){
+      const mission = state.activeMissions.goose_permit;
+      if(mission?.stageId === 'travel'){
+        showModal({ eyebrow:'City Hall Annex', title:'The Goose Has a Permit', body:"<p class='flavor'>The clerk lays a laminated card beside a parking map. The seal is upside down, but the goose is standing on it with enough confidence to make three officials nervous.</p>", buttons:[
+          { label:'Recognize the permit for one night', onClick:function(){ state.worldMemory.gooseApproach = 'official'; advanceMissionToObjective('goose_permit', 'drivein', 'driveInBoundary', 'Meet the permit holder at Boundary Meadows Drive-In'); } },
+          { label:'Invoice City Hall $180 for permit review', onClick:function(){ state.cash += 180; state.worldMemory.gooseApproach = 'consulting'; advanceMissionToObjective('goose_permit', 'drivein', 'driveInBoundary', 'Meet the permit holder at Boundary Meadows Drive-In'); } },
+        ]}); return;
+      }
+      showModal({ eyebrow:'Boundary Meadows Drive-In', title:'A Bird in the Best Space', body:"<p class='flavor'>The goose blocks the center parking spot with the permit under one webbed foot. A line of cars has formed behind it. Nobody wants to be the first person defeated by municipal poultry.</p>", buttons:[
+        { label:'Buy popcorn for the goose ($60)', onClick:function(){ state.cash = Math.max(0, state.cash - 60); state.respect += 8; state.heat = Math.max(0, state.heat - 2); state.worldMemory.goosePermit = 'popcorn'; log('<i class=\"ph-duotone ph-bird\"></i> The goose accepts popcorn, folds the permit, and waddles toward the screen.'); finishMission('goose_permit', '$60 spent; respect +8; heat -2; goose permit retired'); } },
+        { label:'Offer it a better parking space', onClick:function(){ state.respect += 12; state.heat = Math.min(100, state.heat + 3); state.worldMemory.goosePermit = 'relocated'; log('<i class=\"ph-duotone ph-bird\"></i> The goose accepts a VIP space near the snack bar. The crowd applauds a bird.'); finishMission('goose_permit', 'respect +12; heat +3; goose given VIP parking'); } },
+      ]}); return;
+    }
+    if(id === 'raccoon_keycard'){
+      const mission = state.activeMissions.raccoon_keycard;
+      if(mission?.stageId === 'travel'){
+        showModal({ eyebrow:'City Hall Annex', title:'The Raccoon Has a Keycard', body:"<p class='flavor'>The clerk points at a tiny paw-print approval on a snack-vendor contract. The raccoon has learned the elevator, the keycard beep, and just enough municipal procedure to be dangerous.</p><p>It has retreated into the records floor. Mrs. Lin at Golden Lotus can make a humane lure if you tell her what kind of public story this is.</p>", buttons:[
+          { label:'Keep it quiet and pay for the lure ($90)', onClick:function(){ state.cash = Math.max(0, state.cash - 90); state.worldMemory.raccoonApproach = 'quiet'; advanceMissionToObjective('raccoon_keycard', 'herbalist', 'herbalist', 'Collect the quiet lure from Golden Lotus'); } },
+          { label:'Call it a civic wildlife initiative', onClick:function(){ state.respect += 5; state.worldMemory.raccoonApproach = 'public'; advanceMissionToObjective('raccoon_keycard', 'herbalist', 'herbalist', 'Collect the public lure from Golden Lotus'); } },
+        ]}); return;
+      }
+      showModal({ eyebrow:'Golden Lotus Herbalist', title:'A Proper Raccoon Lure', body:"<p class='flavor'>Mrs. Lin puts two jars on the counter. One smells like fruit and quiet dignity. The other smells like a county fair and would attract the raccoon, three dogs, and possibly a councilman.</p>", buttons:[
+        { label:'Take the quiet fruit lure (+8 respect)', onClick:function(){ state.respect += 8; state.worldMemory.raccoonResolution = 'quiet-lure'; log('<i class="ph-duotone ph-paw-print"></i> The raccoon accepts the fruit, returns the keycard, and leaves City Hall with a dignified escort.'); finishMission('raccoon_keycard', 'respect +8; raccoon returned keycard; quiet resolution recorded'); } },
+        { label:'Use the fairground lure (up to -5 heat, +$140)', onClick:function(){ const heatRemoved = Math.min(5, state.heat); state.heat -= heatRemoved; state.cash += 140; state.worldMemory.raccoonResolution = 'fairground-lure'; log('<i class="ph-duotone ph-paw-print"></i> The raccoon follows the fairground lure through the plaza. A food truck buys the leftover recipe.'); finishMission('raccoon_keycard', `$140 gained; heat -${heatRemoved}; raccoon wildlife initiative recorded`); } },
+      ]}); return;
+    }
     if(id === 'rival'){
+      const canIntimidate = state.respect >= PHASE2_MISSION_CONFIG.rivalIntimidationRespectRequirement || state.muscleCount >= PHASE2_MISSION_CONFIG.rivalIntimidationMuscleRequirement;
       showModal({ eyebrow:'West Side Corner', title:'Rival Capo', body:"<p class='flavor'>The capo waits with two people behind him. \"This corner pays somebody tonight. You choose who.\"</p>", buttons:[
         { label:'Pay them off (-8% cash)', onClick:function(){ state.cash *= 0.92; state.worldMemory.rivalSettlement = 'paid'; log('<i class="ph-duotone ph-envelope-simple"></i> You pay the rival crew to walk away quietly.'); finishMission('rival', 'paid'); } },
-        { label:'Intimidate them (+Respect, +Heat)', onClick:function(){ state.respect += 15; state.heat = Math.min(100, state.heat + 18); state.worldMemory.rivalSettlement = 'intimidated'; log('<i class="ph-duotone ph-star"></i> You hold the corner. Word travels, and so does heat.'); finishMission('rival', 'intimidated'); } },
+        { label:canIntimidate ? 'Intimidate them (+15 respect, +18 heat)' : `Bring leverage (needs ${PHASE2_MISSION_CONFIG.rivalIntimidationRespectRequirement} respect or ${PHASE2_MISSION_CONFIG.rivalIntimidationMuscleRequirement} muscle)`, onClick:function(){ if(!canIntimidate){ finishMission('rival', `intimidation unavailable: need ${PHASE2_MISSION_CONFIG.rivalIntimidationRespectRequirement} respect or ${PHASE2_MISSION_CONFIG.rivalIntimidationMuscleRequirement} muscle`); return; } state.respect += 15; state.heat = Math.min(100, state.heat + 18); state.worldMemory.rivalSettlement = 'intimidated'; log('<i class="ph-duotone ph-star"></i> You hold the corner. Word travels, and so does heat.'); finishMission('rival', 'respect +15; heat +18; rival capo intimidated'); } },
         { label:'Negotiate a split (-Heat, income cut)', onClick:function(){ applyTempMult('all', 0.92, 90); state.heat = Math.max(0, state.heat - 10); state.worldMemory.rivalSettlement = 'split'; log('<i class="ph-duotone ph-handshake"></i> You split the corner take for quieter streets.'); finishMission('rival', 'split'); } },
-        { label:'Attack (gang war risk)', onClick:function(){ state.respect += 25; state.heat = Math.min(100, state.heat + 28); state.nextWarAt = Math.min(state.nextWarAt || Infinity, state.playSeconds + 30); state.worldMemory.gangWarSparked = true; log('<i class="ph-duotone ph-crosshair"></i> The capo leaves bleeding. West Side will answer.'); finishMission('rival', 'attacked'); } },
+        { label:'Attack (starts turf war)', onClick:function(){ state.respect += 25; state.heat = Math.min(100, state.heat + 28); state.nextWarAt = Math.min(state.nextWarAt || Infinity, state.playSeconds + 30); state.worldMemory.gangWarSparked = true; log('<i class="ph-duotone ph-crosshair"></i> The capo leaves bleeding. West Side answers immediately: hold Devlin before the line moves.'); finishMission('rival', 'respect +25; heat +28; Turf War started'); startMissionFromOffer('turf_war'); } },
       ]}); return;
     }
     if(id === 'inspector'){
       const count = state.eventRepeats.inspector ?? 1;
       const bribe = count > 1 ? 750 : 400;
+      const ventureId = typeof state.worldMemory.inspectionVentureId === 'string' ? state.worldMemory.inspectionVentureId : (flagshipLegit() ?? businesses[0])?.id;
+      const venture = businesses.find(function(business){ return business.id === ventureId; });
+      const ventureName = venture?.name ?? 'the inspected venture';
       showModal({ eyebrow:'Health Department', title:'Inspector Kowalski', body:`<p class='flavor'>Kowalski taps the clipboard. ${count > 1 ? '"We both know the second visit costs more."' : '"Clean kitchens are expensive. Dirty ones are worse."'}</p>`, buttons:[
         { label:`Pay the bribe (${fmt(bribe)})`, onClick:function(){ state.cash = Math.max(0, state.cash - bribe); state.worldMemory.kowalskiPaid = count; log('<i class="ph-duotone ph-envelope-simple"></i> The envelope disappears and the inspection passes.'); finishMission('inspector', 'bribed'); } },
-        { label:'Comply with the inspection', onClick:function(){ applyTempMult('legit', 0.85, 45); state.worldMemory.kowalskiComplied = count; log('<i class="ph-duotone ph-scales"></i> You do it clean. Business slows while the paperwork clears.'); finishMission('inspector', 'complied'); } },
-        { label:'Blackmail him', onClick:function(){ if(state.respect >= 120 || state.influence >= 80){ state.worldMemory.kowalskiBlackmailed = true; state.heat = Math.max(0, state.heat - 12); log('<i class="ph-duotone ph-folder-lock"></i> Kowalski sees the file and forgets your address.'); } else { state.heat = Math.min(100, state.heat + 10); log('<i class="ph-duotone ph-warning"></i> You reach for leverage you do not have. Kowalski leaves angry.'); } finishMission('inspector', 'blackmail'); } },
-        { label:'Intimidate him', onClick:function(){ state.respect += 8; state.heat = Math.min(100, state.heat + 12); log('<i class="ph-duotone ph-hand-fist"></i> Kowalski backs off for now. He will remember the tone.'); finishMission('inspector', 'intimidated'); } },
+        { label:`Comply: close ${ventureName} for ${PHASE2_MISSION_CONFIG.inspectorComplianceSeconds}s`, onClick:function(){ if(ventureId) applyBusinessTempMult(ventureId, PHASE2_MISSION_CONFIG.inspectorComplianceMultiplier, PHASE2_MISSION_CONFIG.inspectorComplianceSeconds); state.worldMemory.kowalskiComplied = count; state.worldMemory.inspectionClosureVenture = ventureId; log(`<i class="ph-duotone ph-scales"></i> ${ventureName} closes its doors while the paperwork clears.`); finishMission('inspector', `${ventureName} income -30% for ${PHASE2_MISSION_CONFIG.inspectorComplianceSeconds} seconds; other ventures unaffected`); } },
+        { label:'Blackmail him', onClick:function(){ if(state.respect >= 120 || state.influence >= 80){ state.worldMemory.kowalskiBlackmailed = true; state.worldMemory.kowalskiProtection = true; state.heat = Math.max(0, state.heat - 12); log('<i class="ph-duotone ph-folder-lock"></i> Kowalski sees the file, deletes the address, and flags your ventures out of future inspection rotations.'); finishMission('inspector', 'heat -12; permanent inspection protection recorded; future Kowalski visits blocked'); } else { state.heat = Math.min(100, state.heat + 10); log('<i class="ph-duotone ph-warning"></i> You reach for leverage you do not have. Kowalski leaves angry.'); finishMission('inspector', 'blackmail failed; heat +10'); } } },
+        { label:'Intimidate him', onClick:function(){ state.respect += 8; state.heat = Math.min(100, state.heat + 12); state.worldMemory.kowalskiIntimidated = true; scheduleFollowUp('cops'); log('<i class="ph-duotone ph-hand-fist"></i> Kowalski backs off for now. He will remember the tone, and Detective Miller will hear about it.'); finishMission('inspector', 'respect +8; heat +12; Detective Miller follow-up scheduled'); } },
       ]}); return;
     }
     if(id === 'cousin'){
       showModal({ eyebrow:'Hub Bus Station', title:'Cousin Amit', body:"<p class='flavor'>Amit has one suitcase, two apologies, and a debt that apparently found the same bus route.</p>", buttons:[
-        { label:'Pay the debt ($600)', onClick:function(){ state.cash = Math.max(0, state.cash - 600); state.respect += 4; state.worldMemory.amitHelped = true; log('<i class="ph-duotone ph-users"></i> You settle Amit\'s debt. Family first.'); finishMission('cousin', 'debt paid'); } },
-        { label:'Hire him into legit work', onClick:function(){ hireFreeCrew(); state.worldMemory.amitHired = true; log('<i class="ph-duotone ph-users"></i> Amit gets work and a warning not to embarrass the family.'); finishMission('cousin', 'hired'); } },
-        { label:'Turn him away', onClick:function(){ state.respect = Math.max(0, state.respect - 5); state.worldMemory.amitTurnedAway = true; log('<i class="ph-duotone ph-users"></i> You send Amit away. The call home will be short.'); finishMission('cousin', 'turned away'); } },
+        { label:'Pay the debt ($600)', onClick:function(){ state.cash = Math.max(0, state.cash - 600); state.respect += 4; state.worldMemory.amitHelped = true; state.worldMemory.familyLoyalty = 3; log('<i class="ph-duotone ph-users"></i> You settle Amit\'s debt. Family first.'); finishMission('cousin', '$600 spent; respect +4; family loyalty +3'); } },
+        { label:'Hire him into legit work', onClick:function(){ hireFreeCrew(); state.worldMemory.amitHired = true; state.worldMemory.familyLoyalty = 1; scheduleFollowUp('amit_mistake'); log('<i class="ph-duotone ph-users"></i> Amit gets work and a warning not to embarrass the family.'); finishMission('cousin', 'crew +1; family loyalty +1; Amit mistake follow-up in 2 minutes'); } },
+        { label:'Turn him away', onClick:function(){ state.respect = Math.max(0, state.respect - 5); state.worldMemory.amitTurnedAway = true; state.worldMemory.familyLoyalty = -2; log('<i class="ph-duotone ph-users"></i> You send Amit away. The call home will be short.'); finishMission('cousin', 'respect -5; family loyalty -2; Amit turned away'); } },
       ]}); return;
     }
     if(id === 'cops'){
       showModal({ eyebrow:'Devlin Back Alley', title:'Detective Miller', body:"<p class='flavor'>Miller keeps his hands visible. \"You can pay, you can point me at someone worse, or you can make this official.\"</p>", buttons:[
         { label:'Pay Miller ($900, -Heat)', onClick:function(){ state.cash = Math.max(0, state.cash - 900); state.heat = Math.max(0, state.heat - 30); state.worldMemory.millerPaid = true; log('<i class="ph-duotone ph-warning"></i> Miller pockets the money. The questions stop.'); finishMission('cops', 'paid'); } },
-        { label:'Snitch on a rival (-Case, -Respect)', onClick:function(){ state.investigation = Math.max(0, state.investigation - 18); state.respect = Math.max(0, state.respect - 12); state.worldMemory.snitchOnRival = true; log('<i class="ph-duotone ph-shield-star"></i> Miller gets a name. The street gets a rumor.'); finishMission('cops', 'snitched'); } },
-        { label:'Refuse', onClick:function(){ state.heat = Math.min(100, state.heat + 15); log('<i class="ph-duotone ph-warning"></i> Miller leaves with nothing but patience.'); finishMission('cops', 'refused'); } },
+        { label:'Snitch on a rival (-Case, -Respect, stronger rivals)', onClick:function(){ state.investigation = Math.max(0, state.investigation - 18); state.respect = Math.max(0, state.respect - 12); state.worldMemory.snitchOnRival = true; log('<i class="ph-duotone ph-shield-star"></i> Miller gets a name. The street gets a rumor, and West Side crews start moving more carefully against you.'); finishMission('cops', 'investigation -18; respect -12; future rival strength +6'); } },
+        { label:'Tell him to walk (+25 heat, raid risk)', onClick:function(){ const raided = Math.random() < PHASE2_MISSION_CONFIG.copsRefusalRaidChance; state.heat = Math.min(100, state.heat + PHASE2_MISSION_CONFIG.copsRefusalHeat); if(raided) triggerRaid(); log(raided ? '<i class="ph-duotone ph-siren"></i> Miller leaves, then a warrant team hits one of your operations.' : '<i class="ph-duotone ph-warning"></i> Miller leaves with nothing but patience. The street gets much hotter.'); finishMission('cops', raided ? `heat +${PHASE2_MISSION_CONFIG.copsRefusalHeat}; immediate raid triggered` : `heat +${PHASE2_MISSION_CONFIG.copsRefusalHeat}; raid narrowly avoided`); } },
         { label:'Risk immediate enforcement', onClick:function(){ state.investigation = Math.min(100, state.investigation + 15); if(Math.random() < 0.35) triggerRaid(); else state.heat = Math.min(100, state.heat + 25); finishMission('cops', 'risked enforcement'); } },
+      ]}); return;
+    }
+    if(id === 'hustler_score'){
+      showModal({ eyebrow:"O'Malley's Bar", title:'Score Result', body:"<p class='flavor'>The hustler is waiting in the back booth. Their grin is either expensive or nervous. You finally get to find out which.</p>", buttons:[
+        { label:'Take the payout', onClick:function(){ const won = Math.random() < 0.62; if(won){ state.cash += 1800; state.respect += 8; hireFreeCrew(); state.worldMemory.hustlerScoreResult = 'won'; finishMission('hustler_score', '$1,800 gained; respect +8; free crew recruit'); } else { state.heat = Math.min(100, state.heat + 20); state.worldMemory.hustlerScoreResult = 'failed'; finishMission('hustler_score', 'score failed; heat +20'); } } },
       ]}); return;
     }
     if(id === 'hustler'){
       showModal({ eyebrow:"O'Malley's Bar", title:'Recruit Pitch', body:"<p class='flavor'>The hustler has a plan, a grin, and no proof the plan survives first contact with daylight.</p>", buttons:[
-        { label:'Approve the risky score', onClick:function(){ const ok = Math.random() < 0.62; if(ok){ state.cash += 1800; state.respect += 8; log('<i class="ph-duotone ph-sparkle"></i> The score lands. Cash and a new name come back clean enough.'); } else { state.heat = Math.min(100, state.heat + 20); log('<i class="ph-duotone ph-warning"></i> The score blows up. The money vanishes and heat rises.'); } finishMission('hustler', ok ? 'score won' : 'score failed'); } },
+        { label:'Approve the risky score', onClick:function(){ state.worldMemory.hustlerScoreApproved = true; scheduleFollowUp('hustler_score'); log('<i class="ph-duotone ph-clock"></i> The hustler takes the job. You will not know whether it worked until they call back.'); finishMission('hustler', 'risky score approved; result pending'); } },
         { label:'Hire for legit work', onClick:function(){ hireFreeCrew(); state.worldMemory.hustlerLegit = true; finishMission('hustler', 'hired legit'); } },
-        { label:'Reject the pitch', onClick:function(){ state.worldMemory.rejectedHustler = true; districts.find(function(d){ return d.id === 'westside'; })!.control = Math.max(0, districts.find(function(d){ return d.id === 'westside'; })!.control - 4); log('<i class="ph-duotone ph-users-three"></i> They take the pitch to your rivals.'); finishMission('hustler', 'rejected'); } },
+        { label:'Reject the pitch', onClick:function(){ state.worldMemory.rejectedHustler = true; districts.find(function(d){ return d.id === 'westside'; })!.control = Math.max(0, districts.find(function(d){ return d.id === 'westside'; })!.control - 4); log('<i class="ph-duotone ph-users-three"></i> They take the pitch to your rivals, who gain a capable new operator.'); finishMission('hustler', 'West Side control -4; future rival strength +4'); } },
       ]}); return;
     }
     if(id === 'investor'){
       showModal({ eyebrow:'Whitfield Realty', title:'Silent Investor', body:"<p class='flavor'>The offer is simple because the strings are not. Cash now, a cut forever.</p>", buttons:[
-        { label:'Accept (+$3000, income cut)', onClick:function(){ state.cash += 3000; state.investorPenalty = Math.min(0.5, (state.investorPenalty || 0) + 0.05); state.worldMemory.investorAccepted = true; log('<i class="ph-duotone ph-chart-line-up"></i> Cash in hand. A little less of everything is yours now.'); finishMission('investor', 'accepted'); } },
-        { label:'Negotiate terms', onClick:function(){ if(state.prestigeCount > 0 || state.respect >= 150){ state.cash += 2500; state.investorPenalty = Math.min(0.5, (state.investorPenalty || 0) + 0.025); state.respect += 5; log('<i class="ph-duotone ph-handshake"></i> You cut the investor down to a smaller piece.'); } else { state.cash += 3000; state.investorPenalty = Math.min(0.5, (state.investorPenalty || 0) + 0.06); log('<i class="ph-duotone ph-chart-line-up"></i> You try to negotiate without leverage and pay for it later.'); } finishMission('investor', 'negotiated'); } },
+        { label:`Accept (+${fmt(PHASE2_MISSION_CONFIG.investorStandardCash)}, permanent income -${Math.round(PHASE2_MISSION_CONFIG.investorStandardIncomePenalty * 100)}%)`, onClick:function(){ state.cash += PHASE2_MISSION_CONFIG.investorStandardCash; state.investorPenalty = Math.min(0.5, (state.investorPenalty || 0) + PHASE2_MISSION_CONFIG.investorStandardIncomePenalty); state.worldMemory.investorAccepted = true; log('<i class="ph-duotone ph-chart-line-up"></i> Cash in hand. A little less of everything is yours now.'); finishMission('investor', `$${PHASE2_MISSION_CONFIG.investorStandardCash.toLocaleString()} gained; permanent income -${Math.round(PHASE2_MISSION_CONFIG.investorStandardIncomePenalty * 100)}%`); } },
+        { label:`Negotiate (${PHASE2_MISSION_CONFIG.investorPrestigeRequirement} prestige or ${PHASE2_MISSION_CONFIG.investorRespectRequirement} respect)`, onClick:function(){ if(state.prestigeCount >= PHASE2_MISSION_CONFIG.investorPrestigeRequirement || state.respect >= PHASE2_MISSION_CONFIG.investorRespectRequirement){ state.cash += PHASE2_MISSION_CONFIG.investorNegotiatedCash; state.investorPenalty = Math.min(0.5, (state.investorPenalty || 0) + PHASE2_MISSION_CONFIG.investorNegotiatedIncomePenalty); state.respect += 5; state.worldMemory.investorSponsorAvailable = true; log('<i class="ph-duotone ph-handshake"></i> You cut the investor down to a smaller piece and gain a sponsor lead.'); finishMission('investor', `$${PHASE2_MISSION_CONFIG.investorNegotiatedCash.toLocaleString()} gained; respect +5; permanent income -${Math.round(PHASE2_MISSION_CONFIG.investorNegotiatedIncomePenalty * 100)}%; sponsor lead recorded`); } else { state.cash += PHASE2_MISSION_CONFIG.investorStandardCash; state.investorPenalty = Math.min(0.5, (state.investorPenalty || 0) + PHASE2_MISSION_CONFIG.investorWeakNegotiationIncomePenalty); log('<i class="ph-duotone ph-chart-line-up"></i> You try to negotiate without leverage and pay for it later.'); finishMission('investor', `$${PHASE2_MISSION_CONFIG.investorStandardCash.toLocaleString()} gained; permanent income -${Math.round(PHASE2_MISSION_CONFIG.investorWeakNegotiationIncomePenalty * 100)}% (insufficient leverage)`); } } },
         { label:'Reject', onClick:function(){ state.respect += 8; state.worldMemory.investorRejected = true; log('<i class="ph-duotone ph-star"></i> You stay independent.'); finishMission('investor', 'rejected'); } },
         { label:'Threaten', onClick:function(){ state.respect += 12; state.heat = Math.min(100, state.heat + 14); state.worldMemory.cityHallAttention = true; log('<i class="ph-duotone ph-warning"></i> The investor leaves with a smile that says City Hall will hear about this.'); finishMission('investor', 'threatened'); } },
       ]}); return;
     }
     if(id === 'home_safe_robbery'){
-      const loss = Math.round(state.cash * PHASE2_MISSION_CONFIG.homeSafeRobberyLossPct);
-      showModal({ eyebrow:'Banking Lesson', title:'The Missing Safe Money', body:`<p class='flavor'>A back-room safe gets cleaned out. You lose <strong>${fmt(loss)}</strong> before anyone admits they saw the door open. Banked cash is slower to move, but raids and street thieves cannot grab it from your pocket.</p>`, buttons:[
-        { label:'Deposit what remains', onClick:function(){ state.cash = Math.max(0, state.cash - loss); state.worldMemory.homeSafeRobbed = true; openDeviceApp('bank'); finishMission('home_safe_robbery', 'bank lesson'); } },
-        { label:'Set GPS to the bank', onClick:function(){ state.cash = Math.max(0, state.cash - loss); state.worldMemory.homeSafeRobbed = true; finishMission('home_safe_robbery', 'gps to bank'); setGlobalWaypoint(missionPlaceByService('bankHome')); rebuildWaypointBeacon(); byId('minimap-clear').classList.add('show'); } },
+      showModal({ eyebrow:'Rentport City National', title:'Keep What Is Left', body:"<p class='flavor'>The loss already happened because the cash was exposed. The guard nods toward the teller window: banked cash cannot be taken from your pocket by raids or street thieves.</p>", buttons:[
+        { label:'Hear the teller out', onClick:function(){ advanceMissionStage(missionSaveState(), 'home_safe_robbery', 'teller', state.playSeconds, null); log('<i class="ph-duotone ph-bank"></i> The teller waves you toward the counter.'); renderAll(); scheduleSave(); } },
+        { label:'Walk away from the bank', secondary:true, onClick:function(){ state.worldMemory.homeSafeBankingChoice = 'walked-away'; finishMission('home_safe_robbery', 'Banking lesson declined at the counter; remaining cash stays exposed'); } },
       ]}); return;
     }
     if(id === 'stolen_shipment'){
       const mission = state.activeMissions.stolen_shipment;
-      if(mission?.stageId === 'travel'){
-        showModal({ eyebrow:'Docks', title:'Dockmaster Bell', body:"<p class='flavor'>Bell points at a blank slot on the manifest. \"Cargo did not vanish. Somebody hauled it west and paid cash to make the paperwork boring.\"</p>", buttons:[
+      if(mission?.stageId === 'travel' || mission?.stageId === 'evidence'){
+        const hasManifestEvidence = state.worldMemory.dockManifestEvidence === true;
+        showModal({ eyebrow:'Docks', title:'Dockmaster Bell', body:hasManifestEvidence
+          ? "<p class='flavor'>You put Deke's stamped carbon copy on Bell's desk before he can start talking around it. He stops smiling. \"Fine. It went west. Chop shop first, then somebody is flying it out if Deke gets nervous.\"</p>"
+          : "<p class='flavor'>Bell points at a blank slot on the manifest. \"Cargo did not vanish. Somebody hauled it west and paid cash to make the paperwork boring.\"</p>", buttons:[
           { label:'Trace it to the chop shop', onClick:function(){ state.worldMemory.dockmasterTalked = true; advanceMissionToObjective('stolen_shipment', 'chopshop', 'chopshop', 'Find the missing shipment at the West Side Chop Shop'); } },
           { label:'Drop it', secondary:true, onClick:function(){ finishMission('stolen_shipment', 'dropped at docks'); } },
         ]}); return;
       }
+      if(mission?.stageId === 'airfield'){
+        showModal({ eyebrow:'Kettle Flats Airfield', title:'An Unmanifested Arrival', body:"<p class='flavor'>A crop duster rolls to a stop beside a pallet wrapped in canvas. The pilot says Bell can make a shipment disappear from a ledger, but not from a runway.</p>", buttons:[
+          { label:'Put it on the street ($1,100 payout)', onClick:function(){ state.cash += 1100; state.respect += 10; state.worldMemory.airfieldShipment = 'street'; log('<i class=\"ph-duotone ph-airplane-tilt\"></i> The cargo clears Kettle Flats and reaches your runners before dawn.'); finishMission('stolen_shipment', '$1,100 gained; respect +10; Kettle Flats route unlocked'); } },
+          { label:'Keep it in the Black Market', onClick:function(){ state.worldMemory.blackMarketTrade = true; state.investigation = Math.min(100, state.investigation + 6); state.worldMemory.airfieldShipment = 'market'; scheduleFollowUp('black_market_investigation'); log('<i class=\"ph-duotone ph-airplane-tilt\"></i> The runway becomes a quiet link in the Black Market chain.'); finishMission('stolen_shipment', 'Black Market Trade unlocked; investigation +6; airfield route recorded'); } },
+        ]}); return;
+      }
       showModal({ eyebrow:'West Side Chop Shop', title:'Missing Cargo', body:"<p class='flavor'>The shipment sits behind a half-stripped delivery van. Deke smiles like he already priced every option.</p>", buttons:[
-        { label:'Buy it back ($1400)', onClick:function(){ state.cash = Math.max(0, state.cash - 1400); state.product = Math.min(productCap(), state.product + 80); log('<i class="ph-duotone ph-package"></i> You buy back the shipment and restock the street.'); finishMission('stolen_shipment', 'bought back'); } },
-        { label:'Take it by force', onClick:function(){ state.product = Math.min(productCap(), state.product + 90); state.respect += 18; state.heat = Math.min(100, state.heat + 22); log('<i class="ph-duotone ph-hand-fist"></i> You take the shipment back loud. The West Side hears about it.'); finishMission('stolen_shipment', 'taken by force'); } },
-        { label:'Partner with Deke', onClick:function(){ state.worldMemory.blackMarketTrade = true; state.investigation = Math.min(100, state.investigation + 8); log(`<i class="ph-duotone ph-handshake"></i> Black Market Trade is running: +${fmt(PHASE2_MISSION_CONFIG.blackMarketIncome)}/s with extra case risk.`); finishMission('stolen_shipment', 'black market trade'); } },
+        { label:'Buy it back ($1400)', onClick:function(){ state.cash = Math.max(0, state.cash - 1400); state.product = Math.min(productCap(), state.product + 80); log('<i class="ph-duotone ph-package"></i> You buy back the shipment and restock the street.'); finishMission('stolen_shipment', '$1,400 spent; product +80'); } },
+        { label:'Take it by force', onClick:function(){ state.product = Math.min(productCap(), state.product + 90); state.respect += 18; state.heat = Math.min(100, state.heat + 22); log('<i class="ph-duotone ph-hand-fist"></i> You take the shipment back loud. The West Side hears about it.'); finishMission('stolen_shipment', 'product +90; respect +18; heat +22'); } },
+        { label:'Partner with Deke', onClick:function(){ state.worldMemory.dockRouteChosen = true; advanceMissionToObjective('stolen_shipment', 'airfield', 'airfieldKettle', 'Meet the cargo pilot at Kettle Flats Airfield'); } },
       ]}); return;
     }
     if(id === 'alderman_fixer'){
@@ -1103,12 +1406,21 @@ import type * as ThreeNamespace from 'three';
       if(mission?.stageId === 'travel'){
         showModal({ eyebrow:'City Hall Annex', title:'The Bagman', body:"<p class='flavor'>The bagman does not say the alderman's name. He just names the problem: a railyard union leader blocking permits.</p>", buttons:[
           { label:'Go to the railyard', onClick:function(){ advanceMissionToObjective('alderman_fixer', 'railyard', 'railyard', 'Handle the railyard union leader'); } },
-          { label:'Walk away', secondary:true, onClick:function(){ finishMission('alderman_fixer', 'walked away'); } },
+          { label:'Walk away', secondary:true, onClick:function(){ state.worldMemory.avoidedBagman = true; state.worldMemory.taxAuditPending = true; scheduleFollowUp('tax_audit'); finishMission('alderman_fixer', 'Political Favors stay locked; City Hall audit scheduled in 2 minutes'); } },
         ]}); return;
       }
       showModal({ eyebrow:'Railyard', title:'Union Leader Calder', body:"<p class='flavor'>Calder has enough workers behind him to be brave and enough overdue bills to be practical.</p>", buttons:[
-        { label:'Pay the workers ($1800)', onClick:function(){ state.cash = Math.max(0, state.cash - 1800); state.influence += 45; state.worldMemory.politicalFavorsUnlocked = true; log('<i class="ph-duotone ph-courthouse"></i> The permits move. Political Favors are now available at City Hall.'); finishMission('alderman_fixer', 'paid workers'); } },
-        { label:'Pressure Calder', onClick:function(){ state.respect += 14; state.heat = Math.min(100, state.heat + 12); state.influence += 25; state.worldMemory.politicalFavorsUnlocked = true; log('<i class="ph-duotone ph-courthouse"></i> Calder folds. City Hall owes you, and everyone saw how.'); finishMission('alderman_fixer', 'pressured'); } },
+        { label:'Pay the workers ($1800)', onClick:function(){ state.cash = Math.max(0, state.cash - 1800); state.influence += 45; state.worldMemory.politicalFavorsUnlocked = true; log('<i class="ph-duotone ph-courthouse"></i> The permits move. Political Favors are now available at City Hall.'); finishMission('alderman_fixer', '$1,800 spent; influence +45; Political Favors unlocked'); } },
+        { label:'Pressure Calder', onClick:function(){ state.respect += 14; state.heat = Math.min(100, state.heat + 12); state.influence += 25; state.worldMemory.politicalFavorsUnlocked = true; log('<i class="ph-duotone ph-courthouse"></i> Calder folds. City Hall owes you, and everyone saw how.'); finishMission('alderman_fixer', 'respect +14; heat +12; influence +25; Political Favors unlocked'); } },
+      ]}); return;
+    }
+    if(id === 'tax_audit'){
+      const ventureId = typeof state.worldMemory.inspectionVentureId === 'string' ? state.worldMemory.inspectionVentureId : (flagshipLegit() ?? businesses[0])?.id;
+      const venture = businesses.find(function(business){ return business.id === ventureId; });
+      const ventureName = venture?.name ?? 'your flagship venture';
+      showModal({ eyebrow:'City Hall Annex', title:'The Audit Notice', body:`<p class='flavor'>The clerk slides over a file for ${escapeHtml(ventureName)}. The bagman is not mentioned once. Every page is perfectly legal and timed to make the point.</p>`, buttons:[
+        { label:`Pay the filing settlement (${fmt(PHASE2_MISSION_CONFIG.taxAuditSettlementCost)})`, onClick:function(){ state.cash = Math.max(0, state.cash - PHASE2_MISSION_CONFIG.taxAuditSettlementCost); state.worldMemory.taxAuditPending = false; state.worldMemory.taxAuditResolved = 'settled'; finishMission('tax_audit', `$${PHASE2_MISSION_CONFIG.taxAuditSettlementCost} spent; audit closed; ${ventureName} stays open`); } },
+        { label:`Contest it (${ventureName} income -50% for ${PHASE2_MISSION_CONFIG.taxAuditSeconds}s)`, onClick:function(){ if(ventureId) applyBusinessTempMult(ventureId, PHASE2_MISSION_CONFIG.taxAuditMultiplier, PHASE2_MISSION_CONFIG.taxAuditSeconds); state.worldMemory.taxAuditPending = false; state.worldMemory.taxAuditResolved = 'contested'; finishMission('tax_audit', `${ventureName} income -50% for ${PHASE2_MISSION_CONFIG.taxAuditSeconds} seconds; audit contested`); } },
       ]}); return;
     }
     if(id === 'turf_war'){
@@ -1119,9 +1431,15 @@ import type * as ThreeNamespace from 'three';
           { label:'Pay locals to watch ($700)', onClick:function(){ state.cash = Math.max(0, state.cash - 700); state.heat = Math.max(0, state.heat - 4); advanceMissionToObjective('turf_war', 'capo', 'marigoldLounge', 'Track the rival capo to Marigold Lounge'); } },
         ]}); return;
       }
+      if(mission?.stageId === 'lodge'){
+        showModal({ eyebrow:'Ridgewood Stand Lodge', title:'Neutral Ground', body:"<p class='flavor'>The capo arrives without his usual crowd. Outside, the tree line makes the city feel far away. He offers a truce, but wants you to admit the block is contested.</p>", buttons:[
+          { label:'Sign a narrow truce', onClick:function(){ state.heat = Math.max(0, state.heat - 18); state.worldMemory.westsideTruce = 'ridgewood'; finishMission('turf_war', 'heat -18; Ridgewood truce recorded; West Side remains contested'); } },
+          { label:'Expose his weak crew', onClick:function(){ const westside = districts.find(function(d){ return d.id === 'westside'; })!; westside.control = Math.min(100, westside.control + 12); state.respect += 16; state.heat = Math.min(100, state.heat + 16); state.worldMemory.westsideCapoExposed = true; finishMission('turf_war', 'West Side control +12; respect +16; heat +16; capo weakness recorded'); } },
+        ]}); return;
+      }
       showModal({ eyebrow:'Marigold Lounge', title:'The Capo', body:"<p class='flavor'>The capo offers a truce before anyone reaches for a weapon. It is either a way out or a chance to end the argument.</p>", buttons:[
-        { label:'Take the truce', onClick:function(){ state.heat = Math.max(0, state.heat - 12); state.worldMemory.westsideTruce = true; log('<i class="ph-duotone ph-handshake"></i> The truce holds. For now, West Side pressure cools.'); finishMission('turf_war', 'truce'); } },
-        { label:'Assassinate him', onClick:function(){ const westside = districts.find(function(d){ return d.id === 'westside'; })!; const success = Math.random() < Math.min(0.8, 0.35 + gangStrength()/80); if(success){ westside.control = Math.min(100, westside.control + 18); state.respect += 28; log('<i class="ph-duotone ph-crosshair"></i> The capo drops and a West Side block opens up.'); } else { state.cash = Math.max(0, state.cash - 1600); state.muscleCount = Math.max(0, state.muscleCount - 1); log('<i class="ph-duotone ph-warning"></i> The hit misses. You lose money and muscle getting out.'); } state.heat = Math.min(100, state.heat + 30); finishMission('turf_war', success ? 'capo removed' : 'hit failed'); } },
+        { label:'Take the truce', onClick:function(){ state.worldMemory.westsideMeet = 'lodge'; advanceMissionToObjective('turf_war', 'lodge', 'lodgeRidgewood', 'Set terms at Ridgewood Stand Lodge'); } },
+        { label:'Assassinate him', onClick:function(){ const westside = districts.find(function(d){ return d.id === 'westside'; })!; const success = Math.random() < Math.min(0.8, 0.35 + gangStrength()/80); if(success){ westside.control = Math.min(100, westside.control + 18); state.respect += 28; log('<i class="ph-duotone ph-crosshair"></i> The capo drops and a West Side block opens up.'); } else { state.cash = Math.max(0, state.cash - 1600); state.muscleCount = Math.max(0, state.muscleCount - 1); log('<i class="ph-duotone ph-warning"></i> The hit misses. You lose money and muscle getting out.'); } state.heat = Math.min(100, state.heat + 30); finishMission('turf_war', success ? 'West Side control +18; respect +28; heat +30; capo removed' : '$1,600 spent; 1 muscle lost; heat +30; hit failed'); } },
       ]}); return;
     }
     if(id === 'first_heist'){
@@ -1134,14 +1452,19 @@ import type * as ThreeNamespace from 'three';
         showModal({ eyebrow:'First Windhaven Trust', title:'Case the Bank', body:"<p class='flavor'>You time the guard, count exits, and mark the cameras. This is no longer a button press. It is a plan.</p>", buttons }); return;
       }
       heistTargetBankId = DEFAULT_BANK_ID;
-      resolveHeist(String(state.worldMemory.firstHeistApproach || 'smash'));
-      finishMission('first_heist', String(state.worldMemory.firstHeistApproach || 'smash'));
+      const approach = String(state.worldMemory.firstHeistApproach || 'smash');
+      showModal({ eyebrow:'First Windhaven Trust', title:'Execution Window', body: approach === 'crew'
+        ? "<p class='flavor'>Your crew has the lobby timed. The vault is still a risk, but the smaller cashier bundles are already within reach.</p>"
+        : "<p class='flavor'>The guard turns toward the side door. You have one clean chance to push for the vault or leave with what is already loose.</p>", buttons:[
+        { label: approach === 'crew' ? 'Push the crew toward the vault' : 'Push for the vault', onClick:function(){ const heistResult = resolveHeist(approach); finishMission('first_heist', heistResult); } },
+        { label:'Leave with the cashier bundles', onClick:function(){ const bundle = approach === 'crew' ? 900 : 450; const heat = approach === 'crew' ? 8 : 5; state.cash += bundle; state.heat = Math.min(100, state.heat + heat); state.nextHeistAt = state.playSeconds + 240; state.worldMemory.firstHeistExit = 'cashier'; log(`<i class="ph-duotone ph-money"></i> You leave before the vault turns into a headline: ${fmt(bundle)} gained, heat +${heat}.`); finishMission('first_heist', `${fmt(bundle)} gained; heat +${heat}; vault left untouched`); } },
+      ]});
       return;
     }
     if(id === 'fire'){
       showModal({ eyebrow:"Kailash's Cart", title:'Smoke Under the Awning', body:"<p class='flavor'>The repair is easy. Deciding whether to chase the person who lit it is the hard part.</p>", buttons:[
-        { label:'Rebuild quietly ($250)', onClick:function(){ state.cash = Math.max(0, state.cash - 250); state.worldMemory.cartRebuiltQuietly = true; log('<i class="ph-duotone ph-warning-circle"></i> A quick repair keeps the cart running.'); finishMission('fire', 'rebuilt'); } },
-        { label:'Hunt the arsonist', onClick:function(){ state.respect += 12; state.heat = Math.min(100, state.heat + 12); state.worldMemory.arsonistHunted = true; log('<i class="ph-duotone ph-crosshair"></i> You put word out. The revenge path is open.'); finishMission('fire', 'revenge opened'); } },
+        { label:'Rebuild quietly ($250, cart income -30% for 30s)', onClick:function(){ const cart = businesses.find(function(business){ return business.id === 'cart'; }); state.cash = Math.max(0, state.cash - 250); if(cart){ cart.tempMult = 0.7; cart.tempMultExpire = Date.now() + 30_000; } state.worldMemory.cartRebuiltQuietly = true; log('<i class="ph-duotone ph-warning-circle"></i> A quick repair keeps Kailash’s Cart running at reduced income for 30 seconds.'); finishMission('fire', '$250 spent; Kailash’s Cart income -30% for 30 seconds'); } },
+        { label:'Hunt the arsonist', onClick:function(){ state.respect += 12; state.heat = Math.min(100, state.heat + 12); state.worldMemory.arsonistHunted = true; scheduleFollowUp('arsonist_revenge'); log('<i class="ph-duotone ph-crosshair"></i> You put word out. The revenge path is open.'); finishMission('fire', 'revenge opened'); } },
       ]});
     }
   }
@@ -1165,6 +1488,121 @@ import type * as ThreeNamespace from 'three';
       ${completed.length ? `<div class="section-eyebrow" style="margin-top:18px;">Completed</div>${completed.map(function(outcome){ const def = missionDefinition(outcome.id); return `<div class="mission-phone-empty">${escapeHtml(def?.title ?? outcome.id)} - ${escapeHtml(outcome.result)}</div>`; }).join('')}` : ''}
     `;
   }
+  function renderContactsApp(): void {
+    const wrap = byIdOrNull('contacts-panel');
+    if(!wrap) return;
+    const waypoint = currentWaypoint();
+    const taxiBlocked = activeMissionCount(missionSaveState()) > 0 || !waypoint || state.cash < 150;
+    const fare = 150;
+    const missionContacts = [
+      { name:'Lana Vance', unlocked:missionCompleted(missionSaveState(), 'tribune'), note:`Herald reporter — ${String(state.worldMemory.pressArticle || 'no article recorded')}`, serviceId:'heraldHq', action:'Set newsroom GPS' },
+      { name:'Dockmaster Bell', unlocked:missionCompleted(missionSaveState(), 'stolen_shipment'), note:'Dockside contact', serviceId:'docksDockmaster', action:'Set docks GPS' },
+      { name:'Cousin Amit', unlocked:missionCompleted(missionSaveState(), 'cousin'), note:'Family', serviceId:'hubBusStation', action:'Set bus station GPS' },
+      { name:'Silent Investor', unlocked:state.worldMemory.investorSponsorAvailable === true, note:'Trade-group sponsor lead', serviceId:'brand-horizon', action:'Set Horizon GPS' },
+    ].filter(function(contact){ return contact.unlocked; });
+    const taxiStatus = !waypoint
+      ? 'Set a waypoint on the City Map before calling a taxi.'
+      : activeMissionCount(missionSaveState()) > 0
+        ? 'Taxi dispatch is unavailable while a mission objective is active.'
+        : state.cash < fare
+          ? 'You need $150 cash for the flat fare.'
+          : 'The driver will take you to your current waypoint.';
+    wrap.innerHTML = '<div class="section-eyebrow">Services</div>'
+      + '<div class="mission-phone-card"><div class="mission-phone-title">Windhaven Taxi</div>'
+      + '<div class="mission-phone-meta">$150 flat fare</div>'
+      + '<div class="mission-phone-body"><p>' + escapeHtml(taxiStatus) + '</p></div>'
+      + '<div class="btn-row"><button class="mini-btn" data-taxi-dispatch ' + (taxiBlocked ? 'disabled' : '') + '>Dispatch taxi</button></div></div>'
+      + '<div class="section-eyebrow" style="margin-top:18px;">People</div>'
+      + (missionContacts.length
+        ? missionContacts.map(function(contact){
+          const dockAction = contact.serviceId === 'docksDockmaster'
+            ? '<button class="mini-btn" data-contact-action="dock-status">Ask about dock activity</button>'
+            : contact.name === 'Lana Vance'
+              ? '<button class="mini-btn" data-contact-action="lana-status">Ask about the coverage</button>'
+              : contact.name === 'Cousin Amit'
+                ? '<button class="mini-btn" data-contact-action="amit-status">Call the family</button>'
+                : contact.name === 'Silent Investor'
+                  ? '<button class="mini-btn" data-contact-action="investor-status">Ask about sponsorship</button>'
+                : '';
+          return '<div class="mission-phone-card"><div class="mission-phone-title">' + escapeHtml(contact.name) + '</div><div class="mission-phone-meta">' + escapeHtml(contact.note) + '</div><div class="btn-row"><button class="mini-btn" data-contact-waypoint="' + escapeHtml(contact.serviceId) + '">' + escapeHtml(contact.action) + '</button>' + dockAction + '</div></div>';
+        }).join('')
+        : '<div class="mission-phone-empty">Finish missions to add people here.</div>');
+  }
+  function openDockContactStatus(): void {
+    const tradeActive = state.worldMemory.blackMarketTrade === true;
+    const caseStatus = state.investigation > 0
+      ? `${Math.round(state.investigation)} investigation — detectives are still looking at the manifests.`
+      : 'No active case — the manifests are quiet for now.';
+    showModal({
+      eyebrow:'Dockmaster Bell',
+      title:'Dock Activity',
+      body:`<p class='flavor'>Bell speaks low enough that the phone sounds like it is underwater. "${tradeActive ? 'Your runway route is moving. Keep the paperwork boring.' : 'Nothing with your name on it is moving through my slips right now.'}"</p><p>${caseStatus}</p>`,
+      buttons:[{ label:'Got it' }],
+    });
+  }
+  function openLanaContactStatus(): void {
+    const tone = String(state.worldMemory.pressTone || 'quiet');
+    const article = String(state.worldMemory.pressArticle || 'the profile that never ran');
+    const status = tone === 'professional'
+      ? 'The trade group is still calling. Lana says the profile made you legible to people who only trust paperwork.'
+      : tone === 'guarded'
+        ? 'Lana says the source is waiting because you kept your promise not to make them a headline.'
+        : tone === 'warm'
+          ? 'Lana says the block-night people still quote your joke when they ask who should get a seat at the table.'
+          : tone === 'scandal'
+            ? 'Lana says City Hall is reading every edition. The advocate wants to know whether you meant what you said.'
+            : tone === 'hostile'
+              ? 'Lana says the damage-control story has moved off the front page, but nobody forgot the threat.'
+              : 'Lana says silence became its own story. Some people liked the restraint; others filled in the blanks.';
+    showModal({
+      eyebrow:'Lana Vance',
+      title:article,
+      body:`<p class='flavor'>${escapeHtml(status)}</p>`,
+      buttons:[{ label:'Keep listening' }],
+    });
+  }
+  function openAmitContactStatus(): void {
+    const loyalty = Number(state.worldMemory.familyLoyalty || 0);
+    const status = loyalty >= 4
+      ? 'Amit says the family is telling people you handled things when they got hard. They trust your word more now.'
+      : loyalty > 0
+        ? 'Amit says the family is cautious but grateful. They are watching whether you keep making room for people.'
+        : loyalty < 0
+          ? 'Amit says the family has stopped asking for favors. That silence is not forgiveness.'
+          : 'Amit says nobody knows what to make of the decision yet. That may be better than an argument.';
+    showModal({
+      eyebrow:'Cousin Amit',
+      title:`Family Standing: ${loyalty >= 0 ? '+' : ''}${loyalty}`,
+      body:`<p class='flavor'>${escapeHtml(status)}</p>`,
+      buttons:[{ label:'I understand' }],
+    });
+  }
+  function openInvestorContactStatus(): void {
+    showModal({
+      eyebrow:'Silent Investor',
+      title:'Sponsor Lead',
+      body:"<p class='flavor'>The investor says the trade group is interested because you negotiated like someone who understands ownership. They will watch your legitimate income before they put their name beside yours.</p><p>Your reduced permanent income cut is the price of keeping that door open.</p>",
+      buttons:[{ label:'Keep the line open' }],
+    });
+  }
+  function dispatchTaxi(): void {
+    const waypoint = currentWaypoint();
+    if(!waypoint || activeMissionCount(missionSaveState()) > 0 || state.cash < 150) return;
+    state.cash -= 150;
+    player.x = waypoint.x;
+    player.y = waypoint.y;
+    const districtId = districtIdAtPlayablePoint(waypoint);
+    if(districtId) state.currentDistrict = districtId;
+    setGlobalWaypoint(null);
+    rebuildWaypointBeacon();
+    byId('minimap-clear').classList.remove('show');
+    closeDevice();
+    buildDistrictScene(state.currentDistrict);
+    refreshPlayerModel();
+    log('<i class="ph-duotone ph-taxi"></i> Taxi dispatched: $150 spent. You arrive at the waypoint.');
+    renderAll();
+    scheduleSave();
+  }
   function unreadMissionMessageCount(): number {
     return missionEventPool.filter(function(event){ return state.eventHistory[event.id] === 'offered' && !state.activeMissions[event.id]; }).length;
   }
@@ -1181,7 +1619,7 @@ import type * as ThreeNamespace from 'three';
     if(phoneBtn) phoneBtn.classList.toggle('has-mission-alert', count > 0);
   }
   function availableMissionEvents(): MissionEventDefinition[] {
-    if(activeMissionCount(missionSaveState()) >= 3) return [];
+    if(activeMissionCount(missionSaveState()) >= PHASE2_MISSION_CONFIG.activeMissionCap) return [];
     return missionEventPool.filter(function(event){
       if(state.activeMissions[event.id]) return false;
       if(event.id === 'inspector' && state.worldMemory.kowalskiBlackmailed) return false;
@@ -1190,6 +1628,9 @@ import type * as ThreeNamespace from 'three';
       if(event.id === 'alderman_fixer' && state.influence < 80) return false;
       if(event.id === 'turf_war' && !(state.worldMemory.gangWarSparked || districts.find(function(d){ return d.id === 'westside'; })!.control >= 35)) return false;
       if(event.id === 'first_heist' && (missionCompleted(missionSaveState(), 'first_heist') || state.respect < PHASE2_MISSION_CONFIG.heistPrepRespectReq)) return false;
+      if(event.id === 'pigeon_summit' && state.respect < 25) return false;
+      if(event.id === 'mayors_parrot' && state.respect < 40) return false;
+      if(['amit_mistake', 'hostile_press', 'press_followup', 'black_market_investigation', 'arsonist_revenge', 'cops', 'hustler_score', 'tax_audit'].includes(event.id) && !delayedFollowUpReady(event.id)) return false;
       if(event.unique && !canOfferUniqueEvent(missionSaveState(), event.id)) return false;
       if(!event.unique && !canOfferRepeatableEvent(missionSaveState(), event.id, event.maxRepeats)) return false;
       return true;
@@ -1233,12 +1674,26 @@ import type * as ThreeNamespace from 'three';
   function maybeTriggerEvent(){
     if(!state.started) return;
     if(state.playSeconds < state.nextEventAt) return;
-    state.nextEventAt = state.playSeconds + 180 + Math.random()*120;
+    state.nextEventAt = state.playSeconds + PHASE2_MISSION_CONFIG.missionIntervalMin + Math.random()*PHASE2_MISSION_CONFIG.missionIntervalVariance;
     const ratWeight = Math.max(0.35, 1 - state.ratCount*0.09);
     const candidates = availableMissionEvents().filter(function(event){ return !event.neg || Math.random() < ratWeight || Math.random() < 0.4; });
     const pool = candidates.length ? candidates : availableMissionEvents();
-    const event = pool[Math.floor(Math.random()*pool.length)];
+    const followUps = pool.filter(function(event){ return ['amit_mistake', 'hostile_press', 'press_followup', 'black_market_investigation', 'arsonist_revenge', 'cops', 'hustler_score', 'tax_audit'].includes(event.id); });
+    const selection = followUps.length ? followUps : pool;
+    const event = selection[Math.floor(Math.random()*selection.length)];
     if(event) showMissionOffer(event);
+  }
+  function deliverDelayedFollowUp(): void {
+    if(activeMissionCount(missionSaveState()) >= PHASE2_MISSION_CONFIG.activeMissionCap) return;
+    const followUp = availableMissionEvents().find(function(event){
+      return ['amit_mistake', 'hostile_press', 'press_followup', 'black_market_investigation', 'arsonist_revenge', 'cops', 'hustler_score', 'tax_audit'].includes(event.id)
+        && typeof state.worldMemory[`${event.id}DueAt`] === 'number'
+        && Number(state.worldMemory[`${event.id}DueAt`]) > 0;
+    });
+    if(followUp){
+      state.worldMemory[`${followUp.id}DueAt`] = 0;
+      showMissionOffer(followUp);
+    }
   }
 
   // LEGAL: ================= THE RAID (investigation culmination) =================
@@ -1958,7 +2413,40 @@ import type * as ThreeNamespace from 'three';
     buttons.push({ label:'Not tonight', secondary:true });
     showModal({ eyebrow:'Casing the Banks', title:'Pick a target', body, buttons });
   }
-  function resolveHeist(approach: string){
+  function openHeistSecurityDesk(): void {
+    const car = getEquippedCar();
+    const carBonus = effectiveHeistBonus(car, brandById(car?.brand));
+    const crewBonus = Math.min(0.78, 0.30 + state.muscleCount * 0.04 + state.ratCount * 0.03 + carBonus + hubHeistBonus());
+    const smashBonus = Math.min(0.7, 0.40 + state.ratCount * 0.03 + carBonus + hubHeistBonus());
+    const rows = banks.map(function(bank): string {
+      const securityModifier = heistSecurityMod(bank.security);
+      const smashChance = Math.max(10, Math.round((smashBonus + securityModifier) * 100));
+      const crewChance = Math.max(10, Math.round((crewBonus + securityModifier) * 100));
+      return `<p><strong>${bank.name}</strong> — ${bank.security}: smash ${smashChance}% / crew ${crewChance}%; payout ${Math.round(bank.heistPayoutMult * 100)}% of the normal take.</p>`;
+    }).join('');
+    const firstHeistActive = Boolean(state.activeMissions.first_heist);
+    showModal({
+      eyebrow: 'Security Office',
+      title: firstHeistActive ? 'Guard Schedule and Camera Log' : 'Casing Notes',
+      body: `<p class="flavor">Someone left the night rota and three obsolete camera logs on the desk. It is enough to compare the jobs, not enough to make one safe.</p>${rows}`,
+      buttons: [
+        ...(firstHeistActive ? [{ label: 'Take the notes to the vault', onClick: function(): void { resolveMissionAtObjective('first_heist'); } }] : [{ label: 'Choose a bank job', onClick: openHeistPlanning }]),
+        { label: 'Leave the desk', secondary: true },
+      ],
+    });
+  }
+  function openDockManifest(): void {
+    const mission = state.activeMissions.stolen_shipment;
+    if(mission?.stageId === 'travel'){
+      showModal({ eyebrow:'Docks Dockmaster', title:'The Blank Manifest Slot', body:"<p class='flavor'>The pallet number has been rubbed out, but the carbon copy still shows a westbound truck, a rushed signature, and Deke's chop-shop stamp pressed through from the page beneath.</p><p>You can hand Bell the lead, or keep it in your pocket until he tells you what he wants.</p>", buttons:[
+        { label:"Circle Deke's stamp and confront Bell", onClick:function(){ state.worldMemory.dockManifestEvidence = true; advanceMissionStage(missionSaveState(), 'stolen_shipment', 'evidence', state.playSeconds, mission.objective); log('<i class="ph-duotone ph-file-magnifying-glass"></i> You pocket a copy of the manifest with Deke\'s stamp circled. Bell will have to be specific now.'); renderAll(); scheduleSave(); } },
+        { label:'Leave the paper where it is', secondary:true },
+      ]});
+      return;
+    }
+    showRoomBrief('Manifest Board', 'Docks Dockmaster', 'Carbon copies, departure times, and enough crossed-out cargo codes to make a simple route look suspicious.', '');
+  }
+  function resolveHeist(approach: string): string {
     const car = getEquippedCar();
     // LEGAL: A bike gives half the cover of a car — nowhere to stash a crew or a haul.
     const carBonus = effectiveHeistBonus(car, brandById(car?.brand));
@@ -1983,10 +2471,13 @@ import type * as ThreeNamespace from 'three';
     const win = Math.random() < chance;
     if(win){
       state.cash += reward;
-      state.respect += Math.ceil(reward/400);
+      const respectGain = Math.ceil(reward/400);
+      state.respect += respectGain;
       triggerMilestone('heist');
       log(`<i class="ph-duotone ph-money"></i> The job on ${bank.name} pays out ${fmt(reward)}.`);
       dialogues.bankheist.nodes.result.text = `Clean. You're out of ${bank.name} before the second patrol even swings back. <strong>${fmt(reward)}</strong> heavier, and word will get around.`;
+      renderAll();
+      return `${approach === 'crew' ? 'Crew heist' : 'Smash-and-grab'}: ${fmt(reward)} gained; respect +${respectGain}; heat +${heatOnAttempt}`;
     } else {
       const loss = Math.round(state.cash*failLossPct);
       state.cash = Math.max(0, state.cash-loss);
@@ -1994,8 +2485,9 @@ import type * as ThreeNamespace from 'three';
       state.respect = Math.max(0, state.respect-respectOnFail);
       log(`<i class="ph-duotone ph-siren"></i> The job on ${bank.name} goes sideways. Down ${fmt(loss)}, heat's up.`);
       dialogues.bankheist.nodes.result.text = `It goes sideways fast. You get out of ${bank.name}, but not clean — <strong>${fmt(loss)}</strong> lost on the way, and there's heat on you now that wasn't there this morning.`;
+      renderAll();
+      return `${approach === 'crew' ? 'Crew heist' : 'Smash-and-grab'} failed: ${fmt(loss)} lost; respect -${respectOnFail}; heat +${heatOnAttempt + heatOnFail}`;
     }
-    renderAll();
   }
 
   // LEGAL: ================= LOCAL BUSINESSES (map-only, rob/extort) =================
@@ -2565,6 +3057,86 @@ import type * as ThreeNamespace from 'three';
     }
     renderAll();
   }
+  function openCityHallDesk(): void {
+    const buttons: ModalButton[] = [];
+    const influencePrice = influenceCost();
+    const investorAttention = state.worldMemory.cityHallAttention === true;
+    if(investorAttention && state.cash >= PHASE2_MISSION_CONFIG.investorCityHallSettlementCost){
+      buttons.push({ label:`Settle the investor complaint (${fmt(PHASE2_MISSION_CONFIG.investorCityHallSettlementCost)}, heat -${PHASE2_MISSION_CONFIG.investorCityHallSettlementHeatReduction})`, onClick:function(){
+        state.cash -= PHASE2_MISSION_CONFIG.investorCityHallSettlementCost;
+        state.heat = Math.max(0, state.heat - PHASE2_MISSION_CONFIG.investorCityHallSettlementHeatReduction);
+        state.worldMemory.cityHallAttention = false;
+        state.worldMemory.investorComplaintSettled = true;
+        log('<i class="ph-duotone ph-file-check"></i> The investor complaint disappears into a clerk\'s drawer: cash spent, heat down, City Hall attention cleared.');
+        renderAll(); scheduleSave();
+      } });
+    }
+    if(state.cash >= influencePrice){
+      buttons.push({ label:`Fund influence (${fmt(influencePrice)})`, onClick:function(){ buyInfluence(); } });
+    }
+    if(state.worldMemory.politicalFavorsUnlocked && state.cash >= PHASE2_MISSION_CONFIG.politicalFavorCost && state.influence >= 20){
+      buttons.push({ label:`Call in a favor (${fmt(PHASE2_MISSION_CONFIG.politicalFavorCost)}, 20 influence)`, onClick:function(){
+        state.cash -= PHASE2_MISSION_CONFIG.politicalFavorCost;
+        state.influence -= 20;
+        state.heat = Math.max(0, state.heat - PHASE2_MISSION_CONFIG.politicalFavorHeatReduction);
+        state.investigation = Math.max(0, state.investigation - 8);
+        log('<i class="ph-duotone ph-courthouse"></i> A political favor moves through City Hall: heat -18; investigation -8.');
+        renderAll(); scheduleSave();
+      } });
+    }
+    politicians.filter(function(p){ return p.favor < 100 && state.cash >= favorCost(p); }).forEach(function(p){
+      buttons.push({ label:`Meet ${p.name} (${fmt(favorCost(p))})`, onClick:function(){ bribePolitician(p.id); scheduleSave(); } });
+    });
+    if(state.influence >= 500 && state.playSeconds >= state.nextCampaignAt && !state.electedOffice && !state.campaignActive){
+      buttons.push({ label:'Discuss your campaign', onClick:function(){ playDialogue('campaign', 'start'); } });
+    }
+    buttons.push({ label:'Leave City Hall', secondary:true });
+    showModal({
+      eyebrow:'City Hall Annex',
+      title:"Clerk's Window",
+      body:`<p class='flavor'>The clerk knows exactly which doors are open and which envelopes make them move. You have ${Math.round(state.influence)} influence, ${fmt(state.cash)} in cash, and ${state.worldMemory.politicalFavorsUnlocked ? 'Political Favors are available.' : 'Political Favors are still locked.'}</p>${investorAttention ? '<p class="flavor">A silent investor has filed a complaint. The clerk will make it disappear for the right filing fee.</p>' : ''}`,
+      buttons,
+    });
+  }
+  function openChopShopArmory(): void {
+    const cost = gunPackCost();
+    const buttons: ModalButton[] = state.cash >= cost
+      ? [{ label:`Buy ${GUN_PACK} guns (${fmt(cost)})`, onClick:function(){
+          state.cash -= cost;
+          state.guns += GUN_PACK;
+          log(`<i class="ph-duotone ph-crosshair"></i> A crate of ${GUN_PACK} comes off the docks. Guns +${GUN_PACK}; total ${state.guns}.`);
+          renderAll(); scheduleSave();
+        } }]
+      : [];
+    buttons.push({ label:'Leave the armory', secondary:true });
+    showModal({
+      eyebrow:'West Side Chop Shop',
+      title:'The Armory',
+      body:`<p class='flavor'>Deke keeps the unregistered crates behind a welding curtain. You have ${state.guns} guns. They make pushes and wars stronger, but fighting can still cost people and equipment.</p><p>Current crate price: <strong>${fmt(cost)}</strong>.</p>`,
+      buttons,
+    });
+  }
+  function openMarigoldWarTable(): void {
+    const availableAt = Math.max(0, Math.ceil(state.nextWarAt - state.playSeconds));
+    const strength = gangStrength();
+    const rival = rivalStrength();
+    const odds = Math.round(Math.min(0.85, Math.max(0.15, strength / (strength + rival))) * 100);
+    const ready = availableAt === 0;
+    showModal({
+      eyebrow:'Marigold Lounge',
+      title:'The Back-Room Table',
+      body: ready
+        ? `<p class='flavor'>Maps, burner phones, and a glass nobody is drinking from cover the table. Your strength is ${strength.toFixed(1)} against West Side's ${rival.toFixed(1)} — roughly ${odds}% odds before the first decision. You have ${state.guns} guns.</p><p>Targeted hits need 4 guns and $1,800. A full assault needs 8 guns and $4,000. Both can cost territory, crew, guns, heat, and case pressure.</p>`
+        : `<p class='flavor'>The room is quiet after the last operation. Your people need ${availableAt} more seconds before another move. Current strength: ${strength.toFixed(1)} to ${rival.toFixed(1)}.</p>`,
+      buttons: ready ? [
+        { label:'Set the operation in motion', onClick:function(){
+          dialogues.gangwar.nodes.start.text = `Dice's people aren't handing over West Side. You're holding ${state.guns} guns; your strength reads ${strength.toFixed(1)} to their ${rival.toFixed(1)} — call it ${odds}% odds tonight. The question is how loud you're willing to be.`;
+          playDialogue('gangwar', 'start');
+        } },
+        { label:'Leave the table', secondary:true },
+      ] : [{ label:'Leave the table', secondary:true }],
+    });
+  }
   function runCampaign(style: string){
     let cost = style === 'grassroots' ? 250000 : 1500000;
     if(state.cash < cost){
@@ -2653,10 +3225,14 @@ import type * as ThreeNamespace from 'three';
     if(win){
       ws.control = Math.min(100, ws.control + swing);
       state.respect += style==='assault' ? 40 : 20;
+      applyTempMult('all', PHASE2_MISSION_CONFIG.turfWarVictoryIncomeMultiplier, PHASE2_MISSION_CONFIG.turfWarVictoryIncomeSeconds);
+      state.worldMemory.westsideWarResult = 'won';
+      state.worldMemory.westsideWarVictoryControl = swing;
       if(state.muscleCount>0 && Math.random() < (style==='assault'?0.5:0.3)) muscleLost = 1;
     } else {
       ws.control = Math.max(0, ws.control - Math.round(swing/2));
       state.respect = Math.max(0, state.respect - 15);
+      state.worldMemory.westsideWarResult = 'lost';
       gunsLost += 2;
       if(state.muscleCount>0) muscleLost = 1 + (Math.random()<0.4?1:0);
       const inducted = gangRecruits.filter(g=>g.inducted);
@@ -2674,10 +3250,12 @@ import type * as ThreeNamespace from 'three';
     if(win){
       dialogues.gangwar.nodes.result.text = `It goes your way. West Side control climbs to ${Math.round(ws.control)}%. Dice's people fall back — for now.${payNote}${casNote}`;
       log(`<i class="ph-duotone ph-swords"></i> You take ground on the West Side — control ${Math.round(ws.control)}%.${casualties.length?' It cost you '+casualties.join(', ')+'.':''}`);
+      dialogues.gangwar.nodes.result.text = `Victory confirmed: West Side control is now ${Math.round(ws.control)}% permanently, and all operation income is +12% for two minutes.${payNote}${casNote}`;
       pushCityNews(`GANGLAND SHOOTOUT ROCKS THE WEST SIDE OVERNIGHT`, true);
     } else {
       dialogues.gangwar.nodes.result.text = `It doesn't go your way. You pull back before it gets worse — West Side control drops to ${Math.round(ws.control)}%.${payNote}${casNote}`;
       log(`<i class="ph-duotone ph-swords"></i> The war on the West Side turns against you — control ${Math.round(ws.control)}%.${casualties.length?' You lost '+casualties.join(', ')+'.':''}`);
+      dialogues.gangwar.nodes.result.text = `Loss confirmed: West Side control is now ${Math.round(ws.control)}% permanently. The ${fmt(cashCost)} operation cost is gone.${payNote}${casNote}`;
       pushCityNews(`POLICE FLOOD THE WEST SIDE AFTER A DEADLY GANG CLASH`, true);
       if(!payoff && state.heat > 60 && !crackdownActive()) state.crackdownUntil = state.playSeconds + 75;
     }
@@ -3674,6 +4252,7 @@ import type * as ThreeNamespace from 'three';
     btn.addEventListener('click', function(){ setTab(btn.getAttribute('data-tab')!); });
   });
   function setTab(tab: string){
+    if(tab === 'politics' || tab === 'gang') tab = 'map';
     document.querySelectorAll('.tab-btn').forEach(b=> b.classList.toggle('active', b.getAttribute('data-tab')===tab));
     document.querySelectorAll('.tab-panel').forEach(p=> p.classList.toggle('active', p.getAttribute('data-tab')===tab));
     mapActive = (tab==='map');
@@ -3714,6 +4293,9 @@ import type * as ThreeNamespace from 'three';
     } else if(app==='missions'){
       document.querySelector<HTMLElement>('.device-screen[data-screen="missions"]')!.classList.remove('hidden');
       renderMissionPhoneApp();
+    } else if(app==='contacts'){
+      document.querySelector<HTMLElement>('.device-screen[data-screen="contacts"]')!.classList.remove('hidden');
+      renderContactsApp();
     } else {
       state.financeView = app==='stocks' ? 'lcn-home' : 'vault';
       byId('finance-appbar-title').textContent = app==='stocks' ? 'Stocks' : 'Bank';
@@ -3730,6 +4312,37 @@ import type * as ThreeNamespace from 'three';
     const app = target.closest<HTMLElement>('[data-app]');
     if(app){ openDeviceApp(app.getAttribute('data-app')!); return; }
     if(target.closest('[data-back]')) showDeviceHome();
+  });
+  byId('contacts-panel').addEventListener('click', function(e){
+    const target = e.target as HTMLElement;
+    if(target.closest('[data-taxi-dispatch]')) dispatchTaxi();
+    if(target.closest('[data-contact-action="dock-status"]')){
+      openDockContactStatus();
+      return;
+    }
+    if(target.closest('[data-contact-action="lana-status"]')){
+      openLanaContactStatus();
+      return;
+    }
+    if(target.closest('[data-contact-action="amit-status"]')){
+      openAmitContactStatus();
+      return;
+    }
+    if(target.closest('[data-contact-action="investor-status"]')){
+      openInvestorContactStatus();
+      return;
+    }
+    const waypointButton = target.closest('[data-contact-waypoint]');
+    if(waypointButton){
+      const place = missionPlaceByService(waypointButton.getAttribute('data-contact-waypoint')!);
+      if(!place) return;
+      setGlobalWaypoint({ x:place.x, y:place.y });
+      rebuildWaypointBeacon();
+      byId('minimap-clear').classList.add('show');
+      log('<i class="ph-duotone ph-map-pin"></i> Contact route set: ' + place.name + '.');
+      renderContactsApp();
+      scheduleSave();
+    }
   });
 
   async function startMapLoop(): Promise<void> {
@@ -3908,6 +4521,7 @@ import type * as ThreeNamespace from 'three';
 
   function hotspotsFor(interior: InteriorState | null): HotSpot[] {
     if(!interior) return [];
+    const missionId = activeMissionForServiceId(interior.refId) ?? activeMissionForObjectId(interior.refId);
     const spots: HotSpot[] = [];
     const kind = interior.kind;
     if(kind==='venture'){
@@ -3929,8 +4543,13 @@ import type * as ThreeNamespace from 'three';
               else { log('Not enough cash to sponsor the block party.'); }
             } },
            { label:'Step back', secondary:true }]) });
+      if(biz.id==='chopshop') spots.push({ id:'armory', x:ROOM_W*0.50, y:148, label:'The Armory', icon:'🎯', action:openChopShopArmory });
     } else if(kind==='bankHome'){
       spots.push({ id:'teller', x:ROOM_W/2, y:80, label:'Teller Window', icon:'🏦', action:function(){
+        if(state.activeMissions.home_safe_robbery?.stageId === 'teller'){
+          openHomeSafeTellerLesson();
+          return;
+        }
         const svc = serviceBuildings.find(s=>s.id===interior.refId);
         openTellerBanking(svc?.bankId ?? DEFAULT_BANK_ID);
       } });
@@ -3939,6 +4558,7 @@ import type * as ThreeNamespace from 'three';
           briefRow('Banked (raid-safe)', fmt(bankedTotal()))) });
     } else if(kind==='heist'){
       spots.push({ id:'vault', x:ROOM_W/2, y:75, label:'Case the Banks', icon:'🔐', action:openHeistPlanning });
+      spots.push({ id:'security-desk', x:ROOM_W*0.2, y:ROOM_H*0.76, label:'Security Office', icon:'🗂️', action:openHeistSecurityDesk });
     } else if(kind==='playerGarage'){
       // LEGAL: Your own garage: the fleet lives here. Pick which car to drive, and repair
       // LEGAL: anything that broke down. Nothing is for sale — that is what dealerships are.
@@ -3981,15 +4601,68 @@ import type * as ThreeNamespace from 'three';
             + briefRow('Block', `${blockName} — ${turf}`));
         } });
     } else if(kind==='cityhall'){
-      spots.push({ id:'clerk', x:ROOM_W/2, y:80, label:"Clerk's Window", icon:'🏛️', action:()=> setTab('politics') });
+      spots.push({ id:'clerk', x:ROOM_W/2, y:80, label:"Clerk's Window", icon:'🏛️', action:openCityHallDesk });
       spots.push({ id:'notices', x:AMBIENT_X, y:AMBIENT_Y, label:'Public Notices', icon:'📢', action:()=>
         showRoomBrief('Public Notices', 'City Hall', 'Permit hearings, zoning appeals, a re-election banner. The civic temperature, if you know how to read it.', '') });
+    } else if(interior.refId==='motelSunset'){
+      spots.push({ id:'frontdesk', x:ROOM_W/2, y:80, label:'Night Clerk', icon:'🛎️', action:function(){
+        const reduction = Math.ceil(state.investigation * OUTSKIRT_VENUE_CONFIG.motelInvestigationReductionPct);
+        const eligible = state.investigation >= OUTSKIRT_VENUE_CONFIG.motelMinimumInvestigation;
+        showModal({ eyebrow:'Sunset Shore Motel', title:'A Room Away from the Case', body: eligible
+          ? `<p class='flavor'>The clerk does not ask for a name. One quiet night removes ${OUTSKIRT_VENUE_CONFIG.motelInvestigationReductionPct * 100}% of your current case: ${reduction} investigation right now.</p>`
+          : `<p class='flavor'>The clerk keeps a room open for people who need distance, but your case is not hot enough to justify the trip. Return at ${OUTSKIRT_VENUE_CONFIG.motelMinimumInvestigation} investigation or more.</p>`, buttons: eligible ? [
+          { label:`Stay the night ($${OUTSKIRT_VENUE_CONFIG.motelStayCost})`, onClick:function(){ if(state.cash < OUTSKIRT_VENUE_CONFIG.motelStayCost) return; state.cash -= OUTSKIRT_VENUE_CONFIG.motelStayCost; state.investigation = Math.max(0, state.investigation - reduction); state.heat = Math.max(0, state.heat - OUTSKIRT_VENUE_CONFIG.motelHeatReduction); state.playSeconds += OUTSKIRT_VENUE_CONFIG.motelStaySeconds; state.worldMemory.motelStay = 'sunset'; log(`<i class=\"ph-duotone ph-bed\"></i> Sunset Shore buys you distance: $${OUTSKIRT_VENUE_CONFIG.motelStayCost} spent; investigation -${reduction} (${OUTSKIRT_VENUE_CONFIG.motelInvestigationReductionPct * 100}%); heat -${OUTSKIRT_VENUE_CONFIG.motelHeatReduction}; ${OUTSKIRT_VENUE_CONFIG.motelStaySeconds} seconds passed.`); renderAll(); scheduleSave(); } },
+          { label:'Keep driving', secondary:true },
+        ] : [{ label:'Keep driving' }] });
+      } });
+    } else if(interior.refId==='fireRoadKestrel'){
+      spots.push({ id:'trailhead', x:ROOM_W/2, y:80, label:'Fire Road Time Trial', icon:'ðŸ', action:function(){
+        const car = getEquippedCar();
+        const bestSeconds = typeof state.worldMemory.fireRoadBestSeconds === 'number' ? state.worldMemory.fireRoadBestSeconds : 0;
+        if(!car){
+          showRoomBrief('Kestrel Woods Fire Road', 'Trailhead', 'The keeper points at the ruts and asks where you plan to find a car. Bring one from your garage, then come back.', '');
+          return;
+        }
+        showModal({ eyebrow:'Kestrel Woods Fire Road', title:'Six Gates, One Car', body:`<p class='flavor'>The keeper marks six blind turns on a paper napkin. Clear at least three and there is cash in it. A clean run pays $1,100. Any paid finish earns the hand-painted Fire Road stripe for the car you brought.</p><p>Best paid time: <strong>${bestSeconds ? `${bestSeconds.toFixed(1)} seconds` : 'no time posted'}</strong>.</p>`, buttons:[
+          { label:'Run the course', onClick:function(){ void playMinigame('fireRoad', 'Fire Road Time Trial').then(function(res: MinigameResult){
+            const payout = fireRoadPayout(res.score, res.max);
+            const elapsedSeconds = res.elapsedSeconds ?? 0;
+            const newBest = payout > 0 && isFireRoadBest(bestSeconds, elapsedSeconds);
+            if(payout > 0){
+              state.cash += payout;
+              state.carDecals[car.id] = 'fire-road';
+              state.worldMemory.fireRoadRun = String(res.score);
+              if(newBest) state.worldMemory.fireRoadBestSeconds = elapsedSeconds;
+              log(`<i class=\"ph-duotone ph-flag-checkered\"></i> Fire Road finish: ${res.score}/${res.max} gates in ${elapsedSeconds.toFixed(1)}s; cash +$${payout}; Fire Road stripe unlocked for ${car.name}.${newBest ? ' New best time.' : ''}`);
+              refreshPlayerModel(); updateParkedCarMesh();
+            } else log(`<i class=\"ph-duotone ph-flag-checkered\"></i> Fire Road: ${res.score}/${res.max} gates in ${elapsedSeconds.toFixed(1)}s; no payout. Clear 3 of 6 for cash and the stripe.`);
+            renderAll(); scheduleSave();
+          }); } },
+          { label:'Walk the trail', secondary:true },
+        ]});
+      } });
+    } else if(interior.refId==='driveInBoundary'){
+      if(missionId) spots.push({ id:'mission', x:ROOM_W*0.18, y:80, label:'Mission Contact', icon:'📋', action:function(){ resolveMissionAtObjective(missionId); } });
+      spots.push({ id:'screen', x:ROOM_W/2, y:80, label:'Projection Screen', icon:'🎬', action:function(){
+        showModal({ eyebrow:'Boundary Meadows Drive-In', title:'One Picture, No Errands', body:"<p class='flavor'>You park beneath the big screen and let a ridiculous crime melodrama run until the city feels far away. The snack bar only takes cash.</p>", buttons:[
+          { label:'Stay for the double feature ($120)', onClick:function(){ state.cash = Math.max(0, state.cash - 120); state.respect += 6; state.playSeconds += 90; state.worldMemory.driveInNight = 'double-feature'; log('<i class=\"ph-duotone ph-film-strip\"></i> Two pictures, cold fries, and a quieter night: $120 spent; respect +6; 90 seconds passed.'); renderAll(); scheduleSave(); } },
+          { label:'Watch from the tailgate', onClick:function(){ state.respect += 3; state.playSeconds += 45; state.worldMemory.driveInNight = 'tailgate'; log('<i class=\"ph-duotone ph-film-strip\"></i> You stay for the second act and leave before the credits: respect +3; 45 seconds passed.'); renderAll(); scheduleSave(); } },
+        ]});
+      } });
+    } else if(interior.refId==='docksDockmaster'){
+      if(missionId) spots.push({ id:'mission', x:ROOM_W*0.32, y:80, label:'Mission Contact', icon:'📋', action:function(){ resolveMissionAtObjective(missionId); } });
+      spots.push({ id:'manifest', x:ROOM_W*0.68, y:80, label:'Manifest Board', icon:'🗃️', action:openDockManifest });
+    } else if(interior.refId==='marigoldLounge' && !missionId){
+      spots.push({ id:'wartable', x:ROOM_W/2, y:80, label:'The Back-Room Table', icon:'🗺️', action:openMarigoldWarTable });
     } else if(kind==='missionOffice'){
       const missionId = activeMissionForServiceId(interior.refId);
       spots.push({ id:'mission', x:ROOM_W/2, y:80, label:missionId ? 'Mission Contact' : 'Front Desk', icon:'📋', action:function(){
         if(missionId) resolveMissionAtObjective(missionId);
         else showRoomBrief('Front Desk', interior.name, 'The place is open, but nobody here is waiting on you right now.', '');
       } });
+    }
+    if(missionId && kind !== 'missionOffice'){
+      spots.push({ id:'mission', x:ROOM_W*0.18, y:80, label:'Mission Contact', icon:'📋', action:function(){ resolveMissionAtObjective(missionId); } });
     }
     return spots;
   }
@@ -4212,13 +4885,8 @@ import type * as ThreeNamespace from 'three';
     if(state.inVehicle){ exitVehicle(); return; }
     const m = nearestMarker();
     if(!m) return;
-    if(m.type==='service' && m.ref.kind !== 'missionOffice'){
-      const missionId = activeMissionForServiceId(m.ref.id);
-      if(missionId){ resolveMissionAtObjective(missionId); return; }
-    }
-    if(m.type==='building' || m.type==='local' || m.type==='corner' || m.type==='amenity'){
-      const sourceId = m.type === 'building' ? m.ref.id : m.ref.id;
-      const missionId = activeMissionForObjectId(sourceId);
+    if(m.type==='corner' || m.type==='amenity'){
+      const missionId = activeMissionForObjectId(m.ref.id);
       if(missionId){ resolveMissionAtObjective(missionId); return; }
     }
     if(m.type==='car') enterVehicle();
@@ -4234,7 +4902,10 @@ import type * as ThreeNamespace from 'three';
 
   function currentSpeed(){
     if(state.currentInterior) return 150;
-    if(state.inVehicle){ const car=getEquippedCar(); return 210*(car?car.speedMult:1); }
+    if(state.inVehicle){
+      const car = getEquippedCar();
+      return 210 * (car ? car.speedMult : 1) * offRoadSpeedMultiplier({ x:player.x, y:player.y }, car?.brand);
+    }
     return 150;
   }
   function tryMove(nx: number, ny: number, solids: Solid[]){
@@ -4257,7 +4928,8 @@ import type * as ThreeNamespace from 'three';
   type ThreeModule = typeof ThreeNamespace;
   type DisposableMaterial = ThreeNamespace.Material & { map?: ThreeNamespace.Texture };
   let THREE: ThreeModule;
-  let scene: ThreeNamespace.Scene, camera3d: ThreeNamespace.PerspectiveCamera, renderer: ThreeNamespace.WebGLRenderer, worldGroup: ThreeNamespace.Group, playerGroup: ThreeNamespace.Group, ambientLight: ThreeNamespace.AmbientLight, sunLight: ThreeNamespace.DirectionalLight, moonLight: ThreeNamespace.DirectionalLight, waypointBeacon: ThreeNamespace.Group | null = null, parkedCarMesh: ThreeNamespace.Group | null = null, trainGroup: ThreeNamespace.Group | null = null;
+  let scene: ThreeNamespace.Scene, camera3d: ThreeNamespace.PerspectiveCamera, renderer: ThreeNamespace.WebGLRenderer, worldGroup: ThreeNamespace.Group, playerGroup: ThreeNamespace.Group, ambientLight: ThreeNamespace.AmbientLight, sunLight: ThreeNamespace.DirectionalLight, moonLight: ThreeNamespace.DirectionalLight, waypointBeacon: ThreeNamespace.Group | null = null, missionObjectiveMarker: ThreeNamespace.Group | null = null, parkedCarMesh: ThreeNamespace.Group | null = null, trainGroup: ThreeNamespace.Group | null = null;
+  let missionObjectiveMarkerKey = '';
   let streetLights: ThreeNamespace.PointLight[] = [];
   let weatherPoints: ThreeNamespace.Points | null = null;
   let activeWeather: 'clear' | 'rain' | 'snow' = 'clear';
@@ -4568,6 +5240,18 @@ import type * as ThreeNamespace from 'three';
     const cabin = new THREE.Mesh(new THREE.BoxGeometry(car.len * (isTall ? 0.44 : 0.38), isTall ? 12 : 9, car.wid + 0.6), glassMat);
     cabin.position.set(-car.len * (isTall ? 0.05 : 0.08), bodyH + (isTall ? 7.5 : 6), 0);
     g.add(cabin);
+
+    if(state.carDecals?.[car.id] === 'fire-road'){
+      const stripeMat = new THREE.MeshStandardMaterial({ color:'#e8b343', metalness:0.3, roughness:0.42 });
+      const roofStripe = new THREE.Mesh(new THREE.BoxGeometry(car.len * (isTall ? 0.46 : 0.40), 0.35, car.wid * 0.18), stripeMat);
+      roofStripe.position.set(-car.len * (isTall ? 0.05 : 0.08), bodyH + (isTall ? 13.65 : 10.7), 0);
+      g.add(roofStripe);
+      [-1, 1].forEach(function(side){
+        const sideStripe = new THREE.Mesh(new THREE.BoxGeometry(car.len * 0.58, 2.1, 0.28), stripeMat);
+        sideStripe.position.set(-car.len * 0.02, bodyH * 0.55, side * (halfW + 0.18));
+        g.add(sideStripe);
+      });
+    }
 
     [-1,1].forEach(function(side){
       const mirror = new THREE.Mesh(new THREE.BoxGeometry(3,2,5), new THREE.MeshStandardMaterial({color:'#17191f', roughness:0.35}));
@@ -5000,6 +5684,7 @@ import type * as ThreeNamespace from 'three';
     });
     timer.measure('street-trees', function(): void {
       tagWorld('tree:street', function(){ buildStreetTrees({ ...baseScene, roadNetwork, districtOffsets:DISTRICT_OFFSETS, seededRandom }); });
+      tagWorld('outskirt:scenery', function(){ buildOutskirtScenery(baseScene); });
     });
     // LEGAL: Venture buildings — all districts
     timer.measure('places', function(): void {
@@ -5226,11 +5911,38 @@ import type * as ThreeNamespace from 'three';
     if(Math.hypot(player.x - lastGuideFrom.x, player.y - lastGuideFrom.y) < GUIDE_REFRESH_DISTANCE) return;
     rebuildWaypointBeacon();
   }
+  function rebuildMissionObjectiveMarker(): void {
+    if(!sceneInitialized || !worldGroup) return;
+    const mission = activeMissionEntries()[0];
+    const objective = mission?.objective;
+    const key = mission && objective ? `${mission.id}:${objective.x}:${objective.y}` : '';
+    if(key === missionObjectiveMarkerKey) return;
+    if(missionObjectiveMarker){ worldGroup.remove(missionObjectiveMarker); missionObjectiveMarker.traverse(disposeObj); missionObjectiveMarker=null; }
+    missionObjectiveMarkerKey = key;
+    if(!mission || !objective) return;
+    const marker = new THREE.Group();
+    const color = '#ff4fd8';
+    const ring = new THREE.Mesh(new THREE.RingGeometry(23,28,24), new THREE.MeshBasicMaterial({color, transparent:true, opacity:0.85, side:THREE.DoubleSide}));
+    ring.rotation.x = -Math.PI/2;
+    ring.position.y = 0.6;
+    marker.add(ring);
+    const diamond = new THREE.Mesh(new THREE.OctahedronGeometry(9,0), new THREE.MeshStandardMaterial({color, emissive:color, emissiveIntensity:0.85, roughness:0.35}));
+    diamond.position.y = 38;
+    marker.add(diamond);
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.2,28,8), new THREE.MeshBasicMaterial({color, transparent:true, opacity:0.75}));
+    stem.position.y = 18;
+    marker.add(stem);
+    marker.position.set(objective.x,0,objective.y);
+    marker.name = `mission:${mission.id}`;
+    worldGroup.add(marker);
+    missionObjectiveMarker = marker;
+  }
   function rebuildWaypointBeacon(){
     lastGuideFrom = { x: player.x, y: player.y };
     lastGuideAt = Date.now() / 1000;
     if(!sceneInitialized || !worldGroup) return;
     if(waypointBeacon){ worldGroup.remove(waypointBeacon); waypointBeacon.traverse(disposeObj); waypointBeacon=null; }
+    rebuildMissionObjectiveMarker();
     const wp = currentWaypoint();
     if(!wp) return;
     const g = new THREE.Group();
@@ -5302,6 +6014,10 @@ import type * as ThreeNamespace from 'three';
     if((import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV){
       (window as unknown as { __seat?: unknown }).__seat = {
         THREE, scene, worldGroup, player, state, mapObjects, mapPlaces,
+        startMission: startMissionFromOffer,
+        resolveMission: resolveMissionAtObjective,
+        enterBuilding,
+        hotspots: function(){ return hotspotsFor(state.currentInterior); },
         roadNetwork, districtOffsets: DISTRICT_OFFSETS,
         roamingActors,
         // LEGAL: The world's own walkability rule, so the audit asks the game where an actor
@@ -6030,7 +6746,7 @@ import type * as ThreeNamespace from 'three';
       businesses: businesses.map(b=> ({ id:b.id, level:b.level, crew:b.crew, manager:b.manager, researched:b.researched, reinvestedIncome:b.reinvestedIncome })),
       bankAccounts: state.bankAccounts, selectedBank: state.selectedBank, nextHeistAt: state.nextHeistAt,
       ownedCars: state.ownedCars, equippedCar: state.equippedCar, ownedProperties: state.ownedProperties,
-      propertyOwnedAt: state.propertyOwnedAt, brokenCars: state.brokenCars, carColors: state.carColors, carParkedAt: state.carParkedAt,
+      propertyOwnedAt: state.propertyOwnedAt, brokenCars: state.brokenCars, carColors: state.carColors, carDecals: state.carDecals, carParkedAt: state.carParkedAt,
       localBusinesses: localBusinesses.map(b=> ({ id:b.id, extorted:b.extorted, extortTier:b.extortTier??0, resentment:b.resentment??0, nextRobAt:b.nextRobAt })),
       currentDistrict: state.currentDistrict, product: state.product, productLevel: state.productLevel,
       districts: districts.map(d=> ({ id:d.id, control:d.control, pushCount:d.pushCount, nextPushAt:d.nextPushAt })),
@@ -6105,6 +6821,7 @@ import type * as ThreeNamespace from 'three';
         state.brokenCars = Array.isArray(d.brokenCars) ? d.brokenCars.filter((id: unknown)=> typeof id === 'string') : [];
         // LEGAL: Older saves predate respray, so an absent map is normal, not corrupt.
         state.carColors = (d.carColors && typeof d.carColors === 'object') ? d.carColors as Record<string,string> : {};
+        state.carDecals = (d.carDecals && typeof d.carDecals === 'object') ? d.carDecals as Record<string,string> : {};
         state.carParkedAt = typeof d.carParkedAt === 'number' ? d.carParkedAt : null;
         state.propertyOwnedAt = (d.propertyOwnedAt && typeof d.propertyOwnedAt === 'object') ? { ...d.propertyOwnedAt } : {};
         state.ownedProperties.forEach(function(id){
@@ -6162,6 +6879,8 @@ import type * as ThreeNamespace from 'three';
     const dt = Math.min(2, (now-lastFrame)/1000);
     lastFrame = now;
     state.playSeconds += dt;
+    syncTonicVision();
+    deliverDelayedFollowUp();
 
     state.cash += netIncome()*dt;
     if(deepakActive()){

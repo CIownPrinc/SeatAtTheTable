@@ -122,6 +122,40 @@ describe('onboarding steps', function () {
     });
   });
 
+  it('gives each multi-stage mission a lesson that explains its current decision', function () {
+    const steps = getOnboardingSteps({
+      ...baseSnapshot(),
+      missionLessons:[
+        { id:'stolen_shipment', title:'Missing Cargo', mode:'mission', status:'active', stageId:'chopshop', objectiveLabel:'West Side Chop Shop' },
+        { id:'alderman_fixer', title:'The Bagman at City Hall', mode:'mission', status:'active', stageId:'railyard', objectiveLabel:'Railyard union leader' },
+        { id:'turf_war', title:'West Side Pressure', mode:'mission', status:'active', stageId:'capo', objectiveLabel:'Marigold Lounge' },
+        { id:'first_heist', title:'The First Real Heist', mode:'mission', status:'active', stageId:'escape', objectiveLabel:'First Windhaven Trust' },
+      ],
+    });
+
+    expect(steps).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id:'mission-active-stolen_shipment', body:expect.stringContaining('Black Market Trade') }),
+      expect.objectContaining({ id:'mission-active-alderman_fixer', body:expect.stringContaining('Political Favors') }),
+      expect.objectContaining({ id:'mission-active-turf_war', body:expect.stringContaining('truce') }),
+      expect.objectContaining({ id:'mission-active-first_heist', body:expect.stringContaining('approach') }),
+    ]));
+  });
+
+  it('keeps dedicated instruction at the added airfield and lodge stages', function(){
+    const steps = getOnboardingSteps({
+      ...baseSnapshot(),
+      missionLessons:[
+        { id:'stolen_shipment', title:'Missing Cargo', mode:'mission', status:'active', stageId:'airfield', objectiveLabel:'Kettle Flats Airfield' },
+        { id:'turf_war', title:'West Side Pressure', mode:'mission', status:'active', stageId:'lodge', objectiveLabel:'Ridgewood Stand Lodge' },
+      ],
+    });
+
+    expect(steps).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id:'mission-active-stolen_shipment', body:expect.stringContaining('street payout') }),
+      expect.objectContaining({ id:'mission-active-turf_war', body:expect.stringContaining('Ridgewood') }),
+    ]));
+  });
+
   it('does not turn contextual or none missions into a separate tutorial card', function () {
     const steps = getOnboardingSteps({
       ...baseSnapshot(),

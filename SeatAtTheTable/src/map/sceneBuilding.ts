@@ -1,6 +1,7 @@
 import type { DiagonalRoad, HorizontalRoad, Landmark, OutskirtRegion, VerticalRoad } from './world';
 import { OUTSKIRT_REGIONS } from './world';
 import { characterDetail, characterProfile } from './neighbourhoods';
+import { createOutskirtSceneryLayout } from './outskirtScenery';
 
 // LEGAL: One colour per outskirt belt kind, read from the shared terrain theme so the 3D
 // LEGAL: world and any future minimap treatment cannot drift apart.
@@ -544,6 +545,47 @@ export function buildFillerCity(options: FillerSceneOptions): void {
       }
     });
   });
+}
+
+export function buildOutskirtScenery(options: BaseSceneOptions): void {
+  const { THREE, worldGroup } = options;
+  const materials = materialsFor(options);
+  const trees: SceneInstance[] = [];
+  const trunks: SceneInstance[] = [];
+  createOutskirtSceneryLayout().forEach(function(item){
+    if(item.kind === 'tree'){
+      trunks.push({ x:item.x, y:6, z:item.y, rotationY:item.rotation });
+      trees.push({ x:item.x, y:20, z:item.y, rotationY:item.rotation });
+      return;
+    }
+    const group = new THREE.Group();
+    const baseMaterial = materials.standard(`outskirt:${item.kind}:base`, { color:item.kind === 'suburbHouse' ? '#c9b59a' : item.kind === 'shed' ? '#69706a' : '#8b684c', roughness:0.86 });
+    const roofMaterial = materials.standard(`outskirt:${item.kind}:roof`, { color:item.kind === 'suburbHouse' ? '#775348' : '#4b5051', roughness:0.82 });
+    if(item.kind === 'silo' || item.kind === 'tank'){
+      const cylinder = new THREE.Mesh(new THREE.CylinderGeometry(9, 11, item.kind === 'silo' ? 38 : 24, 10), baseMaterial);
+      cylinder.position.y = item.kind === 'silo' ? 19 : 12;
+      group.add(cylinder);
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(10, 9, 10), roofMaterial);
+      cap.position.y = item.kind === 'silo' ? 42.5 : 28.5;
+      group.add(cap);
+    } else {
+      const dimensions = item.kind === 'barn' ? [50, 28, 36] : item.kind === 'farmhouse' ? [32, 22, 28] : item.kind === 'shed' ? [38, 18, 28] : [26, 20, 24];
+      const body = new THREE.Mesh(new THREE.BoxGeometry(dimensions[0], dimensions[1], dimensions[2]), baseMaterial);
+      body.position.y = dimensions[1] / 2;
+      group.add(body);
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(dimensions[0], dimensions[2]) * 0.78, 13, 4), roofMaterial);
+      roof.rotation.y = Math.PI / 4;
+      roof.scale.z = dimensions[2] / dimensions[0];
+      roof.position.y = dimensions[1] + 6.5;
+      group.add(roof);
+    }
+    group.position.set(item.x, 0, item.y);
+    group.rotation.y = item.rotation;
+    group.name = `outskirt:${item.regionId}:${item.kind}`;
+    worldGroup.add(group);
+  });
+  addInstancedMesh(THREE, worldGroup, new THREE.CylinderGeometry(2, 2.5, 12, 6), materials.standard('outskirt:tree-trunk', { color:'#5c4930', roughness:1 }), trunks, { cast:true });
+  addInstancedMesh(THREE, worldGroup, new THREE.ConeGeometry(12, 27, 7), materials.standard('outskirt:tree-canopy', { color:'#325f38', roughness:0.94 }), trees, { cast:true });
 }
 
 export function buildLandmarks(options: LandmarkSceneOptions): void {

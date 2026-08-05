@@ -15,6 +15,7 @@ export interface OnboardingMissionSnapshot {
   title: string;
   mode: MissionOnboardingMode;
   status: 'offered' | 'active';
+  stageId?: string;
   objectiveLabel?: string;
 }
 
@@ -65,6 +66,54 @@ export interface OnboardingSnapshot {
 
 function hasMissionState(snapshot: OnboardingSnapshot, missionId: string): boolean {
   return snapshot.activeMissions.includes(missionId) || snapshot.completedMissions.includes(missionId);
+}
+
+interface MissionLessonCopy {
+  offered: string;
+  active: Record<string, string>;
+}
+
+const MISSION_LESSON_COPY: Record<string, MissionLessonCopy> = {
+  stolen_shipment:{
+    offered:'Missing cargo is a choice between a quick recovery and a new, risky income stream. Open Missions to begin at the docks.',
+    active:{
+      travel:'Start with Dockmaster Bell. He knows who moved the shipment and where to look next.',
+      chopshop:'Deke has the cargo. Recovering it helps now; partnering with him unlocks Black Market Trade, with more case risk.',
+      airfield:'At Kettle Flats, take the guaranteed street payout or keep the runway route as Black Market Trade and accept more case risk.',
+    },
+  },
+  alderman_fixer:{
+    offered:'This favor teaches how political access is earned. Open Missions when you are ready to meet the City Hall bagman.',
+    active:{
+      travel:'The bagman will name the cost of getting City Hall on your side.',
+      railyard:'At the railyard, choose whether to pay workers or apply pressure. Either route can unlock Political Favors.',
+    },
+  },
+  turf_war:{
+    offered:'Territory pressure needs an answer. Open Missions to defend Devlin before the dispute reaches your corners.',
+    active:{
+      travel:'Defend the corner first. The way you hold it changes the heat you carry into the next meeting.',
+      capo:'At Marigold, a truce cools the city down; an assassination can win West Side control but carries a steep risk.',
+      lodge:'Ridgewood is neutral ground. A narrow truce lowers heat; exposing the capo’s weak crew wins West Side control at a cost.',
+    },
+  },
+  first_heist:{
+    offered:'This is the first heist with preparation. Open Missions to case the bank before selecting an approach.',
+    active:{
+      travel:'Case First Windhaven Trust: observe guards, exits, and cameras before choosing the approach.',
+      escape:'Your approach is set. At the bank, decide whether to push for the vault or leave safely with smaller cashier bundles.',
+    },
+  },
+};
+
+function missionLessonBody(mission: OnboardingMissionSnapshot): string {
+  const copy = MISSION_LESSON_COPY[mission.id];
+  if(!copy) return mission.status === 'active'
+    ? `This mission is active. ${mission.objectiveLabel ? `Follow the objective to ${mission.objectiveLabel}.` : 'Open Missions to review the next objective.'}`
+    : 'This mission introduces a new part of the operation. Open it when you are ready to take the next step.';
+  if(mission.status === 'offered') return copy.offered;
+  return copy.active[mission.stageId ?? 'travel']
+    ?? `This mission is active. ${mission.objectiveLabel ? `Follow the objective to ${mission.objectiveLabel}.` : 'Open Missions to review the next objective.'}`;
 }
 
 export function getOnboardingSteps(snapshot: OnboardingSnapshot): OnboardingStep[] {
@@ -121,9 +170,7 @@ export function getOnboardingSteps(snapshot: OnboardingSnapshot): OnboardingStep
     steps.push({
       id:`mission-${mission.status}-${mission.id}`,
       title:mission.title,
-      body:active
-        ? `This mission is active. ${mission.objectiveLabel ? `Follow the objective to ${mission.objectiveLabel}.` : 'Open Missions to review the next objective.'}`
-        : 'This mission introduces a new part of the operation. Open it when you are ready to take the next step.',
+      body:missionLessonBody(mission),
       badge:active ? 'Active mission' : 'New mission',
       tone:'lesson',
       action:active && mission.objectiveLabel

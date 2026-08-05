@@ -55,15 +55,18 @@ If the feature has no credible answer to the first question, it does not need on
 | --- | --- | --- |
 | Early-game sequence | `mission` | Cart, production, crew, first venture, and first corner |
 | `home_safe_robbery` | `mission` | Banking and cash safety |
+| `stolen_shipment` | `mission` | Cargo recovery versus Black Market Trade and case risk |
+| `alderman_fixer` | `mission` | How Political Favors are earned through a consequential favor |
+| `turf_war` | `mission` | Territory defense, truce, and high-risk West Side control |
+| `first_heist` | `mission` | Case a target, choose an approach, and execute a prepared heist |
 | Empire contextual cards | `contextual` | Heat, staffing, research, opening a venture |
 | Map contextual card | `contextual` | Moving full product to active corners |
 | Lab contextual card | `contextual` | Diagnosing empty staffed corners |
 
 The early-game sequence is implemented in `onboarding.ts` (`getOnboardingSteps`): cart →
 crew → lab → first corner, one step at a time, driven off live state rather than a fixed
-script. The next slice is mission-specific teaching paths for the missions tagged `mission`
-in `missionEventPool` that don't yet have a dedicated lesson beyond the generic fallback
-copy — `stolen_shipment`, `alderman_fixer`, `turf_war`, `first_heist` — followed by browser
-coverage for each, on the pattern in `e2e/onboarding.e2e.ts`.
+script. The four multi-stage missions in the table have dedicated offer and stage-specific
+teaching copy; continue adding browser coverage for each on the pattern in
+`e2e/onboarding.e2e.ts`.
 
 When a new mission or feature is added, update this table if it owns a teaching path. If it is intentionally `none`, record that decision in the mission definition or feature plan so the omission is deliberate.

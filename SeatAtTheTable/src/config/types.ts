@@ -404,6 +404,7 @@ export interface GameState {
   // LEGAL: the catalogue entry, which every car of that model shares — repainting yours must
   // LEGAL: not repaint every taxi in the city.
   carColors: Record<string, string>;
+  carDecals: Record<string, string>;
   // LEGAL: playSeconds when the car was last left in the street, or null if it is in the
   // LEGAL: garage / being driven. Drives the return-to-garage timer.
   carParkedAt: number | null;

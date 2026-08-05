@@ -6,14 +6,25 @@ import {
   canOfferRepeatableEvent,
   canOfferUniqueEvent,
   completeMission,
+  delayedMissionReady,
   declineMission,
   missionCompleted,
   missionSaveDefaults,
   recordEventOffer,
+  scheduleDelayedMission,
   startMission,
 } from './missions';
 
 describe('mission state helpers', function () {
+  it('holds delayed consequences until their scheduled story beat while keeping old saves playable', function () {
+    const save = missionSaveDefaults();
+
+    expect(delayedMissionReady(save, 'amitDueAt', 100, true)).toBe(true);
+    scheduleDelayedMission(save, 'amitDueAt', 100, 90);
+    expect(delayedMissionReady(save, 'amitDueAt', 189, true)).toBe(false);
+    expect(delayedMissionReady(save, 'amitDueAt', 190, true)).toBe(true);
+  });
+
   it('migrates old saves with empty mission fields', function () {
     const save = missionSaveDefaults(null);
 
