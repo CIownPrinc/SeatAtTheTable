@@ -2,8 +2,7 @@
 
 > **STATUS: COMPLETE.** Every stage below shipped green (lint, typecheck, unit tests,
 > build, e2e) and every item in the Definition of Done at the foot of this file is met.
-> Kept as the record of what was built and why, and as the reference for the deferred
-> second pass on the outskirts.
+> Kept as the record of what was built and why.
 >
 > Delivered: **1a** districts widened 40% via a tested coordinate transform · **1b**
 > distinct coastlines (Devlin peninsula, compact West Side, Hub headland) · **1c**
@@ -11,14 +10,17 @@
 > `namedBuildingLots` · **3** neighbourhood character · **4** facade detailing · **5** shop
 > silhouettes · **6** the player garage · **7** owned real estate on the map.
 >
-> **Still open from this plan — the outskirts second pass.** The ring is scenery: no roads,
-> no interactable places, and no boundary highway. Adding a roadside diner, motel, farm or
-> depot out there is additive now that the geometry and the allocator exist. Note that
-> waypoints already work on outskirt land, so that part is ready.
+> **The outskirts second pass this file deferred has since landed** — see `TODO.md` §0c for
+> current status. Shipped: scenery for every belt, the off-road dealership + woodland
+> terrain rule, the Fire Road time trial, the airfield/Drive-In/Motel/Lodge venues, and
+> sparse rural traffic. Still open: `resort`/`suburb` as real zoning `BlockCharacter`s
+> (current scenery is procedural, not full zoning) and the Lakeridge Country Club
+> (intentionally deferred into the in-person Politics work).
 
-Supersedes `map-overhaul-plan.md`, which described the
-architecture that produced the *previous* map and treated the three-district layout as
-correct. That layout is what this plan replaced.
+Supersedes the original map overhaul, which described the architecture that produced the
+*previous* map and treated the three-district layout as correct — that layout is what this
+plan replaced. Its still-relevant architecture rule (one data model drives the 3D world and
+the minimap) now lives in `map-architecture-notes.md`.
 
 ## Goal
 

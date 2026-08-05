@@ -2,6 +2,10 @@
 
 Simple rules for anyone (human or AI) working in this repo. Keep them. If you must break one, say why in the PR.
 
+**Looking for a plan, an audit, or "what's next"?** `TODO.md`'s doc table indexes every
+planning/reference `.md` file in this repo. Check there before searching — it's the whole
+list, kept current on purpose.
+
 ## How to talk to me (the maintainer)
 
 - Write in plain English. Only reach for a technical term when it is the clearest word, then explain it once.

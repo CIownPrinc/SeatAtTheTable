@@ -3,13 +3,23 @@
 The single answer to **"what's next?"**. Design detail for the two big systems lives in
 `SeatAtTheTable/docs/` — this file says what to do and points there for how.
 
+## Every planning/reference doc in this repo — start here, don't go searching
+
 | Doc | Covers | Status |
 | --- | --- | --- |
-| [`docs/world-expansion-plan.md`](SeatAtTheTable/docs/world-expansion-plan.md) | Bigger districts, outskirts, lot allocator, zoning, garage, real estate | **Complete** — outskirts pass 2 open |
-| [`docs/mission-overhaul-plan.md`](SeatAtTheTable/docs/mission-overhaul-plan.md) | Mission state, event history, world memory, entry points | Active, partly built |
+| **`AGENTS.md`** (root) | Engineering rules — types, TDD, comments, quality gates | Active, authoritative |
+| **`TODO.md`** (this file) | What's next — the roadmap hub everything else points back to | Active |
+| **`CHANGELOG.md`** (root) | Version history V1.0-V5.0, tied to commit hashes | Reference |
+| [`docs/world-expansion-plan.md`](SeatAtTheTable/docs/world-expansion-plan.md) | Bigger districts, outskirts, lot allocator, zoning, garage, real estate | **Complete** — outskirts pass 2 landed (§0c), Country Club deferred |
+| [`docs/mission-overhaul-plan.md`](SeatAtTheTable/docs/mission-overhaul-plan.md) | Mission state, event history, world memory, entry points, per-mission checklist | Active, partly built |
+| [`docs/onboarding-plan.md`](SeatAtTheTable/docs/onboarding-plan.md) | Progressive onboarding product rule, mission/feature classification | Active |
 | [`docs/map-asset-usage-audit.md`](SeatAtTheTable/docs/map-asset-usage-audit.md) | Which CC0 assets are used vs. reserved | Reference |
-| [`docs/map-overhaul-plan.md`](SeatAtTheTable/docs/map-overhaul-plan.md) | The map architecture as originally built | **Superseded** — history only |
-| [`docs/map-screenshot-review.md`](SeatAtTheTable/docs/map-screenshot-review.md) | What the visual review + timing profile check | Dated record |
+| [`docs/map-architecture-notes.md`](SeatAtTheTable/docs/map-architecture-notes.md) | The one data-model rule map edits must not break, plus what the visual/perf review checks | Reference |
+
+That's the complete set — if a `.md` file in this repo isn't in this table, it's either
+`SeatAtTheTable/README.md` (game description, not a plan) or unedited `create-next-app`
+boilerplate under `apps/web/` (dead weight until that app is built out). Nothing is hiding
+in a doc this table doesn't mention. Any new plan/audit doc must be added here when created.
 
 Engineering rules (types, TDD, comment policy, quality gates) live in **`AGENTS.md`** and
 are not repeated here.
@@ -26,85 +36,38 @@ agent (Codex + Claude Code) at the **same** branch. The old two-branch setup
 (`main` + `fix/map-playability`, Codex PRs landing on one and Claude on the other)
 caused duplicate-feature merges (e.g. the "two heat bars" HUD bug).
 
+## Known e2e failures — fix before trusting "COMPLETE" on §2/§3
+
+Full `pnpm --dir SeatAtTheTable e2e` run against `7a769a6` on 2026-08-05: 41 passed, 5
+failed. Two are pre-existing and unrelated to any recent work; three are real bugs in the
+V5.0 mission pass. None block lint/typecheck/unit tests/build, which are all green.
+
+- **`pigeon_summit` never resolves.** Choosing "Give the flock a public apology" doesn't
+  open the Mission Result modal — `missions.e2e.ts` times out at 60s waiting for it.
+- **`raccoon_keycard` reward text is wrong.** The mission promises `heat -5`; the actual
+  result string says `heat -6`. Reward math and copy disagree — fix whichever is the
+  intended number.
+- **A phone/modal flow leaves the device stuck open.** `#device-overlay` never gets
+  `.hidden` after Escape in `phone.e2e.ts`'s "Bank + AutoMart apps render, and
+  Finance/Assets tabs are gone" — likely a result modal left open from an earlier step in
+  that flow blocking Escape from closing the phone.
+- **Pre-existing, not from this pass:** `smoke.e2e.ts` "minimap expands before waypoint
+  placement is allowed" — `#minimap-clear` never gets `.show` on a countryside/outskirt
+  waypoint click. `shot-garage.e2e.ts`'s screenshot times out under the full suite's
+  2-worker contention but passes in isolation — flake, not a defect.
+
 ---
 
 # ACTIVE — in priority order
 
 ## 0. Post-expansion cleanup — COMPLETE
 
-The world expansion shipped green on every gate but plays badly. Several are regressions it
-introduced. **Fix these before building anything new.**
-
-**Fixed so far:**
-- Filler used un-widened road positions (`[270,700,1130]`) while the real roads moved to
-  `378/980/1582`, so it carved blocks around streets that no longer exist and dropped
-  buildings on the real ones. Root cause of "buildings on the road".
-- Two hard-coded shoreline polylines authored against the ORIGINAL coast ran straight across
-  the middle of the land as stray stripes. Root cause of "random lines everywhere". Now
-  derived from the real coastline.
-- Collision bounds were fixed constants (35x31) divorced from the drawn silhouette: you
-  clipped into wide dealerships and hit an invisible wall ~30 units short of small ones.
-  Now derived from the silhouette. Root cause of "invisible barriers around buildings".
-- Interactable buildings enlarged — they read smaller than the scenery around them.
-- Minimap train was ~6x30px on a 150px minimap. Now scales properly.
-- Movement no longer continues underneath the open City Map.
-- **Random floating blocks / floating buildings.** `createFittedModel` applied its fit to the
-  group it RETURNED, so asset-backed buildings came back scaled to e.g. `(30, 41.6, 22)`.
-  Every caller adds detail to that group in world units — awnings, cornices, fire escapes,
-  category markers, signs — and all of it was multiplied, putting a food cart's marker two
-  thousand units into the sky. The same function wrote its recentring offset to
-  `group.position`, which callers then overwrote with `position.set(x, h/2, y)`, so
-  asset-backed buildings sat off-centre too. Fit now lives on an inner child; the wrapper
-  behaves exactly like the procedural fallback. Guarded by `assets.test.ts`.
-- Street corners were three loose meshes (pole, orb, dealer), so the orb measured as a block
-  at y=21 with nothing beneath it. Landmarks were loose meshes too, so a dome floated above
-  its own base. Both are single named groups now.
-- The Potato's plaza (100 deep) sat at y=560 and reached into Roosevelt Road. Moved to y=500.
-- **NPCs pacing into walls.** Roam targets were accepted on the DESTINATION alone, but
-  pedestrians walk in a straight line, so a target behind a building sent the actor into the
-  wall, where it was blocked, retreated home, and repeated. Candidate targets are now sampled
-  along the path. Spawns are also settled against the world's solids (preventative — the
-  audit proves nothing is stuck at spawn today; verified by disabling the fix).
-
-**The detector.** `e2e/scene-audit.e2e.ts` walks the live three.js scene through the dev-only
-`window.__seat` hook and measures with three's own `Box3`. It asserts no building stands in a
-road, nothing floats, nothing is buried, and no pedestrian stands inside a building. Every
-world object is named where it is added, so a failure names the offender. Two traps worth
-remembering: `Box3.setFromObject` expands a **Sprite** by its scale on every axis (a name
-label gave one food cart a 4000-unit footprint), so measure solid `Mesh` geometry only; and
-the audit uses a **whitelist** of building prefixes, so new scenery cannot opt itself in and
-new buildings cannot opt themselves out.
-
-**Also fixed:**
-- Walking through the train. The level crossing was only checked while driving.
-- Entering the garage equipping a car. The parked car was tested for interaction FIRST and
-  won every tie, and your car parks at your own garage by design — so pressing interact at
-  the door got you into the car. Doors win a contested press now, and the car parks in a bay
-  beside the door rather than dead centre on it.
-- No waypoint directions on bridges. Every route dot was pinned to y=0.15; a bridge deck sits
-  at y=2 and is 4 thick, so the whole trail rendered *inside* the deck. Dots ride the surface
-  they are on.
-- Waypoint gold matching the road lane markings — the trail is cyan now.
-- Stray blocks in the water. `no solid scenery stands in the water` in the scene audit asks
-  the game's OWN water rule about every solid object. Nothing is exempt by default; the
-  things allowed over water say so in their name.
-- Cars were a stack of boxes. The body is one extruded, bevelled side profile now — same
-  approach that fixed the bike.
-- The motorcycle headlamp was an emissive sphere that threw no light. Real SpotLight,
-  parented to the player, comes up through dusk.
-
-**Closed after the report:**
-- The Kenney models now clone and receive the intended neighborhood tint, so blocks no longer
-  collapse into identical white buildings when their source colormap is missing.
-- Interior ambient hotspots now provide place-specific information and a meaningful lie-low
-  action instead of repeating HUD status.
-- The Travel Nodes strip is removed; district travel is physical.
-- River, canal, lake, and ocean highlights now travel continuously with a directional swell,
-  rather than oscillating in place and reading as static texture.
-
-**Visual pass closed:** the map screenshot review now passes at desktop, laptop, and mobile
-sizes after the outskirt content landed. It checks usable map dimensions plus water, land,
-and colour variety; no asset family failed the current live render review.
+The world expansion shipped green on every gate but played badly at first — buildings on
+roads, floating scenery, invisible collision walls, NPCs pacing into walls, static water,
+the Travel Nodes strip. All fixed; full root-cause detail is in git history (search commit
+subjects for "Fix the white buildings", "Rebuild the car bodies", etc.) and the compressed
+entry under "Shipped" at the bottom of this file. `e2e/scene-audit.e2e.ts` is the regression
+guard — see "Conventions worth keeping in view" for what it actually checks.
 
 ## 0a. Places must look like what they are — DONE
 
@@ -386,6 +349,9 @@ A drive-in cinema. Park the car and sit through a picture: the clock runs fast, 
 evening out rather than an errand — the casino's shape at a tenth of the cost. Reuses the
 `bay` drive-in geometry that shipped with the garage. Also the natural place to stage a
 conversation you do not want overheard.
+**Shipped:** the Projection Screen hotspot plays a double feature ($120, respect +6, 90
+seconds) or a shorter tailgate watch (respect +3, 45 seconds). Also the second stop of the
+`goose_permit` comic mission.
 
 **4. Kestrel Woods Fire Road** — `northwoods`, Kestrel Reach. *Needs a minigame to land.*
 Unpoliced road: driving offences cost **no heat**, making it the one place in the world you
@@ -405,6 +371,9 @@ the numbers up, plus the thing no city interior offers — letting a building **
 decay, not just heat. It survives the rule *only* if it stays rare. If it becomes the
 standard answer to being hot, it is a co-op with a bed in it and should be cut on the same
 grounds. Gate it hard: only worth the drive when a federal case is actually building.
+**Shipped:** the Night Clerk hotspot is gated exactly that way — it only offers a stay above
+`motelMinimumInvestigation` (20). Staying costs $900 and 120 in-game seconds for -30%
+investigation and -15 heat, so it stays a deliberate, rare trip rather than a default fix.
 
 **6. Lakeridge Country Club** — `lakeridge`, Lakeridge County. *Defer.*
 Where cash becomes standing. Genuinely good, but it overlaps the Politics tab, which §3
@@ -449,7 +418,7 @@ teaching sequence, followed by mission-specific teaching paths and browser cover
 see consequences over time. Use contextual cards for small nudges and bottleneck diagnosis.
 The detailed decision rules live in `docs/onboarding-plan.md`.
 
-## 2. Finish the mission chains
+## 2. Finish the mission chains — mostly shipped, two known bugs open
 
 **Current status:** the five core chains now have phone or popup offers, GPS, physical
 destinations, interior contacts or the outdoor Devlin corner, choices, saved outcomes,
@@ -457,7 +426,8 @@ dedicated onboarding where needed, connected follow-ups, and typed mission defin
 `src/config/missions.ts`. Remaining work in this section is depth: richer scene writing,
 more comic encounters and fuller browser coverage. Connected consequences now arrive as
 delayed in-game messages, and active objectives have a distinct map marker instead of
-looking like ordinary places.
+looking like ordinary places. **Not yet clean:** `pigeon_summit` and `raccoon_keycard` have
+open e2e failures — see "Known e2e failures" near the top of this file.
 
 ### Mission scene standard
 
@@ -527,7 +497,9 @@ politician meetings, and campaign discussion in the building itself instead of r
 the player to the Politics tab. The Chop Shop Armory now sells gun crates in person, and the
 Marigold Lounge Back-Room Table now begins West Side operations. Recruit initiation and
 check-ins already happen with the people on the map. The redundant Politics and Gang tabs
-are removed from navigation, with stale routes safely redirecting to the map.
+are removed from navigation, with stale routes safely redirecting to the map. **Note:** a
+phone-overlay bug in the same device UI is open — see "Known e2e failures" near the top of
+this file — not confirmed related to the tab removal itself, but in the same surface.
 
 ---
 
@@ -632,22 +604,22 @@ not a thing anyone wants. Each groups terrain belts that were already out there.
 ### **Kestrel Reach** — the north, across the lake
 Three belts: **Sunset Shore** (`suburb`), **Kestrel Woods** (`forest`), **Harrow End**
 (`farmland`). Only reachable at all since the lake was enclosed.
-Biome, planned: beach and `resort` filler along Sunset Shore; low suburban houses behind it;
-dense woodland; open farmland with silos and field lines at the top of the world.
-Planned contents: **Sunset Shore Motel** (lie low, and let a federal case decay — the one
-thing no city interior offers) · **Kestrel Woods Fire Road** (no heat for driving offences +
-a time trial) · **the off-road dealership** (Mudster's country branch — ATVs, quads,
-tractors) · **woodland tracks** that cars cannot use. This is the busiest of the three.
+Biome, still planned: `resort` and `suburb` as real `BlockCharacter` zoning (the current
+outskirt scenery is a simpler procedural pass, not full zoning — see "Zoning characters"
+below). Woodland and farmland scenery are shipped.
+Contents: **Sunset Shore Motel** (lie low, and let a federal case decay — the one thing no
+city interior offers) · **Kestrel Woods Fire Road** (no heat for driving offences + a time
+trial) · **the off-road dealership** (Mudster's country branch — ATVs, quads, tractors) ·
+**woodland tracks** that cars cannot use — all shipped. This is the busiest of the three.
 
 ### **Kettle Reach** — the west and south, wrapped around the city
 Three belts: **Kettle Flats** (`farmland`, west), **Boundary Meadows** (`farmland`, south),
 **Ridgewood Stand** (`forest`, south-east). An L-shape — which is why its map label needed a
 grid walk to land inside it rather than in the middle of downtown.
-Biome, planned: farmland with farmsteads; the quiet forest.
-Planned contents: **Kettle Flats Airfield** (mission-shaped, `stolen_shipment`) ·
-**Boundary Meadows Drive-In** (a picture, an evening out) · **Ridgewood Stand Lodge**
-(neutral ground where the crews meet — mission-shaped). Both mission venues land AFTER the
-mission chains (§2) to avoid colliding with Codex on the same trunk.
+Biome: farmland-with-farmsteads scenery is shipped; the quiet forest is shipped as terrain.
+Contents, all shipped: **Kettle Flats Airfield** (`stolen_shipment`'s Black Market route
+continuation) · **Boundary Meadows Drive-In** (a picture, an evening out) · **Ridgewood
+Stand Lodge** (the `turf_war` truce's final negotiation).
 
 ### **Lakeridge County** — the east end
 Two belts: **Lakeridge** (`suburb`), **Cicero Outworks** (`industrial`).
@@ -696,9 +668,30 @@ until three.js and the GLBs finish loading, and on a cold dev server that outrun
 default timeout. Workers are pinned to 2 in `playwright.config.ts` because nearly every
 spec boots a full WebGL city and the default count fails on contention, not defects.
 
+### The scene-audit detector
+`e2e/scene-audit.e2e.ts` walks the live three.js scene through the dev-only `window.__seat`
+hook and measures with three's own `Box3`. It asserts no building stands in a road, nothing
+floats, nothing is buried, and no pedestrian stands inside a building. Every world object is
+named where it is added, so a failure names the offender. Two traps worth remembering:
+`Box3.setFromObject` expands a **Sprite** by its scale on every axis (a name label once gave
+a food cart a 4000-unit footprint), so measure solid `Mesh` geometry only; and the audit uses
+a **whitelist** of building prefixes, so new scenery cannot opt itself in and new buildings
+cannot opt themselves out.
+
 ---
 
 # Shipped (for context)
+
+**Post-expansion cleanup.** The world expansion (below) shipped green on every gate but
+played badly: filler built on stale road positions dropped buildings onto real streets,
+two hard-coded shorelines authored against an old coastline cut stray stripes across the
+land, collision bounds were fixed constants divorced from the drawn silhouette, and
+`createFittedModel` multiplied a building's added detail by its own fit scale, throwing
+markers thousands of units into the sky. All root-caused and fixed, guarded by
+`scene-audit.e2e.ts` (see "Conventions worth keeping in view") and `assets.test.ts`. Also
+closed: NPCs pacing into walls, the train/garage/bridge-waypoint bugs, static water and
+lighting, the white-Kenney-building tint bug, and the Travel Nodes strip removal. Full
+detail lives in git history if ever needed again.
 
 **Diegetic device initiative, Phases 1-4.** Phone ("Windhaven OS" on a Pomello handset)
 hosting the online-only services; multi-bank model (`config/banks.ts`) with per-bank

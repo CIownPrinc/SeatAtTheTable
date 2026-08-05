@@ -1,6 +1,8 @@
 # Map Asset Usage Audit
 
-Audit date: 2026-07-22
+Audit date: 2026-08-05 (re-verified after the V5.0 mission/outskirts pass — no changes;
+the new outskirt scenery, off-road terrain, and rural traffic are all procedural and did not
+pull any reserved GLB/texture into active use)
 
 This file tracks downloaded map assets that live under `public/assets/map`. An asset must be one of four things:
 

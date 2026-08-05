@@ -398,6 +398,12 @@ complete until every unchecked item has browser evidence.
   reduction that cannot actually occur) and explicit future consequences.
 - [ ] Add browser coverage for every major branch, decline route, and repeat/follow-up rule;
   passing one representative route is not enough.
+- [ ] **Known e2e failures as of 2026-08-05 (`7a769a6`), fix before claiming §2/§3 done:**
+  `pigeon_summit`'s "Give the flock a public apology" choice never opens the Mission Result
+  modal (`missions.e2e.ts` times out at 60s); `raccoon_keycard`'s result text says
+  `heat -6` where the mission promises `heat -5` (reward math or copy is wrong, pick one);
+  a phone/modal flow leaves `#device-overlay` without `.hidden` after Escape
+  (`phone.e2e.ts`, "Bank + AutoMart apps render, and Finance/Assets tabs are gone").
 
 ### Existing-event conversion
 
