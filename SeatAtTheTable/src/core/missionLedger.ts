@@ -58,3 +58,37 @@ export function describeMissionLedger(ledger: MissionLedger, now: OutcomeSnapsho
   if(incomePenaltyPct) changes.push(`permanent income ${signed(-incomePenaltyPct)}%`);
   return changes;
 }
+
+export function choiceDelta(ledger: MissionLedger, now: OutcomeSnapshot): OutcomeSnapshot {
+  return ledger.baseline ? addDifference(zeroOutcome(), ledger.baseline, now) : zeroOutcome();
+}
+
+type CountedStat = 'heat' | 'respect' | 'investigation' | 'influence' | 'product' | 'crew' | 'muscle';
+const SIGNED_STAT_CLAUSE = /^(heat|respect|investigation|influence|product|crew|muscle) [+-]\d+$/;
+const COUNTED_LOSS_CLAUSE = /^\d+ (product|muscle|crew) lost$/;
+const CASH_CLAUSE = /^\$[\d,]+ (spent|lost|gained)$/;
+
+function reconcileClause(clause: string, delta: OutcomeSnapshot): string | null {
+  if(SIGNED_STAT_CLAUSE.test(clause)){
+    const stat = clause.split(' ')[0] as CountedStat;
+    const actual = Math.round(delta[stat]);
+    return actual ? `${stat} ${signed(actual)}` : null;
+  }
+  if(COUNTED_LOSS_CLAUSE.test(clause)){
+    const stat = clause.split(' ')[1] as CountedStat;
+    const lost = -Math.round(delta[stat]);
+    return lost > 0 ? `${lost} ${stat} lost` : null;
+  }
+  if(CASH_CLAUSE.test(clause)){
+    const verb = clause.split(' ')[1];
+    const cash = Math.round(delta.cash);
+    const moved = verb === 'gained' ? cash : -cash;
+    return moved > 0 ? `$${moved.toLocaleString('en-US')} ${verb}` : null;
+  }
+  return clause;
+}
+
+export function reconcileResultText(text: string, delta: OutcomeSnapshot): string {
+  const clauses = text.split('; ').map(function(clause){ return reconcileClause(clause, delta); }).filter(function(clause): clause is string { return clause !== null; });
+  return clauses.length ? clauses.join('; ') : 'no change';
+}

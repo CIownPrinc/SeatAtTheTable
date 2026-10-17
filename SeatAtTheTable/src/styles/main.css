@@ -516,6 +516,7 @@ main{max-width:1240px;margin:0 auto;padding:26px 24px 60px;}
 .modal-btn:hover{background:var(--blue);border-color:var(--blue); transform: translateY(-2px); box-shadow: 0 6px 12px rgba(42,135,255,0.3); color:#fff;}
 .modal-btn:hover .key{color:rgba(255,255,255,0.7);}
 .modal-btn:active{transform: translateY(1px); box-shadow: none;}
+.modal-btn:disabled,.modal-btn:disabled:hover{opacity:0.45;cursor:not-allowed;transform:none;background:var(--bg-row);border-color:var(--line);color:var(--text);box-shadow:none;}
 .modal-btn .key{color:var(--text-faint);font-weight:700;font-family:var(--font-mono);}
 
 @media (max-width:640px){ .hud{padding:14px 16px;} .tab-bar{padding:0 12px;} main{padding:18px 14px 50px;} .start-screen-inner{gap:10px;padding:14px 14px 12px;} .start-brand,.start-actions{align-items:flex-start;flex-direction:column;} .start-brand{padding-bottom:10px;} .start-logo{width:min(240px,70vw);max-height:15vh;} .start-kicker{text-align:left;font-size:10px;} .start-menu{grid-template-columns:1fr 1fr;gap:8px;} .start-btn{font-size:14px;padding:10px 12px;} .start-copy p{font-size:14px;line-height:1.32;margin-bottom:7px;} .start-credits{justify-content:flex-start;font-size:9px;gap:6px 10px;} .start-panel{font-size:12px;padding:10px 12px;gap:7px;} }

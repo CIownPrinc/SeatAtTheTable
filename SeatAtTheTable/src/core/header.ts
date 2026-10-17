@@ -73,7 +73,7 @@ import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/vie
 import { renderZoneType } from '../map/zoning';
 import { drawInteriorRoom } from '../map/interiorScene';
 import { activeMissionCount, advanceMissionStage, canOfferRepeatableEvent, canOfferUniqueEvent, completeMission, declineMission, delayedMissionReady, missionCompleted, missionSaveDefaults, recordEventOffer, scheduleDelayedMission, startMission } from './missions';
-import { describeMissionLedger, foldMissionLedger, openMissionLedger, rebaseMissionLedger, type MissionLedger, type OutcomeSnapshot } from './missionLedger';
+import { choiceDelta, describeMissionLedger, foldMissionLedger, openMissionLedger, rebaseMissionLedger, reconcileResultText, type MissionLedger, type OutcomeSnapshot } from './missionLedger';
 import { getOnboardingSteps, type OnboardingMissionSnapshot, type OnboardingPanelTarget } from './onboarding';
 import { MISSION_CONFIG as PHASE2_MISSION_CONFIG, OUTSKIRT_VENUE_CONFIG, missionEventPool, type MissionEventDefinition } from '../config/missions';
 import type * as ThreeNamespace from 'three';
@@ -838,7 +838,13 @@ import type * as ThreeNamespace from 'three';
       const btn = document.createElement('button');
       btn.className = 'modal-btn' + (btnDef.secondary ? ' secondary' : '');
       btn.innerHTML = `` + btnDef.label;
+      const unaffordable = btnDef.cost !== undefined && state.cash < btnDef.cost;
+      if(unaffordable){
+        btn.disabled = true;
+        btn.title = `You need ${fmt(btnDef.cost ?? 0)} for this.`;
+      }
       btn.onclick = function(){
+        if(btnDef.cost !== undefined && state.cash < btnDef.cost) return;
         byId('modal-overlay').classList.add('hidden');
         const choice = btnDef.onClick;
         if(choice) runInMissionScene(sceneMissionId, choice);
@@ -929,6 +935,10 @@ import type * as ThreeNamespace from 'three';
       ledgerMissionInScene = outerScene;
       foldLedgerFor(id);
     }
+  }
+  function truthfulResultText(id: string, text: string): string {
+    const ledger = missionLedgers.get(id);
+    return ledger ? reconcileResultText(text, choiceDelta(ledger, currentOutcomeSnapshot())) : text;
   }
   function exactMissionChanges(id: string): string[] {
     const ledger = missionLedgers.get(id);
@@ -1066,7 +1076,8 @@ import type * as ThreeNamespace from 'three';
     const place = missionPlaceByService(serviceId);
     return place ? activeMissionForPlace(place.id) : null;
   }
-  function finishMission(id: string, result: string): void {
+  function finishMission(id: string, claimedResult: string): void {
+    const result = truthfulResultText(id, claimedResult);
     missionResultPending = true;
     completeMission(missionSaveState(), id, result, state.playSeconds);
     setGlobalWaypoint(null);
@@ -1200,13 +1211,13 @@ import type * as ThreeNamespace from 'three';
     if(id === 'tribune'){ openTribuneInterview(); return; }
     if(id === 'amit_mistake'){
       showModal({ eyebrow:'Hub Bus Station', title:"Amit's Mistake", body:"<p class='flavor'>Amit took a shortcut with the books. The lender wants money, or someone from your operation to carry the blame.</p>", buttons:[
-        { label:'Contain it ($2,500, +Heat)', onClick:function(){ state.cash = Math.max(0, state.cash - 2500); state.heat = Math.min(100, state.heat + 12); state.worldMemory.amitMistakeContained = true; state.worldMemory.familyLoyalty = Number(state.worldMemory.familyLoyalty || 0) + 2; log('<i class="ph-duotone ph-envelope-simple"></i> You bury Amit\'s debt before it names anyone else. Family remembers who covered it.'); finishMission('amit_mistake', '$2,500 spent; heat +12; family loyalty +2'); } },
+        { label:'Contain it ($2,500, +Heat)', cost:2500, onClick:function(){ state.cash = Math.max(0, state.cash - 2500); state.heat = Math.min(100, state.heat + 12); state.worldMemory.amitMistakeContained = true; state.worldMemory.familyLoyalty = Number(state.worldMemory.familyLoyalty || 0) + 2; log('<i class="ph-duotone ph-envelope-simple"></i> You bury Amit\'s debt before it names anyone else. Family remembers who covered it.'); finishMission('amit_mistake', '$2,500 spent; heat +12; family loyalty +2'); } },
         { label:'Let a crew member take the fall', onClick:function(){ const lostCrew = removeCrewMember(); state.respect = Math.max(0, state.respect - 10); state.worldMemory.amitMistakeCrewLost = lostCrew; state.worldMemory.familyLoyalty = Number(state.worldMemory.familyLoyalty || 0) - 3; log(lostCrew ? '<i class="ph-duotone ph-users-three"></i> One crew member disappears to settle Amit\'s mistake. Family will not forget the price.' : '<i class="ph-duotone ph-users-three"></i> Amit takes the fall; there was no crew left to lose.'); finishMission('amit_mistake', lostCrew ? 'one crew member permanently lost; respect -10; family loyalty -3' : 'Amit took the fall; respect -10; family loyalty -3'); } },
       ]}); return;
     }
     if(id === 'hostile_press'){
       showModal({ eyebrow:'Windhaven Herald', title:'Damage Control', body:"<p class='flavor'>Lana cannot retract the story, but she can decide how long it stays on the front page. Your legitimate fronts have to weather the backlash.</p>", buttons:[
-        { label:'Buy a response ($1,800)', onClick:function(){ state.cash = Math.max(0, state.cash - 1800); applyTempMult('legit', 0.75, 120); state.worldMemory.pressRecovery = 'paid'; log('<i class="ph-duotone ph-newspaper"></i> Your response shortens the bad press: legit income -25% for two minutes.'); finishMission('hostile_press', '$1,800 spent; legit income -25% for 2 minutes'); } },
+        { label:'Buy a response ($1,800)', cost:1800, onClick:function(){ state.cash = Math.max(0, state.cash - 1800); applyTempMult('legit', 0.75, 120); state.worldMemory.pressRecovery = 'paid'; log('<i class="ph-duotone ph-newspaper"></i> Your response shortens the bad press: legit income -25% for two minutes.'); finishMission('hostile_press', '$1,800 spent; legit income -25% for 2 minutes'); } },
         { label:'Ride out the backlash', onClick:function(){ applyTempMult('legit', 0.55, 240); state.worldMemory.pressRecovery = 'endured'; log('<i class="ph-duotone ph-warning"></i> The story bites hard: legit income -45% for four minutes.'); finishMission('hostile_press', 'legit income -45% for 4 minutes'); } },
       ]}); return;
     }
@@ -1221,7 +1232,7 @@ import type * as ThreeNamespace from 'three';
       }
       if(tone === 'warm'){
         showModal({ eyebrow:'Windhaven Herald Studio', title:'The Neighborhood Organizer', body:`<p class='flavor'>A block organizer brings a stack of clippings from “${escapeHtml(article)}.” They want a public fundraiser or a quiet introduction to shop owners who trust the story.</p>`, buttons:[
-          { label:'Fund the block night ($350, +18 respect)', onClick:function(){ state.cash = Math.max(0, state.cash - 350); state.respect += 18; state.worldMemory.pressFollowup = 'block-night'; finishMission('press_followup', '$350 spent; respect +18; neighborhood supporter network recorded'); } },
+          { label:'Fund the block night ($350, +18 respect)', cost:350, onClick:function(){ state.cash = Math.max(0, state.cash - 350); state.respect += 18; state.worldMemory.pressFollowup = 'block-night'; finishMission('press_followup', '$350 spent; respect +18; neighborhood supporter network recorded'); } },
           { label:'Take the quiet introductions (+10 respect, heat -4)', onClick:function(){ state.respect += 10; state.heat = Math.max(0, state.heat - 4); state.worldMemory.pressFollowup = 'shop-intros'; finishMission('press_followup', 'respect +10; heat -4; shop-owner introductions recorded'); } },
         ]}); return;
       }
@@ -1238,7 +1249,7 @@ import type * as ThreeNamespace from 'three';
     }
     if(id === 'black_market_investigation'){
       showModal({ eyebrow:'Docks', title:'The Case File', body:"<p class='flavor'>Bell has copied manifests and one unhappy detective. You can buy silence, or burn the records before they become a case.</p>", buttons:[
-        { label:'Pay to close it ($2,200)', onClick:function(){ state.cash = Math.max(0, state.cash - 2200); state.investigation = Math.max(0, state.investigation - 16); state.worldMemory.blackMarketCaseClosed = true; log('<i class="ph-duotone ph-envelope-simple"></i> The file closes: $2,200 spent and case -16.'); finishMission('black_market_investigation', '$2,200 spent; investigation -16'); } },
+        { label:'Pay to close it ($2,200)', cost:2200, onClick:function(){ state.cash = Math.max(0, state.cash - 2200); state.investigation = Math.max(0, state.investigation - 16); state.worldMemory.blackMarketCaseClosed = true; log('<i class="ph-duotone ph-envelope-simple"></i> The file closes: $2,200 spent and case -16.'); finishMission('black_market_investigation', '$2,200 spent; investigation -16'); } },
         { label:'Burn the records (-50 product)', onClick:function(){ state.product = Math.max(0, state.product - 50); state.investigation = Math.max(0, state.investigation - 8); state.worldMemory.blackMarketRecordsBurned = true; log('<i class="ph-duotone ph-fire"></i> The manifests burn: 50 product lost and case -8.'); finishMission('black_market_investigation', '50 product lost; investigation -8'); } },
       ]}); return;
     }
@@ -1270,7 +1281,7 @@ import type * as ThreeNamespace from 'three';
         ]}); return;
       }
       showModal({ eyebrow:'Wabash Newsstand', title:'The Delegation', body:"<p class='flavor'>The flock watches from the awning. One pigeon has a pastry wrapper tucked under its wing. The newsstand owner insists it is the negotiator.</p>", buttons:[
-        { label:'Offer seed decoys ($120)', onClick:function(){ state.cash = Math.max(0, state.cash - 120); state.respect += 8; state.worldMemory.pigeonSummit = 'seed'; log('<i class="ph-duotone ph-bird"></i> The delegation accepts seed, leaves the pastries, and awards you a respectful nod.'); finishMission('pigeon_summit', '$120 spent; respect +8; pigeon truce recorded'); } },
+        { label:'Offer seed decoys ($120)', cost:120, onClick:function(){ state.cash = Math.max(0, state.cash - 120); state.respect += 8; state.worldMemory.pigeonSummit = 'seed'; log('<i class="ph-duotone ph-bird"></i> The delegation accepts seed, leaves the pastries, and awards you a respectful nod.'); finishMission('pigeon_summit', '$120 spent; respect +8; pigeon truce recorded'); } },
         { label:'Give the flock a public apology (+12 respect, up to -4 heat)', onClick:function(){ const heatRemoved = Math.min(4, state.heat); state.respect += 12; state.heat -= heatRemoved; state.worldMemory.pigeonSummit = 'apology'; log('<i class="ph-duotone ph-megaphone"></i> The pigeons accept your apology. The crowd loves it more than they should.'); finishMission('pigeon_summit', Math.round(heatRemoved) ? `respect +12; heat -${Math.round(heatRemoved)}; pigeon truce recorded` : 'respect +12; pigeon truce recorded'); } },
       ]}); return;
     }
@@ -1283,7 +1294,7 @@ import type * as ThreeNamespace from 'three';
         ]}); return;
       }
       showModal({ eyebrow:'Rockwell Pet Supply', title:'A Bird with a Platform', body:"<p class='flavor'>The parrot is on the highest cage, notebook under one claw. It is repeating “no comment” with enough confidence that three reporters are taking notes.</p>", buttons:[
-        { label:'Buy sunflower seeds ($75)', onClick:function(){ state.cash = Math.max(0, state.cash - 75); state.respect += 10; state.worldMemory.parrotResolution = 'seeds'; log('<i class="ph-duotone ph-bird"></i> The parrot accepts the seeds, returns the notebook, and receives a tiny civic commendation.'); finishMission('mayors_parrot', '$75 spent; respect +10; parrot returned to City Hall'); } },
+        { label:'Buy sunflower seeds ($75)', cost:75, onClick:function(){ state.cash = Math.max(0, state.cash - 75); state.respect += 10; state.worldMemory.parrotResolution = 'seeds'; log('<i class="ph-duotone ph-bird"></i> The parrot accepts the seeds, returns the notebook, and receives a tiny civic commendation.'); finishMission('mayors_parrot', '$75 spent; respect +10; parrot returned to City Hall'); } },
         { label:'Let it give one press conference', onClick:function(){ state.respect += 16; state.heat = Math.min(100, state.heat + 6); state.worldMemory.parrotResolution = 'press'; log('<i class="ph-duotone ph-microphone-stage"></i> The parrot denounces parking meters, then voluntarily returns to its perch.'); finishMission('mayors_parrot', 'respect +16; heat +6; parrot press conference recorded'); } },
       ]}); return;
     }
@@ -1296,7 +1307,7 @@ import type * as ThreeNamespace from 'three';
         ]}); return;
       }
       showModal({ eyebrow:'Boundary Meadows Drive-In', title:'A Bird in the Best Space', body:"<p class='flavor'>The goose blocks the center parking spot with the permit under one webbed foot. A line of cars has formed behind it. Nobody wants to be the first person defeated by municipal poultry.</p>", buttons:[
-        { label:'Buy popcorn for the goose ($60)', onClick:function(){ state.cash = Math.max(0, state.cash - 60); state.respect += 8; state.heat = Math.max(0, state.heat - 2); state.worldMemory.goosePermit = 'popcorn'; log('<i class=\"ph-duotone ph-bird\"></i> The goose accepts popcorn, folds the permit, and waddles toward the screen.'); finishMission('goose_permit', '$60 spent; respect +8; heat -2; goose permit retired'); } },
+        { label:'Buy popcorn for the goose ($60)', cost:60, onClick:function(){ state.cash = Math.max(0, state.cash - 60); state.respect += 8; state.heat = Math.max(0, state.heat - 2); state.worldMemory.goosePermit = 'popcorn'; log('<i class=\"ph-duotone ph-bird\"></i> The goose accepts popcorn, folds the permit, and waddles toward the screen.'); finishMission('goose_permit', '$60 spent; respect +8; heat -2; goose permit retired'); } },
         { label:'Offer it a better parking space', onClick:function(){ state.respect += 12; state.heat = Math.min(100, state.heat + 3); state.worldMemory.goosePermit = 'relocated'; log('<i class=\"ph-duotone ph-bird\"></i> The goose accepts a VIP space near the snack bar. The crowd applauds a bird.'); finishMission('goose_permit', 'respect +12; heat +3; goose given VIP parking'); } },
       ]}); return;
     }
@@ -1304,7 +1315,7 @@ import type * as ThreeNamespace from 'three';
       const mission = state.activeMissions.raccoon_keycard;
       if(mission?.stageId === 'travel'){
         showModal({ eyebrow:'City Hall Annex', title:'The Raccoon Has a Keycard', body:"<p class='flavor'>The clerk points at a tiny paw-print approval on a snack-vendor contract. The raccoon has learned the elevator, the keycard beep, and just enough municipal procedure to be dangerous.</p><p>It has retreated into the records floor. Mrs. Lin at Golden Lotus can make a humane lure if you tell her what kind of public story this is.</p>", buttons:[
-          { label:'Keep it quiet and pay for the lure ($90)', onClick:function(){ state.cash = Math.max(0, state.cash - 90); state.worldMemory.raccoonApproach = 'quiet'; advanceMissionToObjective('raccoon_keycard', 'herbalist', 'herbalist', 'Collect the quiet lure from Golden Lotus'); } },
+          { label:'Keep it quiet and pay for the lure ($90)', cost:90, onClick:function(){ state.cash = Math.max(0, state.cash - 90); state.worldMemory.raccoonApproach = 'quiet'; advanceMissionToObjective('raccoon_keycard', 'herbalist', 'herbalist', 'Collect the quiet lure from Golden Lotus'); } },
           { label:'Call it a civic wildlife initiative', onClick:function(){ state.respect += 5; state.worldMemory.raccoonApproach = 'public'; advanceMissionToObjective('raccoon_keycard', 'herbalist', 'herbalist', 'Collect the public lure from Golden Lotus'); } },
         ]}); return;
       }
@@ -1329,7 +1340,7 @@ import type * as ThreeNamespace from 'three';
       const venture = businesses.find(function(business){ return business.id === ventureId; });
       const ventureName = venture?.name ?? 'the inspected venture';
       showModal({ eyebrow:'Health Department', title:'Inspector Kowalski', body:`<p class='flavor'>Kowalski taps the clipboard. ${count > 1 ? '"We both know the second visit costs more."' : '"Clean kitchens are expensive. Dirty ones are worse."'}</p>`, buttons:[
-        { label:`Pay the bribe (${fmt(bribe)})`, onClick:function(){ state.cash = Math.max(0, state.cash - bribe); state.worldMemory.kowalskiPaid = count; log('<i class="ph-duotone ph-envelope-simple"></i> The envelope disappears and the inspection passes.'); finishMission('inspector', 'bribed'); } },
+        { label:`Pay the bribe (${fmt(bribe)})`, cost:bribe, onClick:function(){ state.cash = Math.max(0, state.cash - bribe); state.worldMemory.kowalskiPaid = count; log('<i class="ph-duotone ph-envelope-simple"></i> The envelope disappears and the inspection passes.'); finishMission('inspector', 'bribed'); } },
         { label:`Comply: close ${ventureName} for ${PHASE2_MISSION_CONFIG.inspectorComplianceSeconds}s`, onClick:function(){ if(ventureId) applyBusinessTempMult(ventureId, PHASE2_MISSION_CONFIG.inspectorComplianceMultiplier, PHASE2_MISSION_CONFIG.inspectorComplianceSeconds); state.worldMemory.kowalskiComplied = count; state.worldMemory.inspectionClosureVenture = ventureId; log(`<i class="ph-duotone ph-scales"></i> ${ventureName} closes its doors while the paperwork clears.`); finishMission('inspector', `${ventureName} income -30% for ${PHASE2_MISSION_CONFIG.inspectorComplianceSeconds} seconds; other ventures unaffected`); } },
         { label:'Blackmail him', onClick:function(){ if(state.respect >= 120 || state.influence >= 80){ state.worldMemory.kowalskiBlackmailed = true; state.worldMemory.kowalskiProtection = true; state.heat = Math.max(0, state.heat - 12); log('<i class="ph-duotone ph-folder-lock"></i> Kowalski sees the file, deletes the address, and flags your ventures out of future inspection rotations.'); finishMission('inspector', 'heat -12; permanent inspection protection recorded; future Kowalski visits blocked'); } else { state.heat = Math.min(100, state.heat + 10); log('<i class="ph-duotone ph-warning"></i> You reach for leverage you do not have. Kowalski leaves angry.'); finishMission('inspector', 'blackmail failed; heat +10'); } } },
         { label:'Intimidate him', onClick:function(){ state.respect += 8; state.heat = Math.min(100, state.heat + 12); state.worldMemory.kowalskiIntimidated = true; scheduleFollowUp('cops'); log('<i class="ph-duotone ph-hand-fist"></i> Kowalski backs off for now. He will remember the tone, and Detective Miller will hear about it.'); finishMission('inspector', 'respect +8; heat +12; Detective Miller follow-up scheduled'); } },
@@ -1337,14 +1348,14 @@ import type * as ThreeNamespace from 'three';
     }
     if(id === 'cousin'){
       showModal({ eyebrow:'Hub Bus Station', title:'Cousin Amit', body:"<p class='flavor'>Amit has one suitcase, two apologies, and a debt that apparently found the same bus route.</p>", buttons:[
-        { label:'Pay the debt ($600)', onClick:function(){ state.cash = Math.max(0, state.cash - 600); state.respect += 4; state.worldMemory.amitHelped = true; state.worldMemory.familyLoyalty = 3; log('<i class="ph-duotone ph-users"></i> You settle Amit\'s debt. Family first.'); finishMission('cousin', '$600 spent; respect +4; family loyalty +3'); } },
+        { label:'Pay the debt ($600)', cost:600, onClick:function(){ state.cash = Math.max(0, state.cash - 600); state.respect += 4; state.worldMemory.amitHelped = true; state.worldMemory.familyLoyalty = 3; log('<i class="ph-duotone ph-users"></i> You settle Amit\'s debt. Family first.'); finishMission('cousin', '$600 spent; respect +4; family loyalty +3'); } },
         { label:'Hire him into legit work', onClick:function(){ hireFreeCrew(); state.worldMemory.amitHired = true; state.worldMemory.familyLoyalty = 1; scheduleFollowUp('amit_mistake'); log('<i class="ph-duotone ph-users"></i> Amit gets work and a warning not to embarrass the family.'); finishMission('cousin', 'crew +1; family loyalty +1; Amit mistake follow-up in 2 minutes'); } },
         { label:'Turn him away', onClick:function(){ state.respect = Math.max(0, state.respect - 5); state.worldMemory.amitTurnedAway = true; state.worldMemory.familyLoyalty = -2; log('<i class="ph-duotone ph-users"></i> You send Amit away. The call home will be short.'); finishMission('cousin', 'respect -5; family loyalty -2; Amit turned away'); } },
       ]}); return;
     }
     if(id === 'cops'){
       showModal({ eyebrow:'Devlin Back Alley', title:'Detective Miller', body:"<p class='flavor'>Miller keeps his hands visible. \"You can pay, you can point me at someone worse, or you can make this official.\"</p>", buttons:[
-        { label:'Pay Miller ($900, -Heat)', onClick:function(){ state.cash = Math.max(0, state.cash - 900); state.heat = Math.max(0, state.heat - 30); state.worldMemory.millerPaid = true; log('<i class="ph-duotone ph-warning"></i> Miller pockets the money. The questions stop.'); finishMission('cops', 'paid'); } },
+        { label:'Pay Miller ($900, -Heat)', cost:900, onClick:function(){ state.cash = Math.max(0, state.cash - 900); state.heat = Math.max(0, state.heat - 30); state.worldMemory.millerPaid = true; log('<i class="ph-duotone ph-warning"></i> Miller pockets the money. The questions stop.'); finishMission('cops', 'paid'); } },
         { label:'Snitch on a rival (-Case, -Respect, stronger rivals)', onClick:function(){ state.investigation = Math.max(0, state.investigation - 18); state.respect = Math.max(0, state.respect - 12); state.worldMemory.snitchOnRival = true; log('<i class="ph-duotone ph-shield-star"></i> Miller gets a name. The street gets a rumor, and West Side crews start moving more carefully against you.'); finishMission('cops', 'investigation -18; respect -12; future rival strength +6'); } },
         { label:'Tell him to walk (+25 heat, raid risk)', onClick:function(){ const raided = Math.random() < PHASE2_MISSION_CONFIG.copsRefusalRaidChance; state.heat = Math.min(100, state.heat + PHASE2_MISSION_CONFIG.copsRefusalHeat); if(raided) triggerRaid(); log(raided ? '<i class="ph-duotone ph-siren"></i> Miller leaves, then a warrant team hits one of your operations.' : '<i class="ph-duotone ph-warning"></i> Miller leaves with nothing but patience. The street gets much hotter.'); finishMission('cops', raided ? `heat +${PHASE2_MISSION_CONFIG.copsRefusalHeat}; immediate raid triggered` : `heat +${PHASE2_MISSION_CONFIG.copsRefusalHeat}; raid narrowly avoided`); } },
         { label:'Risk immediate enforcement', onClick:function(){ state.investigation = Math.min(100, state.investigation + 15); if(Math.random() < 0.35) triggerRaid(); else state.heat = Math.min(100, state.heat + 25); finishMission('cops', 'risked enforcement'); } },
@@ -1394,7 +1405,7 @@ import type * as ThreeNamespace from 'three';
         ]}); return;
       }
       showModal({ eyebrow:'West Side Chop Shop', title:'Missing Cargo', body:"<p class='flavor'>The shipment sits behind a half-stripped delivery van. Deke smiles like he already priced every option.</p>", buttons:[
-        { label:'Buy it back ($1400)', onClick:function(){ state.cash = Math.max(0, state.cash - 1400); state.product = Math.min(productCap(), state.product + 80); log('<i class="ph-duotone ph-package"></i> You buy back the shipment and restock the street.'); finishMission('stolen_shipment', '$1,400 spent; product +80'); } },
+        { label:'Buy it back ($1400)', cost:1400, onClick:function(){ state.cash = Math.max(0, state.cash - 1400); state.product = Math.min(productCap(), state.product + 80); log('<i class="ph-duotone ph-package"></i> You buy back the shipment and restock the street.'); finishMission('stolen_shipment', '$1,400 spent; product +80'); } },
         { label:'Take it by force', onClick:function(){ state.product = Math.min(productCap(), state.product + 90); state.respect += 18; state.heat = Math.min(100, state.heat + 22); log('<i class="ph-duotone ph-hand-fist"></i> You take the shipment back loud. The West Side hears about it.'); finishMission('stolen_shipment', 'product +90; respect +18; heat +22'); } },
         { label:'Partner with Deke', onClick:function(){ state.worldMemory.dockRouteChosen = true; advanceMissionToObjective('stolen_shipment', 'airfield', 'airfieldKettle', 'Meet the cargo pilot at Kettle Flats Airfield'); } },
       ]}); return;
@@ -1408,7 +1419,7 @@ import type * as ThreeNamespace from 'three';
         ]}); return;
       }
       showModal({ eyebrow:'Railyard', title:'Union Leader Calder', body:"<p class='flavor'>Calder has enough workers behind him to be brave and enough overdue bills to be practical.</p>", buttons:[
-        { label:'Pay the workers ($1800)', onClick:function(){ state.cash = Math.max(0, state.cash - 1800); state.influence += 45; state.worldMemory.politicalFavorsUnlocked = true; log('<i class="ph-duotone ph-courthouse"></i> The permits move. Political Favors are now available at City Hall.'); finishMission('alderman_fixer', '$1,800 spent; influence +45; Political Favors unlocked'); } },
+        { label:'Pay the workers ($1800)', cost:1800, onClick:function(){ state.cash = Math.max(0, state.cash - 1800); state.influence += 45; state.worldMemory.politicalFavorsUnlocked = true; log('<i class="ph-duotone ph-courthouse"></i> The permits move. Political Favors are now available at City Hall.'); finishMission('alderman_fixer', '$1,800 spent; influence +45; Political Favors unlocked'); } },
         { label:'Pressure Calder', onClick:function(){ state.respect += 14; state.heat = Math.min(100, state.heat + 12); state.influence += 25; state.worldMemory.politicalFavorsUnlocked = true; log('<i class="ph-duotone ph-courthouse"></i> Calder folds. City Hall owes you, and everyone saw how.'); finishMission('alderman_fixer', 'respect +14; heat +12; influence +25; Political Favors unlocked'); } },
       ]}); return;
     }
@@ -1417,7 +1428,7 @@ import type * as ThreeNamespace from 'three';
       const venture = businesses.find(function(business){ return business.id === ventureId; });
       const ventureName = venture?.name ?? 'your flagship venture';
       showModal({ eyebrow:'City Hall Annex', title:'The Audit Notice', body:`<p class='flavor'>The clerk slides over a file for ${escapeHtml(ventureName)}. The bagman is not mentioned once. Every page is perfectly legal and timed to make the point.</p>`, buttons:[
-        { label:`Pay the filing settlement (${fmt(PHASE2_MISSION_CONFIG.taxAuditSettlementCost)})`, onClick:function(){ state.cash = Math.max(0, state.cash - PHASE2_MISSION_CONFIG.taxAuditSettlementCost); state.worldMemory.taxAuditPending = false; state.worldMemory.taxAuditResolved = 'settled'; finishMission('tax_audit', `$${PHASE2_MISSION_CONFIG.taxAuditSettlementCost} spent; audit closed; ${ventureName} stays open`); } },
+        { label:`Pay the filing settlement (${fmt(PHASE2_MISSION_CONFIG.taxAuditSettlementCost)})`, cost:PHASE2_MISSION_CONFIG.taxAuditSettlementCost, onClick:function(){ state.cash = Math.max(0, state.cash - PHASE2_MISSION_CONFIG.taxAuditSettlementCost); state.worldMemory.taxAuditPending = false; state.worldMemory.taxAuditResolved = 'settled'; finishMission('tax_audit', `$${PHASE2_MISSION_CONFIG.taxAuditSettlementCost} spent; audit closed; ${ventureName} stays open`); } },
         { label:`Contest it (${ventureName} income -50% for ${PHASE2_MISSION_CONFIG.taxAuditSeconds}s)`, onClick:function(){ if(ventureId) applyBusinessTempMult(ventureId, PHASE2_MISSION_CONFIG.taxAuditMultiplier, PHASE2_MISSION_CONFIG.taxAuditSeconds); state.worldMemory.taxAuditPending = false; state.worldMemory.taxAuditResolved = 'contested'; finishMission('tax_audit', `${ventureName} income -50% for ${PHASE2_MISSION_CONFIG.taxAuditSeconds} seconds; audit contested`); } },
       ]}); return;
     }
@@ -1426,7 +1437,7 @@ import type * as ThreeNamespace from 'three';
       if(mission?.stageId === 'travel'){
         showModal({ eyebrow:'Devlin Corner', title:'Hold the Block', body:"<p class='flavor'>A lookout calls positions. You can make a clean show of force or let the first punch land.</p>", buttons:[
           { label:'Defend with crew', onClick:function(){ const devlin = districts.find(function(d){ return d.id === 'devlin'; })!; devlin.control = Math.min(100, devlin.control + 8 + state.muscleCount); state.respect += 8; state.heat = Math.min(100, state.heat + 8); advanceMissionToObjective('turf_war', 'capo', 'marigoldLounge', 'Track the rival capo to Marigold Lounge'); } },
-          { label:'Pay locals to watch ($700)', onClick:function(){ state.cash = Math.max(0, state.cash - 700); state.heat = Math.max(0, state.heat - 4); advanceMissionToObjective('turf_war', 'capo', 'marigoldLounge', 'Track the rival capo to Marigold Lounge'); } },
+          { label:'Pay locals to watch ($700)', cost:700, onClick:function(){ state.cash = Math.max(0, state.cash - 700); state.heat = Math.max(0, state.heat - 4); advanceMissionToObjective('turf_war', 'capo', 'marigoldLounge', 'Track the rival capo to Marigold Lounge'); } },
         ]}); return;
       }
       if(mission?.stageId === 'lodge'){
@@ -1461,7 +1472,7 @@ import type * as ThreeNamespace from 'three';
     }
     if(id === 'fire'){
       showModal({ eyebrow:"Kailash's Cart", title:'Smoke Under the Awning', body:"<p class='flavor'>The repair is easy. Deciding whether to chase the person who lit it is the hard part.</p>", buttons:[
-        { label:'Rebuild quietly ($250, cart income -30% for 30s)', onClick:function(){ const cart = businesses.find(function(business){ return business.id === 'cart'; }); state.cash = Math.max(0, state.cash - 250); if(cart){ cart.tempMult = 0.7; cart.tempMultExpire = Date.now() + 30_000; } state.worldMemory.cartRebuiltQuietly = true; log('<i class="ph-duotone ph-warning-circle"></i> A quick repair keeps Kailash’s Cart running at reduced income for 30 seconds.'); finishMission('fire', '$250 spent; Kailash’s Cart income -30% for 30 seconds'); } },
+        { label:'Rebuild quietly ($250, cart income -30% for 30s)', cost:250, onClick:function(){ const cart = businesses.find(function(business){ return business.id === 'cart'; }); state.cash = Math.max(0, state.cash - 250); if(cart){ cart.tempMult = 0.7; cart.tempMultExpire = Date.now() + 30_000; } state.worldMemory.cartRebuiltQuietly = true; log('<i class="ph-duotone ph-warning-circle"></i> A quick repair keeps Kailash’s Cart running at reduced income for 30 seconds.'); finishMission('fire', '$250 spent; Kailash’s Cart income -30% for 30 seconds'); } },
         { label:'Hunt the arsonist', onClick:function(){ state.respect += 12; state.heat = Math.min(100, state.heat + 12); state.worldMemory.arsonistHunted = true; scheduleFollowUp('arsonist_revenge'); log('<i class="ph-duotone ph-crosshair"></i> You put word out. The revenge path is open.'); finishMission('fire', 'revenge opened'); } },
       ]});
     }
@@ -4645,7 +4656,7 @@ import type * as ThreeNamespace from 'three';
       if(missionId) spots.push({ id:'mission', x:ROOM_W*0.18, y:80, label:'Mission Contact', icon:'📋', action:function(){ resolveMissionAtObjective(missionId); } });
       spots.push({ id:'screen', x:ROOM_W/2, y:80, label:'Projection Screen', icon:'🎬', action:function(){
         showModal({ eyebrow:'Boundary Meadows Drive-In', title:'One Picture, No Errands', body:"<p class='flavor'>You park beneath the big screen and let a ridiculous crime melodrama run until the city feels far away. The snack bar only takes cash.</p>", buttons:[
-          { label:'Stay for the double feature ($120)', onClick:function(){ state.cash = Math.max(0, state.cash - 120); state.respect += 6; state.playSeconds += 90; state.worldMemory.driveInNight = 'double-feature'; log('<i class=\"ph-duotone ph-film-strip\"></i> Two pictures, cold fries, and a quieter night: $120 spent; respect +6; 90 seconds passed.'); renderAll(); scheduleSave(); } },
+          { label:'Stay for the double feature ($120)', cost:120, onClick:function(){ state.cash = Math.max(0, state.cash - 120); state.respect += 6; state.playSeconds += 90; state.worldMemory.driveInNight = 'double-feature'; log('<i class=\"ph-duotone ph-film-strip\"></i> Two pictures, cold fries, and a quieter night: $120 spent; respect +6; 90 seconds passed.'); renderAll(); scheduleSave(); } },
           { label:'Watch from the tailgate', onClick:function(){ state.respect += 3; state.playSeconds += 45; state.worldMemory.driveInNight = 'tailgate'; log('<i class=\"ph-duotone ph-film-strip\"></i> You stay for the second act and leave before the credits: respect +3; 45 seconds passed.'); renderAll(); scheduleSave(); } },
         ]});
       } });

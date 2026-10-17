@@ -488,6 +488,33 @@ test.describe('mission flow', function () {
     await expect(page.locator('#modal-overlay')).toContainText('Exact changes: +$140; respect +5; heat -5');
   });
 
+  test('paid choices you cannot afford are disabled, and capped results report what really changed', async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.goto('/');
+    await page.getByRole('button', { name:'Start', exact:true }).click();
+    await page.locator('.tab-btn[data-tab="map"]').click();
+    await page.waitForFunction(function(){ return !!(window as unknown as { __seat?: MissionTestHook }).__seat; });
+    await page.evaluate(function(){
+      const seat = (window as unknown as { __seat: MissionTestHook }).__seat;
+      seat.startMission('mayors_parrot');
+      seat.resolveMission('mayors_parrot');
+    });
+    await page.getByRole('button', { name:'Give the city an official statement', exact:true }).click();
+    await page.evaluate(function(){
+      const seat = (window as unknown as { __seat: MissionTestHook }).__seat;
+      seat.state.cash = 50;
+      seat.resolveMission('mayors_parrot');
+    });
+    await expect(page.getByRole('button', { name:'Buy sunflower seeds ($75)', exact:true })).toBeDisabled();
+    // LEGAL: Heat cools fastest near the top, so set it and choose in the same instant.
+    await page.getByRole('button', { name:'Let it give one press conference', exact:true }).evaluate(function(button){
+      (window as unknown as { __seat: MissionTestHook }).__seat.state.heat = 97;
+      (button as HTMLButtonElement).click();
+    });
+    await expect(page.locator('#modal-overlay')).toContainText('respect +16; heat +3; parrot press conference recorded');
+    await expect(page.locator('#modal-overlay')).toContainText('Exact changes: respect +16; heat +3');
+  });
+
   test('Missing Cargo offers a physical dockside evidence beat before the Dockmaster conversation', async ({ page }) => {
     test.setTimeout(60_000);
     await page.goto('/');

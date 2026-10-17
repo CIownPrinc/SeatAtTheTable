@@ -286,7 +286,12 @@ test.describe('game boot', () => {
       await expect(startButton).toBeVisible();
       const startLabel = await startButton.textContent();
       await startButton.click();
-      if(startLabel?.includes('New Game')) await page.locator('#confirm-new-game-btn').click();
+      // LEGAL: The game saves on beforeunload, so the reload above can leave a fresh save and
+      // LEGAL: "Start New Game" appears. Confirming that reloads the page; wait for the reload,
+      // LEGAL: or the map-tab click below lands mid-navigation and the scene never boots.
+      if(startLabel?.includes('New Game')){
+        await Promise.all([page.waitForEvent('load'), page.locator('#confirm-new-game-btn').click()]);
+      }
       await expect(page.locator('#start-screen')).toHaveClass(/hidden/);
       await page.locator('.tab-btn[data-tab="map"]').click();
       await waitForMapScene(page);

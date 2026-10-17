@@ -62,18 +62,29 @@ V1 is finished when all of these hold at once:
 | ~~**Minimap clear button.**~~ The spec clicked a fixed 26%/44% of the City Map, which drifted into the lake as the world grew; water correctly refuses waypoints. It now projects a real place's coordinates. | Claude | Fixed 2026-10-16 |
 | ~~**`shot-garage.e2e.ts` flake**~~ and most suite slowness. Headless Chromium rendered WebGL in software at ~2 fps; `playwright.config.ts` now asks for the GPU (55 fps). Suite: 42/46 in 9.8 min → 49/49 in 1.5 min, twice in a row. | Claude | Fixed 2026-10-16 |
 | ~~**Automatic popups replaced open ones.**~~ Real game bug the phone spec caught: the $200 milestone opened over Dockmaster Bell's report and erased it. Milestones now queue while any popup is up and show when it closes; mission offers and follow-ups wait a tick instead of being used up. Guarded by a new `phone.e2e.ts` spec. | Claude | Fixed 2026-10-16 |
+| ~~**Map screenshot spec flake (1 in 3 under the suite).**~~ The game saves on `beforeunload`, so the spec's own reload left a save, "Start New Game" appeared, and confirming it reloads the page; the map-tab click raced that reload. The spec now waits for it. 10/10 repeats. | Claude | Fixed 2026-10-16 |
 | ~~**Real-world names.**~~ "O'Hare" and "Chicago" broke the parody-geography rule; now Windhaven International / Windhaven. | Claude | Fixed 2026-10-16 |
 | ~~`raccoon_keycard` said heat -6 where it promised -5.~~ The mission removed exactly 5. The "Exact changes" ledger was wrong: it measured from accepting the mission to finishing it, so heat that cooled off and income earned while driving counted as rewards. Now it measures only the choices (`core/missionLedger.ts`, unit-tested). | Codex | Fixed 2026-10-16 |
 | ~~`pigeon_summit` never resolves.~~ Two causes. The spec boots the full 3D city and took 38s of its 60s budget alone, so it timed out under contention (budget now 120s). And the result said "heat -4" even at zero heat. It now reports what was removed, rounded, because heat cools off in fractions (unrounded, it printed "heat -3.2495013163719824"). | Codex | Fixed 2026-10-16 |
 
-## 2. Truthful results audit — Codex
+## 2. Truthful results audit — DONE 2026-10-16
 
-The pigeon bug is one example of a class. Many mission choices apply a capped change, such
-as `Math.max(0, state.heat - N)`, then print a hard-coded "heat -N". Sweep every
-`finishMission` and `declineMissionOffer` result string, and make each one print what
-actually changed, rounded, the way the raccoon and pigeon choices now do. Heat decays
-continuously, so a capped heat change is almost never a whole number. Also check button labels
-that promise numbers. Add a unit test where the logic is pure.
+- **One central fix instead of ~40 string edits.** `reconcileResultText` (`core/missionLedger.ts`,
+  unit-tested) rewrites every numeric clause of a mission result (`heat -6`, `$1,600 spent`,
+  `50 product lost`, `crew +1`) to what the final choice really changed, and drops a clause
+  that didn't happen. `finishMission` runs it before saving or showing the result, so any
+  mission written later is covered too. Non-numeric clauses ("family loyalty +2", timed income
+  effects) are left alone; those aren't ledger stats.
+- **Paid choices need the money.** Every paid mission choice used `Math.max(0, cash - N)`, so
+  with $40 you could "Contain it ($2,500)" and keep the full benefit. `ModalButton.cost` now
+  disables the button (with a "You need $N" tooltip) when you can't pay; all 17 paid choices
+  carry it, and each sits beside a free alternative so nobody gets stuck.
+- Found along the way: `hireFreeCrew` pays a $400 fee instead of crew when no spot is open, and
+  the cousin result still claimed "crew +1" — now corrected by the reconcile pass.
+- Guarded by `missions.e2e.ts` "paid choices you cannot afford are disabled, and capped results
+  report what really changed".
+- **Not changed, on purpose:** button labels state the intended effect ("+16 heat"); the result
+  states what happened. `log()` lines still carry the intended numbers.
 
 ## 3. Browser coverage for what exists — Codex
 

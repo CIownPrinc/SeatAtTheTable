@@ -294,6 +294,7 @@ export interface StockPosition {
 export interface ModalButton {
   label: string;
   secondary?: boolean;
+  cost?: number;
   onClick?: () => void;
 }
 
