@@ -20,7 +20,7 @@ it.
 | City placement started as hand-placed coordinates | About 40 fixed anchors made a non-grid road network too risky to attempt. |
 | Collision bounds kept separately from the drawn shapes | Invisible walls, and buildings you could walk through. |
 | Shorelines hand-written against a coast that later moved | Stray lines across the land after the map changed. |
-| The planned web stack (Next.js, Prisma) was never adopted | `V1: apps/web` is still an empty template, and the shipped game is a separate Vite app. |
+| The planned web stack (Next.js, Prisma) was never adopted | V1 carried an empty `create-next-app` template and a placeholder Prisma schema until it was frozen, while the real game was a separate Vite app. Both were deleted from V1 on 2026-10-16. |
 
 V2 gets to make these decisions on day one instead of retrofitting them.
 

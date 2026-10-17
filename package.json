@@ -18,16 +18,7 @@
   "license": "ISC",
   "packageManager": "pnpm@9.15.4",
   "type": "module",
-  "dependencies": {
-    "@shadcn/ui": "^0.0.4",
-    "@tanstack/query-devtools": "^5.101.2",
-    "@tanstack/react-query": "^5.101.2",
-    "framer-motion": "^12.42.2"
-  },
   "devDependencies": {
-    "@prisma/client": "^5.13.0",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
     "@typescript-eslint/eslint-plugin": "^8.64.0",
     "@typescript-eslint/parser": "^8.64.0",
     "eslint": "^9.39.5",
@@ -37,7 +28,6 @@
     "husky": "^9.1.7",
     "playwright": "^1.61.1",
     "prettier": "^3.9.5",
-    "prisma": "^5.13.0",
     "turbo": "^2.10.5",
     "vitest": "^2.1.0"
   }

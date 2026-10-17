@@ -24,8 +24,9 @@ list, kept current on purpose.
 
 ## Architecture
 
-- **One monolith, one monorepo.** pnpm workspaces + Turbo. Do NOT split into microservices. Shared code goes in `packages/*`, apps in `apps/*`.
-- **Frontend stack is fixed:** Next.js (App Router) + React + shadcn/ui (components) + Tailwind + Framer Motion (animation) + TanStack Query (server state). Use them; don't hand-roll what they already do.
+- **One monolith, one monorepo.** pnpm workspaces + Turbo. Do NOT split into microservices. Shared code goes in `packages/*`; the game is `SeatAtTheTable/`.
+- **V1 is feature-frozen and stays on its own stack:** Vite + strict TypeScript + three.js, no framework. Finish and fix it; don't migrate it. New features and the web stack below belong to the remake — see `SEATATTHETABLE2.md`.
+- **Web stack (for the V2 remake):** Next.js (App Router) + React + shadcn/ui (components) + Tailwind + Framer Motion (animation) + TanStack Query (server state). Use them; don't hand-roll what they already do.
 - **Use TanStack Query only for server state** (data that lives on a backend: save/load, auth, leaderboards). Local game state (cash, ticks, the world) is client state — keep it in a proper client state layer, not in Query.
 
 ## Don't reinvent the wheel
@@ -35,15 +36,14 @@ list, kept current on purpose.
 
 ## Data & SQL
 
-- **All SQL goes through an ORM (Prisma).** No raw SQL strings in app code. Schema changes go through Prisma migrations.
-- Keep one Prisma version across the repo. (Today root and `apps/web` disagree — v5 vs v7. Pick one.)
+- V1 has no database; saves live in the browser. When V2 adds one: **all SQL goes through an ORM (Prisma).** No raw SQL strings in app code. Schema changes go through Prisma migrations, on one Prisma version.
 
 ## Testing (TDD)
 
 - **Test-first.** Write the failing test, then the code that makes it pass, then clean up.
 - Three levels, all present:
   - **Unit** — one function/module in isolation (Vitest).
-  - **Integration** — modules working together, incl. the DB via Prisma.
+  - **Integration** — modules working together (and the DB, once there is one).
   - **End-to-end** — the real app in a browser (Playwright).
 - A change to product code ships with tests. Bug fixes start with a test that reproduces the bug.
 

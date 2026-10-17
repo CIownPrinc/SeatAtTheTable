@@ -19,9 +19,9 @@ repo. If a task below starts turning into a new feature, it belongs there instea
 | [`docs/map-asset-usage-audit.md`](SeatAtTheTable/docs/map-asset-usage-audit.md) | Which CC0 assets are used vs. reserved | Reference |
 | [`docs/map-architecture-notes.md`](SeatAtTheTable/docs/map-architecture-notes.md) | The one data-model rule map edits must not break, plus what the visual/perf review checks | Reference |
 
-That's the complete set. If a `.md` file isn't in this table, it's either
-`SeatAtTheTable/README.md` (game description, not a plan) or `create-next-app` boilerplate
-under `apps/web/`. Any new plan/audit doc must be added here when created.
+That's the complete set. If a `.md` file isn't in this table, it's
+`SeatAtTheTable/README.md` (game description, not a plan). Any new plan/audit doc must be
+added here when created.
 
 Verify with (this is also the pre-push hook):
 `pnpm lint && pnpm typecheck && pnpm -w run test && pnpm --dir SeatAtTheTable build`
@@ -102,23 +102,21 @@ it should run smoothly.
 Visual and feel fixes to existing panels and the 3D map. Driven by the §4 play-through log,
 not invented up front. Polish means fixing what's there, not adding scenery.
 
-## 7. De-bloat — needs a decision from the player
+## 7. De-bloat — DONE 2026-10-16
 
-V1 carries scaffolding for a web stack it will never use. That stack now belongs to V2.
-Candidates to delete from this repo:
-- `apps/web/` — untouched `create-next-app` boilerplate. It's also the only reason Dependabot
-  keeps opening Next.js security PRs here.
-- `prisma/` and the root `prisma` dependency — a placeholder `Post` model nothing reads.
-- Root dependencies the game doesn't import: `@shadcn/ui`, `@tanstack/react-query`,
-  `@tanstack/query-devtools`, `framer-motion`.
-- The duplicate root `eslint-plugin-comment-policy/` (the workspace one lives in `packages/`)
-  and the one-off `fix-comments.cjs` script.
-- `.tmp-assets/` — extracted Kenney zips, already ignored by git, safe to delete locally.
+Removed the web-stack scaffolding V1 never used; its reasons now live in `SEATATTHETABLE2.md`
+("Platform" and "Decide these before writing code"). Gone: `apps/web/` (empty
+`create-next-app` template), `prisma/` and `.env.example` (placeholder `Post` model),
+unused root deps (`@shadcn/ui`, TanStack Query, `framer-motion`, Prisma, Testing Library),
+the dead `packages/eslint-config` and root `eslint-plugin-comment-policy/` copies (the live
+rule is `packages/eslint-plugin-comment-policy`, saboteur-tested after the cleanup), and
+`fix-comments.cjs`, which bulk-prefixed bad comments with `LEGAL:` and so defeated the rule
+instead of enforcing it. Kept on purpose: the `.gitignore` secret rules, the Husky gate and
+every test. Locally, `.tmp-assets/` (ignored Kenney zips) can be deleted by hand.
 
 ## 8. Dependency upkeep
 
-- **Next.js security bump (PR #24)** — merge it, or delete `apps/web` per §7 and close it.
-  PR #23 is a duplicate of #24.
+- PRs #23/#24 (Next.js security bump) are moot now that `apps/web` is gone — close them.
 - **Vitest 2 → 4 (PR #21)** — close it. Tested 2026-10-16: Vitest 4 needs Vite 6+, and the
   game is on Vite 5, so it fails at startup. A toolchain upgrade is not a V1 goal.
 

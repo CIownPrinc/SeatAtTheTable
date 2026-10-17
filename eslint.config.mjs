@@ -4,7 +4,7 @@ import commentPolicy from "eslint-plugin-comment-policy";
 
 export default [
   {
-    ignores: ["**/node_modules/**", "**/.next/**", "**/.turbo/**", "**/dist/**", "**/build/**", "**/*.d.ts", "**/fix-comments.cjs"]
+    ignores: ["**/node_modules/**", "**/.next/**", "**/.turbo/**", "**/dist/**", "**/build/**", "**/*.d.ts"]
   },
   {
     files: ["**/*.{js,ts,tsx}"],
