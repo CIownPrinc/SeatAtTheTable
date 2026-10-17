@@ -602,12 +602,16 @@ import type * as ThreeNamespace from 'three';
       ? (wild ? 'hue-rotate(135deg) saturate(1.45) contrast(1.1)' : 'hue-rotate(42deg) saturate(1.18)')
       : '';
   }
-  function hireFreeCrew(){
+  function hireFreeCrew(): boolean {
     const eligible = businesses.filter(b=> b.researched && !b.manager && b.level>0 && b.crew < crewNeeded(b)+2 && crewUsedGlobal() < crewCapGlobal());
-    if(eligible.length===0){ state.cash += 400; log(`<i class="ph-duotone ph-handshake"></i> No open spot for them — they take a cash finder\'s fee instead.`); return; }
+    if(eligible.length===0){ state.cash += 400; log(`<i class="ph-duotone ph-handshake"></i> No open spot for them — they take a cash finder\'s fee instead.`); return false; }
     const b = eligible[Math.floor(Math.random()*eligible.length)];
     b.crew += 1;
     log(`<i class="ph-duotone ph-handshake"></i> They join the crew at ${b.name}, no questions asked.`);
+    return true;
+  }
+  function hireResultText(hired: boolean): string {
+    return hired ? 'crew +1' : "no open crew spot; $400 finder's fee instead";
   }
   function incomeFor(b: Business){ return b.level * b.baseIncome * efficiency(b) * tempMultActive(b); }
   function getEquippedCar(){ return cars.find(c=>c.id===state.equippedCar) || null; }
@@ -1347,7 +1351,7 @@ import type * as ThreeNamespace from 'three';
     if(id === 'cousin'){
       showModal({ eyebrow:'Hub Bus Station', title:'Cousin Amit', body:"<p class='flavor'>Amit has one suitcase, two apologies, and a debt that apparently found the same bus route.</p>", buttons:[
         { label:'Pay the debt ($600)', cost:600, onClick:function(){ state.cash = Math.max(0, state.cash - 600); state.respect += 4; state.worldMemory.amitHelped = true; state.worldMemory.familyLoyalty = 3; log('<i class="ph-duotone ph-users"></i> You settle Amit\'s debt. Family first.'); finishMission('cousin', '$600 spent; respect +4; family loyalty +3'); } },
-        { label:'Hire him into legit work', onClick:function(){ hireFreeCrew(); state.worldMemory.amitHired = true; state.worldMemory.familyLoyalty = 1; scheduleFollowUp('amit_mistake'); log('<i class="ph-duotone ph-users"></i> Amit gets work and a warning not to embarrass the family.'); finishMission('cousin', 'crew +1; family loyalty +1; Amit mistake follow-up in 2 minutes'); } },
+        { label:'Hire him into legit work', onClick:function(){ const hired = hireFreeCrew(); state.worldMemory.amitHired = true; state.worldMemory.familyLoyalty = 1; scheduleFollowUp('amit_mistake'); log('<i class="ph-duotone ph-users"></i> Amit gets work and a warning not to embarrass the family.'); finishMission('cousin', `${hireResultText(hired)}; family loyalty +1; Amit mistake follow-up in 2 minutes`); } },
         { label:'Turn him away', onClick:function(){ state.respect = Math.max(0, state.respect - 5); state.worldMemory.amitTurnedAway = true; state.worldMemory.familyLoyalty = -2; log('<i class="ph-duotone ph-users"></i> You send Amit away. The call home will be short.'); finishMission('cousin', 'respect -5; family loyalty -2; Amit turned away'); } },
       ]}); return;
     }
@@ -1361,13 +1365,13 @@ import type * as ThreeNamespace from 'three';
     }
     if(id === 'hustler_score'){
       showModal({ eyebrow:"O'Malley's Bar", title:'Score Result', body:"<p class='flavor'>The hustler is waiting in the back booth. Their grin is either expensive or nervous. You finally get to find out which.</p>", buttons:[
-        { label:'Take the payout', onClick:function(){ const won = Math.random() < 0.62; if(won){ state.cash += 1800; state.respect += 8; hireFreeCrew(); state.worldMemory.hustlerScoreResult = 'won'; finishMission('hustler_score', '$1,800 gained; respect +8; free crew recruit'); } else { state.heat = Math.min(100, state.heat + 20); state.worldMemory.hustlerScoreResult = 'failed'; finishMission('hustler_score', 'score failed; heat +20'); } } },
+        { label:'Take the payout', onClick:function(){ const won = Math.random() < 0.62; if(won){ state.cash += 1800; state.respect += 8; const hired = hireFreeCrew(); state.worldMemory.hustlerScoreResult = 'won'; finishMission('hustler_score', `$1,800 gained; respect +8; ${hireResultText(hired)}`); } else { state.heat = Math.min(100, state.heat + 20); state.worldMemory.hustlerScoreResult = 'failed'; finishMission('hustler_score', 'score failed; heat +20'); } } },
       ]}); return;
     }
     if(id === 'hustler'){
       showModal({ eyebrow:"O'Malley's Bar", title:'Recruit Pitch', body:"<p class='flavor'>The hustler has a plan, a grin, and no proof the plan survives first contact with daylight.</p>", buttons:[
         { label:'Approve the risky score', onClick:function(){ state.worldMemory.hustlerScoreApproved = true; scheduleFollowUp('hustler_score'); log('<i class="ph-duotone ph-clock"></i> The hustler takes the job. You will not know whether it worked until they call back.'); finishMission('hustler', 'risky score approved; result pending'); } },
-        { label:'Hire for legit work', onClick:function(){ hireFreeCrew(); state.worldMemory.hustlerLegit = true; finishMission('hustler', 'hired legit'); } },
+        { label:'Hire for legit work', onClick:function(){ const hired = hireFreeCrew(); state.worldMemory.hustlerLegit = true; finishMission('hustler', hired ? 'hired legit; crew +1' : hireResultText(false)); } },
         { label:'Reject the pitch', onClick:function(){ state.worldMemory.rejectedHustler = true; districts.find(function(d){ return d.id === 'westside'; })!.control = Math.max(0, districts.find(function(d){ return d.id === 'westside'; })!.control - 4); log('<i class="ph-duotone ph-users-three"></i> They take the pitch to your rivals, who gain a capable new operator.'); finishMission('hustler', 'West Side control -4; future rival strength +4'); } },
       ]}); return;
     }

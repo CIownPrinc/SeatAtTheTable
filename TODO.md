@@ -89,11 +89,9 @@ V1 is finished when all of these hold at once:
 ## 3. Browser coverage for what exists — Codex
 
 **Progress 2026-10-17:** `e2e/mission-branches.e2e.ts` is a table of 56 branch rows + 10 decline
-routes, each failing on any page error (suite now 116 tests, all green). Still open:
-`hireFreeCrew` should return whether crew was actually hired, so the `hustler_score` / `cousin`
-/ `hustler` results stop saying "free crew recruit" when the player got a $400 finder's fee
-instead. The row "Hustler score: it works" currently asserts only the true numbers. Also still
-to cover: onboarding paths, first_heist crew approach, and tribune tones beyond the existing spec.
+routes, each failing on any page error (suite now 116 tests, all green). `hireFreeCrew` now reports whether crew was really hired, so the `hustler_score`,
+`cousin` and `hustler` results say "no open crew spot; $400 finder's fee instead" when that's
+what happened. Still to cover: onboarding paths, first_heist crew approach, and tribune tones beyond the existing spec.
 
 Not new content, just proof that the content that exists works.
 - Every stage and meaningful ending of the five main chains (`home_safe_robbery`,
