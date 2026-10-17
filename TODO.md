@@ -1,32 +1,31 @@
-# SeatAtTheTable — Roadmap / TODO
+# SeatAtTheTable — V1 finish list
 
-The single answer to **"what's next?"**. Design detail for the two big systems lives in
-`SeatAtTheTable/docs/` — this file says what to do and points there for how.
+**V1 is feature-frozen.** The goal is to take the features it has today and make them work
+with no bugs. New features, and designs that were never built, moved to
+**[`SEATATTHETABLE2.md`](SEATATTHETABLE2.md)**, the starting brief for the remake in a new
+repo. If a task below starts turning into a new feature, it belongs there instead.
 
 ## Every planning/reference doc in this repo — start here, don't go searching
 
 | Doc | Covers | Status |
 | --- | --- | --- |
 | **`AGENTS.md`** (root) | Engineering rules — types, TDD, comments, quality gates | Active, authoritative |
-| **`TODO.md`** (this file) | What's next — the roadmap hub everything else points back to | Active |
+| **`TODO.md`** (this file) | The V1 finish list | Active |
+| **`SEATATTHETABLE2.md`** (root) | Remake brief: why, design canon, lessons, the moved-out feature backlog | Handoff — copy into the V2 repo |
 | **`CHANGELOG.md`** (root) | Version history V1.0-V5.0, tied to commit hashes | Reference |
-| [`docs/world-expansion-plan.md`](SeatAtTheTable/docs/world-expansion-plan.md) | Bigger districts, outskirts, lot allocator, zoning, garage, real estate | **Complete** — outskirts pass 2 landed (§0c), Country Club deferred |
-| [`docs/mission-overhaul-plan.md`](SeatAtTheTable/docs/mission-overhaul-plan.md) | Mission state, event history, world memory, entry points, per-mission checklist | Active, partly built |
-| [`docs/onboarding-plan.md`](SeatAtTheTable/docs/onboarding-plan.md) | Progressive onboarding product rule, mission/feature classification | Active |
+| [`docs/mission-overhaul-plan.md`](SeatAtTheTable/docs/mission-overhaul-plan.md) | Mission state, event history, world memory, per-mission checklist | Reference; open V1 items are mirrored below |
+| [`docs/onboarding-plan.md`](SeatAtTheTable/docs/onboarding-plan.md) | Progressive onboarding product rule, mission/feature classification | Reference — built |
+| [`docs/world-expansion-plan.md`](SeatAtTheTable/docs/world-expansion-plan.md) | Bigger districts, outskirts, lot allocator, zoning, garage, real estate | Complete |
 | [`docs/map-asset-usage-audit.md`](SeatAtTheTable/docs/map-asset-usage-audit.md) | Which CC0 assets are used vs. reserved | Reference |
 | [`docs/map-architecture-notes.md`](SeatAtTheTable/docs/map-architecture-notes.md) | The one data-model rule map edits must not break, plus what the visual/perf review checks | Reference |
 
-That's the complete set — if a `.md` file in this repo isn't in this table, it's either
-`SeatAtTheTable/README.md` (game description, not a plan) or unedited `create-next-app`
-boilerplate under `apps/web/` (dead weight until that app is built out). Nothing is hiding
-in a doc this table doesn't mention. Any new plan/audit doc must be added here when created.
-
-Engineering rules (types, TDD, comment policy, quality gates) live in **`AGENTS.md`** and
-are not repeated here.
+That's the complete set. If a `.md` file isn't in this table, it's either
+`SeatAtTheTable/README.md` (game description, not a plan) or `create-next-app` boilerplate
+under `apps/web/`. Any new plan/audit doc must be added here when created.
 
 Verify with (this is also the pre-push hook):
 `pnpm lint && pnpm typecheck && pnpm -w run test && pnpm --dir SeatAtTheTable build`
-Plus `pnpm --dir SeatAtTheTable e2e` for anything touching the map, phone or shops.
+Plus `pnpm --dir SeatAtTheTable e2e` for anything touching the map, phone, shops or missions.
 
 ## Branch workflow (important)
 Do all work on `main`, or a short-lived feature branch that is merged and **deleted
@@ -36,528 +35,113 @@ agent (Codex + Claude Code) at the **same** branch. The old two-branch setup
 (`main` + `fix/map-playability`, Codex PRs landing on one and Claude on the other)
 caused duplicate-feature merges (e.g. the "two heat bars" HUD bug).
 
-## Known e2e failures — fix before trusting "COMPLETE" on §2/§3
+**Lanes.** Codex owns missions and onboarding (`core/missions.ts`, `config/missions.ts`,
+`config/npcs.ts`, `core/onboarding.ts` and the mission code inside `header.ts`). Claude Code
+owns the map, phone, shops and everything else under `src/map/*` and `src/config/*`. Each
+task below names its lane; the player can reassign any of them.
 
-Full `pnpm --dir SeatAtTheTable e2e` run against `7a769a6` on 2026-08-05: 41 passed, 5
-failed. Two are pre-existing and unrelated to any recent work; three are real bugs in the
-V5.0 mission pass. None block lint/typecheck/unit tests/build, which are all green.
+## Definition of done for V1
 
-- **`pigeon_summit` never resolves.** Choosing "Give the flock a public apology" doesn't
-  open the Mission Result modal — `missions.e2e.ts` times out at 60s waiting for it.
-- **`raccoon_keycard` reward text is wrong.** The mission promises `heat -5`; the actual
-  result string says `heat -6`. Reward math and copy disagree — fix whichever is the
-  intended number.
-- **A phone/modal flow leaves the device stuck open.** `#device-overlay` never gets
-  `.hidden` after Escape in `phone.e2e.ts`'s "Bank + AutoMart apps render, and
-  Finance/Assets tabs are gone" — likely a result modal left open from an earlier step in
-  that flow blocking Escape from closing the phone.
-- **Pre-existing, not from this pass:** `smoke.e2e.ts` "minimap expands before waypoint
-  placement is allowed" — `#minimap-clear` never gets `.show` on a countryside/outskirt
-  waypoint click. `shot-garage.e2e.ts`'s screenshot times out under the full suite's
-  2-worker contention but passes in isolation — flake, not a defect.
+V1 is finished when all of these hold at once:
+
+- The full gate and the full e2e suite pass, twice in a row, on a clean checkout.
+- No browser test sees a page error.
+- A fresh game played from the start screen through every mission chain hits no bug, no stuck
+  screen and no dead button.
+- Every result screen tells the truth: a number shown is a number that actually changed.
 
 ---
 
-# ACTIVE — in priority order
+# V1 FINISH LIST — in priority order
 
-## 0. Post-expansion cleanup — COMPLETE
+## 1. Known bugs
 
-The world expansion shipped green on every gate but played badly at first — buildings on
-roads, floating scenery, invisible collision walls, NPCs pacing into walls, static water,
-the Travel Nodes strip. All fixed; full root-cause detail is in git history (search commit
-subjects for "Fix the white buildings", "Rebuild the car bodies", etc.) and the compressed
-entry under "Shipped" at the bottom of this file. `e2e/scene-audit.e2e.ts` is the regression
-guard — see "Conventions worth keeping in view" for what it actually checks.
-
-## 0a. Places must look like what they are — DONE
-
-Everything on the map is currently a **box with a sign on it**, sized by a silhouette table
-and coloured by neighbourhood. That is why the world reads as noise: the map says one thing
-and draws another. Fixing the geometry does not fix this — a back alley rendered as a
-building is the map lying to you.
-
-The fix is an **archetype** per place, chosen by what the place IS, not by which config
-array it happens to live in:
-
-| Archetype | Should look like | Examples |
+| Bug | Lane | Status |
 | --- | --- | --- |
-| `cart` | A stall: canopy, counter, crates. No building shell. | Kailash's Cart |
-| `alley` | A gap between two blocks — walls, bins, a fire escape. **No building.** | Devlin Back Alley |
-| `lot` | Open ground, fencing, a hut | Railyard, Dockmaster |
-| `tenement` | Low, worn, boarded windows, fire escapes | Concrete Dreams stock |
-| `storefront` | Ground-floor shop, awning, signage band | Local businesses |
-| `showroom` | Wide glass frontage | Dealerships |
-| `office` | Mid-rise, clean, cornice | Brokerages, Horizon |
-| `tower` | Tall, glass, roof plant | Lakeshore, Hub corporate |
-| `civic` | Columns, steps, dome | City Hall, banks |
-| `works` | Shed, vents, water tank | Ironpoint, chop shop |
-
-Two rules this must enforce, both currently violated:
-
-1. **A property's archetype comes from its brand's character.** A Concrete Dreams walk-up
-   must be a run-down tenement standing on rough blocks — not the same clean box as a
-   Horizon apartment. The `rough` neighbourhood character and the `cheap` brand category
-   already encode this; the renderer just ignores them.
-2. **Not everything is a building.** `cart`, `alley` and `lot` must render as their thing
-   with NO building shell, and their collision must match — you should be able to walk INTO
-   an alley, not bump into a box where one should be.
-
-`map/neighbourhoods.ts` already has the per-character detailing (boarded windows, fire
-escapes, cornices, awnings) — this is about picking the right shell to hang it on, and
-about the places that should not be buildings at all.
-
-**Shipped.** `map/archetypes.ts` is the single source of truth. Every venture, local
-business, service building and property is assigned an archetype BY HAND with the reasoning
-in a comment beside it — never derived from a config bucket, because that is what produced
-the bug: twelve service buildings shared one `missionOffice` kind, so the Back Alley, the
-Railyard, the Bus Station, the Herald newsroom, the Dockmaster's yard and the Marigold
-Lounge were all drawn as the same box.
-
-- `archetypes.test.ts` fails if any place in any config lacks an archetype, so a new place
-  cannot quietly inherit a wrong shape.
-- `map/placeShells.ts` draws the three archetypes that are NOT buildings: `cart` (counter,
-  canopy, crates), `alley` (flanking walls at the extreme edges, fire escapes, bins down one
-  side, centre left clear) and `lot` (chain-link fence with a gate gap, site hut, containers).
-- **Collision comes from the archetype**, in one place, so what a place blocks is what it
-  draws. `solidScale: 0` on cart/alley/lot means you walk in. A scene-audit e2e walks the
-  live world at each open place to prove it — bounds maintained separately from the drawn
-  silhouette are what produced the invisible barriers in the first place.
-- Rule 1 holds: property archetype comes from the brand's category, so a Concrete Dreams
-  walk-up is a `tenement` and a Horizon one is a `tower`.
-
-## 0b. New requests — COMPLETE
-
-- ~~**Extend NORTH**~~ — DONE. The north question is settled: the "lake" was open to the
-  ocean, which makes it a bay, so it is now genuinely enclosed with land wrapped over the top
-  of it. That bought three northern belts (Sunset Shore, Kestrel Woods, Harrow End) and a
-  beach resort on the south shore. See `lake.test.ts`.
-- ~~**New districts + district overlay toggle**~~ — DONE. Three outskirt districts (Kestrel
-  Reach, Kettle Reach, Lakeridge County) grouping the eight terrain belts, plus a Districts
-  layer on the City Map beside Territory. See `regions.ts` / `regions.test.ts`.
-- ~~**Casino**~~ — DONE. The Gilded Kettle: blackjack, roulette, five-card draw, slots. Rules
-  are pure and unit-tested, including an exhaustive RTP sweep. See `casino.ts`.
-- ~~**Vehicle customisation shop**~~ — DONE. Respray bay.
-- ~~**Drive-in garage**~~ — DONE. The `bay` archetype: three walls and an open mouth, so you
-  line the car up and drive in. See `driveIn.ts`.
-- **Outskirts pass 2** — FUNCTIONALLY COMPLETE. The scenery, destinations, mission hooks,
-  Fire Road, motel, Mudster trail capability, and sparse rural traffic are shipped. The
-  Country Club remains intentionally deferred to in-person Politics; resort/wildlife variety
-  remains optional visual polish.
-
-## 0c. Outskirts content — functionally complete
-
-Three outskirt districts now exist, are named, and have exactly one thing to stop at between
-them. This is the pass that gives you a reason to drive out.
-
-### The rule this pass is built on
-
-**The drive out must buy an EXPERIENCE you cannot get in the city or on the phone — and one
-you do not need often.** Player's rule, stated directly. The casino is the model: you go for
-an evening, not for an errand. The airfield is the model for the mission half: you go because
-the story took you there.
-
-The corollary is the sharp edge, and it killed two items from the first draft. **A
-transaction fails this rule no matter how good its numbers are.** A grain co-op that
-launders product at zero heat and a scrapyard that buys whole cars are both things you would
-want to use *constantly* — so putting them 3 minutes out does not create an experience, it
-creates a commute. Anything you would do routinely belongs in the city or on the phone.
-Frequency is the test, not distance.
-
-Second corollary, and the bigger one: **the drive is itself the experience, so there has to
-be something to drive past.** See "The built environment" below — that is the real reason
-the outskirts feel dead, and it is worth more than any single venue.
-
-### THE BUILT ENVIRONMENT — do this first, it is worth more than any venue
-
-**Status check, because it is worse than it sounds.** Inside the three city districts the
-neighbourhood-character system is real and good: `neighbourhoods.ts` carries seven characters
-— `rough` (24% vacant lots, crooked, boarded), `working`, `affluent` (balconies, cornices,
-straight frontages), `shopping`, `corporate`, `entertainment`, `industrial` — each with its
-own height, density, vacancy, jitter, palette and trim, mapped over a 4x4 block grid per
-district. Run-down blocks, shopping strips, bougie blocks and downtown all exist and read
-correctly.
-
-**The first scenery pass now runs in the outskirts.** Deterministic farmsteads, woodland,
-suburban homes, and industrial works are sampled inside each irregular belt, reject water,
-and are guarded by `outskirtScenery.test.ts` plus the live water scene audit. It is still a
-scenery pass, not a venue pass.
-
-Before this pass, every belt was a single flat-coloured polygon
-(`sceneBuilding.ts`, one `ShapeGeometry` per region). `northshore` and `lakeridge` are typed
-`kind: 'suburb'` and contain **zero houses**. `northfarms` is farmland with no farms. The
-filler generator is hard-scoped to `['devlin','westside','hub']` — see `districtSeeds` and
-`DISTRICT_OFFSETS` in `filler.ts`.
-
-So the outskirts are not empty because they lack a venue. They are empty because you drive
-past a green field with a label on it. Fix that and the drive becomes the thing the player
-described wanting; leave it and every venue below is a destination at the end of nothing.
-
-The work: extend the character generator outward with belt-appropriate characters, generated
-against the belt polygons rather than the district block grid.
-- `farmstead` (`northfarms`, `westfarms`, `southfields`) — sparse: a house, a barn, a silo,
-  long field lines, fence runs. Density an order of magnitude below the city.
-- `suburb` (`northshore`, `lakeridge`) — low single houses, wide plots, curving lanes,
-  driveways, garden trees. The middle-class ring.
-- `resort` (`northshore`, and the city blocks fronting the south beach) — raised beach
-  houses, cabanas, whitewash and sand. See "The resort strip" below: this is a real zoning
-  character, not just a filler flavour.
-- `woodland` (`northwoods`, `ridgewood`) — no buildings, dense trees, a cabin or two, tracks
-  rather than roads.
-- `works` (`eastworks`) — the chained-up industrial edge: sheds, tanks, spoil heaps.
-
-Constraint: the scene audit applies out here too, and the belts are irregular polygons rather
-than a rectangular grid, so generated items must be tested against the belt polygon and the
-coastline, not against block bands. `circleInsidePolygon` already does this.
-
-### The resort strip — zoning, amenities, and a geography correction
-
-**First, the correction, because the plan was about to be built on a wrong assumption.**
-"Sunset Shore" is NOT the tropical area. There are two different shores of the same enclosed
-lake:
-
-- **The existing beach** is `LAKEFRONT_BEACH` at y≈70-200 — the north edge of the *city*
-  districts, i.e. the lake's SOUTH shore. This is where the sand, palms, loungers and
-  umbrellas already are. It belongs to Devlin / West Side / the Hub.
-- **Sunset Shore** (`northshore`) is at y≈-600 to -960 — the lake's NORTH shore, in Kestrel
-  Reach, on the far side of the water. It is typed `kind:'suburb'` and currently contains
-  nothing whatsoever.
-
-They are ~800 units apart with a lake between them.
-
-**DECIDED: the beach goes all the way round the lake.** A body of water with sand on one bank
-and lawn on the other three is not a thing that exists — the shore is the shore. So the beach
-becomes a **ring** following the entire lake edge: the city's south shore (where it already
-is), Sunset Shore in the north, and both ends.
-
-**Build it derived, not authored.** `LAKEFRONT_BEACH` is currently a hand-written out-and-back
-ribbon of ~24 points tracing only the south shore. Replace it with a ring generated from
-`WINDHAVEN_LAKE` itself, offset outward along each segment's normal — the identical technique
-the surf lines already use (`sceneBuilding.ts`, "derived from the real coastline now, so they
-can never drift again"). This matters: hard-coded shorelines authored against a coast that
-later moved are exactly what produced the "random lines everywhere" bug, and this file is the
-last hand-authored shoreline left.
-
-Consumers to update: `mapModel.lakefrontBeach` (the source), the minimap sand polygon, and
-`buildBeachResort`, which currently assumes the ribbon's first half is the waterline —
-against a true ring the waterline is the whole inner edge, which is simpler.
-
-This also settles Sunset Shore: it is beach by construction, and the resort filler sits on it.
-
-**Zoning character: `resort`.** Add to `BlockCharacter` in `neighbourhoods.ts` alongside the
-seven that exist. Proper planning term is *Resort Commercial* / *Recreational*; `resort` is
-the short form, labelled "Resort / recreational" by `characterLabel`. Profile: very low
-height, very low density, generous plots, near-zero vacancy, bright/pale palette (whitewash,
-sand, teal, coral) — the opposite of `rough` on every axis. Applies to Sunset Shore and to
-the city blocks fronting the south beach.
-
-**Amenities.** `MapAmenityKind` is currently `'basketball' | 'petstore' | 'shop' | 'parkgame'`
-and `basketball` already carries a skill minigame — so a beach amenity is a well-trodden
-path, not new machinery.
-- `volleyball` — a net, a court in the sand. Follows `basketball` exactly, including the
-  minigame hook. Best value of the three.
-- Loungers / umbrellas already exist as scenery (`buildBeachResort`); once the sand is a ring
-  they follow it round automatically rather than needing re-authoring.
-
-**DECIDED: the resorts themselves are cosmetic — filler, not venues.** Hotels, cabanas and
-pool decks are generated scenery under the `resort` character. You do not walk into them and
-they have no interior, no menu and no mechanic. This is the right call: a resort you can
-enter would be another lie-low building, and there is one of those already. It also means the
-whole resort strip costs a filler character and nothing else.
-
-Consequence: **Sunset Shore Motel stays on the venue list**, un-redundant, because the resorts
-around it are backdrop. The motel is the one building on that shore you can actually go into.
-
-### Off-road dealership — `northwoods` or `northfarms`, Kestrel Reach
-
-Player's idea, and it passes the drive-out rule more cleanly than anything else on this list:
-you cannot buy an ATV in the city, you would buy one roughly once, and it is a purchase that
-changes what you can DO rather than a transaction you repeat.
-
-**It is also cheaper than it sounds, because the brand already exists.** `config/assets.ts`
-has a `mudster` brand commented "SUVs / off-road" with the Mudster XL already in it. This is
-that brand's country dealership — no new brand, no new economy, just a `dealership`-kind
-service building with an off-road inventory: ATV, quad, pickup, tractor.
-
-**The honest caveat, which decides whether this is worth building.** An ATV is only worth
-owning if there is terrain a car cannot use. Otherwise it is a reskin with different numbers,
-and the player will buy it once and never take it out. So this ships as a pair with **woodland
-tracks** — unpaved trails through `northwoods` and `ridgewood` that cars handle badly or not
-at all — or it does not ship. Same build-both-or-build-neither rule as the fire road, and
-conveniently the fire road is in the same belt.
-
-**Shipped:** Mudster Kestrel Trailhead is a second, country dealership in `northwoods`. Its
-vehicles now keep full speed across both woodland belts, while every other car is reduced to
-52% speed there. The terrain rule is isolated in `map/offRoad.ts` and covered by a unit test,
-so the dealership is a capability purchase rather than another remote catalog.
-
-### The forest question — recommendation: keep it terrain, not a district
-
-There are already **two** forests, and they are in different districts: `northwoods` (Kestrel
-Woods) in Kestrel Reach, and `ridgewood` (Ridgewood Stand) in Kettle Reach. They sit at
-opposite ends of the map, roughly 5,000 units apart.
-
-**Recommendation: do not make forest its own outskirt district.** A district whose two halves
-are at opposite ends of the world with the entire city between them is a *category*, not a
-place — and the three outskirt districts were drawn to be contiguous geography precisely so
-they read as somewhere you can be. Grouping by terrain type instead would undo that.
-
-Give the two woods separate identities through content rather than through boundaries:
-- **Kestrel Woods** (north) — the wild one. Fire road, off-road tracks, the ATV dealership.
-- **Ridgewood Stand** (south) — the quiet one. The Lodge, and nothing else. Somewhere to meet
-  where nobody is watching.
-
-That answers "which region has the forest" with: both, deliberately, and they are different
-forests.
-
-### Ambient life (cheap, do it alongside)
-
-Nothing moves out there either. Roaming actors exist and take a district. Add sparse,
-kind-appropriate life: a tractor working `northfarms`, walkers on `northshore`, deer in
-`northwoods`, a freight truck on the `eastworks` road. Low counts — the countryside should
-not be a painting, but it should not be busy either.
-
-**Shipped first slice:** three sparse rural vehicles now move through the world — a Kettle
-Flats tractor, a Harrow End tractor, and a Cicero freight truck. Their routes are separately
-configured from city traffic and unit-tested to stay on dry land. Pedestrians and wildlife
-remain optional visual variety rather than a reason to delay the functional outskirts pass.
-
-### The venues
-
-Cut from the first draft, on the player's rule: **Harrow End Grain Co-op** and **Cicero
-Outworks Scrapyard**. Both were transactions you would use constantly, which makes them a
-commute rather than an experience. If zero-heat laundering and no-questions car disposal are
-wanted as mechanics, they belong in the city or on the phone.
-
-**1. Kettle Flats Airfield** — `westfarms`, Kettle Reach. *Mission-shaped.*
-A crop-duster strip where shipments arrive without troubling the docks. Hook for
-`stolen_shipment`. Exactly the casino's shape of reason-to-go: the story takes you there, and
-it could not be anywhere else, because an airstrip needs a mile of flat nothing.
-**Shipped:** Deke's Black Market route now continues from the chop shop to a physical
-airfield scene, where the player chooses a street payout or a riskier permanent trade route.
-**Sequencing:** after the mission chains (§2). Codex owns missions; building it now would
-collide on the same trunk, which is the setup that produced this repo's duplicate-feature
-merges.
-
-**2. Ridgewood Stand Lodge** — `ridgewood`, Kettle Reach. *Mission-shaped.*
-Neutral ground: where the crews meet when nobody wants a meeting in the city. A turf-war and
-politics venue. Same sequencing caveat as the airfield.
-**Shipped for turf:** accepting the lounge truce now sends the player to a final in-person
-Ridgewood negotiation, with a low-heat compromise or a riskier crew-exposure outcome.
-
-**3. Boundary Meadows Drive-In** — `southfields`, Kettle Reach. *Cheap, high charm.*
-A drive-in cinema. Park the car and sit through a picture: the clock runs fast, and it is an
-evening out rather than an errand — the casino's shape at a tenth of the cost. Reuses the
-`bay` drive-in geometry that shipped with the garage. Also the natural place to stage a
-conversation you do not want overheard.
-**Shipped:** the Projection Screen hotspot plays a double feature ($120, respect +6, 90
-seconds) or a shorter tailgate watch (respect +3, 45 seconds). Also the second stop of the
-`goose_permit` comic mission.
-
-**4. Kestrel Woods Fire Road** — `northwoods`, Kestrel Reach. *Needs a minigame to land.*
-Unpoliced road: driving offences cost **no heat**, making it the one place in the world you
-can drive flat out. This is an experience by construction and you would do it rarely. Wants a
-time trial to give it a score to beat; without one it is a nice road and nothing else, so
-either build the time trial or do not build this.
-
-**Shipped:** the Fire Road trailhead now runs a six-gate skill time trial. Three gates pays
-$350, five pays $700, and a clean six pays $1,100. Every paid finish unlocks a persistent
-Fire Road stripe on the car used for the run.
-
-**5. Sunset Shore Motel** — `northshore`, Kestrel Reach. *Borderline on frequency.*
-The resorts around it are cosmetic filler, so this is the one enterable building on that
-shore and is not redundant.
-Lie low properly: `lieLowButtons()` already exists, and the motel would be that lever with
-the numbers up, plus the thing no city interior offers — letting a building **federal case**
-decay, not just heat. It survives the rule *only* if it stays rare. If it becomes the
-standard answer to being hot, it is a co-op with a bed in it and should be cut on the same
-grounds. Gate it hard: only worth the drive when a federal case is actually building.
-**Shipped:** the Night Clerk hotspot is gated exactly that way — it only offers a stay above
-`motelMinimumInvestigation` (20). Staying costs $900 and 120 in-game seconds for -30%
-investigation and -15 heat, so it stays a deliberate, rare trip rather than a default fix.
-
-**6. Lakeridge Country Club** — `lakeridge`, Lakeridge County. *Defer.*
-Where cash becomes standing. Genuinely good, but it overlaps the Politics tab, which §3
-already plans to move in-person. Build it as part of that, not beside it.
-
-### Constraints to respect (learned the hard way)
-
-- **Placement follows the casino's pattern, not the allocator's.** `OUTSKIRT_PLACE_LOTS` in
-  `world.ts` holds hand-placed lots; the lot allocator only knows about district blocks and
-  will silently overwrite an authored position. Anything with an entry there must be
-  *excluded* from `allocateServiceLots` (see the filter already there).
-- **Every new place needs an archetype**, and `archetypes.test.ts` fails if it does not. Pick
-  honestly: the scrapyard and the airfield are `lot` (open ground, walk straight in), the
-  motel and the co-op are buildings, the drive-in wants `bay`-like treatment.
-- **The layout tests assert district membership**, which outskirt places do not have. They
-  are asserted with `isPointOnPlayableLand` instead — four specs already do this for the
-  casino; follow them.
-- **The scene audit is not optional.** Anything new must pass: off the roads, on the land, not
-  floating, not buried, not in the water. It has caught my own additions three times.
-- **Look at it.** `e2e/shot-garage.e2e.ts` is the pattern: teleport the player, force noon,
-  screenshot. Every visual mistake this project has had — the sea-urchin palms, the alley that
-  was not between anything, the roofed-over garage — passed its tests and failed on sight.
-
-### Open question for the player
-
-Is the drive itself the point, or a tax? Every place above assumes you *want* the drive and
-just need a destination. If the drive out is tedious rather than pleasant, the honest fix is
-fast travel to district edges — but that is the Travel Nodes strip we deliberately deleted,
-so it needs a decision rather than a quiet reversal.
-
-## 1. Onboarding / just-in-time tutorial
-
-Replace the advisor briefing, which the player finds "clunky and primitive". Wants
-progressive, contextual, mission-based teaching rather than a static priority list.
-The product and implementation rules live in [`docs/onboarding-plan.md`](SeatAtTheTable/docs/onboarding-plan.md).
-Every mission must classify its onboarding responsibility as `mission`, `contextual`, or
-`none`; every new feature must make the same decision before it is considered complete.
-**Status:** the first implementation slice is underway. The next slice is the early-game
-teaching sequence, followed by mission-specific teaching paths and browser coverage.
-
-**Design rule:** keep onboarding mission-shaped where the player must travel, choose, or
-see consequences over time. Use contextual cards for small nudges and bottleneck diagnosis.
-The detailed decision rules live in `docs/onboarding-plan.md`.
-
-## 2. Finish the mission chains — mostly shipped, two known bugs open
-
-**Current status:** the five core chains now have phone or popup offers, GPS, physical
-destinations, interior contacts or the outdoor Devlin corner, choices, saved outcomes,
-dedicated onboarding where needed, connected follow-ups, and typed mission definitions in
-`src/config/missions.ts`. Remaining work in this section is depth: richer scene writing,
-more comic encounters and fuller browser coverage. Connected consequences now arrive as
-delayed in-game messages, and active objectives have a distinct map marker instead of
-looking like ordinary places. **Not yet clean:** `pigeon_summit` and `raccoon_keycard` have
-open e2e failures — see "Known e2e failures" near the top of this file.
-
-### Mission scene standard
-
-A major mission cannot resolve as “arrive, choose one popup answer, leave.” It must feel
-like a scene the player participates in.
-
-- Give the player a conversation or encounter with multiple exchanges, not one question.
-- Include at least two meaningful decisions: an approach, a response, a sacrifice, or a
-  piece of information to reveal or withhold.
-- Decisions must create distinct immediate numbers and saved world memory that changes later
-  dialogue, contact availability, offers, or city conditions.
-- The Herald interview should be expanded first: Lana responds to earlier answers, asks
-  follow-up questions, and produces several distinct public narratives rather than one
-  single-tone choice.
-- Use mission stages to move between conversation beats, physical objectives, and outcomes;
-  do not use a modal as a substitute for the whole scene.
-- In-person destinations must resolve in the place itself: an interior counter, NPC, desk,
-  or scene. Do not redirect the player to a phone app after they travelled there, except
-  when the phone is explicitly the story object they came to use.
-
-### Comic-relief mission lane
-
-Add optional, absurd city encounters to break up the serious campaign. They must be playful
-detours with temporary chaos and a funny reward, never a punishment for interacting with an
-unfamiliar object or accepting a mission.
-
-- Start with a mystery-tonic encounter at a local business: a short surreal map state that
-  changes normal interactions and ends safely with a small reward.
-- The `pigeon_summit` civic farce now uses City Hall and the Wabash Newsstand, and
-  `mayors_parrot` uses City Hall and Rockwell Pet Supply; `goose_permit` uses City Hall and
-  Boundary Meadows Drive-In; `raccoon_keycard` uses City Hall and Golden Lotus Herbalist.
-  Add further over-the-top side jobs
-  with the same map, phone, interiors, and NPC dialogue standard.
-- Keep comic missions clearly optional and separate from the main consequence-chain priority.
-
-### Phone contacts and taxi dispatch
-
-Add a Contacts app to the phone. Contacts are unlocked through missions and can offer
-direct, contextual actions instead of only story dialogue.
-
-- Start with Taxi Dispatch: choose a waypoint, pay a fixed fare, and ride to the selected
-  destination. The taxi must have clear fare, destination, and cancellation feedback.
-- Mission contacts should unlock as saved relationships, then expose only actions that fit
-  their story role: a dockmaster can offer dock information, for example, while a reporter
-  cannot become a universal menu.
-- Contacts must be optional convenience or narrative tools; they cannot bypass active
-  mission travel objectives unless that mission explicitly grants it.
-
-**Shipped:** completing Missing Cargo unlocks Dockmaster Bell in Contacts. In addition to a
-docks GPS route, Bell can report whether the Black Market route is active and how much live
-investigation is sitting on the manifests; it never completes or redirects an active mission.
-
-`home_safe_robbery`, `stolen_shipment`, `alderman_fixer`, `turf_war`, and `first_heist`
-now have map, interior, dialogue, and saved-consequence flows. Missing Cargo now begins with
-a dockside manifest-evidence beat that changes Bell's conversation before the chop-shop lead.
-Lana Vance's Herald interview remains the model for a fully
-realised map → interior → dialogue mission.
-
-## 3. Initiative Phase 5 — COMPLETE
-
-Politics and Gang moved off flat tabs and became in-person (City Hall, the Chop Shop,
-Marigold Lounge, and recruit locations), closing the diegetic-device initiative. Phases 1-4
-are done — see "Shipped" below.
-
-**Shipped:** the City Hall Clerk's Window now handles influence funding, political favors,
-politician meetings, and campaign discussion in the building itself instead of redirecting
-the player to the Politics tab. The Chop Shop Armory now sells gun crates in person, and the
-Marigold Lounge Back-Room Table now begins West Side operations. Recruit initiation and
-check-ins already happen with the people on the map. The redundant Politics and Gang tabs
-are removed from navigation, with stale routes safely redirecting to the map. **Note:** a
-phone-overlay bug in the same device UI is open — see "Known e2e failures" near the top of
-this file — not confirmed related to the tab removal itself, but in the same surface.
+| **Phone stuck open.** `#device-overlay` never gets `.hidden` after Escape in `phone.e2e.ts` "Bank + AutoMart apps render, and Finance/Assets tabs are gone". Likely a result modal left open from an earlier step blocks Escape. | Claude | Open |
+| **Minimap clear button.** `smoke.e2e.ts` "minimap expands before waypoint placement is allowed": `#minimap-clear` never gets `.show` on a countryside/outskirt waypoint click. | Claude | Open |
+| **`shot-garage.e2e.ts` flake.** Times out under the 2-worker suite, passes alone. Contention, not a defect, but a flaky test hides real failures. | Claude | Open |
+| ~~`raccoon_keycard` said heat -6 where it promised -5.~~ The mission removed exactly 5. The "Exact changes" ledger was wrong: it measured from accepting the mission to finishing it, so heat that cooled off and income earned while driving counted as rewards. Now it measures only the choices (`core/missionLedger.ts`, unit-tested). | Codex | Fixed 2026-10-16 |
+| ~~`pigeon_summit` never resolves.~~ Two causes. The spec boots the full 3D city and took 38s of its 60s budget alone, so it timed out under contention (budget now 120s). And the result said "heat -4" even at zero heat. It now reports what was removed, rounded, because heat cools off in fractions (unrounded, it printed "heat -3.2495013163719824"). | Codex | Fixed 2026-10-16 |
+
+## 2. Truthful results audit — Codex
+
+The pigeon bug is one example of a class. Many mission choices apply a capped change, such
+as `Math.max(0, state.heat - N)`, then print a hard-coded "heat -N". Sweep every
+`finishMission` and `declineMissionOffer` result string, and make each one print what
+actually changed, rounded, the way the raccoon and pigeon choices now do. Heat decays
+continuously, so a capped heat change is almost never a whole number. Also check button labels
+that promise numbers. Add a unit test where the logic is pure.
+
+## 3. Browser coverage for what exists — Codex
+
+Not new content, just proof that the content that exists works.
+- Every stage and meaningful ending of the five main chains (`home_safe_robbery`,
+  `stolen_shipment`, `alderman_fixer`, `turf_war`, `first_heist`).
+- Every decline route, and the repeat/follow-up rules.
+- The four mission-based onboarding paths, on the pattern in `e2e/onboarding.e2e.ts`.
+
+## 4. In-browser QA — Claude
+
+- **Venture / crew / exploit interaction modals.** The fullscreen and z-index root causes were
+  fixed and the logic reads correct, but the reported symptom was never clicked through in a
+  live session.
+- **One full play-through** from a new game, logging every bug, dead end and confusing
+  moment. That log becomes the polish list for §6.
+
+## 5. Smoother — Claude
+
+`src/core/header.ts` is now ~7,150 lines. V1 won't be re-architected (that's V2's job), but
+it should run smoothly.
+- Confirm hot paths call the cheap `refreshHUD()` rather than the full `renderAll()` rebuild
+  when only HUD numbers changed. Profile before and after.
+- Sweep for remaining merge leftovers and duplicate code.
+
+## 6. Polish — from the play-through
+
+Visual and feel fixes to existing panels and the 3D map. Driven by the §4 play-through log,
+not invented up front. Polish means fixing what's there, not adding scenery.
+
+## 7. De-bloat — needs a decision from the player
+
+V1 carries scaffolding for a web stack it will never use. That stack now belongs to V2.
+Candidates to delete from this repo:
+- `apps/web/` — untouched `create-next-app` boilerplate. It's also the only reason Dependabot
+  keeps opening Next.js security PRs here.
+- `prisma/` and the root `prisma` dependency — a placeholder `Post` model nothing reads.
+- Root dependencies the game doesn't import: `@shadcn/ui`, `@tanstack/react-query`,
+  `@tanstack/query-devtools`, `framer-motion`.
+- The duplicate root `eslint-plugin-comment-policy/` (the workspace one lives in `packages/`)
+  and the one-off `fix-comments.cjs` script.
+- `.tmp-assets/` — extracted Kenney zips, already ignored by git, safe to delete locally.
+
+## 8. Dependency upkeep
+
+- **Next.js security bump (PR #24)** — merge it, or delete `apps/web` per §7 and close it.
+  PR #23 is a duplicate of #24.
+- **Vitest 2 → 4 (PR #21)** — close it. Tested 2026-10-16: Vitest 4 needs Vite 6+, and the
+  game is on Vite 5, so it fails at startup. A toolchain upgrade is not a V1 goal.
 
 ---
 
-# Open backlog (smaller, unblocked)
+# Moved to SeatAtTheTable 2
 
-### De-bloat & polish
-`src/core/header.ts` is a ~5,000-line monolith. Player's stated goal: "make the game run
-smoother, gameplay better, and more visually pleasing."
-- Confirm the `renderAll()` (full rebuild) vs cheap `refreshHUD()` split is respected
-  everywhere — hot paths must not call `renderAll()` when only HUD numbers changed.
-- Visual polish pass across panels and the 3D map.
-- Sweep for remaining merge leftovers / duplicate code.
+Everything that was designed but unbuilt, or only an idea, is in
+[`SEATATTHETABLE2.md`](SEATATTHETABLE2.md): outskirt zoning (`farmstead`, `suburb`, `resort`,
+`woodland`, `works`), the resort strip, beach volleyball, rural wildlife and walkers, the
+Lakeridge Country Club, non-grid roads and curves, lane-aware traffic, more 3D props, coast
+and edge landmarks, deeper mission chains and follow-ups, more comic missions, more phone
+contacts, recurring room events, more amenities, `buildCityScene` extraction, the Next.js
+stack, server saves, and the undefined "readings" ML idea.
 
-### Building interiors
-Per-type decor (`src/map/interiorScene.ts`) and per-type "read the room" hotspots are done.
-- The heist room now has both the vault board and a Security Office desk. The desk gives
-  exact, in-world odds and payout comparisons for every bank before a job is chosen.
-- **Optional:** deepen into recurring events (the block board rotating real requests).
-
-### Map engine
-**Asset rule:** when a library or asset pack is added, future map work should actively use
-it. Don't add assets or helpers that don't feed scene building, collision, minimap, zoning,
-lighting, weather, or user-facing behaviour.
-- Continue extracting `buildCityScene` from `header.ts` into typed map modules.
-- Use the GLB loader for more city props (street furniture, parking, docks, residential
-  detail) once exact CC0 sources are chosen.
-- Expand roaming with lane-aware traffic rules and better pedestrian destination tables.
-- Make road curves collision/minimap/path-aware beyond the current data-backed diagonals.
-- Move reserved asset metadata into visible work: building-detail GLBs → facade dressing,
-  roof clutter, station variants; car-kit GLBs → delivery routes, police patrols,
-  roadblocks, taxis, crew transport; character GLBs → pedestrian and named-NPC variants.
-- A full non-grid road rewrite is deliberately **not** pursued — it would strand the ~40
-  hand-placed anchors. Revisit only as part of the world rebuild.
-
-### Amenities
-Basketball, park chess, pet store and newsstand are done.
-- **Optional:** more amenity variety; tie rewards into reputation beyond flat respect
-  (e.g. the guard dog actually lowering heat).
-
-### QA
-- **Runtime-verify the venture / crew / exploit interaction modals in-browser.** The
-  fullscreen + modal z-index root causes were fixed and the logic reads correct by
-  inspection, but the reported symptom was never confirmed clicked in a live session.
-
-### Broader architecture (forward-looking, lower priority than gameplay)
-- **`apps/web/` is still `create-next-app` boilerplate** — intended home for Next.js 16 +
-  React 19 + shadcn + TanStack Query + Prisma. Deferred behind "harden the Vite game first."
-- **Prisma version mismatch:** root uses v5, `apps/web` uses v7. `prisma/schema.prisma` is
-  still a placeholder `Post` model on sqlite.
-- `services/` is empty; no Python/ML yet.
-- Strict typing on `SeatAtTheTable` is effectively complete — `tsc --noEmit` passes clean
-  and is in the push gate.
+**Decided 2026-10-16: the drive out to the countryside is fun.** No fast travel to the
+outskirts. The Travel Nodes strip stays deleted. The phone's taxi to a waypoint stays.
 
 ---
 
 # THE MAP AT A GLANCE — what every region is and what is in it
 
-Reference, not a task list. **Bold = shipped. Plain = planned (§0c).** The world is one
+Reference, not a task list. **Bold = shipped.** Plain = not in V1 (moved to `SEATATTHETABLE2.md`). The world is one
 landmass in an ocean, with an enclosed lake in the north, two canals cutting it into three
 city districts, and a ring of countryside around all of it.
 
@@ -568,7 +152,7 @@ city districts, and a ring of countryside around all of it.
 | **The ocean** | Surrounds everything. Hard world border. |
 | **Windhaven Lake** | Enclosed body in the north. Was open to the ocean (which made it a bay, not a lake) until the landmass was wrapped over the top of it. |
 | **South Branch Canal / Lakefront Cut** | The two north-south canals that separate the three city districts. Crossed by bridges on Grand, Roosevelt and Cermak. |
-| Beach ring | Sand around the ENTIRE lake edge, derived from the lake polygon. Currently only the south shore. |
+| **Beach ring** | Sand around the entire lake edge, derived from the lake polygon so it can't drift from the coast. |
 
 ## The three CITY districts — turf, control, the war
 
@@ -604,9 +188,8 @@ not a thing anyone wants. Each groups terrain belts that were already out there.
 ### **Kestrel Reach** — the north, across the lake
 Three belts: **Sunset Shore** (`suburb`), **Kestrel Woods** (`forest`), **Harrow End**
 (`farmland`). Only reachable at all since the lake was enclosed.
-Biome, still planned: `resort` and `suburb` as real `BlockCharacter` zoning (the current
-outskirt scenery is a simpler procedural pass, not full zoning — see "Zoning characters"
-below). Woodland and farmland scenery are shipped.
+Biome: woodland and farmland scenery are shipped as a simple procedural pass. `resort` and
+`suburb` as real zoning are V2.
 Contents: **Sunset Shore Motel** (lie low, and let a federal case decay — the one thing no
 city interior offers) · **Kestrel Woods Fire Road** (no heat for driving offences + a time
 trial) · **the off-road dealership** (Mudster's country branch — ATVs, quads, tractors) ·
@@ -623,9 +206,9 @@ Stand Lodge** (the `turf_war` truce's final negotiation).
 
 ### **Lakeridge County** — the east end
 Two belts: **Lakeridge** (`suburb`), **Cicero Outworks** (`industrial`).
-Biome, planned: lakeside suburb; a chained-up industrial edge of sheds, tanks and spoil heaps.
+Biome: generic outskirt scenery. A real lakeside suburb and a chained-up industrial edge are V2.
 Contains: **The Gilded Kettle** — the casino. Blackjack, roulette, five-card draw, slots.
-Planned: **Lakeridge Country Club** (deferred into §3's in-person Politics work).
+Lakeridge Country Club is V2.
 
 ## The two forests, deliberately different
 
@@ -638,9 +221,8 @@ district like that is a category rather than a place.
 
 **Shipped, city only:** `corporate` · `affluent` · `working` · `rough` · `shopping` ·
 `entertainment` · `industrial`.
-**Planned, outskirts:** `farmstead` · `suburb` · `resort` · `woodland` · `works`.
-The generator is currently hard-scoped to the three city districts — extending it outward is
-the single highest-value item in §0c, because the drive itself is the experience.
+**V2, outskirts:** `farmstead` · `suburb` · `resort` · `woodland` · `works`. The V1
+generator is scoped to the three city districts; the outskirts use the simpler scenery pass.
 
 ---
 
@@ -681,6 +263,29 @@ cannot opt themselves out.
 ---
 
 # Shipped (for context)
+
+**Outskirts content (V5.0).** Kettle Flats Airfield (the `stolen_shipment` Black Market
+continuation), Ridgewood Stand Lodge (the `turf_war` truce negotiation), Boundary Meadows
+Drive-In, the Kestrel Woods Fire Road six-gate time trial with a car stripe, Sunset Shore Motel
+(gated above investigation 20; lets a federal case decay), and Mudster Kestrel Trailhead, whose
+off-road vehicles keep full speed in the woods where other cars drop to 52%. Farmstead,
+woodland, suburb and works scenery in each belt, and three sparse rural vehicles. The
+governing rule: a drive out must buy a rare experience, never a routine errand.
+
+**Places look like what they are.** `map/archetypes.ts` assigns every place a shape by hand
+(`cart`, `alley`, `lot`, `tenement`, `storefront`, `showroom`, `office`, `tower`, `civic`,
+`works`, `bay`); collision comes from the same archetype; `archetypes.test.ts` fails if a place
+has none.
+
+**New places.** The enclosed lake and three northern belts, three named outskirt districts
+with a Districts layer on the City Map, the Gilded Kettle casino (blackjack, roulette,
+five-card draw, slots; RTP unit-tested), the respray bay, and the drive-in garage.
+
+**Missions, onboarding and in-person politics (V5.0).** Five map-first chains, comic side
+missions, connected follow-ups as delayed phone messages, Contacts (Dockmaster Bell, Lana,
+Amit, a sponsor lead), taxi dispatch, a before/after result ledger, and the
+learn-as-you-go onboarding sequence (`core/onboarding.ts`). Politics and Gang moved off flat
+tabs into City Hall, the Chop Shop and the Marigold Lounge, closing the device initiative.
 
 **Post-expansion cleanup.** The world expansion (below) shipped green on every gate but
 played badly: filler built on stale road positions dropped buildings onto real streets,

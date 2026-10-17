@@ -378,7 +378,9 @@ Playwright tests:
 
 ## Original Brief Completion Checklist
 
-This is the authoritative remaining-work checklist for the original request: choices must
+V1 is feature-frozen (2026-10-16). Unchecked items still in V1 scope are mirrored in
+`TODO.md`; items marked "Moved" live in `SEATATTHETABLE2.md`. This is the remaining-work
+checklist for the original request: choices must
 produce different playable stories, not just different result text. Do not mark this section
 complete until every unchecked item has browser evidence.
 
@@ -398,7 +400,8 @@ complete until every unchecked item has browser evidence.
   reduction that cannot actually occur) and explicit future consequences.
 - [ ] Add browser coverage for every major branch, decline route, and repeat/follow-up rule;
   passing one representative route is not enough.
-- [ ] **Known e2e failures as of 2026-08-05 (`7a769a6`), fix before claiming §2/§3 done:**
+- [x] ~~**Known e2e failures as of 2026-08-05 (`7a769a6`):**~~ pigeon and raccoon fixed
+  2026-10-16; the phone-overlay failure is tracked in `TODO.md` §1. Original note:
   `pigeon_summit`'s "Give the flock a public apology" choice never opens the Mission Result
   modal (`missions.e2e.ts` times out at 60s); `raccoon_keycard`'s result text says
   `heat -6` where the mission promises `heat -5` (reward math or copy is wrong, pick one);
@@ -445,7 +448,7 @@ complete until every unchecked item has browser evidence.
 
 - [x] `home_safe_robbery`, `stolen_shipment`, `alderman_fixer`, `turf_war`, and `first_heist`
   are map-first, multi-stage chains with physical objectives and saved outcomes.
-- [ ] Deepen each chain until both early and late choices change later dialogue, contacts,
+- [ ] **Moved to `SEATATTHETABLE2.md`.** Deepen each chain until both early and late choices change later dialogue, contacts,
   offers, or city conditions; do not rely only on immediate stat changes.
 - [x] Union refusal now schedules a physical City Hall audit: pay the named settlement or
   contest it and take a 90-second, 50% income hit at the named venture.
@@ -457,14 +460,14 @@ complete until every unchecked item has browser evidence.
 
 - [x] Added several optional two-location comic missions, plus temporary safe surreal tonic
   effects, to break up serious story content.
-- [ ] Continue adding optional comic encounters with different mechanics, locations, and
+- [ ] **Moved to `SEATATTHETABLE2.md`.** Continue adding optional comic encounters with different mechanics, locations, and
   rewards; none may punish unfamiliar interaction or be required for main progression.
 - [x] Mission GPS, permanent mission locations, temporary markers, and an expanded outskirt
   ring are implemented.
-- [ ] Continue the map shape pass: add irregular coast/edge landmarks, non-grid routes, and
+- [ ] **Moved to `SEATATTHETABLE2.md`.** Continue the map shape pass: add irregular coast/edge landmarks, non-grid routes, and
   mission-specific places so the city reads less like a rectangular board and more like a
   lived-in place.
-- [ ] Add location capacity rules before new chains: every required new place needs an honest
+- [ ] **Moved to `SEATATTHETABLE2.md`.** Add location capacity rules before new chains: every required new place needs an honest
   archetype, collision, scene-audit coverage, interior interaction, GPS route, and map label.
 
 ## Open Follow-Ups
@@ -486,7 +489,7 @@ complete until every unchecked item has browser evidence.
   `tax_audit` follow-up. At the physical City Hall contact, the player can pay the named
   settlement or contest it; the latter applies its transparent, temporary penalty only to the
   selected venture.
-- Add deeper follow-up missions for:
+- **Moved to `SEATATTHETABLE2.md`:** deeper follow-up missions for:
   - Amit's later mistake
   - arsonist revenge
   - Black Market Trade investigation
