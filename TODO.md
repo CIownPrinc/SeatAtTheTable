@@ -107,11 +107,13 @@ V1 is finished when all of these hold at once:
 
 ## 4. In-browser QA — Claude
 
-- **Venture / crew / exploit interaction modals.** The fullscreen and z-index root causes were
-  fixed and the logic reads correct, but the reported symptom was never clicked through in a
-  live session.
+- ~~**Venture / crew / exploit interaction modals.**~~ DONE 2026-10-17. `e2e/interior-sweep.e2e.ts`
+  walks into all 50 enterable buildings (13 ventures, 29 services, 8 local businesses), presses
+  every hotspot, then every button in every popup it opens, each from a fresh visit: 298 presses.
+  It fails if a hotspot does nothing a player could see or if anything throws. Zero problems.
 - **One full play-through** from a new game, logging every bug, dead end and confusing
-  moment. That log becomes the polish list for §6.
+  moment. That log becomes the polish list for §6. This one needs a human: it's about feel,
+  and the automated suite can't judge whether something is confusing or dull.
 
 ## 5. Smoother — Claude (mostly done 2026-10-17)
 
