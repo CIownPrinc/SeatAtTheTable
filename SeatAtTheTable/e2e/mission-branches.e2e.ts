@@ -19,11 +19,19 @@ interface Branch {
   state?: Record<string, number>;
   memory?: Record<string, unknown>;
   random?: number;
+  staffCart?: boolean;
   steps: Step[];
   expect: string[];
 }
 
 const BRANCHES: Branch[] = [
+  { name:'Herald, builder: professional headline', mission:'tribune', steps:['A business that belongs to the neighborhood', 'Give her the hiring and neighborhood plan'], expect:['“The Builder of Devlin”'] },
+  { name:'Herald, builder: guarded headline', mission:'tribune', state:{ heat:30 }, steps:['A business that belongs to the neighborhood', 'Keep the books and names private'], expect:['respect +8; heat -8; “The Quiet Builder”'] },
+  { name:'Herald, family: warm headline', mission:'tribune', steps:['A family operation that keeps its own counsel', 'Tell the story with a family joke'], expect:['“A Cousin, a Cart, and a Crowd”'] },
+  { name:'Herald, challenger: scandal headline', mission:'tribune', state:{ heat:10 }, steps:['A city that finally answers to somebody', 'Call out the people running the city'], expect:['“City Hall Faces a New Critic”'] },
+  { name:'Herald, builder: hostile headline', mission:'tribune', state:{ heat:10 }, steps:['A business that belongs to the neighborhood', 'Tell the competitors to get out of the way'], expect:['respect +12; heat +24; “A Warning From Devlin”'] },
+  { name:'First heist, crew approach: cashier bundles', mission:'first_heist', staffCart:true, state:{ heat:10 }, steps:['Pick the quiet crew approach', 'resolve', 'Leave with the cashier bundles'], expect:['$900 gained; heat +8; vault left untouched'] },
+  { name:'First heist, crew approach: push for the vault', mission:'first_heist', staffCart:true, random:0.01, steps:['Pick the quiet crew approach', 'resolve', 'Push the crew toward the vault'], expect:['Exact changes: +$'] },
   { name:'Amit mistake: contain it', mission:'amit_mistake', state:{ cash:3000, heat:10 }, steps:['Contain it ($2,500, +Heat)'], expect:['$2,500 spent; heat +12; family loyalty +2'] },
   { name:'Amit mistake: crew takes the fall', mission:'amit_mistake', state:{ respect:50 }, steps:['Let a crew member take the fall'], expect:['respect -10; family loyalty -3'] },
   { name:'Hostile press: buy a response', mission:'hostile_press', state:{ cash:2000 }, steps:['Buy a response ($1,800)'], expect:['$1,800 spent; legit income -25% for 2 minutes'] },
@@ -125,6 +133,14 @@ test.describe('every mission branch resolves and reports its result', function (
     test(branch.name, async ({ page }) => {
       const pageErrors: string[] = [];
       await bootForMissions(page, pageErrors);
+      if(branch.staffCart){
+        // LEGAL: The crew approach needs one assigned crew member; hire one through the Empire grid.
+        await page.evaluate(function(){
+          (window as unknown as { __seat: BranchHook }).__seat.state.cash = 20000;
+          document.querySelector<HTMLButtonElement>('#grid-legit [data-action="expand"][data-id="cart"]')!.click();
+          document.querySelector<HTMLButtonElement>('#grid-legit [data-action="hirecrew"][data-id="cart"]')!.click();
+        });
+      }
       await applyState(page, branch);
       await page.evaluate(function(id){
         const seat = (window as unknown as { __seat: BranchHook }).__seat;

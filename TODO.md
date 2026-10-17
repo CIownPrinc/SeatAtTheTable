@@ -86,18 +86,24 @@ V1 is finished when all of these hold at once:
 - **Not changed, on purpose:** button labels state the intended effect ("+16 heat"); the result
   states what happened. `log()` lines still carry the intended numbers.
 
-## 3. Browser coverage for what exists — Codex
+## 3. Browser coverage for what exists — DONE 2026-10-17
 
-**Progress 2026-10-17:** `e2e/mission-branches.e2e.ts` is a table of 56 branch rows + 10 decline
-routes, each failing on any page error (suite now 116 tests, all green). `hireFreeCrew` now reports whether crew was really hired, so the `hustler_score`,
-`cousin` and `hustler` results say "no open crew spot; $400 finder's fee instead" when that's
-what happened. Still to cover: onboarding paths, first_heist crew approach, and tribune tones beyond the existing spec.
-
-Not new content, just proof that the content that exists works.
-- Every stage and meaningful ending of the five main chains (`home_safe_robbery`,
-  `stolen_shipment`, `alderman_fixer`, `turf_war`, `first_heist`).
-- Every decline route, and the repeat/follow-up rules.
-- The four mission-based onboarding paths, on the pattern in `e2e/onboarding.e2e.ts`.
+- `e2e/mission-branches.e2e.ts`: a table of 65 branch rows and 10 decline routes covering
+  every stage and ending of the five main chains, the follow-ups, the comic missions, all
+  five Herald tones and the first heist's crew approach. Each row fails on any page error.
+- `e2e/onboarding.e2e.ts` now walks the whole early-game sequence (cart, crew, lab, first
+  corner) through the real UI.
+- Bugs this coverage turned up, all fixed:
+  - **Herald headlines.** The answer buttons passed `evasive`/`humorous`/`controversial`/
+    `aggressive`, but the headline table only knew `guarded`/`warm`/`scandal`, so four of five
+    answers printed the same "warning" headline. Answers now map to a press tone first.
+  - **Hires that weren't.** `hireFreeCrew` pays a $400 fee when no spot is open; the results
+    claimed a new recruit anyway.
+  - **Dead-end choice.** The Rival Capo's "Bring leverage" ended the mission with nothing when
+    clicked without leverage; it's now greyed out (`ModalButton.disabled`).
+  - **Silent dealer button.** "Post a dealer ($N)" without the cash closed the popup and did
+    nothing; it now uses the same `cost` gate as paid mission choices.
+- Suite: 126 tests, green twice in a row (~3.5 min).
 
 ## 4. In-browser QA — Claude
 

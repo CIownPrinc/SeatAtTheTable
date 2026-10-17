@@ -1130,20 +1130,22 @@ import type * as ThreeNamespace from 'three';
     staffed.crew -= 1;
     return true;
   }
+  const INTERVIEW_PRESS_TONES: Record<string, string> = { professional:'professional', evasive:'guarded', humorous:'warm', controversial:'scandal' };
   function resolveTribuneInterview(tone: string): void {
     const opening = String(state.worldMemory.interviewOpening || 'builder');
+    const pressTone = INTERVIEW_PRESS_TONES[tone] ?? 'hostile';
     const article = opening === 'builder'
-      ? tone === 'professional' ? 'The Builder of Devlin' : tone === 'guarded' ? 'The Quiet Builder' : tone === 'warm' ? 'The Block Has a Joke for Him' : tone === 'scandal' ? 'Growth at Any Cost?' : 'A Warning From Devlin'
+      ? pressTone === 'professional' ? 'The Builder of Devlin' : pressTone === 'guarded' ? 'The Quiet Builder' : pressTone === 'warm' ? 'The Block Has a Joke for Him' : pressTone === 'scandal' ? 'Growth at Any Cost?' : 'A Warning From Devlin'
       : opening === 'family'
-        ? tone === 'professional' ? 'A Family Business With Ambition' : tone === 'guarded' ? 'The Family Keeps Its Counsel' : tone === 'warm' ? 'A Cousin, a Cart, and a Crowd' : tone === 'scandal' ? 'What the Family Will Not Say' : 'A Family Dares the City'
-        : tone === 'professional' ? 'The Challenger Makes His Case' : tone === 'guarded' ? 'A Challenger Behind Closed Doors' : tone === 'warm' ? 'The City Gets the Last Laugh' : tone === 'scandal' ? 'City Hall Faces a New Critic' : 'A Threat Printed in Full';
+        ? pressTone === 'professional' ? 'A Family Business With Ambition' : pressTone === 'guarded' ? 'The Family Keeps Its Counsel' : pressTone === 'warm' ? 'A Cousin, a Cart, and a Crowd' : pressTone === 'scandal' ? 'What the Family Will Not Say' : 'A Family Dares the City'
+        : pressTone === 'professional' ? 'The Challenger Makes His Case' : pressTone === 'guarded' ? 'A Challenger Behind Closed Doors' : pressTone === 'warm' ? 'The City Gets the Last Laugh' : pressTone === 'scandal' ? 'City Hall Faces a New Critic' : 'A Threat Printed in Full';
     state.worldMemory.pressArticle = article;
     let result: string;
     if(tone === 'professional'){ applyTempMult('legit', 1.25, 75); state.prestigeCount = Math.max(state.prestigeCount, 1); state.worldMemory.pressTone = 'professional'; scheduleFollowUp('press_followup'); result = `legit income +25% for 75 seconds; prestige tier unlocked; “${article}” follow-up in 2 minutes`; log('<i class="ph-duotone ph-microphone-stage"></i> Lana runs a clean profile. Legit traffic rises and a reader asks to meet.'); }
     else if(tone === 'evasive'){ state.respect += 8; state.heat = Math.max(0, state.heat - 8); state.worldMemory.pressTone = 'guarded'; scheduleFollowUp('press_followup'); result = `respect +8; heat -8; “${article}” source follow-up in 2 minutes`; log('<i class="ph-duotone ph-newspaper"></i> The piece says less than Lana wanted. A careful reader asks to meet.'); }
     else if(tone === 'humorous'){ state.respect += 14; applyTempMult('legit', 1.12, 60); state.worldMemory.pressTone = 'warm'; scheduleFollowUp('press_followup'); result = `respect +14; legit income +12% for 60 seconds; “${article}” community follow-up in 2 minutes`; log('<i class="ph-duotone ph-smiley"></i> You make Windhaven laugh without giving much away. A neighborhood organizer asks to meet.'); }
     else if(tone === 'controversial'){ state.respect += 22; state.heat = Math.min(100, state.heat + 16); state.investigation = Math.min(100, state.investigation + 4); state.worldMemory.pressTone = 'scandal'; scheduleFollowUp('press_followup'); result = `respect +22; heat +16; investigation +4; “${article}” response in 2 minutes`; log('<i class="ph-duotone ph-warning"></i> The quotes travel fast. An activist asks to meet at the Herald.'); }
-    else { state.respect += 12; state.heat = Math.min(100, state.heat + 24); state.worldMemory.pressTone = 'hostile'; scheduleFollowUp('hostile_press'); result = 'respect +12; heat +24; hostile press follow-up in 2 minutes'; log('<i class="ph-duotone ph-warning"></i> You turn the interview into a threat. The street likes it. City Hall does not.'); }
+    else { state.respect += 12; state.heat = Math.min(100, state.heat + 24); state.worldMemory.pressTone = 'hostile'; scheduleFollowUp('hostile_press'); result = `respect +12; heat +24; “${article}” hostile press follow-up in 2 minutes`; log('<i class="ph-duotone ph-warning"></i> You turn the interview into a threat. The street likes it. City Hall does not.'); }
     finishMission('tribune', result);
   }
   function openHomeSafeTellerLesson(): void {
@@ -3031,13 +3033,13 @@ import type * as ThreeNamespace from 'three';
       const left = Math.max(0, Math.ceil(corner.bustCooldownAt - state.playSeconds));
       body += `<p class="flavor">Busted. Cooling off for ${left}s before anyone will work it again.</p>`;
     }
-    const buttons = [];
+    const buttons: ModalButton[] = [];
     if(corner.busted){
       buttons.push({ label:'Too hot right now', secondary:true });
     } else if(corner.dealer){
       buttons.push({ label:'Pull the dealer', onClick:function(){ fireDealer(corner); } });
     } else {
-      buttons.push({ label:`Post a dealer (${fmt(corner.dealerCost)})`, onClick:function(){ assignDealer(corner); } });
+      buttons.push({ label:`Post a dealer (${fmt(corner.dealerCost)})`, cost:corner.dealerCost, onClick:function(){ assignDealer(corner); } });
     }
     buttons.push({ label:'Walk away', secondary:true });
     showModal({ eyebrow:'The Trade', title:corner.name, body, buttons });
