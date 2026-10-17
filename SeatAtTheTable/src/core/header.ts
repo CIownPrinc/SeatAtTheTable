@@ -73,6 +73,7 @@ import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/vie
 import { renderZoneType } from '../map/zoning';
 import { drawInteriorRoom } from '../map/interiorScene';
 import { activeMissionCount, advanceMissionStage, canOfferRepeatableEvent, canOfferUniqueEvent, completeMission, declineMission, delayedMissionReady, missionCompleted, missionSaveDefaults, recordEventOffer, scheduleDelayedMission, startMission } from './missions';
+import { describeMissionLedger, foldMissionLedger, openMissionLedger, rebaseMissionLedger, type MissionLedger, type OutcomeSnapshot } from './missionLedger';
 import { getOnboardingSteps, type OnboardingMissionSnapshot, type OnboardingPanelTarget } from './onboarding';
 import { MISSION_CONFIG as PHASE2_MISSION_CONFIG, OUTSKIRT_VENUE_CONFIG, missionEventPool, type MissionEventDefinition } from '../config/missions';
 import type * as ThreeNamespace from 'three';
@@ -832,13 +833,15 @@ import type * as ThreeNamespace from 'three';
     if(stamp){ stampEl.style.display='block'; stampEl.textContent = stamp; } else { stampEl.style.display='none'; }
     const footer = byId('modal-footer');
     footer.innerHTML = '';
+    const sceneMissionId = ledgerMissionInScene;
     (buttons || [{label:"Continue"}]).forEach((btnDef, idx)=>{
       const btn = document.createElement('button');
       btn.className = 'modal-btn' + (btnDef.secondary ? ' secondary' : '');
       btn.innerHTML = `` + btnDef.label;
       btn.onclick = function(){
         byId('modal-overlay').classList.add('hidden');
-        if(btnDef.onClick) btnDef.onClick();
+        const choice = btnDef.onClick;
+        if(choice) runInMissionScene(sceneMissionId, choice);
       };
       footer.appendChild(btn);
     });
@@ -888,20 +891,10 @@ import type * as ThreeNamespace from 'three';
       worldMemory: state.worldMemory,
     };
   }
-  interface MissionOutcomeSnapshot {
-    cash: number;
-    product: number;
-    respect: number;
-    heat: number;
-    investigation: number;
-    influence: number;
-    muscle: number;
-    crew: number;
-    investorPenalty: number;
-  }
-  const missionOutcomeSnapshots = new Map<string, MissionOutcomeSnapshot>();
-  function captureMissionOutcome(id: string): void {
-    missionOutcomeSnapshots.set(id, {
+  const missionLedgers = new Map<string, MissionLedger>();
+  let ledgerMissionInScene: string | null = null;
+  function currentOutcomeSnapshot(): OutcomeSnapshot {
+    return {
       cash: state.cash,
       product: state.product,
       respect: state.respect,
@@ -911,35 +904,29 @@ import type * as ThreeNamespace from 'three';
       muscle: state.muscleCount,
       crew: businesses.reduce(function(total, business){ return total + business.crew; }, 0),
       investorPenalty: state.investorPenalty ?? 0,
-    });
+    };
   }
-  function signedMissionDelta(value: number): string {
-    return value > 0 ? `+${value}` : `${value}`;
+  function foldLedgerFor(id: string): void {
+    const ledger = missionLedgers.get(id);
+    if(ledger) missionLedgers.set(id, foldMissionLedger(ledger, currentOutcomeSnapshot()));
+  }
+  function runInMissionScene(id: string | null, scene: () => void): void {
+    const ledger = id ? missionLedgers.get(id) : undefined;
+    if(!id || !ledger){ scene(); return; }
+    const now = currentOutcomeSnapshot();
+    missionLedgers.set(id, rebaseMissionLedger(foldMissionLedger(ledger, now), now));
+    const outerScene = ledgerMissionInScene;
+    ledgerMissionInScene = id;
+    try { scene(); }
+    finally {
+      ledgerMissionInScene = outerScene;
+      foldLedgerFor(id);
+    }
   }
   function exactMissionChanges(id: string): string[] {
-    const before = missionOutcomeSnapshots.get(id);
-    missionOutcomeSnapshots.delete(id);
-    if(!before) return [];
-    const changes: string[] = [];
-    const cash = Math.round(state.cash - before.cash);
-    const product = Math.round(state.product - before.product);
-    const respect = Math.round(state.respect - before.respect);
-    const heat = Math.round(state.heat - before.heat);
-    const investigation = Math.round(state.investigation - before.investigation);
-    const influence = Math.round(state.influence - before.influence);
-    const muscle = Math.round(state.muscleCount - before.muscle);
-    const crew = Math.round(businesses.reduce(function(total, business){ return total + business.crew; }, 0) - before.crew);
-    const investorPenalty = Math.round(((state.investorPenalty ?? 0) - before.investorPenalty) * 100);
-    if(cash) changes.push(`${cash > 0 ? '+' : '-'}$${Math.abs(cash).toLocaleString()}`);
-    if(product) changes.push(`product ${signedMissionDelta(product)}`);
-    if(respect) changes.push(`respect ${signedMissionDelta(respect)}`);
-    if(heat) changes.push(`heat ${signedMissionDelta(heat)}`);
-    if(investigation) changes.push(`investigation ${signedMissionDelta(investigation)}`);
-    if(influence) changes.push(`influence ${signedMissionDelta(influence)}`);
-    if(muscle) changes.push(`muscle ${signedMissionDelta(muscle)}`);
-    if(crew) changes.push(`crew ${signedMissionDelta(crew)}`);
-    if(investorPenalty) changes.push(`permanent income ${signedMissionDelta(-investorPenalty)}%`);
-    return changes;
+    const ledger = missionLedgers.get(id);
+    missionLedgers.delete(id);
+    return ledger ? describeMissionLedger(ledger, currentOutcomeSnapshot()) : [];
   }
   function missionDefinition(id: string): MissionEventDefinition | null {
     return missionEventPool.find(function(event){ return event.id === id; }) ?? null;
@@ -1013,7 +1000,7 @@ import type * as ThreeNamespace from 'three';
     const definition = missionDefinition(id);
     const objective = objectiveForMission(id);
     if(!definition || !objective) return;
-    captureMissionOutcome(id);
+    missionLedgers.set(id, openMissionLedger(currentOutcomeSnapshot()));
     if(id === 'home_safe_robbery'){
       const loss = Math.round(state.cash * PHASE2_MISSION_CONFIG.homeSafeRobberyLossPct);
       state.cash = Math.max(0, state.cash - loss);
@@ -1026,12 +1013,13 @@ import type * as ThreeNamespace from 'three';
     }
     startMission(missionSaveState(), { id, stageId:'travel', status:'active', startedAt:state.playSeconds, updatedAt:state.playSeconds, objective });
     setMissionGps(id);
+    foldLedgerFor(id);
     log(`<i class="ph-duotone ph-map-pin"></i> Mission started: ${definition.title}. GPS set to ${objective.label}.`);
     renderAll();
     scheduleSave();
   }
   function declineMissionOffer(id: string): void {
-    captureMissionOutcome(id);
+    missionLedgers.set(id, openMissionLedger(currentOutcomeSnapshot()));
     declineMission(missionSaveState(), id);
     let outcome = 'You let the opportunity pass for now.';
     if(id === 'tribune'){ state.respect += 10; state.worldMemory.pressTone = 'quiet'; outcome = 'You decline Lana Vance and stay quiet.'; log('<i class="ph-duotone ph-star"></i> You decline Lana Vance. Some people respect a man who does not need the attention.'); }
@@ -1199,6 +1187,9 @@ import type * as ThreeNamespace from 'three';
     });
   }
   function resolveMissionAtObjective(id: string): void {
+    runInMissionScene(id, function(){ openMissionScene(id); });
+  }
+  function openMissionScene(id: string): void {
     if(id === 'tribune'){ openTribuneInterview(); return; }
     if(id === 'amit_mistake'){
       showModal({ eyebrow:'Hub Bus Station', title:"Amit's Mistake", body:"<p class='flavor'>Amit took a shortcut with the books. The lender wants money, or someone from your operation to carry the blame.</p>", buttons:[
@@ -1273,7 +1264,7 @@ import type * as ThreeNamespace from 'three';
       }
       showModal({ eyebrow:'Wabash Newsstand', title:'The Delegation', body:"<p class='flavor'>The flock watches from the awning. One pigeon has a pastry wrapper tucked under its wing. The newsstand owner insists it is the negotiator.</p>", buttons:[
         { label:'Offer seed decoys ($120)', onClick:function(){ state.cash = Math.max(0, state.cash - 120); state.respect += 8; state.worldMemory.pigeonSummit = 'seed'; log('<i class="ph-duotone ph-bird"></i> The delegation accepts seed, leaves the pastries, and awards you a respectful nod.'); finishMission('pigeon_summit', '$120 spent; respect +8; pigeon truce recorded'); } },
-        { label:'Give the flock a public apology', onClick:function(){ state.respect += 12; state.heat = Math.max(0, state.heat - 4); state.worldMemory.pigeonSummit = 'apology'; log('<i class="ph-duotone ph-megaphone"></i> The pigeons accept your apology. The crowd loves it more than they should.'); finishMission('pigeon_summit', 'respect +12; heat -4; pigeon truce recorded'); } },
+        { label:'Give the flock a public apology (+12 respect, up to -4 heat)', onClick:function(){ const heatRemoved = Math.min(4, state.heat); state.respect += 12; state.heat -= heatRemoved; state.worldMemory.pigeonSummit = 'apology'; log('<i class="ph-duotone ph-megaphone"></i> The pigeons accept your apology. The crowd loves it more than they should.'); finishMission('pigeon_summit', Math.round(heatRemoved) ? `respect +12; heat -${Math.round(heatRemoved)}; pigeon truce recorded` : 'respect +12; pigeon truce recorded'); } },
       ]}); return;
     }
     if(id === 'mayors_parrot'){
@@ -1312,7 +1303,7 @@ import type * as ThreeNamespace from 'three';
       }
       showModal({ eyebrow:'Golden Lotus Herbalist', title:'A Proper Raccoon Lure', body:"<p class='flavor'>Mrs. Lin puts two jars on the counter. One smells like fruit and quiet dignity. The other smells like a county fair and would attract the raccoon, three dogs, and possibly a councilman.</p>", buttons:[
         { label:'Take the quiet fruit lure (+8 respect)', onClick:function(){ state.respect += 8; state.worldMemory.raccoonResolution = 'quiet-lure'; log('<i class="ph-duotone ph-paw-print"></i> The raccoon accepts the fruit, returns the keycard, and leaves City Hall with a dignified escort.'); finishMission('raccoon_keycard', 'respect +8; raccoon returned keycard; quiet resolution recorded'); } },
-        { label:'Use the fairground lure (up to -5 heat, +$140)', onClick:function(){ const heatRemoved = Math.min(5, state.heat); state.heat -= heatRemoved; state.cash += 140; state.worldMemory.raccoonResolution = 'fairground-lure'; log('<i class="ph-duotone ph-paw-print"></i> The raccoon follows the fairground lure through the plaza. A food truck buys the leftover recipe.'); finishMission('raccoon_keycard', `$140 gained; heat -${heatRemoved}; raccoon wildlife initiative recorded`); } },
+        { label:'Use the fairground lure (up to -5 heat, +$140)', onClick:function(){ const heatRemoved = Math.min(5, state.heat); state.heat -= heatRemoved; state.cash += 140; state.worldMemory.raccoonResolution = 'fairground-lure'; log('<i class="ph-duotone ph-paw-print"></i> The raccoon follows the fairground lure through the plaza. A food truck buys the leftover recipe.'); finishMission('raccoon_keycard', Math.round(heatRemoved) ? `$140 gained; heat -${Math.round(heatRemoved)}; raccoon wildlife initiative recorded` : '$140 gained; raccoon wildlife initiative recorded'); } },
       ]}); return;
     }
     if(id === 'rival'){

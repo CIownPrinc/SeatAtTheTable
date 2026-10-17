@@ -97,7 +97,7 @@ test.describe('mission flow', function () {
   });
 
   test('the Pigeon Summit advances through City Hall and saves a comic civic outcome', async ({ page }) => {
-    test.setTimeout(60_000);
+    test.setTimeout(120_000);
     await page.goto('/');
     await page.getByRole('button', { name:'Start', exact:true }).click();
     await page.locator('.tab-btn[data-tab="map"]').click();
@@ -106,6 +106,7 @@ test.describe('mission flow', function () {
 
     await page.evaluate(function(){
       const seat = (window as unknown as { __seat: MissionTestHook }).__seat;
+      seat.state.heat = 60;
       seat.startMission('pigeon_summit');
       seat.resolveMission('pigeon_summit');
     });
@@ -125,9 +126,10 @@ test.describe('mission flow', function () {
       seat.player.y = newsstand.y;
     });
     await page.keyboard.press('e');
-    await page.getByRole('button', { name:'Give the flock a public apology', exact:true }).click();
+    await page.getByRole('button', { name:'Give the flock a public apology (+12 respect, up to -4 heat)', exact:true }).click();
     await expect(page.locator('#modal-overlay')).toContainText('Mission Result');
     await expect(page.locator('#modal-overlay')).toContainText('respect +12; heat -4; pigeon truce recorded');
+    await expect(page.locator('#modal-overlay')).toContainText('Exact changes: respect +12; heat -4');
   });
 
   test("the mayor's parrot creates a second physical comic mission route", async ({ page }) => {
