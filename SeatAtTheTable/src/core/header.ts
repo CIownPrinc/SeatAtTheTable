@@ -839,12 +839,10 @@ import type * as ThreeNamespace from 'three';
       btn.className = 'modal-btn' + (btnDef.secondary ? ' secondary' : '');
       btn.innerHTML = `` + btnDef.label;
       const unaffordable = btnDef.cost !== undefined && state.cash < btnDef.cost;
-      if(unaffordable){
-        btn.disabled = true;
-        btn.title = `You need ${fmt(btnDef.cost ?? 0)} for this.`;
-      }
+      if(unaffordable) btn.title = `You need ${fmt(btnDef.cost ?? 0)} for this.`;
+      btn.disabled = unaffordable || btnDef.disabled === true;
       btn.onclick = function(){
-        if(btnDef.cost !== undefined && state.cash < btnDef.cost) return;
+        if(btn.disabled || (btnDef.cost !== undefined && state.cash < btnDef.cost)) return;
         byId('modal-overlay').classList.add('hidden');
         const choice = btnDef.onClick;
         if(choice) runInMissionScene(sceneMissionId, choice);
@@ -1328,7 +1326,7 @@ import type * as ThreeNamespace from 'three';
       const canIntimidate = state.respect >= PHASE2_MISSION_CONFIG.rivalIntimidationRespectRequirement || state.muscleCount >= PHASE2_MISSION_CONFIG.rivalIntimidationMuscleRequirement;
       showModal({ eyebrow:'West Side Corner', title:'Rival Capo', body:"<p class='flavor'>The capo waits with two people behind him. \"This corner pays somebody tonight. You choose who.\"</p>", buttons:[
         { label:'Pay them off (-8% cash)', onClick:function(){ state.cash *= 0.92; state.worldMemory.rivalSettlement = 'paid'; log('<i class="ph-duotone ph-envelope-simple"></i> You pay the rival crew to walk away quietly.'); finishMission('rival', 'paid'); } },
-        { label:canIntimidate ? 'Intimidate them (+15 respect, +18 heat)' : `Bring leverage (needs ${PHASE2_MISSION_CONFIG.rivalIntimidationRespectRequirement} respect or ${PHASE2_MISSION_CONFIG.rivalIntimidationMuscleRequirement} muscle)`, onClick:function(){ if(!canIntimidate){ finishMission('rival', `intimidation unavailable: need ${PHASE2_MISSION_CONFIG.rivalIntimidationRespectRequirement} respect or ${PHASE2_MISSION_CONFIG.rivalIntimidationMuscleRequirement} muscle`); return; } state.respect += 15; state.heat = Math.min(100, state.heat + 18); state.worldMemory.rivalSettlement = 'intimidated'; log('<i class="ph-duotone ph-star"></i> You hold the corner. Word travels, and so does heat.'); finishMission('rival', 'respect +15; heat +18; rival capo intimidated'); } },
+        { label:canIntimidate ? 'Intimidate them (+15 respect, +18 heat)' : `Bring leverage (needs ${PHASE2_MISSION_CONFIG.rivalIntimidationRespectRequirement} respect or ${PHASE2_MISSION_CONFIG.rivalIntimidationMuscleRequirement} muscle)`, disabled:!canIntimidate, onClick:function(){ state.respect += 15; state.heat = Math.min(100, state.heat + 18); state.worldMemory.rivalSettlement = 'intimidated'; log('<i class="ph-duotone ph-star"></i> You hold the corner. Word travels, and so does heat.'); finishMission('rival', 'respect +15; heat +18; rival capo intimidated'); } },
         { label:'Negotiate a split (-Heat, income cut)', onClick:function(){ applyTempMult('all', 0.92, 90); state.heat = Math.max(0, state.heat - 10); state.worldMemory.rivalSettlement = 'split'; log('<i class="ph-duotone ph-handshake"></i> You split the corner take for quieter streets.'); finishMission('rival', 'split'); } },
         { label:'Attack (starts turf war)', onClick:function(){ state.respect += 25; state.heat = Math.min(100, state.heat + 28); state.nextWarAt = Math.min(state.nextWarAt || Infinity, state.playSeconds + 30); state.worldMemory.gangWarSparked = true; log('<i class="ph-duotone ph-crosshair"></i> The capo leaves bleeding. West Side answers immediately: hold Devlin before the line moves.'); finishMission('rival', 'respect +25; heat +28; Turf War started'); startMissionFromOffer('turf_war'); } },
       ]}); return;
@@ -6027,6 +6025,7 @@ import type * as ThreeNamespace from 'three';
         THREE, scene, worldGroup, player, state, mapObjects, mapPlaces,
         startMission: startMissionFromOffer,
         resolveMission: resolveMissionAtObjective,
+        declineMission: declineMissionOffer,
         enterBuilding,
         hotspots: function(){ return hotspotsFor(state.currentInterior); },
         roadNetwork, districtOffsets: DISTRICT_OFFSETS,

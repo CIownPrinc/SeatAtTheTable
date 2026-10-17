@@ -295,6 +295,7 @@ export interface ModalButton {
   label: string;
   secondary?: boolean;
   cost?: number;
+  disabled?: boolean;
   onClick?: () => void;
 }
 
