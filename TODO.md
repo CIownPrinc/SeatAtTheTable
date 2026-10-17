@@ -113,13 +113,22 @@ V1 is finished when all of these hold at once:
 - **One full play-through** from a new game, logging every bug, dead end and confusing
   moment. That log becomes the polish list for §6.
 
-## 5. Smoother — Claude
+## 5. Smoother — Claude (mostly done 2026-10-17)
 
-`src/core/header.ts` is now ~7,150 lines. V1 won't be re-architected (that's V2's job), but
-it should run smoothly.
-- Confirm hot paths call the cheap `refreshHUD()` rather than the full `renderAll()` rebuild
-  when only HUD numbers changed. Profile before and after.
-- Sweep for remaining merge leftovers and duplicate code.
+Measured on the map with the GPU, idle and walking, 15 s windows:
+
+| Change | Idle fps | Median frame |
+| --- | --- | --- |
+| Before | 39 | 24.5 ms |
+| `pointInPolygon` caches each polygon's bounds and rejects points outside them (was 7% of CPU while standing still; equivalence-tested across the whole world) | — | — |
+| Static scenery stops recomputing its matrices every frame (`map/staticScenery.ts`) | 44 | 22.0 ms |
+| The beach resort (1,900 of 5,000 scene objects) merges into one mesh per material per palm/lounger set (`map/mergeScenery.ts`); per-group so the water audit still checks every palm | **56** | **17.4 ms** |
+
+- `renderAll()` never fires during normal play (counted with a MutationObserver), so the
+  `renderAll` vs `refreshHUD` split is already respected on hot paths.
+- Tried and reverted: merging trees, outskirts, filler and landmarks too. No measurable gain.
+- Still open: the merge-leftovers / duplicate-code sweep. What remains of frame time is
+  three.js drawing ~2,500 meshes; going further means instancing, which is V2 territory.
 
 ## 6. Polish — from the play-through
 

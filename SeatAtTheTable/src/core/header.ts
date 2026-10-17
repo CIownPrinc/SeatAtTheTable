@@ -73,6 +73,8 @@ import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/vie
 import { renderZoneType } from '../map/zoning';
 import { drawInteriorRoom } from '../map/interiorScene';
 import { activeMissionCount, advanceMissionStage, canOfferRepeatableEvent, canOfferUniqueEvent, completeMission, declineMission, delayedMissionReady, missionCompleted, missionSaveDefaults, recordEventOffer, scheduleDelayedMission, startMission } from './missions';
+import { freezeStaticScenery } from '../map/staticScenery';
+import { mergeMeshesWithin, type MergeGeometries } from '../map/mergeScenery';
 import { choiceDelta, describeMissionLedger, foldMissionLedger, openMissionLedger, rebaseMissionLedger, reconcileResultText, type MissionLedger, type OutcomeSnapshot } from './missionLedger';
 import { getOnboardingSteps, type OnboardingMissionSnapshot, type OnboardingPanelTarget } from './onboarding';
 import { MISSION_CONFIG as PHASE2_MISSION_CONFIG, OUTSKIRT_VENUE_CONFIG, missionEventPool, type MissionEventDefinition } from '../config/missions';
@@ -4372,6 +4374,7 @@ import type * as ThreeNamespace from 'three';
     if(!mapScenePromise){
       mapScenePromise = (async function(){
         THREE = await import('three');
+        mergeSceneryGeometries = (await import('three/examples/jsm/utils/BufferGeometryUtils.js')).mergeGeometries;
         mapAssets = await loadMapAssetLibrary(THREE);
         if(!sceneInitialized){
           initScene();
@@ -4943,6 +4946,11 @@ import type * as ThreeNamespace from 'three';
   type ThreeModule = typeof ThreeNamespace;
   type DisposableMaterial = ThreeNamespace.Material & { map?: ThreeNamespace.Texture };
   let THREE: ThreeModule;
+  let mergeSceneryGeometries: MergeGeometries | null = null;
+  // LEGAL: Only the resort: it was ~1,900 of ~5,000 scene objects (measured 2026-10-17; merging
+  // LEGAL: it took idle fps from ~44 to ~56). Trees, outskirts, filler and landmarks were tried too
+  // LEGAL: and saved nothing measurable, so they stay as authored.
+  const MERGEABLE_SCENERY_PREFIXES = ['resort:'];
   let scene: ThreeNamespace.Scene, camera3d: ThreeNamespace.PerspectiveCamera, renderer: ThreeNamespace.WebGLRenderer, worldGroup: ThreeNamespace.Group, playerGroup: ThreeNamespace.Group, ambientLight: ThreeNamespace.AmbientLight, sunLight: ThreeNamespace.DirectionalLight, moonLight: ThreeNamespace.DirectionalLight, waypointBeacon: ThreeNamespace.Group | null = null, missionObjectiveMarker: ThreeNamespace.Group | null = null, parkedCarMesh: ThreeNamespace.Group | null = null, trainGroup: ThreeNamespace.Group | null = null;
   let missionObjectiveMarkerKey = '';
   let streetLights: ThreeNamespace.PointLight[] = [];
@@ -5741,6 +5749,9 @@ import type * as ThreeNamespace from 'three';
       settleRoamingActors(roamingActors, function(x, y){ return tryMove(x, y, currentSolids); }, rescuePoint);
       updateParkedCarMesh();
       rebuildWaypointBeacon();
+      const merge = mergeSceneryGeometries;
+      if(merge) worldGroup.children.filter(function(child){ return MERGEABLE_SCENERY_PREFIXES.some(function(prefix){ return child.name.startsWith(prefix); }); }).forEach(function(group){ mergeMeshesWithin(THREE, group, merge); });
+      freezeStaticScenery(worldGroup);
     });
     if(isLocalDevBuild()){
       console.info('[map-build]', timer.entries().map(entry => `${entry.name}:${entry.ms.toFixed(1)}ms`).join(' '), `total:${timer.totalMs().toFixed(1)}ms`);

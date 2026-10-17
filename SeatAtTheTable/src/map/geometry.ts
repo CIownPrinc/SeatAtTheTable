@@ -19,7 +19,19 @@ export function boundsForPoints(points: Point[]): Bounds {
   }, { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity });
 }
 
+const polygonBounds = new WeakMap<Point[], Bounds>();
+
+function cachedBounds(polygon: Point[]): Bounds {
+  const known = polygonBounds.get(polygon);
+  if(known) return known;
+  const bounds = boundsForPoints(polygon);
+  polygonBounds.set(polygon, bounds);
+  return bounds;
+}
+
 export function pointInPolygon(point: Point, polygon: Point[]): boolean {
+  const bounds = cachedBounds(polygon);
+  if(point.x < bounds.minX || point.x > bounds.maxX || point.y < bounds.minY || point.y > bounds.maxY) return false;
   let inside = false;
   for(let i = 0, j = polygon.length - 1; i < polygon.length; j = i++){
     const pi = polygon[i];
