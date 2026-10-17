@@ -22,7 +22,17 @@ export default defineConfig({
     headless: true,
     trace: 'on-first-retry',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  // LEGAL: Headless Chromium draws WebGL in software (SwiftShader) unless told to use the GPU,
+  // LEGAL: and the city then renders at ~2 fps (measured 2026-10-16; 55 fps with these flags).
+  // LEGAL: At 2 fps every actionability "stable" check, scene boot and screenshot crawls, which
+  // LEGAL: is where most of this suite's timeouts came from. Without a GPU, Chrome falls back.
+  projects: [{
+    name: 'chromium',
+    use: {
+      ...devices['Desktop Chrome'],
+      launchOptions: { args: ['--enable-gpu', '--use-angle=d3d11', '--ignore-gpu-blocklist'] },
+    },
+  }],
   webServer: {
     command: 'node ./node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5173',
     url: 'http://127.0.0.1:5173',

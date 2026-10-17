@@ -1,7 +1,7 @@
 import type { Milestone, FamilyTier } from './types';
 
 export const milestones: Milestone[] = [
-  { id:'first_venture', title:"CHAAT CART TURNS A REAL PROFIT", body:"<p class='flavor'><strong>Two hundred dollars.</strong> He landed at O'Hare with a duffel bag and a cousin's phone number. This is the first cash that is entirely his.</p>" },
+  { id:'first_venture', title:"CHAAT CART TURNS A REAL PROFIT", body:"<p class='flavor'><strong>Two hundred dollars.</strong> He landed at Windhaven International with a duffel bag and a cousin's phone number. This is the first cash that is entirely his.</p>" },
   { id:'local_boss', title:"DEVON STREET TAKES NOTICE", body:"<p class='flavor'>People who ignored him six months ago nod when he walks past. A local merchant offers him a free coffee. He throws it out. Nothing on Devlin Street is free.</p>" },
   { id:'first_property', title:"A NAME ON THE LEASE", body:"<p class='flavor'>He signs a commercial lease under his own name for the first time. No cousin co-signing, no favor owed. He sits in his car for ten minutes afterward, doors locked, just staring at the keys.</p>" },
   { id:'chaat_house', title:"THE TRIBUNE WRITES HIM UP", body:"<p class='flavor'>A critic calls the Chaat House the best thing to happen to Devlin Street in a decade. His mother has the clipping read to her three times over the phone. He sleeps with a gun under the mattress for a week.</p>" },

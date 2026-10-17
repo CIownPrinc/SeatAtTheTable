@@ -408,16 +408,26 @@ test.describe('game boot', () => {
     await expect(page.locator('#citymap-overlay')).not.toHaveClass(/hidden/);
     await expect(page.locator('#minimap-clear')).not.toHaveClass(/show/);
 
-    const cityMap = page.locator('#citymap-canvas');
-    const cityBox = await cityMap.boundingBox();
-    expect(cityBox).not.toBeNull();
-    if(!cityBox) return;
-
-    // LEGAL: Aimed at the middle of Devlin. The City Map now frames the whole landmass
-    // LEGAL: including the stage-1c outskirts, so the old 13%/55% point fell in the
-    // LEGAL: countryside — and waypoints still require district land, not outskirt land.
-    await page.mouse.click(cityBox.x + cityBox.width * 0.26, cityBox.y + cityBox.height * 0.44);
+    // LEGAL: Aim at a real place on land, projected the way header.ts frames the City Map.
+    // LEGAL: A fixed percentage of the canvas drifted into the lake every time the world
+    // LEGAL: grew, and water correctly refuses a waypoint, so the old click silently missed.
+    const target = await page.locator('#citymap-canvas').evaluate(async (canvas: HTMLCanvasElement) => {
+      const [{ windhavenMapModel }, viewportModule, serviceLotsModule] = await Promise.all([
+        import('/src/map/mapModel.ts'),
+        import('/src/map/viewport.ts'),
+        import('/src/map/serviceLots.ts'),
+      ]);
+      const viewport = viewportModule.createMapViewport(canvas.width, canvas.height, windhavenMapModel.landmass);
+      const point = viewportModule.worldToScreen(viewport, serviceLotsModule.allocateServiceLots().placed.bankHome);
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: rect.left + point.x * (rect.width / canvas.width),
+        y: rect.top + point.y * (rect.height / canvas.height),
+      };
+    });
+    await page.mouse.click(target.x, target.y);
     await expect(page.locator('#minimap-clear')).toHaveClass(/show/);
+    await expect(page.locator('#citymap-hint')).toContainText('waypoint');
   });
 
   test('expanded minimap hover shows exact place and category', async ({ page }) => {

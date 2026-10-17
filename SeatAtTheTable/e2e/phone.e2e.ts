@@ -62,10 +62,11 @@ test.describe('phone / Windhaven OS device', () => {
     await expect(page.locator('#contacts-panel')).toContainText('Windhaven Taxi');
     await expect(page.locator('#contacts-panel [data-taxi-dispatch]')).toBeDisabled();
 
-    // LEGAL: Escape closes the phone.
+    // LEGAL: Escape closes the phone. A mission offer can pop up mid-flow; dismiss it first.
     if(await page.locator('#modal-overlay').evaluate(function(element){ return !element.classList.contains('hidden'); })){
       await page.locator('#modal-footer button').first().click();
     }
+    await page.keyboard.press('Escape');
     await expect(page.locator('#device-overlay')).toHaveClass(/hidden/);
 
     // LEGAL: No uncaught errors should have fired at any point in the flow.
@@ -95,5 +96,33 @@ test.describe('phone / Windhaven OS device', () => {
     });
     await expect(page.locator('#modal-overlay')).toContainText('Your runway route is moving');
     await expect(page.locator('#modal-overlay')).toContainText('12 investigation');
+  });
+
+  test('a milestone that fires while a popup is open waits its turn instead of replacing it', async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    await page.locator('.tab-btn[data-tab="map"]').click();
+    await page.waitForFunction(function(){ return !!(window as unknown as { __seat?: unknown }).__seat; });
+    await page.evaluate(function(){
+      const seat = (window as unknown as { __seat: { state: { completedMissions: Record<string, { id: string; result: string; completedAt: number }>; worldMemory: Record<string, boolean>; nextEventAt: number } } }).__seat;
+      seat.state.completedMissions.stolen_shipment = { id: 'stolen_shipment', result: 'Black Market Trade unlocked', completedAt: 1 };
+      seat.state.worldMemory.blackMarketTrade = true;
+      // LEGAL: Hold back random mission offers so the only automatic popup is the milestone.
+      seat.state.nextEventAt = Number.MAX_SAFE_INTEGER;
+    });
+    await page.keyboard.press('Escape');
+    await page.locator('#phone-btn').click();
+    await page.locator('.device-app[data-app="contacts"]').click();
+    await page.locator('[data-contact-action="dock-status"]').click();
+    await expect(page.locator('#modal-overlay')).toContainText('Your runway route is moving');
+
+    // LEGAL: Cross the $200 milestone while Bell's report is still on screen.
+    await page.evaluate(function(){ (window as unknown as { __seat: { state: { cash: number } } }).__seat.state.cash = 500; });
+    await page.waitForTimeout(1500);
+    await expect(page.locator('#modal-overlay')).toContainText('Your runway route is moving');
+
+    await page.locator('#modal-footer button').first().click();
+    await expect(page.locator('#modal-overlay')).toContainText('CHAAT CART TURNS A REAL PROFIT');
   });
 });

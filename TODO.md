@@ -58,9 +58,11 @@ V1 is finished when all of these hold at once:
 
 | Bug | Lane | Status |
 | --- | --- | --- |
-| **Phone stuck open.** `#device-overlay` never gets `.hidden` after Escape in `phone.e2e.ts` "Bank + AutoMart apps render, and Finance/Assets tabs are gone". Likely a result modal left open from an earlier step blocks Escape. | Claude | Open |
-| **Minimap clear button.** `smoke.e2e.ts` "minimap expands before waypoint placement is allowed": `#minimap-clear` never gets `.show` on a countryside/outskirt waypoint click. | Claude | Open |
-| **`shot-garage.e2e.ts` flake.** Times out under the 2-worker suite, passes alone. Contention, not a defect, but a flaky test hides real failures. | Claude | Open |
+| ~~**Phone stuck open.**~~ The Aug 5 mission pass replaced the spec's Escape key press with a popup dismissal, so nothing ever closed the phone. Escape is back. | Claude | Fixed 2026-10-16 |
+| ~~**Minimap clear button.**~~ The spec clicked a fixed 26%/44% of the City Map, which drifted into the lake as the world grew; water correctly refuses waypoints. It now projects a real place's coordinates. | Claude | Fixed 2026-10-16 |
+| ~~**`shot-garage.e2e.ts` flake**~~ and most suite slowness. Headless Chromium rendered WebGL in software at ~2 fps; `playwright.config.ts` now asks for the GPU (55 fps). Suite: 42/46 in 9.8 min → 49/49 in 1.5 min, twice in a row. | Claude | Fixed 2026-10-16 |
+| ~~**Automatic popups replaced open ones.**~~ Real game bug the phone spec caught: the $200 milestone opened over Dockmaster Bell's report and erased it. Milestones now queue while any popup is up and show when it closes; mission offers and follow-ups wait a tick instead of being used up. Guarded by a new `phone.e2e.ts` spec. | Claude | Fixed 2026-10-16 |
+| ~~**Real-world names.**~~ "O'Hare" and "Chicago" broke the parody-geography rule; now Windhaven International / Windhaven. | Claude | Fixed 2026-10-16 |
 | ~~`raccoon_keycard` said heat -6 where it promised -5.~~ The mission removed exactly 5. The "Exact changes" ledger was wrong: it measured from accepting the mission to finishing it, so heat that cooled off and income earned while driving counted as rewards. Now it measures only the choices (`core/missionLedger.ts`, unit-tested). | Codex | Fixed 2026-10-16 |
 | ~~`pigeon_summit` never resolves.~~ Two causes. The spec boots the full 3D city and took 38s of its 60s budget alone, so it timed out under contention (budget now 120s). And the result said "heat -4" even at zero heat. It now reports what was removed, rounded, because heat cools off in fractions (unrounded, it printed "heat -3.2495013163719824"). | Codex | Fixed 2026-10-16 |
 

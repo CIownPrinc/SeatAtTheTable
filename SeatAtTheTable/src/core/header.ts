@@ -842,6 +842,7 @@ import type * as ThreeNamespace from 'three';
         byId('modal-overlay').classList.add('hidden');
         const choice = btnDef.onClick;
         if(choice) runInMissionScene(sceneMissionId, choice);
+        if(milestoneCanShowNow()) showNextMilestone();
       };
       footer.appendChild(btn);
     });
@@ -863,6 +864,12 @@ import type * as ThreeNamespace from 'three';
 
   const pendingMilestones: string[] = [];
   let missionResultPending = false;
+  function modalOnScreen(): boolean {
+    return !byId('modal-overlay').classList.contains('hidden');
+  }
+  function milestoneCanShowNow(): boolean {
+    return !modalOnScreen() && !missionResultPending && activeMissionCount(missionSaveState()) === 0;
+  }
   function showNextMilestone(): void {
     const id = pendingMilestones.shift();
     if(!id) return;
@@ -875,7 +882,7 @@ import type * as ThreeNamespace from 'three';
     const m = milestones.find(x => x.id === id);
     if(!m) return;
     state.seenMilestones.add(id);
-    if(activeMissionCount(missionSaveState()) > 0 || missionResultPending) pendingMilestones.push(id);
+    if(!milestoneCanShowNow()) pendingMilestones.push(id);
     else showModal({ eyebrow:'Windhaven Herald — West Side Edition', title:m.title, body:m.body, buttons:[{label:'Keep Going', onClick:showNextMilestone}] });
     log(`<i class="ph-duotone ph-newspaper"></i> Headline: "${m.title.charAt(0)}${m.title.slice(1).toLowerCase()}"`);
     if(id === 'chaat_house') byId('delhi-theme-row').style.display = 'flex';
@@ -1665,6 +1672,7 @@ import type * as ThreeNamespace from 'three';
   function maybeTriggerEvent(){
     if(!state.started) return;
     if(state.playSeconds < state.nextEventAt) return;
+    if(modalOnScreen()) return;
     state.nextEventAt = state.playSeconds + PHASE2_MISSION_CONFIG.missionIntervalMin + Math.random()*PHASE2_MISSION_CONFIG.missionIntervalVariance;
     const ratWeight = Math.max(0.35, 1 - state.ratCount*0.09);
     const candidates = availableMissionEvents().filter(function(event){ return !event.neg || Math.random() < ratWeight || Math.random() < 0.4; });
@@ -1676,6 +1684,7 @@ import type * as ThreeNamespace from 'three';
   }
   function deliverDelayedFollowUp(): void {
     if(activeMissionCount(missionSaveState()) >= PHASE2_MISSION_CONFIG.activeMissionCap) return;
+    if(modalOnScreen()) return;
     const followUp = availableMissionEvents().find(function(event){
       return ['amit_mistake', 'hostile_press', 'press_followup', 'black_market_investigation', 'arsonist_revenge', 'cops', 'hustler_score', 'tax_audit'].includes(event.id)
         && typeof state.worldMemory[`${event.id}DueAt`] === 'number'
@@ -4217,15 +4226,15 @@ import type * as ThreeNamespace from 'three';
     if(state.cash < threshold) return;
     const tier = familyTiers[state.prestigeCount];
     showModal({
-      eyebrow:"O'Hare Terminal 5", title:"FAMILY INBOUND", stamp:'Arrived',
-      body:`<p><strong>${tier.name}</strong> is cleared at customs. ${tier.desc}</p><p class="flavor">Setting them up in Chicago requires transferring almost every dollar on hand to clear their debts and secure their paper trail. Your active fronts will close down temporarily, and muscle on the street will scatter until the dust settles. Hired managers and research dossiers remain yours.</p>`,
+      eyebrow:"Windhaven International, Terminal 5", title:"FAMILY INBOUND", stamp:'Arrived',
+      body:`<p><strong>${tier.name}</strong> is cleared at customs. ${tier.desc}</p><p class="flavor">Setting them up in Windhaven requires transferring almost every dollar on hand to clear their debts and secure their paper trail. Your active fronts will close down temporarily, and muscle on the street will scatter until the dust settles. Hired managers and research dossiers remain yours.</p>`,
       buttons:[
         {label:"Make the transfer", onClick:function(){
           state.cash = 47; state.heat = 0; state.muscleCount = 0; state.guns = 0; state.ratCount = 0;
           state.investigation = 0; state.layingLow = false; state.crackdownUntil = 0; state.nextCrackdownAt = state.playSeconds + 360;
           businesses.forEach(b=>{ b.level=0; b.crew=0; b.reinvestedIncome=0; });
           state.prestigeCount += 1;
-          log(`✈️ ${tier.name} lands in Chicago. ${tier.desc}`);
+          log(`✈️ ${tier.name} lands in Windhaven. ${tier.desc}`);
           renderAll(); scheduleSave();
         }},
         {label:"Go back", secondary:true}
