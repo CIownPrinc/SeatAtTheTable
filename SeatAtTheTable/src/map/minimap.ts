@@ -245,13 +245,7 @@ function drawStaticMinimapLayer(mctx: CanvasRenderingContext2D, options: Minimap
 
   mctx.save();
   if(options.landmass.length){
-    mctx.beginPath();
-    options.landmass.forEach(function(point, index){
-      const p = proj(point.x, point.y);
-      if(index === 0) mctx.moveTo(p.x, p.y);
-      else mctx.lineTo(p.x, p.y);
-    });
-    mctx.closePath();
+    traceLandmass(mctx, options.landmass, proj);
     mctx.fillStyle = mapTerrainTheme.baseLand;
     mctx.fill();
     mctx.strokeStyle = 'rgba(217,210,184,0.48)';
@@ -375,9 +369,7 @@ function drawStaticMinimapLayer(mctx: CanvasRenderingContext2D, options: Minimap
 
   mctx.save();
   if(options.landmass.length){
-    mctx.beginPath();
-    options.landmass.forEach(function(point, index){ const p=proj(point.x, point.y); if(index===0) mctx.moveTo(p.x,p.y); else mctx.lineTo(p.x,p.y); });
-    mctx.closePath();
+    traceLandmass(mctx, options.landmass, proj);
     mctx.clip();
   }
 
@@ -404,15 +396,23 @@ function drawStaticMinimapLayer(mctx: CanvasRenderingContext2D, options: Minimap
   }
 }
 
+function traceLandmass(mctx: CanvasRenderingContext2D, landmass: readonly Point[], proj: (wx: number, wy: number) => Point): void {
+  mctx.beginPath();
+  landmass.forEach(function(point, index){
+    const p = proj(point.x, point.y);
+    if(index === 0) mctx.moveTo(p.x, p.y);
+    else mctx.lineTo(p.x, p.y);
+  });
+  mctx.closePath();
+}
+
 function drawDynamicMinimapLayer(mctx: CanvasRenderingContext2D, options: MinimapRenderOptions, frame: MinimapRenderFrame): void {
   const { viewW, viewH, glyphScale } = frame;
   const proj = function(wx: number, wy: number){ return minimapProject(frame, wx, wy); };
 
   mctx.save();
   if(options.landmass.length){
-    mctx.beginPath();
-    options.landmass.forEach(function(point, index){ const p=proj(point.x, point.y); if(index===0) mctx.moveTo(p.x,p.y); else mctx.lineTo(p.x,p.y); });
-    mctx.closePath();
+    traceLandmass(mctx, options.landmass, proj);
     mctx.clip();
   }
 

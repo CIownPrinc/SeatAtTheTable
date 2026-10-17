@@ -42,14 +42,18 @@ export function pointInPolygon(point: Point, polygon: Point[]): boolean {
   return inside;
 }
 
-export function circleInsidePolygon(point: Point, radius: number, polygon: Point[]): boolean {
+function circleSamplePoints(point: Point, radius: number): Point[] {
   return [
     point,
     { x: point.x - radius, y: point.y },
     { x: point.x + radius, y: point.y },
     { x: point.x, y: point.y - radius },
     { x: point.x, y: point.y + radius },
-  ].every(check => pointInPolygon(check, polygon));
+  ];
+}
+
+export function circleInsidePolygon(point: Point, radius: number, polygon: Point[]): boolean {
+  return circleSamplePoints(point, radius).every(check => pointInPolygon(check, polygon));
 }
 
 export function isPointOnWindhavenLand(point: Point, radius: number): boolean {
@@ -59,13 +63,7 @@ export function isPointOnWindhavenLand(point: Point, radius: number): boolean {
 // LEGAL: Land tests ask whether the WHOLE circle is inside; water tests must ask whether ANY
 // LEGAL: of it is, or you can wade a body-width into the lake before it stops you.
 export function circleTouchesPolygon(point: Point, radius: number, polygon: Point[]): boolean {
-  return [
-    point,
-    { x: point.x - radius, y: point.y },
-    { x: point.x + radius, y: point.y },
-    { x: point.x, y: point.y - radius },
-    { x: point.x, y: point.y + radius },
-  ].some(check => pointInPolygon(check, polygon));
+  return circleSamplePoints(point, radius).some(check => pointInPolygon(check, polygon));
 }
 
 // LEGAL: The lake is enclosed land-side, so unlike the old open bay it cannot be expressed as

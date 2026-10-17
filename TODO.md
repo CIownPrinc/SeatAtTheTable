@@ -115,7 +115,7 @@ V1 is finished when all of these hold at once:
   moment. That log becomes the polish list for §6. This one needs a human: it's about feel,
   and the automated suite can't judge whether something is confusing or dull.
 
-## 5. Smoother — Claude (mostly done 2026-10-17)
+## 5. Smoother — DONE 2026-10-17
 
 Measured on the map with the GPU, idle and walking, 15 s windows:
 
@@ -129,8 +129,11 @@ Measured on the map with the GPU, idle and walking, 15 s windows:
 - `renderAll()` never fires during normal play (counted with a MutationObserver), so the
   `renderAll` vs `refreshHUD` split is already respected on hot paths.
 - Tried and reverted: merging trees, outskirts, filler and landmarks too. No measurable gain.
-- Still open: the merge-leftovers / duplicate-code sweep. What remains of frame time is
-  three.js drawing ~2,500 meshes; going further means instancing, which is V2 territory.
+- ~~Merge-leftovers / duplicate-code sweep.~~ DONE: `jscpd` (min 80 tokens) found 4 clones,
+  0.31% of lines, none in `header.ts`. All four removed (`circleSamplePoints`, `rehomeActor`,
+  `traceLandmass`); it now reports 0.
+- What remains of frame time is three.js drawing ~2,500 meshes; going further means
+  instancing, which is V2 territory.
 
 ## 6. Polish — from the play-through
 

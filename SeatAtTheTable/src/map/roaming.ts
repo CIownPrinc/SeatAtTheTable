@@ -106,6 +106,13 @@ export function createRoamingActors(mapObjects: MapObject[]): RoamingActor[] {
   return actors;
 }
 
+function rehomeActor(actor: RoamingActor, point: Point): void {
+  actor.x = point.x; actor.y = point.y;
+  actor.homeX = point.x; actor.homeY = point.y;
+  actor.targetX = point.x; actor.targetY = point.y;
+  if(actor.object){ actor.object.x = point.x; actor.object.y = point.y; }
+}
+
 // LEGAL: Pedestrians spawn on their map object's authored point, which nobody ever checked
 // LEGAL: was standable. One authored inside a building was stuck there permanently: every
 // LEGAL: candidate target failed canMove, and the fallback was to walk back to the home point
@@ -120,10 +127,7 @@ export function settleRoamingActors(
   actors.forEach(function(actor){
     if(actor.kind === 'car' || canMove(actor.x, actor.y)) return;
     const free = rescue(actor.x, actor.y);
-    actor.x = free.x; actor.y = free.y;
-    actor.homeX = free.x; actor.homeY = free.y;
-    actor.targetX = free.x; actor.targetY = free.y;
-    if(actor.object){ actor.object.x = free.x; actor.object.y = free.y; }
+    rehomeActor(actor, free);
     moved += 1;
   });
   return moved;
@@ -192,10 +196,7 @@ function moveActorToward(actor: RoamingActor, options: RoamingUpdateOptions): vo
     // LEGAL: (a building appeared, a lot was re-allocated). Re-home it somewhere standable
     // LEGAL: instead of leaving it shoving against a wall forever.
     const free = options.rescue(actor.x, actor.y);
-    actor.x = free.x; actor.y = free.y;
-    actor.homeX = free.x; actor.homeY = free.y;
-    actor.targetX = free.x; actor.targetY = free.y;
-    if(actor.object){ actor.object.x = free.x; actor.object.y = free.y; }
+    rehomeActor(actor, free);
   }
 }
 
