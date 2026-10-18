@@ -2651,7 +2651,7 @@ import type * as ThreeNamespace from 'three';
   function stockBadgeHtml(s: typeof stockMarket[number], size: number){
     const letters = s.symbol.substring(0, 2);
     return `<div style="width:${size}px;height:${size}px;border-radius:8px;overflow:hidden;background:var(--bg-row);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--gold);font-family:var(--font-mono);font-weight:700;font-size:${Math.round(size*0.34)}px;flex-shrink:0;">`
-      + `<img src="/${s.logo}" alt="${s.name}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="if(this.parentElement)this.parentElement.textContent='${letters}';"></div>`;
+      + `<img src="/${s.logo}" alt="${s.name}" style="width:100%;height:100%;object-fit:cover;display:block;" data-fallback-text="${letters}"></div>`;
   }
 
   function renderBankPanel(){
@@ -3560,7 +3560,7 @@ import type * as ThreeNamespace from 'three';
     const unlocked = isUnlocked(b);
     const el = document.createElement('div');
     el.className = `data-row ${unlocked ? '' : 'locked'}`;
-    let main = `<div class="data-main" onclick="if(${unlocked}) this.parentElement.classList.toggle('open')">
+    let main = `<div class="data-main">
       <div class="col-id">${b.icon}</div>
       <div class="col-name">${b.name}<div class="col-name-sub">${b.category==='legit'?'Corporate Front':'Illicit Operation'}</div></div>`;
       
@@ -3910,6 +3910,12 @@ import type * as ThreeNamespace from 'three';
   }
 
   function wireDelegation(){
+    // LEGAL: A missing stock logo falls back to its lettermark. Load errors don't bubble,
+    // LEGAL: so this listens in the capture phase.
+    document.addEventListener('error', function(e){
+      const img = e.target;
+      if(img instanceof HTMLImageElement && img.dataset.fallbackText && img.parentElement) img.parentElement.textContent = img.dataset.fallbackText;
+    }, true);
     byId('advisor-list').addEventListener('click', handleAdvisorAction);
     byId('grid-legit').addEventListener('click', handleCardAction);
     byId('grid-street').addEventListener('click', handleCardAction);
