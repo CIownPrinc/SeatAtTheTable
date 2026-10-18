@@ -16,7 +16,7 @@ import { territoryBlocks } from '../config/blocks';
 import { CONTESTED_COLOR, YOURS_COLOR, rivalGangForDistrict } from '../config/rivals';
 import type { BlockOwner, Brand, GameState, Business, ModalOptions, ModalButton, Solid, District, LocalBusiness, Corner, Politician, InteriorState, Point, Property, ServiceBuilding, GangRecruit, Car, DialogueTree } from '../config/types';
 import { blockAtPoint, blockOwner, holdingFor, ownedBlockCount, territoryLegend } from '../map/territory';
-import { askingPrice, haggleOfferFor, haggleOffers, resolveHaggle, stockForBrand, stockItemCost, turfPricing, type HagglePush, type StockItem } from '../map/storefront';
+import { askingPrice, haggleOfferFor, haggleOffers, isDealerOnly, resolveHaggle, stockForBrand, stockItemCost, stockItemId, stockItemName, turfPricing, type HagglePush, type StockItem } from '../map/storefront';
 import { appreciationMult, breakdownChancePerSec, caveatEffectLabel, effectiveHeistBonus, launderingHeatMult, propertyRespectPerSec, repairCost, roughRaidChance, roughRaidLoss, vehicleHeatPerSec } from '../map/brandEffects';
 import type { MapAssetKey, MapAssetLibrary } from '../map/assets';
 import { loadMapAssetLibrary } from '../map/assets';
@@ -67,7 +67,7 @@ import {
 import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, buildLandmarks, buildOutskirtScenery, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
 import { createMapSceneMaterials, createSceneBuildTimer } from '../map/scenePerformance';
 import { buildIntersectionFurniture as buildMapIntersectionFurniture } from '../map/streetFurniture';
-import { DISTRICT_OFFSETS, DISTRICT_W, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints, ventureMapLots, widenAuthoredX } from '../map/world';
+import { DISTRICT_OFFSETS, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
 import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/viewport';
 import { renderZoneType } from '../map/zoning';
@@ -81,40 +81,6 @@ import { MISSION_CONFIG as PHASE2_MISSION_CONFIG, OUTSKIRT_VENUE_CONFIG, mission
 import type * as ThreeNamespace from 'three';
 
 
-  const eventPool = [
-    { id:'rival', title:'A RIVAL CREW EYES YOUR CORNER', neg:true, body:"<p class='flavor'>Word is a West Side crew thinks your runners are working streets that belong to them.</p>", choices:[
-      {label:'Pay them off', sub:'-8% cash', run:function(){ state.cash *= 0.92; log('<i class="ph-duotone ph-envelope-simple"></i> You paid the rival crew to walk away quietly.'); } },
-      {label:'Stand your ground', sub:'+**Respect**, +**Heat**', run:function(){ state.respect += 15; state.heat = Math.min(100, state.heat+18); log('<i class="ph-duotone ph-star"></i> You held the corner. Word travels — **Respect** earned, **Heat** too.'); } },
-    ]},
-    { id:'inspector', title:'A HEALTH INSPECTOR VISITS', neg:true, body:"<p class='flavor'>He's got a clipboard and a look that says he already knows the price of looking away.</p>", choices:[
-      {label:'Slip an envelope', sub:'-$400 flat', run:function(){ state.cash = Math.max(0, state.cash-400); log('<i class="ph-duotone ph-envelope-simple"></i> An envelope changes hands. The clipboard closes.'); } },
-      {label:'Do it by the book', sub:'legit income -15% for 45s', run:function(){ applyTempMult('legit', 0.85, 45); log('<i class="ph-duotone ph-scales"></i> You do it clean. Business slows while the paperwork clears.'); } },
-    ]},
-    { id:'tribune', title:'THE TRIBUNE WANTS AN INTERVIEW', neg:false, body:"<p class='flavor'>A reporter's been asking around Devlin Street about the man building an empire out of a folding cart.</p>", choices:[
-      {label:'Give the interview', sub:'legit income +25% for 60s', run:function(){ applyTempMult('legit', 1.25, 60); log('<i class="ph-duotone ph-microphone-stage"></i> The story runs. Foot traffic spikes across every storefront.'); } },
-      {label:'Stay quiet', sub:'+Respect', run:function(){ state.respect += 10; log('<i class="ph-duotone ph-star"></i> You decline. Some people respect a man who doesn\'t need the attention.'); } },
-    ]},
-    { id:'cousin', title:'A COUSIN FROM DELHI CALLS', neg:false, body:"<p class='flavor'>He needs help. It's the kind of call you don't get to think about for very long.</p>", choices:[
-      {label:'Send the money', sub:'-$600 flat', run:function(){ state.cash = Math.max(0, state.cash-600); log('<i class="ph-duotone ph-users"></i> You wire the money home. Family first.'); } },
-      {label:"Can't spare it", sub:'-5 Respect', run:function(){ state.respect = Math.max(0, state.respect-5); log('<i class="ph-duotone ph-users"></i> You explain you can\'t, not right now. It sits with you.'); } },
-    ]},
-    { id:'cops', title:'COPS ARE ASKING QUESTIONS', neg:true, body:"<p class='flavor'>Nothing official yet. Just questions, in the way that always precedes something official.</p>", choices:[
-      {label:'Have your network handle it', sub:'-$900, -30 Heat', run:function(){ state.cash=Math.max(0,state.cash-900); state.heat=Math.max(0,state.heat-30); log('<i class="ph-duotone ph-warning"></i> Your underground network pulls strings. The questions stop.'); } },
-      {label:'Lay low', sub:'all income -20% for 40s', run:function(){ applyTempMult('all', 0.8, 40); log('<i class="ph-duotone ph-warning"></i> You lay low for a while. Everything slows down.'); } },
-    ]},
-    { id:'hustler', title:'A TALENTED HUSTLER WANTS IN', neg:false, body:"<p class='flavor'>Sharp, hungry, reminds you a little of yourself six months ago.</p>", choices:[
-      {label:'Hire them on', sub:'free crew member, random venture', run:function(){ hireFreeCrew(); } },
-      {label:"Not worth the risk", sub:'+$500 flat', run:function(){ state.cash += 500; log('<i class="ph-duotone ph-users-three"></i> You pass, but they leave you something for your trouble.'); } },
-    ]},
-    { id:'investor', title:'A SILENT INVESTOR MAKES AN OFFER', neg:false, body:"<p class='flavor'>Cash up front, no questions, in exchange for a slice of everything going forward.</p>", choices:[
-      {label:'Take the deal', sub:'+$3000, income -5% forever', run:function(){ state.cash += 3000; state.investorPenalty = Math.min(0.5, (state.investorPenalty||0) + 0.05); log('<i class="ph-duotone ph-chart-line-up"></i> Cash in hand. A little less of everything is yours now.'); } },
-      {label:'Stay independent', sub:'+Respect', run:function(){ state.respect += 8; log('<i class="ph-duotone ph-star"></i> You show him the door. Independence has its own price.'); } },
-    ]},
-    { id:'fire', title:'A GREASE FIRE AT THE CART', neg:true, body:"<p class='flavor'>Where it all started nearly goes up in smoke.</p>", choices:[
-      {label:'Pay for a fast fix', sub:'-$250 flat', run:function(){ state.cash=Math.max(0,state.cash-250); log('<i class="ph-duotone ph-warning-circle"></i> A quick repair keeps the cart running.'); } },
-      {label:'Rebuild slowly', sub:'legit income -30% for 30s', run:function(){ applyTempMult('legit', 0.7, 30); log('<i class="ph-duotone ph-warning-circle"></i> No cash lost, but business limps for a while.'); } },
-    ]},
-  ];
 
   // LEGAL: ================= ASSETS: CARS & PROPERTIES =================
 
@@ -467,8 +433,6 @@ import type * as ThreeNamespace from 'three';
       ]
     });
   }
-
-  // LEGAL: ================= STOCK MARKET =================
 
   // LEGAL: ================= STATE =================
   function firstEventDelay(): number { return 110 + Math.random()*60; }
@@ -2348,12 +2312,10 @@ import type * as ThreeNamespace from 'three';
       + (caveatEffectLabel(brand) ? `<p class="flavor" style="color:var(--text-faint);">${caveatEffectLabel(brand)}</p>` : '');
 
     const buttons: ModalButton[] = stock.map(function(item){
-      const owned = item.kind === 'car'
-        ? state.ownedCars.includes(item.car.id)
-        : state.ownedProperties.includes(item.property.id);
+      const owned = (item.kind === 'car' ? state.ownedCars : state.ownedProperties).includes(stockItemId(item));
       const price = shopItemPrice(brand, item);
-      const dealerOnly = item.kind === 'car' ? !item.car.online : !item.property.online;
-      const name = item.kind === 'car' ? item.car.name : item.property.name;
+      const dealerOnly = isDealerOnly(item);
+      const name = stockItemName(item);
       // LEGAL: A broken-down used car is repaired at the lot that sold it to you.
       if(owned && item.kind === 'car' && state.brokenCars.includes(item.car.id)){
         const car = item.car;
@@ -3307,91 +3269,6 @@ import type * as ThreeNamespace from 'three';
     `;
   }
 
-  type DistrictLocation = {
-    id: string;
-    label: string;
-    kind: string;
-    x: number;
-    y: number;
-    distance: number;
-    interactable: boolean;
-    status: string;
-  };
-  function locationKindLabel(kind: string): string {
-    if(kind === 'building') return 'Venture';
-    if(kind === 'service') return 'Service';
-    if(kind === 'local') return 'Local Business';
-    if(kind === 'corner') return 'Corner';
-    if(kind === 'npc') return 'Named NPC';
-    return 'Gang Recruit';
-  }
-  function locationName(object: MapObject): string {
-    if(object.kind === 'building') return (object as MapObject<'building', typeof mapBuildings[number]>).ref.biz.name;
-    return (object as MapObject<'service' | 'local' | 'amenity' | 'corner' | 'npc' | 'gangnpc', ServiceBuilding | LocalBusiness | Corner | typeof mapNpcs[number] | GangRecruit>).ref.name;
-  }
-  function locationStatus(object: MapObject): string {
-    if(object.kind === 'building') return (object as MapObject<'building', typeof mapBuildings[number]>).ref.biz.level > 0 ? 'Open' : 'Not opened';
-    if(object.kind === 'local') return (object as MapObject<'local', LocalBusiness>).ref.extorted ? 'Paying' : 'Independent';
-    if(object.kind === 'corner') {
-      const corner = (object as MapObject<'corner', Corner>).ref;
-      return corner.busted ? 'Busted' : (corner.dealer ? 'Staffed' : 'Open');
-    }
-    if(object.kind === 'gangnpc') return (object as MapObject<'gangnpc', GangRecruit>).ref.inducted ? 'In crew' : 'Available';
-    if(object.kind === 'npc') return (object as MapObject<'npc', typeof mapNpcs[number]>).ref.type === 'named' ? 'Named' : 'Local';
-    return (object as MapObject<'service', ServiceBuilding>).ref.kind;
-  }
-  function districtLocations(): DistrictLocation[] {
-    return mapObjects
-      .filter(function(object){
-        if(object.district !== state.currentDistrict) return false;
-        if(object.kind === 'amenity') return false;
-        if(object.kind === 'npc' && (object as MapObject<'npc', typeof mapNpcs[number]>).ref.type !== 'named') return false;
-        return true;
-      })
-      .map(function(object){
-        const distance = Math.hypot(player.x - object.x, player.y - object.y);
-        return {
-          id: `${object.kind}:${object.id}`,
-          label: locationName(object),
-          kind: locationKindLabel(object.kind),
-          x: object.x,
-          y: object.y,
-          distance,
-          interactable: !state.currentInterior && !state.inVehicle && distance <= object.interactRadius,
-          status: locationStatus(object),
-        };
-      })
-      .sort(function(a, b){ return a.distance - b.distance; });
-  }
-  function renderDistrictLocationsPanel(){
-    const wrap = byIdOrNull('removed-location-panel');
-    if(!wrap) return;
-    const district = districts.find(function(d){ return d.id === state.currentDistrict; });
-    const locations = districtLocations();
-    wrap.innerHTML = `
-      <div class="district-locations-head">
-        <div>
-          <div class="district-locations-title">${district ? district.name : 'Current District'}</div>
-          <div class="district-locations-sub">${locations.length} important locations nearby</div>
-        </div>
-        <div class="district-locations-key"><span class="status-pill active">Interactable</span><span class="status-pill">Waypoint</span></div>
-      </div>
-      <div class="district-locations-list">
-        ${locations.map(function(location){
-          return `<div class="district-location-row ${location.interactable ? 'is-interactable' : ''}">
-            <div class="district-location-main">
-              <div class="district-location-name">${location.label}</div>
-              <div class="district-location-meta">${location.kind} · ${Math.round(location.distance)}m · ${location.status}</div>
-            </div>
-            <div class="district-location-actions">
-              <span class="status-pill ${location.interactable ? 'active' : ''}">${location.interactable ? 'Interactable' : 'Out of range'}</span>
-              <button class="mini-btn" data-location-waypoint="${location.id}">Waypoint</button>
-            </div>
-          </div>`;
-        }).join('')}
-      </div>
-    `;
-  }
 
   function renderTerritoryPanel(){
     const wrap = byId('territory-panel');
@@ -3799,18 +3676,6 @@ import type * as ThreeNamespace from 'three';
   }
 
 
-  function handleDistrictLocationsAction(e: Event){
-    const btn = (e.target as HTMLElement).closest('[data-location-waypoint]');
-    if(!btn) return;
-    const id = btn.getAttribute('data-location-waypoint')!;
-    const location = districtLocations().find(function(item){ return item.id === id; });
-    if(!location) return;
-    setGlobalWaypoint({ x:location.x, y:location.y });
-    rebuildWaypointBeacon();
-    byId('minimap-clear').classList.add('show');
-    log(`<i class="ph-duotone ph-map-pin"></i> Waypoint set to ${location.label} - ${waypointRouteLabel(location)}.`);
-    scheduleSave();
-  }
 
   function handleTerritoryAction(e: Event){
     const btn = (e.target as HTMLElement).closest('[data-push]');
@@ -4400,11 +4265,6 @@ import type * as ThreeNamespace from 'three';
   const player = { x:700, y:600, facing:Math.PI/2, vx:0, vy:0 };
   const keys: Record<string, boolean> = {};
   let lastFrame2 = Date.now();
-  // LEGAL: Throttles the district-locations panel rebuild inside the ~60fps map loop.
-  // LEGAL: Its contents (distances/interactability) only need a few updates per second,
-  // LEGAL: and rebuilding its innerHTML every frame also destroys/recreates the Waypoint
-  // LEGAL: buttons, which can swallow a click landing mid-rebuild.
-  let lastLocPanelAt = 0;
 
 
   // LEGAL: ---- Stage 2: allocate lots for the branded shops ----
@@ -4497,27 +4357,10 @@ import type * as ThreeNamespace from 'three';
       + `<span style="color:var(--text-faint,#8a90a0);">${label}</span>`
       + `<strong${color?` style="color:${color};"`:''}>${value}</strong></div>`;
   }
-  // LEGAL: The wanted / fed-case / turf numbers the HUD shows, rebuilt as modal rows so a
-  // LEGAL: player can check standing from inside a building instead of leaving the scene.
-  function statusRows(){
-    const tier = WANTED_TIERS[wantedTier()];
-    const d = districts.find(x=>x.id===state.currentDistrict);
-    let rows = briefRow('Wanted', `${tier.label} · ${Math.round(state.heat)}%`, tier.color)
-      + briefRow('Fed case', `${Math.round(state.investigation)}%`);
-    if(d){
-      const st = districtStatus(d.id);
-      const lbl = st==='yours' ? 'held' : (st==='rival' ? 'rival ground' : 'contested');
-      rows += briefRow(d.name, `${Math.round(d.control)}% · ${lbl}`);
-    }
-    return rows;
-  }
-  // LEGAL: Opens a small in-world brief: a line of flavour, the shared status rows, then
-  // LEGAL: any type-specific rows. Defaults to a single dismiss button.
+  // LEGAL: Opens a small in-world brief: a line of flavour, then only what is specific to
+  // LEGAL: the place. The HUD already shows wanted level, case and turf, so briefs don't.
+  // LEGAL: Defaults to the lie-low buttons.
   function showRoomBrief(eyebrow: string, title: string, lead: string, extraRows: string, buttons?: ModalOptions['buttons']){
-    // LEGAL: These used to open with statusRows() — wanted level, federal case, turf — on
-    // LEGAL: EVERY brief in the game. The HUD already shows all of it, so a hotspot that
-    // LEGAL: restated it was a button that did nothing you could not already see. Briefs now
-    // LEGAL: carry only what is specific to the place, plus somewhere to actually lie low.
     showModal({ eyebrow, title,
       body:`<p class="flavor">${lead}</p><div style="margin-top:10px;">${extraRows}</div>`,
       buttons: buttons ?? lieLowButtons() });
@@ -4745,22 +4588,6 @@ import type * as ThreeNamespace from 'three';
     renderAll();
   }
 
-  function travelTo(id: string){
-    if(state.currentDistrict === id) return;
-    state.currentInterior = null;
-    state.currentDistrict = id;
-    const spawn = spawnPoints[id] || {x:700,y:600};
-    player.x = spawn.x; player.y = spawn.y; player.facing = Math.PI/2; player.vx=0; player.vy=0;
-    Object.keys(keys).forEach(k=> keys[k]=false);
-    lastFrame2 = Date.now();
-    // LEGAL: City is built once — travelTo just repositions the player
-    updateParkedCarMesh();
-    rebuildWaypointBeacon();
-    refreshPlayerModel();
-    const d = districts.find(x=>x.id===id)!;
-    log(`<i class="ph-duotone ph-car"></i> You head over to ${d.name}.`);
-    renderAll();
-  }
   // LEGAL: Launches the amenity's skill minigame overlay and, once it resolves, applies
   // LEGAL: the suggested reward to game state. The minigame module owns presentation and
   // LEGAL: input only; all cash/respect mutation and persistence stays here.
@@ -6678,26 +6505,15 @@ import type * as ThreeNamespace from 'three';
     byId<HTMLInputElement>('theme-toggle').checked = false;
     scheduleSave();
   });
+  // LEGAL: Saving is best-effort: private windows and full quotas throw, and the game stays playable.
   const storageAdapter = {
     async set(key: string, value: string){
-      if(window.storage && typeof window.storage.set === 'function'){
-        try { await window.storage.set(key, value, false); return; } catch(e){}
-      }
       try { window.localStorage.setItem(key, value); } catch(e){}
     },
     async get(key: string){
-      if(window.storage && typeof window.storage.get === 'function'){
-        try {
-          const res = await window.storage.get(key, false);
-          if(res && res.value) return res.value;
-        } catch(e){}
-      }
       try { return window.localStorage.getItem(key); } catch(e){ return null; }
     },
     async delete(key: string){
-      if(window.storage && typeof window.storage.delete === 'function'){
-        try { await window.storage.delete(key, false); return; } catch(e){}
-      }
       try { window.localStorage.removeItem(key); } catch(e){}
     }
   };

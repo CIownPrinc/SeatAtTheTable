@@ -52,13 +52,6 @@ export function blockAtPoint(blocks: TerritoryBlock[], point: Point): TerritoryB
   }) ?? null;
 }
 
-// LEGAL: The owner of the block a place stands on, falling back to the district-wide
-// LEGAL: status when the place sits off-grid so callers never have to handle null.
-export function ownerAtPoint(blocks: TerritoryBlock[], point: Point, control: number, districtFallback: BlockOwner): BlockOwner {
-  const block = blockAtPoint(blocks, point);
-  return block ? blockOwner(block, control) : districtFallback;
-}
-
 export function blocksForDistrict(blocks: TerritoryBlock[], district: string): TerritoryBlock[] {
   return blocks.filter(b => b.district === district);
 }

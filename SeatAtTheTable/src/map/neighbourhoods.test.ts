@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { characterForDistrictBlock, characterLabel, characterProfile, type BlockCharacter } from './neighbourhoods';
+import { characterForDistrictBlock, characterProfile, type BlockCharacter } from './neighbourhoods';
 import { zoneForDistrictBlock } from './zoning';
 
 const DISTRICTS = ['devlin', 'westside', 'hub'];
@@ -99,12 +99,6 @@ describe('neighbourhood character', function () {
       expect(p.footprintMult, character).toBeGreaterThan(0);
       expect(p.apartmentChance, character).toBeGreaterThanOrEqual(0);
       expect(p.apartmentChance, character).toBeLessThanOrEqual(1);
-    });
-  });
-
-  it('names every character for the UI', function () {
-    ALL.forEach(function (character) {
-      expect(characterLabel(character).length).toBeGreaterThan(3);
     });
   });
 });

@@ -112,7 +112,6 @@ function widenPoints(points: Point[]): Point[] {
 
 export const WORLD_W = WIDENED_BREAKPOINTS[WIDENED_BREAKPOINTS.length - 1];
 export const NORTH_SHORE_LOT_Y = 205;
-export const DEVLIN_NORTHWEST_LOT_X = widenAuthoredX(400);
 
 // LEGAL: ---- Coastline (world expansion stage 1b) ----
 // LEGAL: The old outline was a rounded rectangle with a near-uniform north edge (y about

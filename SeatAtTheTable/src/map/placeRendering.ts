@@ -5,7 +5,6 @@ import type { MapObject } from './objects';
 import type { VentureFootprint } from './objectFactory';
 import type { PropertyPlace } from './propertyPlaces';
 import {
-  archetypeForm,
   archetypeSilhouette,
   archetypeZoneType,
   localArchetype,

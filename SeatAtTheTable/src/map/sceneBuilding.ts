@@ -216,7 +216,7 @@ function addWaterMotion(options: BaseSceneOptions): void {
 }
 
 export function buildBaseGround(options: BaseSceneOptions): void {
-  const { THREE, worldGroup, worldWidth, worldHeight } = options;
+  const { THREE, worldGroup } = options;
   const materials = materialsFor(options);
   // LEGAL: Sized from the landmass rather than from worldWidth/worldHeight. Those describe
   // LEGAL: the CITY, and the land now runs a long way north of it around the lake — a plane

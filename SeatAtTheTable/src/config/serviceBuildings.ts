@@ -54,7 +54,3 @@ export const serviceBuildings: ServiceBuilding[] = [
   // LEGAL: Respray and trim. Stays in the city, on the West Side among the working garages.
   { id:'resprayShop', kind:'respray', name:'Vega Custom Paint & Trim', icon:ICONS.garage, district:'westside', x:640, y:300 },
 ];
-
-export function serviceBuildingByBrand(brandId: string): ServiceBuilding | undefined {
-  return serviceBuildings.find(s => s.brandId === brandId);
-}

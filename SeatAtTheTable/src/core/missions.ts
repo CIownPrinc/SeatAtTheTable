@@ -1,12 +1,4 @@
-import type { EventStatus, MissionObjective, MissionOutcome, MissionSaveState, MissionState } from '../config/types';
-
-export const EMPTY_MISSION_SAVE_STATE: MissionSaveState = {
-  eventRepeats: {},
-  eventHistory: {},
-  activeMissions: {},
-  completedMissions: {},
-  worldMemory: {},
-};
+import type { MissionObjective, MissionOutcome, MissionSaveState, MissionState } from '../config/types';
 
 export function missionSaveDefaults(input?: Partial<MissionSaveState> | null): MissionSaveState {
   return {
@@ -23,10 +15,6 @@ export function recordEventOffer(save: MissionSaveState, eventId: string): numbe
   save.eventRepeats[eventId] = nextCount;
   save.eventHistory[eventId] = 'offered';
   return nextCount;
-}
-
-export function setEventStatus(save: MissionSaveState, eventId: string, status: EventStatus): void {
-  save.eventHistory[eventId] = status;
 }
 
 export function canOfferUniqueEvent(save: MissionSaveState, eventId: string): boolean {
@@ -85,22 +73,4 @@ export function completeMission(save: MissionSaveState, missionId: string, resul
   save.eventHistory[missionId] = 'completed';
   delete save.activeMissions[missionId];
   return outcome;
-}
-
-export function failMission(save: MissionSaveState, missionId: string, result: string, failedAt: number): MissionOutcome | null {
-  const mission = save.activeMissions[missionId];
-  if(!mission) return null;
-  mission.status = 'failed';
-  const outcome = { id:missionId, result, completedAt:failedAt };
-  save.completedMissions[missionId] = outcome;
-  save.eventHistory[missionId] = 'failed';
-  delete save.activeMissions[missionId];
-  return outcome;
-}
-
-export function applyConsequenceOnce(save: MissionSaveState, key: string, effect: () => void): boolean {
-  if(save.worldMemory[key]) return false;
-  effect();
-  save.worldMemory[key] = true;
-  return true;
 }

@@ -38,19 +38,3 @@ export function solidFromObject(object: MapObject): Solid | null {
 export function solidsFromObjects(objects: MapObject[]): Solid[] {
   return objects.map(solidFromObject).filter((solid): solid is Solid => solid !== null);
 }
-
-export function nearestMapObject<T extends MapObject>(objects: T[], x: number, y: number, maxDistance: number): T | null {
-  let best: T | null = null;
-  let bestDistance = maxDistance;
-
-  objects.forEach(function(object){
-    const distance = Math.hypot(x - object.x, y - object.y);
-    const limit = Math.min(bestDistance, object.interactRadius);
-    if(distance < limit){
-      bestDistance = distance;
-      best = object;
-    }
-  });
-
-  return best;
-}

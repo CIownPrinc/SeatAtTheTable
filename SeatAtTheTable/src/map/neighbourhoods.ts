@@ -143,13 +143,3 @@ export function characterForDistrictBlock(districtId: string, xi: number, yi: nu
   if(yi >= 2 && xi >= 2) return 'rough';
   return 'working';
 }
-
-export function characterLabel(character: BlockCharacter): string {
-  if(character === 'affluent') return 'Affluent';
-  if(character === 'rough') return 'Run-down';
-  if(character === 'shopping') return 'Shopping strip';
-  if(character === 'corporate') return 'Financial district';
-  if(character === 'entertainment') return 'Nightlife';
-  if(character === 'industrial') return 'Industrial';
-  return 'Working-class';
-}

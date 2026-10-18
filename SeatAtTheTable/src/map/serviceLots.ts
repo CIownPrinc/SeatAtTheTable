@@ -4,7 +4,6 @@ import { localBusinesses } from '../config/localBusinesses';
 import { districts } from '../config/districts';
 import { mapAmenities } from './amenities';
 import { allocateLots, districtLotSlots, spreadSlots } from './lots';
-import { applyMapWorldCoordinates } from './markers';
 import { districtIdAtPlayablePoint } from './mapModel';
 import { DISTRICT_OFFSETS, DISTRICT_W, OUTSKIRT_PLACE_LOTS, WORLD_H, roadNetwork, ventureMapLots, widenAuthoredX } from './world';
 

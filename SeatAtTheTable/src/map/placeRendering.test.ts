@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { LocalBusiness, ServiceBuilding } from '../config/types';
+import type { LocalBusiness } from '../config/types';
 import { localBusinessSilhouette, serviceBuildingSilhouette } from './placeRendering';
 
 describe('map place rendering data', function () {

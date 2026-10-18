@@ -19,15 +19,6 @@ export interface MapNpc {
   type: 'named' | 'procedural';
 }
 
-export function applyNamedBuildingLots<T extends { id: string; x: number; y: number }>(items: T[]): void {
-  items.forEach(function(item){
-    const lot = namedBuildingLots[item.id];
-    if(!lot) return;
-    item.x = lot.x;
-    item.y = lot.y;
-  });
-}
-
 export function worldXForDistrict(district: string, x: number): number {
   const offset = DISTRICT_OFFSETS[district] || 0;
   return offset > 0 && x < DISTRICT_W ? x + offset : x;

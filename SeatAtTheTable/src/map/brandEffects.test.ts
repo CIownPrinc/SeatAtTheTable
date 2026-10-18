@@ -1,16 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { cars, properties } from '../config/assets';
+import { cars } from '../config/assets';
 import { brandById, brands } from '../config/brands';
 import {
   APPRECIATION_CAP, BIKE_HEAT_PER_SEC, LAUNDER_CUT_CAP,
   appreciationMult, breakdownChancePerSec, caveatEffectLabel, effectiveHeistBonus,
-  launderingHeatMult, propertiesOfCategory, propertyRespectPerSec, repairCost,
+  launderingHeatMult, propertyRespectPerSec, repairCost,
   roughRaidChance, roughRaidLoss, vehicleHeatPerSec,
 } from './brandEffects';
 
 const waterfront = brandById('lakeshore')!;
 const commercial = brandById('ironpoint')!;
-const cheap = brandById('concrete-dreams')!;
 const bikes = brandById('outlaw-riders')!;
 const used = brandById('no-problem-auto')!;
 const luxuryCars = brandById('diamond-exotics')!;
@@ -97,12 +96,5 @@ describe('brand caveat effects', function () {
   it('prices repairs off the car, never below a floor', function () {
     expect(repairCost(cars.find(c => c.id === 'impala')!)).toBe(600);
     expect(repairCost({ ...cars[0], cost: 10 })).toBe(150);
-  });
-
-  it('selects owned properties by brand category', function () {
-    const owned = properties.map(p => p.id);
-    const found = propertiesOfCategory(owned, properties, brandById, 'cheap');
-    expect(found.length).toBeGreaterThan(0);
-    expect(found.every(p => p.brand === cheap.id)).toBe(true);
   });
 });

@@ -4,7 +4,7 @@ import { brands, brandById } from '../config/brands';
 import { serviceBuildings } from '../config/serviceBuildings';
 import {
   RIVAL_MARKUP, askingPrice, haggleOfferFor, haggleOffers, haggleSuccessChance,
-  isDealerOnly, onlineCars, onlineProperties, resolveHaggle, stockForBrand,
+  isDealerOnly, resolveHaggle, stockForBrand,
   stockItemCost, stockItemName, turfPricing,
 } from './storefront';
 
@@ -51,20 +51,14 @@ describe('branded storefronts', function () {
   it('keeps the online catalog frozen to the original pre-phone Assets tab', function () {
     // LEGAL: The rule the user set: whatever the Assets tab sold before the phone existed
     // LEGAL: stays orderable online, and nothing else is ever added to it.
-    expect(onlineCars(cars).map(c => c.id).sort()).toEqual(['bentley', 'escalade', 'impala', 'sedan']);
-    expect(onlineProperties(properties).map(p => p.id).sort()).toEqual(['aptbuilding', 'loft', 'retailstrip', 'twoflat']);
+    expect(cars.filter(c => c.online).map(c => c.id).sort()).toEqual(['bentley', 'escalade', 'impala', 'sedan']);
+    expect(properties.filter(p => p.online).map(p => p.id).sort()).toEqual(['aptbuilding', 'loft', 'retailstrip', 'twoflat']);
   });
 
   it('keeps some stock dealer-only so visiting the shop is worth the drive', function () {
     const dealerOnly = brands.flatMap(b => stockForBrand(b, cars, properties)).filter(isDealerOnly);
     expect(dealerOnly.length).toBeGreaterThan(0);
     expect(dealerOnly.map(stockItemName)).toContain('Diamond Veyra');
-  });
-
-  it('hides dealer-only stock from the online catalogs', function () {
-    expect(onlineCars(cars).every(c => c.online)).toBe(true);
-    expect(onlineProperties(properties).every(p => p.online)).toBe(true);
-    expect(onlineCars(cars).map(c => c.name)).not.toContain('Diamond Veyra');
   });
 
   it('charges a markup and refuses to haggle on rival turf', function () {

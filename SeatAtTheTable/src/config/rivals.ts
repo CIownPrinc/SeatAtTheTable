@@ -21,7 +21,3 @@ export const CONTESTED_COLOR = '#7d8a99';
 export function rivalGangForDistrict(district: string): RivalGang | undefined {
   return rivalGangs.find(g => g.district === district);
 }
-
-export function rivalGangById(id: string | undefined): RivalGang | undefined {
-  return id ? rivalGangs.find(g => g.id === id) : undefined;
-}

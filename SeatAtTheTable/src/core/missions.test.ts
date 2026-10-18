@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   activeMissionCount,
   advanceMissionStage,
-  applyConsequenceOnce,
   canOfferRepeatableEvent,
   canOfferUniqueEvent,
   completeMission,
@@ -79,14 +78,5 @@ describe('mission state helpers', function () {
 
     expect(missionCompleted(save, 'first_heist')).toBe(true);
     expect(missionCompleted(save, 'stolen_shipment')).toBe(false);
-  });
-
-  it('applies world consequences once', function () {
-    const save = missionSaveDefaults();
-    let heat = 0;
-
-    expect(applyConsequenceOnce(save, 'kowalskiBlackmail', function(){ heat += 12; })).toBe(true);
-    expect(applyConsequenceOnce(save, 'kowalskiBlackmail', function(){ heat += 12; })).toBe(false);
-    expect(heat).toBe(12);
   });
 });

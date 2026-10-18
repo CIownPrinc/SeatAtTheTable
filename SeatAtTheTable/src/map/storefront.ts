@@ -28,17 +28,8 @@ export function stockForBrand(brand: Brand, cars: Car[], properties: Property[])
   return items.sort((a, b) => stockItemCost(a) - stockItemCost(b));
 }
 
-// LEGAL: The phone apps (AutoMart / Realty) keep only the online-orderable subset. Anything
-// LEGAL: without online:true is now dealer-only and must be bought by going there, which is
-// LEGAL: the whole point of the initiative.
-export function onlineCars(cars: Car[]): Car[] {
-  return cars.filter(c => c.online);
-}
-
-export function onlineProperties(properties: Property[]): Property[] {
-  return properties.filter(p => p.online);
-}
-
+// LEGAL: Anything without online:true is dealer-only: the phone apps don't list it, so it
+// LEGAL: must be bought by going there, which is the whole point of the initiative.
 export function isDealerOnly(item: StockItem): boolean {
   return item.kind === 'car' ? !item.car.online : !item.property.online;
 }

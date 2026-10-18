@@ -1,4 +1,4 @@
-import type { Brand, Car, Property } from '../config/types';
+import type { Brand, Car } from '../config/types';
 
 // LEGAL: Phase 4's last piece — the `caveat` line on each brand in config/brands stops
 // LEGAL: being flavour text and starts costing you something. Every rule here is pure and
@@ -101,11 +101,4 @@ export function caveatEffectLabel(brand: Brand): string | null {
     case 'waterfront': return `Appreciates: rent climbs ${Math.round(APPRECIATION_PER_HOUR * 100)}% an hour held, up to +${Math.round(APPRECIATION_CAP * 100)}%.`;
     default: return null;
   }
-}
-
-// LEGAL: Convenience for callers that hold ids rather than objects.
-export function propertiesOfCategory(owned: string[], properties: Property[], brandOf: (id: string | undefined) => Brand | undefined, category: string): Property[] {
-  return owned
-    .map(id => properties.find(p => p.id === id))
-    .filter((p): p is Property => !!p && brandOf(p.brand)?.category === category);
 }
