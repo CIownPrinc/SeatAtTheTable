@@ -278,7 +278,7 @@ body.quiet .card-flavor, body.quiet .pillar-desc, body.quiet .modal-body p.flavo
 #global-tooltip.visible { opacity: 1; }
 
 /* ---------- TABS ---------- */
-.tab-bar{position:sticky;top:66px;z-index:39;display:flex;gap:4px;padding:0 24px;background:var(--bg-panel);border-bottom:1px solid var(--line);overflow-x:auto;box-shadow: 0 4px 8px rgba(0,0,0,0.15);}
+.tab-bar{position:sticky;top:var(--hud-h,0px);z-index:39;display:flex;gap:4px;padding:0 24px;background:var(--bg-panel);border-bottom:1px solid var(--line);overflow-x:auto;box-shadow: 0 4px 8px rgba(0,0,0,0.15);}
 .tab-btn{font-family:var(--font-display);font-size:12px;letter-spacing:0.1em;text-transform:uppercase;font-weight:700;color:var(--text-faint);background:transparent;border:none;border-bottom:3px solid transparent;padding:14px 18px;cursor:pointer;white-space:nowrap;transition: all 0.2s;}
 .tab-btn:hover{color:var(--text);background:rgba(255,255,255,0.03);}
 .tab-btn.active{color:var(--blue);border-bottom-color:var(--blue);background:rgba(42,135,255,0.05);}
@@ -557,5 +557,13 @@ main{max-width:1240px;margin:0 auto;padding:26px 24px 60px;}
 .touch-stick{display:none;position:absolute;left:16px;bottom:16px;width:112px;height:112px;border-radius:50%;background:rgba(10,12,18,.42);border:2px solid rgba(242,186,24,.55);z-index:6;touch-action:none;align-items:center;justify-content:center;}
 .touch-stick-knob{width:48px;height:48px;border-radius:50%;background:rgba(242,186,24,.85);box-shadow:0 2px 8px rgba(0,0,0,.4);pointer-events:none;}
 #minimap-canvas{touch-action:none;}
-@media (hover:none) and (pointer:coarse){ .touch-stick{display:flex;} }
+.touch-interact-btn{display:none;position:absolute;right:16px;bottom:16px;width:64px;height:64px;border-radius:50%;border:2px solid var(--gold);background:rgba(10,12,18,.6);color:var(--gold);font-family:var(--font-display);font-size:22px;font-weight:700;z-index:6;touch-action:manipulation;}
+.touch-interact-btn:active{background:var(--gold);color:#0a0b10;}
+@media (hover:none) and (pointer:coarse){ .touch-stick{display:flex;} .touch-interact-btn{display:block;} }
 @media (max-width:640px){ #scene3d-container:not(.fullscreen) #minimap-canvas{width:96px;height:96px;top:8px;right:8px;} #scene3d-container:not(.fullscreen) .minimap-expand-btn{top:84px;right:10px;} #scene3d-container:not(.fullscreen) #territory-toggle{top:118px;} .touch-stick{width:88px;height:88px;left:10px;bottom:10px;} .touch-stick-knob{width:38px;height:38px;} }
+#scene3d-container.loading::after{content:'Loading the city…';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);letter-spacing:.14em;text-transform:uppercase;font-size:14px;color:var(--gold);background:var(--bg-panel);z-index:5;pointer-events:none;}
+/* LEGAL: Short landscape screens (phones on their side): the HUD stops sticking and drops the
+   logo, so the map gets the height instead of the header. */
+@media (max-height:500px) and (orientation:landscape){ .hud{position:relative;padding:6px 16px;} .hud-title{display:none;} .stat-value{font-size:15px;} .tab-btn{padding-top:8px;padding-bottom:8px;} main{padding-top:10px;} .tab-panel[data-tab="map"] > .section-eyebrow:first-child{display:none;} #scene3d-container{max-height:calc(100dvh - 56px);scroll-margin-top:48px;} }
+/* LEGAL: Big screens: the map was a fixed 760x440 even on a 3440px monitor. */
+@media (min-width:1600px) and (min-height:900px){ #scene3d-container{width:min(1180px,100%);max-height:min(680px,64vh);} }

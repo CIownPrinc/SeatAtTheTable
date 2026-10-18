@@ -27,6 +27,7 @@ import { createAmenityModal, mapAmenities } from '../map/amenities';
 import { fireRoadPayout, isFireRoadBest, minigameOpen, playMinigame, type MinigameResult } from '../map/minigames';
 import { offRoadSpeedMultiplier } from '../map/offRoad';
 import { mountTouchStick } from '../map/touchControls';
+import { createQualityGovernor } from '../map/adaptiveQuality';
 import { buildAmenityModel as buildMapAmenityModel } from '../map/amenityRendering';
 import { createFillerLayoutProvider, seededRandom } from '../map/filler';
 import { applyMapWorldCoordinates, createMapBuildings, mapNpcs } from '../map/markers';
@@ -69,7 +70,7 @@ import {
 } from '../map/casino';
 import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, buildLandmarks, buildOutskirtScenery, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
 import { createMapSceneMaterials, createSceneBuildTimer } from '../map/scenePerformance';
-import { buildIntersectionFurniture as buildMapIntersectionFurniture } from '../map/streetFurniture';
+import { buildIntersectionFurniture as buildMapIntersectionFurniture, nearestLamps, type LampHead } from '../map/streetFurniture';
 import { DISTRICT_OFFSETS, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
 import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/viewport';
@@ -4137,6 +4138,14 @@ import type * as ThreeNamespace from 'three';
   });
   function setTab(tab: string){
     if(tab === 'politics' || tab === 'gang') tab = 'map';
+    // LEGAL: A new tab starts at its top. Keeping the old scroll left the map off-screen above.
+    const switching = !document.querySelector(`.tab-panel.active[data-tab="${tab}"]`);
+    if(switching) window.scrollTo({ top:0 });
+    // LEGAL: On a phone held sideways the header alone is a third of the height, so opening the
+    // LEGAL: map scrolls it up to sit right under the tab bar.
+    if(switching && tab === 'map' && window.matchMedia('(max-height:500px) and (orientation:landscape)').matches){
+      requestAnimationFrame(function(){ byId('scene3d-container').scrollIntoView({ block:'start' }); });
+    }
     document.querySelectorAll('.tab-btn').forEach(b=> b.classList.toggle('active', b.getAttribute('data-tab')===tab));
     document.querySelectorAll('.tab-panel').forEach(p=> p.classList.toggle('active', p.getAttribute('data-tab')===tab));
     mapActive = (tab==='map');
@@ -4229,8 +4238,37 @@ import type * as ThreeNamespace from 'three';
     }
   });
 
+  // LEGAL: Low quality drops the sun's shadow: on a 4x-throttled phone profile that alone
+  // LEGAL: took the city from 22 to 32 fps. Remembered, so the next visit compiles once.
+  const LOW_QUALITY_KEY = 'seat-quality-low';
+  const qualityGovernor = createQualityGovernor({ minFps:40, warmupFrames:30, sampleSeconds:3 });
+  function lowQualitySaved(): boolean {
+    try{ return window.localStorage.getItem(LOW_QUALITY_KEY) === '1'; }catch(e){ return false; }
+  }
+  function useLowQuality(): void {
+    if(sunLight) sunLight.castShadow = false;
+    try{ window.localStorage.setItem(LOW_QUALITY_KEY, '1'); }catch(e){}
+  }
+
+  // LEGAL: Build the 3D city while the player is on the title screen, so the map is usually
+  // LEGAL: ready the first time they open it (on a slow phone the build is seconds of work).
+  // LEGAL: Waits until the neon title has finished, then for the browser to be idle.
+  function preloadMapSceneWhenIdle(): void {
+    window.setTimeout(function(){
+      if('requestIdleCallback' in window) window.requestIdleCallback(function(){ void ensureMapScene(); }, { timeout:3000 });
+      else void ensureMapScene();
+    }, 2000);
+  }
+
   async function startMapLoop(): Promise<void> {
+    const container = byId('scene3d-container');
+    if(!sceneInitialized){
+      container.classList.add('loading');
+      // LEGAL: Let the label paint before the (synchronous) city build starts.
+      await new Promise(function(resolve){ requestAnimationFrame(function(){ requestAnimationFrame(resolve); }); });
+    }
     await ensureMapScene();
+    container.classList.remove('loading');
     if(!mapActive || mapHubRunning) return;
     mapHubRunning = true;
     lastFrame2 = Date.now();
@@ -4249,6 +4287,14 @@ import type * as ThreeNamespace from 'three';
           refreshPlayerModel();
           updateParkedCarMesh();
           rebuildWaypointBeacon();
+          // LEGAL: Shader compilation was most of the first-frame cost; doing it here means a
+          // LEGAL: preloaded city is ready to draw, and the driver can compile in parallel.
+          // LEGAL: compileAsync skips the shadow pass's shaders, so one real render (tiny while
+          // LEGAL: the map tab is hidden) compiles the rest.
+          await renderer.compileAsync(scene, camera3d);
+          camera3d.position.set(player.x, 260, player.y+72);
+          camera3d.lookAt(player.x, 0, player.y);
+          renderer.render(scene, camera3d);
         }
       })();
     }
@@ -4618,6 +4664,7 @@ import type * as ThreeNamespace from 'three';
   window.addEventListener('keyup', function(e){ keys[e.key.toLowerCase()] = false; });
   window.addEventListener('blur', function(){ Object.keys(keys).forEach(k=> keys[k]=false); touchStick.release(); });
   byId('btn-interact').addEventListener('click', tryInteract);
+  byId('touch-interact').addEventListener('click', tryInteract);
 
   function setMapFullscreenLayout(container: HTMLElement, active: boolean): void {
     if(active){
@@ -4783,7 +4830,10 @@ import type * as ThreeNamespace from 'three';
   const MERGEABLE_SCENERY_PREFIXES = ['resort:'];
   let scene: ThreeNamespace.Scene, camera3d: ThreeNamespace.PerspectiveCamera, renderer: ThreeNamespace.WebGLRenderer, worldGroup: ThreeNamespace.Group, playerGroup: ThreeNamespace.Group, ambientLight: ThreeNamespace.AmbientLight, sunLight: ThreeNamespace.DirectionalLight, moonLight: ThreeNamespace.DirectionalLight, waypointBeacon: ThreeNamespace.Group | null = null, missionObjectiveMarker: ThreeNamespace.Group | null = null, parkedCarMesh: ThreeNamespace.Group | null = null, trainGroup: ThreeNamespace.Group | null = null;
   let missionObjectiveMarkerKey = '';
-  let streetLights: ThreeNamespace.PointLight[] = [];
+  let streetLamps: LampHead[] = [];
+  // LEGAL: See nearestLamps: a fixed pool, so the shader light count never changes at runtime.
+  const LAMP_LIGHT_POOL_SIZE = 6;
+  let lampLightPool: ThreeNamespace.PointLight[] = [];
   let weatherPoints: ThreeNamespace.Points | null = null;
   let activeWeather: 'clear' | 'rain' | 'snow' = 'clear';
   let lastTrainWarningAt = 0;
@@ -5199,13 +5249,21 @@ import type * as ThreeNamespace from 'three';
     moonLight.position.set(WORLD_W*0.5 - Math.cos(phase) * 700, 430, WORLD_H*0.55 - Math.sin(phase) * 220);
     moonLight.target.position.set(WORLD_W/2,0,WORLD_H/2);
     moonLight.target.updateMatrixWorld();
-    scene.background = new THREE.Color(sun < 0.18 ? '#111827' : (dusk > 0.45 ? '#241b20' : '#0a0b10'));
-    scene.fog = new THREE.Fog(sun < 0.18 ? 0x111827 : 0x0a0b10, 520 + night * 80, 1150 + sun * 180);
-    // LEGAL: Candela, not the old 0-1 scale — see buildStreetLight. A lamp head sits ~32
-    // LEGAL: units above the road, so with decay 2 the ground under it gets intensity/1024;
-    // LEGAL: ~2600 puts a readable pool of light on the pavement.
-    streetLights.forEach(function(light){
-      light.intensity = Math.max(0, night - 0.2) * 2600;
+    // LEGAL: Runs every frame, so recolour the existing sky and fog rather than allocating.
+    (scene.background as ThreeNamespace.Color).set(sun < 0.18 ? '#111827' : (dusk > 0.45 ? '#241b20' : '#0a0b10'));
+    const fog = scene.fog as ThreeNamespace.Fog;
+    fog.color.set(sun < 0.18 ? 0x111827 : 0x0a0b10);
+    fog.near = 520 + night * 80;
+    fog.far = 1150 + sun * 180;
+    // LEGAL: three's lights are physically based (candela, decay 2). A lamp head sits ~32
+    // LEGAL: units above the road, so the ground under it gets intensity/1024; ~2600 puts a
+    // LEGAL: readable pool of light on the pavement.
+    const lampIntensity = Math.max(0, night - 0.2) * 2600;
+    const lit = nearestLamps(streetLamps, player.x, player.y, LAMP_LIGHT_POOL_SIZE);
+    lampLightPool.forEach(function(light, index){
+      const lamp = lit[index];
+      light.intensity = lamp ? lampIntensity : 0;
+      if(lamp) light.position.set(lamp.x, lamp.y, lamp.z);
     });
   }
   function mapClockLabel(): string {
@@ -5445,7 +5503,7 @@ import type * as ThreeNamespace from 'three';
     return g;
   }
   function buildIntersectionFurniture(x: number, z: number, index: number): void {
-    buildMapIntersectionFurniture({ THREE, worldGroup, streetLights }, x, z, index);
+    buildMapIntersectionFurniture({ THREE, worldGroup, streetLamps }, x, z, index);
   }  function weatherKindAtTime(): 'clear' | 'rain' | 'snow' {
     const t = state.playSeconds % 360;
     if(t > 72 && t < 118) return 'rain';
@@ -5523,7 +5581,7 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: ---- unified city — builds the entire world once; no per-district teardown ----
   function buildCityScene(){
     clearGroup(worldGroup);
-    streetLights = [];
+    streetLamps = [];
     dealerArrivals.length = 0; // LEGAL: transient dealer walk-ins are re-added as standing figures below
 
     const timer = createSceneBuildTimer();
@@ -5842,23 +5900,28 @@ import type * as ThreeNamespace from 'three';
     renderer.domElement.classList.add('webgl-canvas');
     container.insertBefore(renderer.domElement, container.firstChild);
     syncRendererSize();
+    // LEGAL: Tracks every layout change (tab shown, phone rotated, HUD wrapping, fullscreen),
+    // LEGAL: not just window resizes, so the picture is never stretched to a stale aspect.
+    new ResizeObserver(syncRendererSize).observe(container);
 
     ambientLight = new THREE.AmbientLight(0x8891a8, 0.65);
     scene.add(ambientLight);
     sunLight = new THREE.DirectionalLight(0xfff2d0, 0.9);
-    sunLight.castShadow = true;
+    sunLight.castShadow = !lowQualitySaved();
     sunLight.shadow.mapSize.set(1024,1024);
     sunLight.shadow.camera.left=-500; sunLight.shadow.camera.right=500;
     sunLight.shadow.camera.top=500; sunLight.shadow.camera.bottom=-500;
     sunLight.shadow.camera.near=10; sunLight.shadow.camera.far=1200;
     scene.add(sunLight); scene.add(sunLight.target);
+    // LEGAL: The moon casts no shadow. A second shadow light re-renders every caster (~1,400
+    // LEGAL: meshes) each frame, even by day at zero intensity, for shadows too faint to see.
     moonLight = new THREE.DirectionalLight(0xb9c8ff, 0);
-    moonLight.castShadow = true;
-    moonLight.shadow.mapSize.set(512,512);
-    moonLight.shadow.camera.left=-500; moonLight.shadow.camera.right=500;
-    moonLight.shadow.camera.top=500; moonLight.shadow.camera.bottom=-500;
-    moonLight.shadow.camera.near=10; moonLight.shadow.camera.far=1200;
     scene.add(moonLight); scene.add(moonLight.target);
+    lampLightPool = Array.from({ length: LAMP_LIGHT_POOL_SIZE }, function(){
+      const light = new THREE.PointLight(0xffcc7a, 0, 300, 2);
+      scene.add(light);
+      return light;
+    });
 
     worldGroup = new THREE.Group(); scene.add(worldGroup);
     // LEGAL: Dev-only inspection hook. The unit tests check placement DATA, which is why a
@@ -5869,7 +5932,7 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: import.meta.env is not in this project's lib types, so read it defensively.
     if((import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV){
       (window as unknown as { __seat?: unknown }).__seat = {
-        THREE, scene, worldGroup, player, state, mapObjects, mapPlaces,
+        THREE, scene, worldGroup, player, state, mapObjects, mapPlaces, renderer,
         startMission: startMissionFromOffer,
         resolveMission: resolveMissionAtObjective,
         declineMission: declineMissionOffer,
@@ -6359,7 +6422,8 @@ import type * as ThreeNamespace from 'three';
   function mapHub(){
     if(!mapActive){ mapHubRunning = false; return; }
     const now = Date.now();
-    const dt = Math.min(0.05, Math.max(0, (now-lastFrame2)/1000));
+    const frameMs = now - lastFrame2;
+    const dt = Math.min(0.05, Math.max(0, frameMs/1000));
     lastFrame2 = now;
 
     let dx=0, dy=0;
@@ -6450,6 +6514,7 @@ import type * as ThreeNamespace from 'three';
       camera3d.position.set(player.x, 260, player.y+72);
       camera3d.lookAt(player.x, 0, player.y);
       renderer.render(scene, camera3d);
+      if(document.visibilityState === 'visible' && qualityGovernor.recordFrame(frameMs)) useLowQuality();
     }
     drawMinimap();
 
@@ -6947,10 +7012,24 @@ import type * as ThreeNamespace from 'three';
 
   // LEGAL: ================= BOOT =================
 
+  // LEGAL: The tab bar sticks just under the HUD, whose height changes as it wraps on phones
+  // LEGAL: or goes compact on short screens; a fixed offset hid the tabs behind it.
+  function trackHudHeight(): void {
+    const hud = document.querySelector<HTMLElement>('.hud')!;
+    const update = function(){
+      const sticky = getComputedStyle(hud).position === 'sticky';
+      document.documentElement.style.setProperty('--hud-h', sticky ? `${hud.offsetHeight}px` : '0px');
+    };
+    new ResizeObserver(update).observe(hud);
+    update();
+  }
+
   (async function boot(){
     wireDelegation();
+    trackHudHeight();
     renderSkyline(document.querySelector<HTMLElement>('.start-skyline')!);
     const loaded = await loadGame();
+    preloadMapSceneWhenIdle();
     byId<HTMLInputElement>('start-quiet-toggle').checked = document.body.classList.contains('quiet');
     byId<HTMLInputElement>('start-light-toggle').checked = document.body.classList.contains('theme-light');
     try{

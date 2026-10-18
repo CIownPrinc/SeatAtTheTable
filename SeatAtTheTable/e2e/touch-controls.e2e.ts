@@ -15,6 +15,7 @@ test.describe('touch-screen map controls', () => {
 
     const stick = page.locator('.touch-stick');
     await expect(stick).toBeVisible();
+    await expect(page.locator('#touch-interact')).toBeVisible();
     const box = (await stick.boundingBox())!;
     const startX = await page.evaluate(function(){ return (window as unknown as { __seat: SeatHook }).__seat.player.x; });
 
@@ -35,4 +36,5 @@ test('a mouse-and-keyboard desktop never shows the thumbstick', async ({ page })
   await page.getByRole('button', { name: 'Start', exact: true }).click();
   await page.locator('.tab-btn[data-tab="map"]').click();
   await expect(page.locator('.touch-stick')).toBeHidden();
+  await expect(page.locator('#touch-interact')).toBeHidden();
 });

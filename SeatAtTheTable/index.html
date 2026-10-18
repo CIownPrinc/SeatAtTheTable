@@ -118,6 +118,7 @@
         <button class="minimap-expand-btn" id="territory-toggle" title="Show gang territory"><i aria-hidden="true" class="ph-duotone ph-flag-banner"></i></button>
         <div class="territory-legend hidden" id="territory-legend"></div>
         <button class="minimap-clear-btn" id="minimap-clear" title="Clear waypoint">✕</button>
+        <button class="touch-interact-btn" id="touch-interact" aria-label="Interact">E</button>
       </div>
       <div class="map-hint" id="map-hint">&nbsp;</div>
       <div class="map-controls">
@@ -152,7 +153,7 @@
   
   <div class="tab-panel" data-tab="settings">
     <div class="section-eyebrow">Configuration</div>
-    <div class="settings-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:24px; align-items: start;">
+    <div class="settings-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap:24px; align-items: start;">
       
       <!-- Card 1: System Preferences -->
       <div class="settings-block" style="max-width:none;">

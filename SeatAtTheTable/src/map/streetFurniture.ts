@@ -1,9 +1,20 @@
 import type * as ThreeNamespace from 'three';
 
+export interface LampHead { x: number; y: number; z: number }
+
 export interface StreetFurnitureOptions {
   THREE: typeof ThreeNamespace;
   worldGroup: ThreeNamespace.Group;
-  streetLights: ThreeNamespace.PointLight[];
+  streetLamps: LampHead[];
+}
+
+// LEGAL: The city has dozens of lamps, but every real light is compiled into every lit
+// LEGAL: shader and paid for on every pixel. So a small, fixed pool of lights moves to the
+// LEGAL: lamps nearest the player; the rest glow (emissive bulbs) without lighting the road.
+export function nearestLamps(lamps: LampHead[], x: number, z: number, count: number): LampHead[] {
+  return [...lamps]
+    .sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z))
+    .slice(0, count);
 }
 
 function box(THREE: typeof ThreeNamespace, w: number, h: number, d: number, color: number | string): ThreeNamespace.Mesh {
@@ -14,7 +25,7 @@ function box(THREE: typeof ThreeNamespace, w: number, h: number, d: number, colo
 }
 
 export function buildStreetLight(options: StreetFurnitureOptions, x: number, z: number): void {
-  const { THREE, worldGroup, streetLights } = options;
+  const { THREE, worldGroup, streetLamps } = options;
   const group = new THREE.Group();
   const pole = new THREE.Mesh(new THREE.CylinderGeometry(1.3,1.8,34,8), new THREE.MeshStandardMaterial({color:'#3b3e47', roughness:0.55, metalness:0.4}));
   pole.position.set(0,17,0); pole.castShadow=true; group.add(pole);
@@ -23,15 +34,9 @@ export function buildStreetLight(options: StreetFurnitureOptions, x: number, z: 
   const bulbMat = new THREE.MeshStandardMaterial({color:'#ffe6a0', emissive:'#ffd27a', emissiveIntensity:1.4});
   const bulb = new THREE.Mesh(new THREE.SphereGeometry(3.2,10,8), bulbMat);
   bulb.position.set(13,32,0); group.add(bulb);
-  // LEGAL: three has had physically-correct lighting as the only mode since r165, so a
-  // LEGAL: PointLight's intensity is candela and falls off as 1/d^decay. The old value of
-  // LEGAL: ~2 was invisible from a lamp head 32 units up: 2/32^2 is nothing. Intensity is
-  // LEGAL: set per frame in updateDayNightLighting; the scale lives there.
-  const light = new THREE.PointLight(0xffcc7a, 0, 300, 2);
-  light.position.set(13,32,0); group.add(light);
   group.position.set(x,0,z);
   worldGroup.add(group);
-  streetLights.push(light);
+  streetLamps.push({ x: x + 13, y: 32, z });
 }
 
 export function buildStopSign(options: StreetFurnitureOptions, x: number, z: number, rot: number): void {
