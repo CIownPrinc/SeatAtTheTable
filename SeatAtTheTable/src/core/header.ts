@@ -25,6 +25,7 @@ import { renderRoamingActors } from '../map/actorRendering';
 import { createAmenityModal, mapAmenities } from '../map/amenities';
 import { fireRoadPayout, isFireRoadBest, minigameOpen, playMinigame, type MinigameResult } from '../map/minigames';
 import { offRoadSpeedMultiplier } from '../map/offRoad';
+import { mountTouchStick } from '../map/touchControls';
 import { buildAmenityModel as buildMapAmenityModel } from '../map/amenityRendering';
 import { createFillerLayoutProvider, seededRandom } from '../map/filler';
 import { applyMapWorldCoordinates, createMapBuildings, mapNpcs } from '../map/markers';
@@ -4107,10 +4108,12 @@ import type * as ThreeNamespace from 'three';
     const tier = familyTiers[state.prestigeCount];
     showModal({
       eyebrow:"Windhaven International, Terminal 5", title:"FAMILY INBOUND", stamp:'Arrived',
-      body:`<p><strong>${tier.name}</strong> is cleared at customs. ${tier.desc}</p><p class="flavor">Setting them up in Windhaven requires transferring almost every dollar on hand to clear their debts and secure their paper trail. Your active fronts will close down temporarily, and muscle on the street will scatter until the dust settles. Hired managers and research dossiers remain yours.</p>`,
+      body:`<p><strong>${tier.name}</strong> is cleared at customs. ${tier.desc}</p><p class="flavor">Setting them up in Windhaven takes almost every dollar you have, on hand, in the bank and in the market, to clear their debts and secure their paper trail. Your active fronts will close down temporarily, and muscle on the street will scatter until the dust settles. Hired managers and research dossiers remain yours.</p>`,
       buttons:[
         {label:"Make the transfer", onClick:function(){
           state.cash = 47; state.heat = 0; state.muscleCount = 0; state.guns = 0; state.ratCount = 0;
+          state.bankAccounts = {};
+          Object.values(state.portfolio).forEach(function(position){ position.shares = 0; position.avgCost = 0; });
           state.investigation = 0; state.layingLow = false; state.crackdownUntil = 0; state.nextCrackdownAt = state.playSeconds + 360;
           businesses.forEach(b=>{ b.level=0; b.crew=0; b.reinvestedIncome=0; });
           state.prestigeCount += 1;
@@ -4255,6 +4258,7 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: Unified city — 3 districts side by side, canals between them
   const player = { x:700, y:600, facing:Math.PI/2, vx:0, vy:0 };
   const keys: Record<string, boolean> = {};
+  const touchStick = mountTouchStick(byId('scene3d-container'));
   let lastFrame2 = Date.now();
 
 
@@ -4611,7 +4615,7 @@ import type * as ThreeNamespace from 'three';
     if(k==='e') tryInteract();
   });
   window.addEventListener('keyup', function(e){ keys[e.key.toLowerCase()] = false; });
-  window.addEventListener('blur', function(){ Object.keys(keys).forEach(k=> keys[k]=false); });
+  window.addEventListener('blur', function(){ Object.keys(keys).forEach(k=> keys[k]=false); touchStick.release(); });
   byId('btn-interact').addEventListener('click', tryInteract);
 
   function setMapFullscreenLayout(container: HTMLElement, active: boolean): void {
@@ -5911,18 +5915,18 @@ import type * as ThreeNamespace from 'three';
     return routeSummary(routeHintBetween({ x:player.x, y:player.y }, point)).label;
   }
 
-  minimapCanvas.addEventListener('mousedown', function(e){
+  minimapCanvas.addEventListener('pointerdown', function(e){
     minimapDragging = true; minimapDragMoved = false;
     minimapDragStart = { clientX:e.clientX, clientY:e.clientY, panX:minimapPan.x, panY:minimapPan.y };
   });
-  window.addEventListener('mousemove', function(e){
+  window.addEventListener('pointermove', function(e){
     if(!minimapDragging || !minimapDragStart) return;
     const ddx = e.clientX - minimapDragStart.clientX, ddy = e.clientY - minimapDragStart.clientY;
     if(Math.abs(ddx)>3 || Math.abs(ddy)>3) minimapDragMoved = true;
     minimapPan.x = minimapDragStart.panX - ddx/MINIMAP_SCALE;
     minimapPan.y = minimapDragStart.panY - ddy/MINIMAP_SCALE;
   });
-  window.addEventListener('mouseup', function(e){
+  window.addEventListener('pointerup', function(){
     if(!minimapDragging) return;
     minimapDragging = false;
     if(!minimapDragMoved && !state.currentInterior){
@@ -6367,13 +6371,17 @@ import type * as ThreeNamespace from 'three';
       if(keys['arrowdown']||keys['s']) dy += 1;
       if(keys['arrowleft']||keys['a']) dx -= 1;
       if(keys['arrowright']||keys['d']) dx += 1;
+      const stick = touchStick.vector();
+      if(stick.x || stick.y){ dx = stick.x; dy = stick.y; }
     }
     // LEGAL: Target velocity from input, then ease the actual velocity toward it so
     // LEGAL: movement accelerates and coasts instead of snapping on/off. Cars are
     // LEGAL: heavier (slower to respond and to turn) than the player on foot.
     const spd = currentSpeed();
     let tvx=0, tvy=0;
-    if(dx||dy){ const len = Math.hypot(dx,dy); tvx=(dx/len)*spd; tvy=(dy/len)*spd; }
+    // LEGAL: Keys give a unit direction (diagonals normalised); a thumbstick pushed part-way
+    // LEGAL: has magnitude under 1 and moves that much slower.
+    if(dx||dy){ const len = Math.hypot(dx,dy); const scale = Math.min(1, len)/len; tvx=dx*scale*spd; tvy=dy*scale*spd; }
     const respond = state.inVehicle ? 6 : 11;
     const ease = 1 - Math.exp(-respond*dt);
     player.vx += (tvx - player.vx)*ease;

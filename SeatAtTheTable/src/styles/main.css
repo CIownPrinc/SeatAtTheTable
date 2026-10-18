@@ -534,3 +534,8 @@ main{max-width:1240px;margin:0 auto;padding:26px 24px 60px;}
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
+.touch-stick{display:none;position:absolute;left:16px;bottom:16px;width:112px;height:112px;border-radius:50%;background:rgba(10,12,18,.42);border:2px solid rgba(242,186,24,.55);z-index:6;touch-action:none;align-items:center;justify-content:center;}
+.touch-stick-knob{width:48px;height:48px;border-radius:50%;background:rgba(242,186,24,.85);box-shadow:0 2px 8px rgba(0,0,0,.4);pointer-events:none;}
+#minimap-canvas{touch-action:none;}
+@media (hover:none) and (pointer:coarse){ .touch-stick{display:flex;} }
+@media (max-width:640px){ #scene3d-container:not(.fullscreen) #minimap-canvas{width:96px;height:96px;top:8px;right:8px;} #scene3d-container:not(.fullscreen) .minimap-expand-btn{top:84px;right:10px;} #scene3d-container:not(.fullscreen) #territory-toggle{top:118px;} .touch-stick{width:88px;height:88px;left:10px;bottom:10px;} .touch-stick-knob{width:38px;height:38px;} }
