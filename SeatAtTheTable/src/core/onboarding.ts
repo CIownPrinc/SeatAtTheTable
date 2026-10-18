@@ -1,5 +1,6 @@
 import type { EventStatus, MissionWorldValue } from '../config/types';
 
+export type OnboardingSection = 'ventures' | 'street';
 export type OnboardingPanelTarget = 'empire' | 'map' | 'bank' | 'politics' | 'gang' | 'assets' | 'settings' | 'missions';
 export type OnboardingActionKind = 'open' | 'missionGps';
 export type OnboardingTone = 'lesson' | 'warning' | 'opportunity';
@@ -23,6 +24,8 @@ export interface OnboardingAction {
   kind: OnboardingActionKind;
   label: string;
   target: OnboardingPanelTarget;
+  // LEGAL: Where on the target tab the lesson is about, so the button lands the player there.
+  section?: OnboardingSection;
   missionId?: string;
 }
 
@@ -129,7 +132,7 @@ export function getOnboardingSteps(snapshot: OnboardingSnapshot): OnboardingStep
       body:'The cart is your starting business. Open it to create your first reliable income and begin building the operation.',
       badge:'First move',
       tone:'lesson',
-      action:{ kind:'open', label:'Open empire', target:'empire' },
+      action:{ kind:'open', label:'Show me the cart', target:'empire', section:'ventures' },
       priority:150,
     });
   } else if(snapshot.cartCrew < snapshot.cartCrewNeeded){
@@ -139,7 +142,7 @@ export function getOnboardingSteps(snapshot: OnboardingSnapshot): OnboardingStep
       body:'An open front needs crew to run at full strength. Assign the cart its first worker before you spend on expansion.',
       badge:'First crew',
       tone:'lesson',
-      action:{ kind:'open', label:'Assign crew', target:'empire' },
+      action:{ kind:'open', label:'Assign crew', target:'empire', section:'ventures' },
       priority:145,
     });
   } else if(snapshot.productLevel === 0 && snapshot.canUpgradeLab){
@@ -149,7 +152,7 @@ export function getOnboardingSteps(snapshot: OnboardingSnapshot): OnboardingStep
       body:'The Lab makes product for street dealers. Upgrade it when you can so a future corner has something to sell.',
       badge:'Next system',
       tone:'lesson',
-      action:{ kind:'open', label:'Upgrade Lab', target:'empire' },
+      action:{ kind:'open', label:'Upgrade Lab', target:'empire', section:'street' },
       priority:140,
     });
   } else if(snapshot.productLevel > 0 && !snapshot.hasActiveCorner && snapshot.canPostFirstCorner){
@@ -219,7 +222,7 @@ export function getOnboardingSteps(snapshot: OnboardingSnapshot): OnboardingStep
       body:'Heat above 70 means the city is paying attention. Bribes, laying low, and informants are the fast ways to cool it.',
       badge:'Pressure',
       tone:'warning',
-      action:{ kind:'open', label:'Reduce heat', target:'empire' },
+      action:{ kind:'open', label:'Reduce heat', target:'empire', section:'street' },
       priority:110,
     });
   }
@@ -231,7 +234,7 @@ export function getOnboardingSteps(snapshot: OnboardingSnapshot): OnboardingStep
       body:'The cart is your first front. If it is short on crew, its return drops immediately.',
       badge:'First front',
       tone:'lesson',
-      action:{ kind:'open', label:'Assign crew', target:'empire' },
+      action:{ kind:'open', label:'Assign crew', target:'empire', section:'ventures' },
       priority:105,
     });
   } else if(snapshot.hasUnderstaffedVenture){
@@ -241,7 +244,7 @@ export function getOnboardingSteps(snapshot: OnboardingSnapshot): OnboardingStep
       body:`${snapshot.understaffedVentureName ?? 'A venture'} is short on crew, so you are paying for a front that cannot work at full strength.`,
       badge:'Operations',
       tone:'warning',
-      action:{ kind:'open', label:'Assign crew', target:'empire' },
+      action:{ kind:'open', label:'Assign crew', target:'empire', section:'ventures' },
       priority:100,
     });
   }
@@ -253,7 +256,7 @@ export function getOnboardingSteps(snapshot: OnboardingSnapshot): OnboardingStep
       body:'The Corner Store is affordable to research now. Research is the planning spend that turns a locked business into something you can open.',
       badge:'Expansion',
       tone:'opportunity',
-      action:{ kind:'open', label:'Research it', target:'empire' },
+      action:{ kind:'open', label:'Research it', target:'empire', section:'ventures' },
       priority:90,
     });
   }
@@ -266,7 +269,7 @@ export function getOnboardingSteps(snapshot: OnboardingSnapshot): OnboardingStep
       body:`${snapshot.unopenedVentureName ?? 'A venture'} is already unlocked. Opening it turns an unlock into real capacity and income.`,
       badge:'Opportunity',
       tone:'opportunity',
-      action:{ kind:'open', label:'Open venture', target:'empire' },
+      action:{ kind:'open', label:'Open venture', target:'empire', section:'ventures' },
       priority:80,
     });
   }
@@ -290,7 +293,7 @@ export function getOnboardingSteps(snapshot: OnboardingSnapshot): OnboardingStep
       body:'Corners are staffed but there is nothing to sell. Upgrade the Lab so active corners are not standing around empty-handed.',
       badge:'Bottleneck',
       tone:'warning',
-      action:{ kind:'open', label:'Upgrade Lab', target:'empire' },
+      action:{ kind:'open', label:'Upgrade Lab', target:'empire', section:'street' },
       priority:70,
     });
   }

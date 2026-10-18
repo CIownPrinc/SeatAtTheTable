@@ -55,7 +55,7 @@ describe('onboarding steps', function () {
     expect(steps[0]).toMatchObject({
       id:'early-open-cart',
       badge:'First move',
-      action:{ target:'empire', label:'Open empire' },
+      action:{ target:'empire', label:'Show me the cart' },
     });
   });
 

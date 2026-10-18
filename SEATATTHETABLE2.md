@@ -94,6 +94,7 @@ docs already worked out how it should play.
 | Lakeridge Country Club | Designed | Where cash becomes standing. Build it as part of in-person politics, not beside it. |
 | Non-grid roads with curves | Idea | V1 avoided this because of hand-placed anchors. V2 can design placement to allow it from the start. |
 | Lane-aware traffic and smarter pedestrians | Idea | Includes police patrols, roadblocks, delivery routes, taxis and crew transport using the car models. |
+| Hail a taxi | Requested | GTA-style. Call or flag down a cab, pick a destination (a waypoint, a place, or a mission objective), and ride while it drives you there on the real roads. You can skip the ride for a fare, but within the city only, per the "drive is part of the fun" rule. Should pair with the Windhaven Cab Co. venture: owning it could make rides cheaper or let your own drivers move crew. |
 | More 3D props | Idea | Street furniture, parking, docks, roof clutter and pedestrian variety. V1 has unused CC0 asset packs (listed in `V1: SeatAtTheTable/docs/map-asset-usage-audit.md`). Only add assets that feed something visible. |
 | Irregular coast and edge landmarks | Idea | Make the city read less like a rectangular board. |
 | Visual regression tests for the 3D canvas | Idea | Compare screenshots across changes. |

@@ -7,11 +7,12 @@ test.describe('progressive onboarding', () => {
 
     await expect(page.locator('#advisor-title')).toHaveText('Street Lessons');
     await expect(page.locator('#advisor-list')).toContainText('Open your first front');
-    const openEmpire = page.getByRole('button', { name: 'Open empire', exact: true });
+    const openEmpire = page.getByRole('button', { name: 'Show me the cart', exact: true });
     await expect(openEmpire).toHaveCount(1);
-    await expect(openEmpire).toHaveText('Open empire');
+    await expect(openEmpire).toHaveText('Show me the cart');
     await openEmpire.click();
     await expect(page.locator('.tab-panel[data-tab="empire"]')).toHaveClass(/active/);
+    await expect(page.locator('#grid-legit')).toBeInViewport();
 
     const openCart = page.locator('#grid-legit [data-action="expand"][data-id="cart"]');
     await expect(openCart).toHaveCount(1);

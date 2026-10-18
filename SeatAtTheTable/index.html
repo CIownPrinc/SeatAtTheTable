@@ -25,10 +25,10 @@
     </div>
     <div class="start-actions">
       <div class="start-menu">
-        <button class="start-btn" id="continue-game-btn"><i class="ph-duotone ph-play"></i>Continue</button>
-        <button class="start-btn secondary" id="start-game-btn"><i class="ph-duotone ph-plus-circle"></i>Start</button>
-        <button class="start-btn secondary" id="start-settings-btn"><i class="ph-duotone ph-sliders-horizontal"></i>Settings</button>
-        <button class="start-btn secondary" id="start-credits-btn"><i class="ph-duotone ph-scroll"></i>Credits</button>
+        <button class="start-btn" id="continue-game-btn"><i aria-hidden="true" class="ph-duotone ph-play"></i>Continue</button>
+        <button class="start-btn secondary" id="start-game-btn"><i aria-hidden="true" class="ph-duotone ph-plus-circle"></i>Start</button>
+        <button class="start-btn secondary" id="start-settings-btn"><i aria-hidden="true" class="ph-duotone ph-sliders-horizontal"></i>Settings</button>
+        <button class="start-btn secondary" id="start-credits-btn"><i aria-hidden="true" class="ph-duotone ph-scroll"></i>Credits</button>
       </div>
       <div class="start-credits">
         <span>Seat at the Table</span>
@@ -65,7 +65,7 @@
     <div class="stat"><div class="stat-label">Standing<span class="info-icon" data-tooltip="Your street standing in Windhaven. Higher standing unlocks better territory, larger crews, and cuts costs across the board.">?</span></div><div class="stat-value teal" id="hud-rank">Nobody</div><div class="stat-sub" id="hud-respect">0 respect</div></div>
     <div class="stat heat-stat"><div class="stat-label">Heat<span class="info-icon" data-tooltip="Police attention (your WANTED level). Fills with active illegal operations and settles at a level set by how much you're running. Sustained high heat builds a federal CASE — and that, not heat itself, is what gets you raided. Lay low or bribe to cool off.">?</span></div><div class="wanted-label" id="wanted-label">COLD · 0%</div><div class="heat-bar"><div class="heat-fill" id="heat-fill"></div></div><div class="inv-row" id="inv-row" style="display:none;"><span class="inv-tag" id="inv-tag">FED. CASE 0%</span><div class="inv-bar"><div class="inv-fill" id="inv-fill"></div></div></div><details class="heat-details"><summary>Details</summary><div id="heat-breakdown" class="heat-breakdown"></div></details></div>
     <div class="stat" style="border-right:none;"><div class="stat-label">Crew<span class="info-icon" data-tooltip="Manpower in your pocket. Acquire territory to raise the limit. Crew must be assigned to run legitimate fronts or street operations; idle hands earn nothing.">?</span></div><div class="stat-value violet" id="hud-crew" style="font-size:15px;">0 / 6</div></div>
-    <button class="phone-btn" id="phone-btn" title="Open your phone — Missions, Bank, Stocks, AutoMart"><i class="ph-duotone ph-device-mobile"></i><span class="mission-badge" id="mission-phone-badge">0</span></button>
+    <button class="phone-btn" id="phone-btn" title="Open your phone — Missions, Bank, Stocks, AutoMart"><i aria-hidden="true" class="ph-duotone ph-device-mobile"></i><span class="mission-badge" id="mission-phone-badge">0</span></button>
     <button class="prestige-btn" id="prestige-btn" style="display:none;"></button>
   </div>
 </div>
@@ -80,7 +80,7 @@
 
   <div class="tab-panel active" data-tab="empire">
     <div class="wire-feed">
-      <div class="wire-head"><i class="ph-duotone ph-broadcast"></i> Windhaven Wire<span class="wire-live">● LIVE</span></div>
+      <div class="wire-head"><i aria-hidden="true" class="ph-duotone ph-broadcast"></i> Windhaven Wire<span class="wire-live">● LIVE</span></div>
       <div class="wire-items" id="wire-items"><div class="wire-item wire-item-empty">Quiet on the wire tonight.</div></div>
     </div>
     <section class="advisor-card" id="advisor-card" aria-labelledby="advisor-title">
@@ -109,29 +109,28 @@
 
   <div class="tab-panel" data-tab="map">
     <div class="section-eyebrow">The Tac-Map</div>
-    <p class="pillar-desc">Windhaven street layout. Walk or drive with <strong>WASD / Arrow Keys</strong>, press <strong>E</strong> to interact (enter buildings, board vehicles), and right-drag or drag the minimap to look around.</p>
-    <div class="map-control-summary" aria-label="Map controls summary">
-      <div><strong>Move</strong><span>WASD / Arrow Keys</span></div>
-      <div><strong>Interact</strong><span>E or Interact button</span></div>
-      <div><strong>Look</strong><span>Right-drag the map</span></div>
-      <div><strong>Waypoint</strong><span>Open City Map, then click a destination</span></div>
-    </div>
     <div class="map-wrap">
       <div id="scene3d-container">
-        <button id="fullscreen-btn" class="minimap-clear-btn show" style="left: 12px; top: 12px; right: auto; background: var(--blue); z-index: 10;"><i class="ph-duotone ph-arrows-out"></i></button>
+        <button id="fullscreen-btn" class="minimap-clear-btn show" style="left: 12px; top: 12px; right: auto; background: var(--blue); z-index: 10;"><i aria-hidden="true" class="ph-duotone ph-arrows-out"></i></button>
         <canvas id="interior-canvas" width="760" height="440"></canvas>
         <canvas id="minimap-canvas" width="150" height="150"></canvas>
-        <button class="minimap-expand-btn" id="minimap-expand" title="Expand minimap"><i class="ph-duotone ph-arrows-out-simple"></i></button>
-        <button class="minimap-expand-btn" id="territory-toggle" title="Show gang territory"><i class="ph-duotone ph-flag-banner"></i></button>
+        <button class="minimap-expand-btn" id="minimap-expand" title="Expand minimap"><i aria-hidden="true" class="ph-duotone ph-arrows-out-simple"></i></button>
+        <button class="minimap-expand-btn" id="territory-toggle" title="Show gang territory"><i aria-hidden="true" class="ph-duotone ph-flag-banner"></i></button>
         <div class="territory-legend hidden" id="territory-legend"></div>
         <button class="minimap-clear-btn" id="minimap-clear" title="Clear waypoint">✕</button>
       </div>
       <div class="map-hint" id="map-hint">&nbsp;</div>
       <div class="map-controls">
         <button class="dpad-btn" id="btn-interact" style="width:auto;padding:0 16px;">Interact (E)</button>
-        <button class="dpad-btn" id="citymap-open" style="width:auto;padding:0 16px;"><i class="ph-duotone ph-map-trifold"></i> City Map</button>
+        <button class="dpad-btn" id="citymap-open" style="width:auto;padding:0 16px;"><i aria-hidden="true" class="ph-duotone ph-map-trifold"></i> City Map</button>
       </div>
       <div class="map-legend" id="map-legend"></div>
+    </div>
+    <div class="map-control-summary" aria-label="Map controls summary">
+      <div><strong>Move</strong><span>WASD / Arrow Keys</span></div>
+      <div><strong>Interact</strong><span>E or Interact button</span></div>
+      <div><strong>Look</strong><span>Right-drag the map, or drag the minimap</span></div>
+      <div><strong>Waypoint</strong><span>Open City Map, then click a destination</span></div>
     </div>
 
     <div class="section-eyebrow" style="margin-top:26px;">Territory Control</div>
@@ -231,7 +230,7 @@
       <div class="device-apps">
         <button class="device-app" data-app="bank"><span class="device-app-ico">🏦</span><span class="device-app-name">Bank</span></button>
         <button class="device-app" data-app="stocks"><span class="device-app-ico">📈</span><span class="device-app-name">Stocks</span></button>
-        <button class="device-app" data-app="missions"><span class="device-app-ico"><i class="ph-duotone ph-envelope-simple"></i><span class="mission-badge app-badge" id="mission-app-badge">0</span></span><span class="device-app-name">Missions</span></button>
+        <button class="device-app" data-app="missions"><span class="device-app-ico"><i aria-hidden="true" class="ph-duotone ph-envelope-simple"></i><span class="mission-badge app-badge" id="mission-app-badge">0</span></span><span class="device-app-name">Missions</span></button>
         <button class="device-app" data-app="automart"><span class="device-app-ico">🚗</span><span class="device-app-name">AutoMart</span></button>
         <button class="device-app" data-app="realty"><span class="device-app-ico">🏠</span><span class="device-app-name">Realty</span></button>
         <button class="device-app" data-app="contacts"><span class="device-app-ico">📇</span><span class="device-app-name">Contacts</span></button>
@@ -239,28 +238,28 @@
     </div>
 
     <div class="device-screen hidden" data-screen="finance">
-      <div class="device-appbar"><button class="device-back" data-back><i class="ph-duotone ph-caret-left"></i> Apps</button><span class="device-appbar-title" id="finance-appbar-title">Bank</span></div>
+      <div class="device-appbar"><button class="device-back" data-back><i aria-hidden="true" class="ph-duotone ph-caret-left"></i> Apps</button><span class="device-appbar-title" id="finance-appbar-title">Bank</span></div>
       <div class="device-scroll">
         <div id="bank-panel"></div>
       </div>
     </div>
 
     <div class="device-screen hidden" data-screen="missions">
-      <div class="device-appbar"><button class="device-back" data-back><i class="ph-duotone ph-caret-left"></i> Apps</button><span class="device-appbar-title">Missions</span></div>
+      <div class="device-appbar"><button class="device-back" data-back><i aria-hidden="true" class="ph-duotone ph-caret-left"></i> Apps</button><span class="device-appbar-title">Missions</span></div>
       <div class="device-scroll">
         <div id="missions-panel"></div>
       </div>
     </div>
 
     <div class="device-screen hidden" data-screen="contacts">
-      <div class="device-appbar"><button class="device-back" data-back><i class="ph-duotone ph-caret-left"></i> Apps</button><span class="device-appbar-title">Contacts</span></div>
+      <div class="device-appbar"><button class="device-back" data-back><i aria-hidden="true" class="ph-duotone ph-caret-left"></i> Apps</button><span class="device-appbar-title">Contacts</span></div>
       <div class="device-scroll">
         <div id="contacts-panel"></div>
       </div>
     </div>
 
     <div class="device-screen hidden" data-screen="automart">
-      <div class="device-appbar"><button class="device-back" data-back><i class="ph-duotone ph-caret-left"></i> Apps</button><span class="device-appbar-title">AutoMart</span></div>
+      <div class="device-appbar"><button class="device-back" data-back><i aria-hidden="true" class="ph-duotone ph-caret-left"></i> Apps</button><span class="device-appbar-title">AutoMart</span></div>
       <div class="device-scroll">
         <div class="section-eyebrow">AutoMart — Vehicles</div>
         <p class="pillar-desc">Order a car online and it's delivered to your garage. High-end cars improve travel speeds and boost heist success. Dealer-only models are in person at the lots.</p>
@@ -269,7 +268,7 @@
     </div>
 
     <div class="device-screen hidden" data-screen="realty">
-      <div class="device-appbar"><button class="device-back" data-back><i class="ph-duotone ph-caret-left"></i> Apps</button><span class="device-appbar-title">Realty</span></div>
+      <div class="device-appbar"><button class="device-back" data-back><i aria-hidden="true" class="ph-duotone ph-caret-left"></i> Apps</button><span class="device-appbar-title">Realty</span></div>
       <div class="device-scroll">
         <div class="section-eyebrow">Realty — Listings</div>
         <p class="pillar-desc">Hands-off commercial holdings that yield clean, steady income without crew supervision. Themed properties are bought in person at their brokerages.</p>
@@ -299,10 +298,10 @@
 <div class="citymap-overlay hidden" id="citymap-overlay">
   <div class="citymap-panel">
     <div class="citymap-head">
-      <span><i class="ph-duotone ph-map-trifold"></i> City Map — Windhaven</span>
+      <span><i aria-hidden="true" class="ph-duotone ph-map-trifold"></i> City Map — Windhaven</span>
       <div style="display:flex;align-items:center;gap:10px;">
-        <button class="citymap-layer-btn" id="citymap-districts" title="Show district boundaries"><i class="ph-duotone ph-map-pin-area"></i> Districts</button>
-        <button class="citymap-layer-btn" id="citymap-territory" title="Show gang territory"><i class="ph-duotone ph-flag-banner"></i> Territory</button>
+        <button class="citymap-layer-btn" id="citymap-districts" title="Show district boundaries"><i aria-hidden="true" class="ph-duotone ph-map-pin-area"></i> Districts</button>
+        <button class="citymap-layer-btn" id="citymap-territory" title="Show gang territory"><i aria-hidden="true" class="ph-duotone ph-flag-banner"></i> Territory</button>
         <button class="citymap-close" id="citymap-close" title="Close">✕</button>
       </div>
     </div>
