@@ -1,5 +1,6 @@
 import { ICONS } from '../config/icons';
 import { formatCount, formatMoney, formatMoneyRate } from './format';
+import { renderSkyline } from './startSkyline';
 import { businesses, ranks } from '../config/ventures';
 import { milestones, familyTiers } from '../config/milestones';
 import { cars, properties } from '../config/assets';
@@ -6948,6 +6949,7 @@ import type * as ThreeNamespace from 'three';
 
   (async function boot(){
     wireDelegation();
+    renderSkyline(document.querySelector<HTMLElement>('.start-skyline')!);
     const loaded = await loadGame();
     byId<HTMLInputElement>('start-quiet-toggle').checked = document.body.classList.contains('quiet');
     byId<HTMLInputElement>('start-light-toggle').checked = document.body.classList.contains('theme-light');

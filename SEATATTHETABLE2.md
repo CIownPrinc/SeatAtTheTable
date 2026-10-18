@@ -121,6 +121,7 @@ docs already worked out how it should play.
 | Feature | State | Notes |
 | --- | --- | --- |
 | Server-side saves, accounts and leaderboards | Idea | V1 saves to the browser only. |
+| Live 3D city title screen | Requested | GTA-style: the real Windhaven renders behind the start menu with the camera drifting slowly over the streets (Devlin at night, then the lakefront), with traffic and lit windows. V1 ships a flat SVG skyline instead, because loading three.js and the GLB pack before the player presses Start costs seconds on a cold load. Plan for it from the start: a low-detail "attract" scene (no interiors, few actors, capped pixel ratio) that loads behind the menu, which the game scene then reuses, so the wait happens once. A static skyline fallback for slow devices and reduced-motion settings. |
 | Python service or ML "readings" | Undefined | Mentioned once and never given a product definition. Don't build it until it has one. |
 
 ## Decide these before writing code
