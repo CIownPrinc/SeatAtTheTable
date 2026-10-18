@@ -30,6 +30,8 @@ module.exports = {
             for (const comment of comments) {
               // LEGAL: Only line comments (// ...)
               if (comment.type !== "Line") continue;
+              // LEGAL: `/// <reference ... />` is a TypeScript compiler directive, not prose.
+              if (/^\/\s*<reference\s/.test(comment.value)) continue;
               const text = comment.value.trim();
               if (
                 !(
