@@ -1,4 +1,5 @@
 import { ICONS } from '../config/icons';
+import { formatCount, formatMoney, formatMoneyRate } from './format';
 import { businesses, ranks } from '../config/ventures';
 import { milestones, familyTiers } from '../config/milestones';
 import { cars, properties } from '../config/assets';
@@ -475,14 +476,8 @@ import type * as ThreeNamespace from 'three';
   function byIdOrNull<T extends HTMLElement = HTMLElement>(id: string): T | null {
     return document.getElementById(id) as T | null;
   }
-  function fmt(n: number){
-    const sign = n<0?'-':''; n=Math.abs(n);
-    if(n < 1000) return sign+'$' + Math.floor(n);
-    const units=['','K','M','B','T']; let u=0; let v=n;
-    while(v>=1000 && u<units.length-1){ v/=1000; u++; }
-    return sign+'$' + v.toFixed(v<10?2:1) + units[u];
-  }
-  function fmtR(n: number){ return Math.floor(n).toLocaleString(); }
+  // LEGAL: Each family arrival costs four times the last.
+  function prestigeThreshold(){ return 50000 * Math.pow(4, state.prestigeCount); }
   function hasFamilyTier(index: number){ return state.prestigeCount > index; }
   function brotherActive(){ return hasFamilyTier(0); }
   function motherActive(){ return hasFamilyTier(1); }
@@ -675,6 +670,13 @@ import type * as ThreeNamespace from 'three';
     if(b.unlock.type==='family') return hasFamilyTier(b.unlock.value) || b.level>0 || b.researched;
     return false;
   }
+  function unlockRequirement(b: Business): string {
+    const unlock = b.unlock;
+    if(unlock.type==='cash') return `Requires ${formatMoney(unlock.value)} cash`;
+    if(unlock.type==='respect') return `Requires ${unlock.value} respect`;
+    if(unlock.type==='family') return `Requires ${familyTiers[unlock.value]?.name ?? 'more family'} in Windhaven`;
+    return '';
+  }
 
   function onboardingTargetFor(target: OnboardingPanelTarget): void {
     if(target === 'bank') openDeviceApp('bank');
@@ -733,7 +735,7 @@ import type * as ThreeNamespace from 'three';
     });
 
     title.textContent = 'Street Lessons';
-    copy.textContent = 'The game now surfaces systems when they matter, with direct actions instead of a generic priority list.';
+    copy.textContent = 'What to do next, as it comes up.';
     badge.textContent = 'Just in time';
     wrap.innerHTML = steps.map(function(step){
       return `
@@ -810,7 +812,7 @@ import type * as ThreeNamespace from 'three';
       btn.className = 'modal-btn' + (btnDef.secondary ? ' secondary' : '');
       btn.innerHTML = `` + btnDef.label;
       const unaffordable = btnDef.cost !== undefined && state.cash < btnDef.cost;
-      if(unaffordable) btn.title = `You need ${fmt(btnDef.cost ?? 0)} for this.`;
+      if(unaffordable) btn.title = `You need ${formatMoney(btnDef.cost ?? 0)} for this.`;
       btn.disabled = unaffordable || btnDef.disabled === true;
       btn.onclick = function(){
         if(btn.disabled || (btnDef.cost !== undefined && state.cash < btnDef.cost)) return;
@@ -991,7 +993,7 @@ import type * as ThreeNamespace from 'three';
       const loss = Math.round(state.cash * PHASE2_MISSION_CONFIG.homeSafeRobberyLossPct);
       state.cash = Math.max(0, state.cash - loss);
       state.worldMemory.homeSafeRobbed = true;
-      log(`<i class="ph-duotone ph-vault"></i> The safe is already empty. You lost ${fmt(loss)} in exposed cash; get the rest to a bank.`);
+      log(`<i class="ph-duotone ph-vault"></i> The safe is already empty. You lost ${formatMoney(loss)} in exposed cash; get the rest to a bank.`);
     }
     if(id === 'inspector'){
       const venture = flagshipLegit() ?? businesses.find(function(business){ return business.id === 'cart'; }) ?? businesses[0];
@@ -1311,7 +1313,7 @@ import type * as ThreeNamespace from 'three';
       const venture = businesses.find(function(business){ return business.id === ventureId; });
       const ventureName = venture?.name ?? 'the inspected venture';
       showModal({ eyebrow:'Health Department', title:'Inspector Kowalski', body:`<p class='flavor'>Kowalski taps the clipboard. ${count > 1 ? '"We both know the second visit costs more."' : '"Clean kitchens are expensive. Dirty ones are worse."'}</p>`, buttons:[
-        { label:`Pay the bribe (${fmt(bribe)})`, cost:bribe, onClick:function(){ state.cash = Math.max(0, state.cash - bribe); state.worldMemory.kowalskiPaid = count; log('<i class="ph-duotone ph-envelope-simple"></i> The envelope disappears and the inspection passes.'); finishMission('inspector', 'bribed'); } },
+        { label:`Pay the bribe (${formatMoney(bribe)})`, cost:bribe, onClick:function(){ state.cash = Math.max(0, state.cash - bribe); state.worldMemory.kowalskiPaid = count; log('<i class="ph-duotone ph-envelope-simple"></i> The envelope disappears and the inspection passes.'); finishMission('inspector', 'bribed'); } },
         { label:`Comply: close ${ventureName} for ${PHASE2_MISSION_CONFIG.inspectorComplianceSeconds}s`, onClick:function(){ if(ventureId) applyBusinessTempMult(ventureId, PHASE2_MISSION_CONFIG.inspectorComplianceMultiplier, PHASE2_MISSION_CONFIG.inspectorComplianceSeconds); state.worldMemory.kowalskiComplied = count; state.worldMemory.inspectionClosureVenture = ventureId; log(`<i class="ph-duotone ph-scales"></i> ${ventureName} closes its doors while the paperwork clears.`); finishMission('inspector', `${ventureName} income -30% for ${PHASE2_MISSION_CONFIG.inspectorComplianceSeconds} seconds; other ventures unaffected`); } },
         { label:'Blackmail him', onClick:function(){ if(state.respect >= 120 || state.influence >= 80){ state.worldMemory.kowalskiBlackmailed = true; state.worldMemory.kowalskiProtection = true; state.heat = Math.max(0, state.heat - 12); log('<i class="ph-duotone ph-folder-lock"></i> Kowalski sees the file, deletes the address, and flags your ventures out of future inspection rotations.'); finishMission('inspector', 'heat -12; permanent inspection protection recorded; future Kowalski visits blocked'); } else { state.heat = Math.min(100, state.heat + 10); log('<i class="ph-duotone ph-warning"></i> You reach for leverage you do not have. Kowalski leaves angry.'); finishMission('inspector', 'blackmail failed; heat +10'); } } },
         { label:'Intimidate him', onClick:function(){ state.respect += 8; state.heat = Math.min(100, state.heat + 12); state.worldMemory.kowalskiIntimidated = true; scheduleFollowUp('cops'); log('<i class="ph-duotone ph-hand-fist"></i> Kowalski backs off for now. He will remember the tone, and Detective Miller will hear about it.'); finishMission('inspector', 'respect +8; heat +12; Detective Miller follow-up scheduled'); } },
@@ -1346,7 +1348,7 @@ import type * as ThreeNamespace from 'three';
     }
     if(id === 'investor'){
       showModal({ eyebrow:'Whitfield Realty', title:'Silent Investor', body:"<p class='flavor'>The offer is simple because the strings are not. Cash now, a cut forever.</p>", buttons:[
-        { label:`Accept (+${fmt(PHASE2_MISSION_CONFIG.investorStandardCash)}, permanent income -${Math.round(PHASE2_MISSION_CONFIG.investorStandardIncomePenalty * 100)}%)`, onClick:function(){ state.cash += PHASE2_MISSION_CONFIG.investorStandardCash; state.investorPenalty = Math.min(0.5, (state.investorPenalty || 0) + PHASE2_MISSION_CONFIG.investorStandardIncomePenalty); state.worldMemory.investorAccepted = true; log('<i class="ph-duotone ph-chart-line-up"></i> Cash in hand. A little less of everything is yours now.'); finishMission('investor', `$${PHASE2_MISSION_CONFIG.investorStandardCash.toLocaleString()} gained; permanent income -${Math.round(PHASE2_MISSION_CONFIG.investorStandardIncomePenalty * 100)}%`); } },
+        { label:`Accept (+${formatMoney(PHASE2_MISSION_CONFIG.investorStandardCash)}, permanent income -${Math.round(PHASE2_MISSION_CONFIG.investorStandardIncomePenalty * 100)}%)`, onClick:function(){ state.cash += PHASE2_MISSION_CONFIG.investorStandardCash; state.investorPenalty = Math.min(0.5, (state.investorPenalty || 0) + PHASE2_MISSION_CONFIG.investorStandardIncomePenalty); state.worldMemory.investorAccepted = true; log('<i class="ph-duotone ph-chart-line-up"></i> Cash in hand. A little less of everything is yours now.'); finishMission('investor', `$${PHASE2_MISSION_CONFIG.investorStandardCash.toLocaleString()} gained; permanent income -${Math.round(PHASE2_MISSION_CONFIG.investorStandardIncomePenalty * 100)}%`); } },
         { label:`Negotiate (${PHASE2_MISSION_CONFIG.investorPrestigeRequirement} prestige or ${PHASE2_MISSION_CONFIG.investorRespectRequirement} respect)`, onClick:function(){ if(state.prestigeCount >= PHASE2_MISSION_CONFIG.investorPrestigeRequirement || state.respect >= PHASE2_MISSION_CONFIG.investorRespectRequirement){ state.cash += PHASE2_MISSION_CONFIG.investorNegotiatedCash; state.investorPenalty = Math.min(0.5, (state.investorPenalty || 0) + PHASE2_MISSION_CONFIG.investorNegotiatedIncomePenalty); state.respect += 5; state.worldMemory.investorSponsorAvailable = true; log('<i class="ph-duotone ph-handshake"></i> You cut the investor down to a smaller piece and gain a sponsor lead.'); finishMission('investor', `$${PHASE2_MISSION_CONFIG.investorNegotiatedCash.toLocaleString()} gained; respect +5; permanent income -${Math.round(PHASE2_MISSION_CONFIG.investorNegotiatedIncomePenalty * 100)}%; sponsor lead recorded`); } else { state.cash += PHASE2_MISSION_CONFIG.investorStandardCash; state.investorPenalty = Math.min(0.5, (state.investorPenalty || 0) + PHASE2_MISSION_CONFIG.investorWeakNegotiationIncomePenalty); log('<i class="ph-duotone ph-chart-line-up"></i> You try to negotiate without leverage and pay for it later.'); finishMission('investor', `$${PHASE2_MISSION_CONFIG.investorStandardCash.toLocaleString()} gained; permanent income -${Math.round(PHASE2_MISSION_CONFIG.investorWeakNegotiationIncomePenalty * 100)}% (insufficient leverage)`); } } },
         { label:'Reject', onClick:function(){ state.respect += 8; state.worldMemory.investorRejected = true; log('<i class="ph-duotone ph-star"></i> You stay independent.'); finishMission('investor', 'rejected'); } },
         { label:'Threaten', onClick:function(){ state.respect += 12; state.heat = Math.min(100, state.heat + 14); state.worldMemory.cityHallAttention = true; log('<i class="ph-duotone ph-warning"></i> The investor leaves with a smile that says City Hall will hear about this.'); finishMission('investor', 'threatened'); } },
@@ -1399,7 +1401,7 @@ import type * as ThreeNamespace from 'three';
       const venture = businesses.find(function(business){ return business.id === ventureId; });
       const ventureName = venture?.name ?? 'your flagship venture';
       showModal({ eyebrow:'City Hall Annex', title:'The Audit Notice', body:`<p class='flavor'>The clerk slides over a file for ${escapeHtml(ventureName)}. The bagman is not mentioned once. Every page is perfectly legal and timed to make the point.</p>`, buttons:[
-        { label:`Pay the filing settlement (${fmt(PHASE2_MISSION_CONFIG.taxAuditSettlementCost)})`, cost:PHASE2_MISSION_CONFIG.taxAuditSettlementCost, onClick:function(){ state.cash = Math.max(0, state.cash - PHASE2_MISSION_CONFIG.taxAuditSettlementCost); state.worldMemory.taxAuditPending = false; state.worldMemory.taxAuditResolved = 'settled'; finishMission('tax_audit', `$${PHASE2_MISSION_CONFIG.taxAuditSettlementCost} spent; audit closed; ${ventureName} stays open`); } },
+        { label:`Pay the filing settlement (${formatMoney(PHASE2_MISSION_CONFIG.taxAuditSettlementCost)})`, cost:PHASE2_MISSION_CONFIG.taxAuditSettlementCost, onClick:function(){ state.cash = Math.max(0, state.cash - PHASE2_MISSION_CONFIG.taxAuditSettlementCost); state.worldMemory.taxAuditPending = false; state.worldMemory.taxAuditResolved = 'settled'; finishMission('tax_audit', `$${PHASE2_MISSION_CONFIG.taxAuditSettlementCost} spent; audit closed; ${ventureName} stays open`); } },
         { label:`Contest it (${ventureName} income -50% for ${PHASE2_MISSION_CONFIG.taxAuditSeconds}s)`, onClick:function(){ if(ventureId) applyBusinessTempMult(ventureId, PHASE2_MISSION_CONFIG.taxAuditMultiplier, PHASE2_MISSION_CONFIG.taxAuditSeconds); state.worldMemory.taxAuditPending = false; state.worldMemory.taxAuditResolved = 'contested'; finishMission('tax_audit', `${ventureName} income -50% for ${PHASE2_MISSION_CONFIG.taxAuditSeconds} seconds; audit contested`); } },
       ]}); return;
     }
@@ -1437,7 +1439,7 @@ import type * as ThreeNamespace from 'three';
         ? "<p class='flavor'>Your crew has the lobby timed. The vault is still a risk, but the smaller cashier bundles are already within reach.</p>"
         : "<p class='flavor'>The guard turns toward the side door. You have one clean chance to push for the vault or leave with what is already loose.</p>", buttons:[
         { label: approach === 'crew' ? 'Push the crew toward the vault' : 'Push for the vault', onClick:function(){ const heistResult = resolveHeist(approach); finishMission('first_heist', heistResult); } },
-        { label:'Leave with the cashier bundles', onClick:function(){ const bundle = approach === 'crew' ? 900 : 450; const heat = approach === 'crew' ? 8 : 5; state.cash += bundle; state.heat = Math.min(100, state.heat + heat); state.nextHeistAt = state.playSeconds + 240; state.worldMemory.firstHeistExit = 'cashier'; log(`<i class="ph-duotone ph-money"></i> You leave before the vault turns into a headline: ${fmt(bundle)} gained, heat +${heat}.`); finishMission('first_heist', `${fmt(bundle)} gained; heat +${heat}; vault left untouched`); } },
+        { label:'Leave with the cashier bundles', onClick:function(){ const bundle = approach === 'crew' ? 900 : 450; const heat = approach === 'crew' ? 8 : 5; state.cash += bundle; state.heat = Math.min(100, state.heat + heat); state.nextHeistAt = state.playSeconds + 240; state.worldMemory.firstHeistExit = 'cashier'; log(`<i class="ph-duotone ph-money"></i> You leave before the vault turns into a headline: ${formatMoney(bundle)} gained, heat +${heat}.`); finishMission('first_heist', `${formatMoney(bundle)} gained; heat +${heat}; vault left untouched`); } },
       ]});
       return;
     }
@@ -1701,7 +1703,7 @@ import type * as ThreeNamespace from 'three';
     if(state.campaignActive){ state.campaignActive = false; state.nextCampaignAt = state.playSeconds + 900; campaignNote = ' The scandal kills your political campaign.'; }
     const target = top ? top.name : (active.length ? active[0].name : 'your operation');
     pushCityNews(`FEDERAL AGENTS RAID ${target.toUpperCase()}; ASSETS SEIZED`, true);
-    log(`<i class="ph-duotone ph-warning"></i> The case lands. Agents hit ${target} — product gone, corners rolled up, ${fmt(fine)} in fines.${campaignNote}`);
+    log(`<i class="ph-duotone ph-warning"></i> The case lands. Agents hit ${target} — product gone, corners rolled up, ${formatMoney(fine)} in fines.${campaignNote}`);
     // LEGAL: A raid rattles everyone you're squeezing — resentment jumps (but they don't
     // LEGAL: automatically bolt anymore; that's the resentment system's job now).
     const extortedList = localBusinesses.filter(b=>b.extorted);
@@ -1800,17 +1802,17 @@ import type * as ThreeNamespace from 'three';
     let bodyHtml = `<p>${b.flavor}</p>`;
     const buttons: ModalButton[] = [];
     if(!unlocked){
-      bodyHtml += `<p class="flavor">${b.unlock.type==='cash' ? ('Unlocks at '+fmt(b.unlock.value)+' cash') : ('value' in b.unlock ? ('Unlocks at '+b.unlock.value+' respect') : '')}</p>`;
+      bodyHtml += `<p class="flavor">${unlockRequirement(b)}</p>`;
     } else if(!b.researched){
       const rc = researchCostFor(b);
-      buttons.push({ label:`Research (${fmt(rc)})`, onClick:function(){ if(state.cash>=rc){ state.cash-=rc; b.researched=true; log(`<i class="ph-duotone ph-flask"></i> You research ${b.name}.`);} renderAll(); }});
+      buttons.push({ label:`Research (${formatMoney(rc)})`, onClick:function(){ if(state.cash>=rc){ state.cash-=rc; b.researched=true; log(`<i class="ph-duotone ph-flask"></i> You research ${b.name}.`);} renderAll(); }});
     } else {
       bodyHtml += `<p class="flavor">Level ${b.level} · ${incomeFor(b).toFixed(1)}/s · Efficiency ${Math.round(efficiency(b)*100)}%</p>`;
       const cost = costForLevel(b);
-      buttons.push({ label:`${b.level===0?'Open':'Expand'} (${fmt(cost)})`, onClick:function(){ if(state.cash>=cost){ state.cash-=cost; b.level+=1; if(b.category==='street') state.respect+=1; if(b.level===1){ triggerMilestone('first_venture'); if(b.id==='restaurant') triggerMilestone('chaat_house'); if(b.id==='syndicate_logistics') triggerMilestone('docks'); } } renderAll(); }});
+      buttons.push({ label:`${b.level===0?'Open':'Expand'} (${formatMoney(cost)})`, onClick:function(){ if(state.cash>=cost){ state.cash-=cost; b.level+=1; if(b.category==='street') state.respect+=1; if(b.level===1){ if(b.id==='restaurant') triggerMilestone('chaat_house'); if(b.id==='syndicate_logistics') triggerMilestone('docks'); } } renderAll(); }});
       if(!b.manager){
         const cc = crewCostFor(b);
-        buttons.push({ label:`+ Crew (${fmt(cc)})`, onClick:function(){ if(state.cash>=cc && crewUsedGlobal()<crewCapGlobal()){ state.cash-=cc; b.crew+=1; } renderAll(); }});
+        buttons.push({ label:`+ Crew (${formatMoney(cc)})`, onClick:function(){ if(state.cash>=cc && crewUsedGlobal()<crewCapGlobal()){ state.cash-=cc; b.crew+=1; } renderAll(); }});
       }
     }
     buttons.push({ label:'Close', secondary:true });
@@ -1828,17 +1830,17 @@ import type * as ThreeNamespace from 'three';
   function depositAmount(bankId: string, rawAmt: string | undefined){
     const amt = Math.floor(Number(rawAmt));
     if(!isFinite(amt) || amt<=0){ log('<i class="ph-duotone ph-bank"></i> Enter a valid amount to deposit.'); return; }
-    if(amt > state.cash){ log(`<i class="ph-duotone ph-vault"></i> You don't have ${fmt(amt)} on hand to deposit.`); return; }
+    if(amt > state.cash){ log(`<i class="ph-duotone ph-vault"></i> You don't have ${formatMoney(amt)} on hand to deposit.`); return; }
     state.cash -= amt; addToBank(bankId, amt);
-    log(`<i class="ph-duotone ph-vault"></i> You deposit ${fmt(amt)} at ${bankName(bankId)}. Safe from raids in there.`);
+    log(`<i class="ph-duotone ph-vault"></i> You deposit ${formatMoney(amt)} at ${bankName(bankId)}. Safe from raids in there.`);
     renderAll();
   }
   function withdrawAmount(bankId: string, rawAmt: string | undefined){
     const amt = Math.floor(Number(rawAmt));
     if(!isFinite(amt) || amt<=0){ log('<i class="ph-duotone ph-bank"></i> Enter a valid amount to withdraw.'); return; }
-    if(amt > bankBalance(bankId)){ log(`<i class="ph-duotone ph-vault"></i> There's only ${fmt(bankBalance(bankId))} at ${bankName(bankId)}.`); return; }
+    if(amt > bankBalance(bankId)){ log(`<i class="ph-duotone ph-vault"></i> There's only ${formatMoney(bankBalance(bankId))} at ${bankName(bankId)}.`); return; }
     addToBank(bankId, -amt); state.cash += amt;
-    log(`<i class="ph-duotone ph-vault"></i> You withdraw ${fmt(amt)} from ${bankName(bankId)}.`);
+    log(`<i class="ph-duotone ph-vault"></i> You withdraw ${formatMoney(amt)} from ${bankName(bankId)}.`);
     renderAll();
   }
   // LEGAL: In-person teller for one bank branch — quick preset moves, not typed amounts
@@ -1850,13 +1852,13 @@ import type * as ThreeNamespace from 'three';
     const bal = Math.floor(bankBalance(bankId));
     const cash = Math.floor(state.cash);
     const body = `<p>You step up to the counter at ${bank.name}.</p>`
-      + `<p class="flavor">Balance here <strong>${fmt(bal)}</strong> · On hand <strong>${fmt(cash)}</strong> · Interest ${bank.rateLabel} · Vault ${bank.security}. Use the Bank app on your phone for exact amounts or your other accounts.</p>`;
+      + `<p class="flavor">Balance here <strong>${formatMoney(bal)}</strong> · On hand <strong>${formatMoney(cash)}</strong> · Interest ${bank.rateLabel} · Vault ${bank.security}. Use the Bank app on your phone for exact amounts or your other accounts.</p>`;
     const buttons: ModalButton[] = [];
     if(cash > 0){
-      buttons.push({ label:`Deposit all (${fmt(cash)})`, onClick:function(){ depositAmount(bankId, String(cash)); } });
-      if(cash > 1) buttons.push({ label:`Deposit half (${fmt(Math.floor(cash/2))})`, onClick:function(){ depositAmount(bankId, String(Math.floor(cash/2))); } });
+      buttons.push({ label:`Deposit all (${formatMoney(cash)})`, onClick:function(){ depositAmount(bankId, String(cash)); } });
+      if(cash > 1) buttons.push({ label:`Deposit half (${formatMoney(Math.floor(cash/2))})`, onClick:function(){ depositAmount(bankId, String(Math.floor(cash/2))); } });
     }
-    if(bal > 0) buttons.push({ label:`Withdraw all (${fmt(bal)})`, onClick:function(){ withdrawAmount(bankId, String(bal)); } });
+    if(bal > 0) buttons.push({ label:`Withdraw all (${formatMoney(bal)})`, onClick:function(){ withdrawAmount(bankId, String(bal)); } });
     buttons.push({ label:'Leave', secondary:true });
     showModal({ eyebrow:`${bank.name} — Teller`, title: bank.name, body, buttons });
   }
@@ -1903,7 +1905,7 @@ import type * as ThreeNamespace from 'three';
 
   function casinoCanBet(): boolean {
     if(state.cash >= casinoStake) return true;
-    log(`<i class="ph-duotone ph-spades"></i> The Kettle does not take markers. You need ${fmt(casinoStake)} on the table.`);
+    log(`<i class="ph-duotone ph-spades"></i> The Kettle does not take markers. You need ${formatMoney(casinoStake)} on the table.`);
     return false;
   }
 
@@ -1911,9 +1913,9 @@ import type * as ThreeNamespace from 'three';
   function casinoSettle(returned: number, description: string): void {
     state.cash += returned;
     const net = returned - casinoStake;
-    if(net > 0) log(`<i class="ph-duotone ph-spades"></i> ${description} — up ${fmt(net)}.`);
+    if(net > 0) log(`<i class="ph-duotone ph-spades"></i> ${description} — up ${formatMoney(net)}.`);
     else if(net === 0) log(`<i class="ph-duotone ph-spades"></i> ${description} — stake back.`);
-    else log(`<i class="ph-duotone ph-spades"></i> ${description} — down ${fmt(-net)}.`);
+    else log(`<i class="ph-duotone ph-spades"></i> ${description} — down ${formatMoney(-net)}.`);
     renderAll();
   }
 
@@ -1930,14 +1932,14 @@ import type * as ThreeNamespace from 'three';
       eyebrow:'The Gilded Kettle',
       title:'The Floor',
       body:`<p class="flavor">Carpet loud enough to hide a stain, and no clocks anywhere. The house is polite and patient and it is going to win.</p>`
-        + briefRow('Your cash', fmt(state.cash))
-        + briefRow('Table stake', fmt(casinoStake)),
+        + briefRow('Your cash', formatMoney(state.cash))
+        + briefRow('Table stake', formatMoney(casinoStake)),
       buttons:[
         { label:'Blackjack', onClick:openBlackjack },
         { label:'Roulette', onClick:openRoulette },
         { label:'Five-card draw', onClick:openPoker },
         { label:'Slots', onClick:openSlots },
-        { label:`Change stake (${fmt(casinoStake)})`, secondary:true, onClick:openStakePicker },
+        { label:`Change stake (${formatMoney(casinoStake)})`, secondary:true, onClick:openStakePicker },
         { label:'Cash out', secondary:true },
       ],
     });
@@ -1949,7 +1951,7 @@ import type * as ThreeNamespace from 'three';
       body:`<p class="flavor">Every game on the floor plays for the same money.</p>`,
       buttons:[
         ...CASINO_STAKES.map(function(amount){
-          return { label:`${fmt(amount)}${casinoStake === amount ? ' — current' : ''}`, secondary:casinoStake === amount, onClick:function(){
+          return { label:`${formatMoney(amount)}${casinoStake === amount ? ' — current' : ''}`, secondary:casinoStake === amount, onClick:function(){
             casinoStake = amount;
             openCasinoFloor();
           } };
@@ -1993,7 +1995,7 @@ import type * as ThreeNamespace from 'three';
         eyebrow:'Blackjack', title:`You have ${total}`,
         body:`<p class="flavor">Dealer shows ${cardRow(dealer, 1)}</p>`
           + `<p class="flavor">Your hand — ${cardRow(player)}</p>`
-          + briefRow('Stake', fmt(casinoStake)),
+          + briefRow('Stake', formatMoney(casinoStake)),
         buttons:[
           { label:'Hit', onClick:function(){ player.push(shoe.shift() as Card); turn(); } },
           { label:'Stand', onClick:finish },
@@ -2017,7 +2019,7 @@ import type * as ThreeNamespace from 'three';
     showModal({
       eyebrow:'Roulette', title:'Place Your Bet',
       body:`<p class="flavor">Single zero. The green pocket takes every outside bet, which is exactly how the room pays for the carpet.</p>`
-        + briefRow('Stake', fmt(casinoStake)),
+        + briefRow('Stake', formatMoney(casinoStake)),
       buttons:[
         ...bets.map(function(entry){
           return { label:entry.label, onClick:function(){
@@ -2141,11 +2143,11 @@ import type * as ThreeNamespace from 'three';
       body:`<p class="flavor">Vega will shoot anything you can pay for and asks no questions about the plates.</p>`
         + briefRow('On the ramp', car.name)
         + briefRow('Current colour', state.carColors?.[car.id] ? 'Custom' : 'Factory')
-        + briefRow('Your cash', fmt(state.cash)),
+        + briefRow('Your cash', formatMoney(state.cash)),
       buttons:[
         ...RESPRAY_COLORS.map(function(paint){
-          return { label:`${paint.name} — ${fmt(paint.price)}`, onClick:function(){
-            if(state.cash < paint.price){ log(`Vega wants ${fmt(paint.price)} up front.`); return; }
+          return { label:`${paint.name} — ${formatMoney(paint.price)}`, onClick:function(){
+            if(state.cash < paint.price){ log(`Vega wants ${formatMoney(paint.price)} up front.`); return; }
             state.cash -= paint.price;
             
             state.carColors[car.id] = paint.hex;
@@ -2252,17 +2254,17 @@ import type * as ThreeNamespace from 'three';
     const loss = Math.min(Math.floor(state.cash), roughRaidLoss(target.cost, Math.random()));
     state.cash = Math.max(0, state.cash - loss);
     state.heat = Math.min(100, state.heat + 3);
-    log(`<i class="ph-duotone ph-house-line"></i> A crew turned over ${target.name} — ${fmt(loss)} gone and the police are asking who owns it.`);
+    log(`<i class="ph-duotone ph-house-line"></i> A crew turned over ${target.name} — ${formatMoney(loss)} gone and the police are asking who owns it.`);
     pushCityNews(`BREAK-IN REPORTED AT ${target.name.toUpperCase()}. NEIGHBOURS SAY IT IS NOT THE FIRST.`, true);
     renderAll();
   }
 
   function repairCarFlow(car: Car){
     const cost = repairCost(car);
-    if(state.cash < cost){ log(`Repairing the ${car.name} costs ${fmt(cost)} — you are short.`); return; }
+    if(state.cash < cost){ log(`Repairing the ${car.name} costs ${formatMoney(cost)} — you are short.`); return; }
     state.cash -= cost;
     state.brokenCars = state.brokenCars.filter(id => id !== car.id);
-    log(`<i class="ph-duotone ph-wrench"></i> They patch the ${car.name} back together for ${fmt(cost)}.`);
+    log(`<i class="ph-duotone ph-wrench"></i> They patch the ${car.name} back together for ${formatMoney(cost)}.`);
     updateParkedCarMesh(); refreshPlayerModel(); renderAll();
   }
 
@@ -2319,11 +2321,11 @@ import type * as ThreeNamespace from 'three';
       // LEGAL: A broken-down used car is repaired at the lot that sold it to you.
       if(owned && item.kind === 'car' && state.brokenCars.includes(item.car.id)){
         const car = item.car;
-        return { label:`Repair ${car.name} — ${fmt(repairCost(car))}`, onClick:function(){ repairCarFlow(car); } };
+        return { label:`Repair ${car.name} — ${formatMoney(repairCost(car))}`, onClick:function(){ repairCarFlow(car); } };
       }
       if(owned) return { label:`${name} — owned`, secondary:true };
       return {
-        label:`${name} — ${fmt(price)}${dealerOnly ? ' (only here)' : ''}`,
+        label:`${name} — ${formatMoney(price)}${dealerOnly ? ' (only here)' : ''}`,
         onClick: function(){ buyFromShop(brand, item); },
       };
     });
@@ -2337,7 +2339,7 @@ import type * as ThreeNamespace from 'three';
 
   function buyFromShop(brand: Brand, item: StockItem){
     const price = shopItemPrice(brand, item);
-    if(state.cash < price){ log(`Not enough cash — that one is ${fmt(price)}.`); return; }
+    if(state.cash < price){ log(`Not enough cash — that one is ${formatMoney(price)}.`); return; }
     state.cash -= price;
     if(item.kind === 'car'){
       state.ownedCars.push(item.car.id);
@@ -2454,19 +2456,19 @@ import type * as ThreeNamespace from 'three';
       const respectGain = Math.ceil(reward/400);
       state.respect += respectGain;
       triggerMilestone('heist');
-      log(`<i class="ph-duotone ph-money"></i> The job on ${bank.name} pays out ${fmt(reward)}.`);
-      dialogues.bankheist.nodes.result.text = `Clean. You're out of ${bank.name} before the second patrol even swings back. <strong>${fmt(reward)}</strong> heavier, and word will get around.`;
+      log(`<i class="ph-duotone ph-money"></i> The job on ${bank.name} pays out ${formatMoney(reward)}.`);
+      dialogues.bankheist.nodes.result.text = `Clean. You're out of ${bank.name} before the second patrol even swings back. <strong>${formatMoney(reward)}</strong> heavier, and word will get around.`;
       renderAll();
-      return `${approach === 'crew' ? 'Crew heist' : 'Smash-and-grab'}: ${fmt(reward)} gained; respect +${respectGain}; heat +${heatOnAttempt}`;
+      return `${approach === 'crew' ? 'Crew heist' : 'Smash-and-grab'}: ${formatMoney(reward)} gained; respect +${respectGain}; heat +${heatOnAttempt}`;
     } else {
       const loss = Math.round(state.cash*failLossPct);
       state.cash = Math.max(0, state.cash-loss);
       state.heat = Math.min(100, state.heat+heatOnFail);
       state.respect = Math.max(0, state.respect-respectOnFail);
-      log(`<i class="ph-duotone ph-siren"></i> The job on ${bank.name} goes sideways. Down ${fmt(loss)}, heat's up.`);
-      dialogues.bankheist.nodes.result.text = `It goes sideways fast. You get out of ${bank.name}, but not clean — <strong>${fmt(loss)}</strong> lost on the way, and there's heat on you now that wasn't there this morning.`;
+      log(`<i class="ph-duotone ph-siren"></i> The job on ${bank.name} goes sideways. Down ${formatMoney(loss)}, heat's up.`);
+      dialogues.bankheist.nodes.result.text = `It goes sideways fast. You get out of ${bank.name}, but not clean — <strong>${formatMoney(loss)}</strong> lost on the way, and there's heat on you now that wasn't there this morning.`;
       renderAll();
-      return `${approach === 'crew' ? 'Crew heist' : 'Smash-and-grab'} failed: ${fmt(loss)} lost; respect -${respectOnFail}; heat +${heatOnAttempt + heatOnFail}`;
+      return `${approach === 'crew' ? 'Crew heist' : 'Smash-and-grab'} failed: ${formatMoney(loss)} lost; respect -${respectOnFail}; heat +${heatOnAttempt + heatOnFail}`;
     }
   }
 
@@ -2481,11 +2483,11 @@ import type * as ThreeNamespace from 'three';
     if(Math.random() < chance){
       const reward = Math.round(biz.robBase * (0.8+Math.random()*0.6));
       state.cash += reward; state.respect += 2; state.heat = Math.min(100, state.heat+8);
-      log(`<i class="ph-duotone ph-currency-dollar"></i> You hit the till at ${biz.name} for ${fmt(reward)}.`);
+      log(`<i class="ph-duotone ph-currency-dollar"></i> You hit the till at ${biz.name} for ${formatMoney(reward)}.`);
     } else {
       const loss = Math.round(biz.robBase * 0.3);
       state.cash = Math.max(0, state.cash-loss); state.respect = Math.max(0, state.respect-3); state.heat = Math.min(100, state.heat+15);
-      log(`<i class="ph-duotone ph-warning"></i> ${biz.owner} isn't an easy mark. You're out ${fmt(loss)} and it's hotter out there now.`);
+      log(`<i class="ph-duotone ph-warning"></i> ${biz.owner} isn't an easy mark. You're out ${formatMoney(loss)} and it's hotter out there now.`);
     }
     renderAll();
   }
@@ -2563,11 +2565,11 @@ import type * as ThreeNamespace from 'three';
       const brand = brandById(c.brand);
       let btns;
       if(!owned){
-        btns = `<div class="btn-row"><button class="mini-btn" ${state.cash>=c.cost?'':'disabled'} data-car-buy="${c.id}">BUY <span class="cost">${fmt(c.cost)}</span></button></div>`;
+        btns = `<div class="btn-row"><button class="mini-btn" ${state.cash>=c.cost?'':'disabled'} data-car-buy="${c.id}">BUY <span class="cost">${formatMoney(c.cost)}</span></button></div>`;
       } else {
         btns = `<div class="btn-row">
           ${equipped ? `<span class="managed-badge" style="flex:1;text-align:center;">[DRIVING]</span>` : `<button class="mini-btn" data-car-equip="${c.id}">DRIVE</button>`}
-          <button class="mini-btn fire" data-car-sell="${c.id}">SELL <span class="cost">${fmt(Math.round(c.cost*0.55))}</span></button>
+          <button class="mini-btn fire" data-car-sell="${c.id}">SELL <span class="cost">${formatMoney(Math.round(c.cost*0.55))}</span></button>
         </div>`;
       }
       return `<div class="data-row">
@@ -2588,8 +2590,8 @@ import type * as ThreeNamespace from 'three';
       const owned = state.ownedProperties.includes(p.id);
       const brand = brandById(p.brand);
       const btns = owned
-        ? `<div class="btn-row"><button class="mini-btn fire" data-prop-sell="${p.id}">SELL <span class="cost">${fmt(Math.round(p.cost*0.6))}</span></button></div>`
-        : `<div class="btn-row"><button class="mini-btn" ${state.cash>=p.cost?'':'disabled'} data-prop-buy="${p.id}">BUY <span class="cost">${fmt(p.cost)}</span></button></div>`;
+        ? `<div class="btn-row"><button class="mini-btn fire" data-prop-sell="${p.id}">SELL <span class="cost">${formatMoney(Math.round(p.cost*0.6))}</span></button></div>`
+        : `<div class="btn-row"><button class="mini-btn" ${state.cash>=p.cost?'':'disabled'} data-prop-buy="${p.id}">BUY <span class="cost">${formatMoney(p.cost)}</span></button></div>`;
       return `<div class="data-row">
         <div class="data-main">
           <div class="col-id">${ICONS.bld2}</div>
@@ -2633,7 +2635,7 @@ import type * as ThreeNamespace from 'three';
             <div class="data-expanded">
               <div class="flavor-note">${bank.blurb}</div>
               <div class="bank-balances-row" style="display:flex; gap:20px; margin:8px 0 12px; font-family:var(--font-mono); font-size:13px; flex-wrap:wrap;">
-                <div><span style="color:var(--text-faint);">HERE:</span> <strong style="color:var(--green);">${fmt(bal)}</strong></div>
+                <div><span style="color:var(--text-faint);">HERE:</span> <strong style="color:var(--green);">${formatMoney(bal)}</strong></div>
                 <div><span style="color:var(--text-faint);">INTEREST:</span> <strong>${bank.rateLabel}</strong></div>
                 <div><span style="color:var(--text-faint);">VAULT:</span> <strong>${bank.security}</strong></div>
               </div>
@@ -2668,7 +2670,7 @@ import type * as ThreeNamespace from 'three';
             <div class="data-main" data-bank-select="${bank.id}" style="cursor:pointer;">
               <div class="col-id"><i class="ph-duotone ph-bank"></i></div>
               <div class="col-name">${bank.name}</div>
-              <div class="col-inc">${fmt(bal)}</div>
+              <div class="col-inc">${formatMoney(bal)}</div>
               <div class="col-status">${isSel ? 'SELECTED' : 'TAP TO OPEN'}</div>
             </div>${form}
           </div>`;
@@ -2684,8 +2686,8 @@ import type * as ThreeNamespace from 'three';
             <div class="data-expanded">
               <div class="flavor-note">Banked cash is safe from raids and earns interest; cash on hand is what buys things. Spread it around — a bank you bank at can still be robbed by rivals, and you can rob theirs in person.</div>
               <div class="bank-balances-row" style="display:flex; gap:24px; margin-top:8px; font-family:var(--font-mono); font-size:14px; flex-wrap:wrap;">
-                <div><span style="color:var(--text-faint);">TOTAL BANKED:</span> <strong id="bank-banked-value" style="color:var(--green); font-size:16px;">${fmt(bankedTotal())}</strong></div>
-                <div><span style="color:var(--text-faint);">ON HAND:</span> <strong id="bank-onhand-value" style="color:var(--text); font-size:16px;">${fmt(state.cash)}</strong></div>
+                <div><span style="color:var(--text-faint);">TOTAL BANKED:</span> <strong id="bank-banked-value" style="color:var(--green); font-size:16px;">${formatMoney(bankedTotal())}</strong></div>
+                <div><span style="color:var(--text-faint);">ON HAND:</span> <strong id="bank-onhand-value" style="color:var(--text); font-size:16px;">${formatMoney(state.cash)}</strong></div>
               </div>
             </div>
           </div>
@@ -2709,8 +2711,8 @@ import type * as ThreeNamespace from 'three';
             <div class="data-main">
               <div class="col-id">${ICONS.store}</div>
               <div class="col-name">Holdings</div>
-              <div class="col-stat">PORTFOLIO: ${fmt(totalPortfolio)}</div>
-              <div class="col-stat">LIQUID: ${fmt(state.cash)}</div>
+              <div class="col-stat">PORTFOLIO: ${formatMoney(totalPortfolio)}</div>
+              <div class="col-stat">LIQUID: ${formatMoney(state.cash)}</div>
               <div class="col-status">ACTIVE</div>
             </div>
             <div class="data-expanded">
@@ -2718,7 +2720,7 @@ import type * as ThreeNamespace from 'three';
               ${stockMarket.filter(s => state.portfolio[s.symbol]?.shares > 0).map(s => {
                 const pos = state.portfolio[s.symbol];
                 const val = pos.shares * state.marketPrices[s.symbol];
-                return `<div class="row" style="font-family:'Courier New', monospace; font-size:12px; margin-top:4px;"><span>${s.symbol} (${pos.shares} sh)</span><span>${fmt(val)}</span></div>`;
+                return `<div class="row" style="font-family:'Courier New', monospace; font-size:12px; margin-top:4px;"><span>${s.symbol} (${pos.shares} sh)</span><span>${formatMoney(val)}</span></div>`;
               }).join('') || '<div class="flavor-note">No active positions.</div>'}
             </div>
           </div>
@@ -2803,11 +2805,11 @@ import type * as ThreeNamespace from 'three';
                 </div>
                 <div style="display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:13px; border-bottom:1px solid var(--line); padding-bottom:4px;">
                   <span style="color:var(--text-faint);">Current Value</span>
-                  <span style="color:var(--text); font-weight:700;">${fmt(val)}</span>
+                  <span style="color:var(--text); font-weight:700;">${formatMoney(val)}</span>
                 </div>
                 <div style="display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:13px; border-bottom:1px solid var(--line); padding-bottom:4px;">
                   <span style="color:var(--text-faint);">Total Return</span>
-                  <span style="color:${plColor}; font-weight:700;">${pl >= 0 ? '+' : ''}${fmt(pl)}</span>
+                  <span style="color:${plColor}; font-weight:700;">${pl >= 0 ? '+' : ''}${formatMoney(pl)}</span>
                 </div>
               </div>
             </div>
@@ -3004,7 +3006,7 @@ import type * as ThreeNamespace from 'three';
     } else if(corner.dealer){
       buttons.push({ label:'Pull the dealer', onClick:function(){ fireDealer(corner); } });
     } else {
-      buttons.push({ label:`Post a dealer (${fmt(corner.dealerCost)})`, cost:corner.dealerCost, onClick:function(){ assignDealer(corner); } });
+      buttons.push({ label:`Post a dealer (${formatMoney(corner.dealerCost)})`, cost:corner.dealerCost, onClick:function(){ assignDealer(corner); } });
     }
     buttons.push({ label:'Walk away', secondary:true });
     showModal({ eyebrow:'The Trade', title:corner.name, body, buttons });
@@ -3042,7 +3044,7 @@ import type * as ThreeNamespace from 'three';
     const influencePrice = influenceCost();
     const investorAttention = state.worldMemory.cityHallAttention === true;
     if(investorAttention && state.cash >= PHASE2_MISSION_CONFIG.investorCityHallSettlementCost){
-      buttons.push({ label:`Settle the investor complaint (${fmt(PHASE2_MISSION_CONFIG.investorCityHallSettlementCost)}, heat -${PHASE2_MISSION_CONFIG.investorCityHallSettlementHeatReduction})`, onClick:function(){
+      buttons.push({ label:`Settle the investor complaint (${formatMoney(PHASE2_MISSION_CONFIG.investorCityHallSettlementCost)}, heat -${PHASE2_MISSION_CONFIG.investorCityHallSettlementHeatReduction})`, onClick:function(){
         state.cash -= PHASE2_MISSION_CONFIG.investorCityHallSettlementCost;
         state.heat = Math.max(0, state.heat - PHASE2_MISSION_CONFIG.investorCityHallSettlementHeatReduction);
         state.worldMemory.cityHallAttention = false;
@@ -3052,10 +3054,10 @@ import type * as ThreeNamespace from 'three';
       } });
     }
     if(state.cash >= influencePrice){
-      buttons.push({ label:`Fund influence (${fmt(influencePrice)})`, onClick:function(){ buyInfluence(); } });
+      buttons.push({ label:`Fund influence (${formatMoney(influencePrice)})`, onClick:function(){ buyInfluence(); } });
     }
     if(state.worldMemory.politicalFavorsUnlocked && state.cash >= PHASE2_MISSION_CONFIG.politicalFavorCost && state.influence >= 20){
-      buttons.push({ label:`Call in a favor (${fmt(PHASE2_MISSION_CONFIG.politicalFavorCost)}, 20 influence)`, onClick:function(){
+      buttons.push({ label:`Call in a favor (${formatMoney(PHASE2_MISSION_CONFIG.politicalFavorCost)}, 20 influence)`, onClick:function(){
         state.cash -= PHASE2_MISSION_CONFIG.politicalFavorCost;
         state.influence -= 20;
         state.heat = Math.max(0, state.heat - PHASE2_MISSION_CONFIG.politicalFavorHeatReduction);
@@ -3065,7 +3067,7 @@ import type * as ThreeNamespace from 'three';
       } });
     }
     politicians.filter(function(p){ return p.favor < 100 && state.cash >= favorCost(p); }).forEach(function(p){
-      buttons.push({ label:`Meet ${p.name} (${fmt(favorCost(p))})`, onClick:function(){ bribePolitician(p.id); scheduleSave(); } });
+      buttons.push({ label:`Meet ${p.name} (${formatMoney(favorCost(p))})`, onClick:function(){ bribePolitician(p.id); scheduleSave(); } });
     });
     if(state.influence >= 500 && state.playSeconds >= state.nextCampaignAt && !state.electedOffice && !state.campaignActive){
       buttons.push({ label:'Discuss your campaign', onClick:function(){ playDialogue('campaign', 'start'); } });
@@ -3074,14 +3076,14 @@ import type * as ThreeNamespace from 'three';
     showModal({
       eyebrow:'City Hall Annex',
       title:"Clerk's Window",
-      body:`<p class='flavor'>The clerk knows exactly which doors are open and which envelopes make them move. You have ${Math.round(state.influence)} influence, ${fmt(state.cash)} in cash, and ${state.worldMemory.politicalFavorsUnlocked ? 'Political Favors are available.' : 'Political Favors are still locked.'}</p>${investorAttention ? '<p class="flavor">A silent investor has filed a complaint. The clerk will make it disappear for the right filing fee.</p>' : ''}`,
+      body:`<p class='flavor'>The clerk knows exactly which doors are open and which envelopes make them move. You have ${Math.round(state.influence)} influence, ${formatMoney(state.cash)} in cash, and ${state.worldMemory.politicalFavorsUnlocked ? 'Political Favors are available.' : 'Political Favors are still locked.'}</p>${investorAttention ? '<p class="flavor">A silent investor has filed a complaint. The clerk will make it disappear for the right filing fee.</p>' : ''}`,
       buttons,
     });
   }
   function openChopShopArmory(): void {
     const cost = gunPackCost();
     const buttons: ModalButton[] = state.cash >= cost
-      ? [{ label:`Buy ${GUN_PACK} guns (${fmt(cost)})`, onClick:function(){
+      ? [{ label:`Buy ${GUN_PACK} guns (${formatMoney(cost)})`, onClick:function(){
           state.cash -= cost;
           state.guns += GUN_PACK;
           log(`<i class="ph-duotone ph-crosshair"></i> A crate of ${GUN_PACK} comes off the docks. Guns +${GUN_PACK}; total ${state.guns}.`);
@@ -3092,7 +3094,7 @@ import type * as ThreeNamespace from 'three';
     showModal({
       eyebrow:'West Side Chop Shop',
       title:'The Armory',
-      body:`<p class='flavor'>Deke keeps the unregistered crates behind a welding curtain. You have ${state.guns} guns. They make pushes and wars stronger, but fighting can still cost people and equipment.</p><p>Current crate price: <strong>${fmt(cost)}</strong>.</p>`,
+      body:`<p class='flavor'>Deke keeps the unregistered crates behind a welding curtain. You have ${state.guns} guns. They make pushes and wars stronger, but fighting can still cost people and equipment.</p><p>Current crate price: <strong>${formatMoney(cost)}</strong>.</p>`,
       buttons,
     });
   }
@@ -3185,7 +3187,7 @@ import type * as ThreeNamespace from 'three';
       const bribe = Math.min(state.cash, style==='assault' ? 2500 : 1200);
       state.cash -= bribe;
       heatAdd = Math.round(heatAdd*0.4); invAdd = Math.round(invAdd*0.4);
-      payNote = ` You grease the responding patrol (${fmt(bribe)}) and the report comes out thin.`;
+      payNote = ` You grease the responding patrol (${formatMoney(bribe)}) and the report comes out thin.`;
     } else {
       heatAdd = Math.round(heatAdd*1.4); invAdd = Math.round(invAdd*1.6);
       payNote = ` A patrol catches the muzzle flashes — nobody paid them to forget it.`;
@@ -3235,7 +3237,7 @@ import type * as ThreeNamespace from 'three';
     } else {
       dialogues.gangwar.nodes.result.text = `It doesn't go your way. You pull back before it gets worse — West Side control drops to ${Math.round(ws.control)}%.${payNote}${casNote}`;
       log(`<i class="ph-duotone ph-swords"></i> The war on the West Side turns against you — control ${Math.round(ws.control)}%.${casualties.length?' You lost '+casualties.join(', ')+'.':''}`);
-      dialogues.gangwar.nodes.result.text = `Loss confirmed: West Side control is now ${Math.round(ws.control)}% permanently. The ${fmt(cashCost)} operation cost is gone.${payNote}${casNote}`;
+      dialogues.gangwar.nodes.result.text = `Loss confirmed: West Side control is now ${Math.round(ws.control)}% permanently. The ${formatMoney(cashCost)} operation cost is gone.${payNote}${casNote}`;
       pushCityNews(`POLICE FLOOD THE WEST SIDE AFTER A DEADLY GANG CLASH`, true);
       if(!payoff && state.heat > 60 && !crackdownActive()) state.crackdownUntil = state.playSeconds + 75;
     }
@@ -3316,7 +3318,7 @@ import type * as ThreeNamespace from 'three';
         </div>
         <div class="data-expanded">
           <div class="flavor-note">Cash spent building pull downtown. Enough of it opens the door to running for office yourself.</div>
-          <div class="btn-row"><button class="mini-btn" ${state.cash>=influenceCost()?'':'disabled'} id="buy-influence">FUND <span class="cost">${fmt(influenceCost())}</span></button></div>
+          <div class="btn-row"><button class="mini-btn" ${state.cash>=influenceCost()?'':'disabled'} id="buy-influence">FUND <span class="cost">${formatMoney(influenceCost())}</span></button></div>
         </div>
       </div>
       ${state.worldMemory.politicalFavorsUnlocked ? `
@@ -3324,7 +3326,7 @@ import type * as ThreeNamespace from 'three';
         <div class="data-main">
           <div class="col-id">${ICONS.phone}</div>
           <div class="col-name">Political Favors</div>
-          <div class="col-stat">COST: ${fmt(PHASE2_MISSION_CONFIG.politicalFavorCost)} + 20 influence</div>
+          <div class="col-stat">COST: ${formatMoney(PHASE2_MISSION_CONFIG.politicalFavorCost)} + 20 influence</div>
           <div class="col-status">UNLOCKED</div>
         </div>
         <div class="data-expanded">
@@ -3343,7 +3345,7 @@ import type * as ThreeNamespace from 'three';
         <div class="data-expanded">
           <div class="flavor-note">${p.role} · ${p.desc}</div>
           <div class="control-track"><div class="control-fill" style="width:${p.favor}%"></div></div>
-          <div class="btn-row"><button class="mini-btn" ${(state.cash>=favorCost(p) && p.favor<100)?'':'disabled'} data-bribe="${p.id}">BRIBE <span class="cost">${fmt(favorCost(p))}</span></button></div>
+          <div class="btn-row"><button class="mini-btn" ${(state.cash>=favorCost(p) && p.favor<100)?'':'disabled'} data-bribe="${p.id}">BRIBE <span class="cost">${formatMoney(favorCost(p))}</span></button></div>
         </div>
       </div>`).join('')}
       <div class="data-row">
@@ -3393,7 +3395,7 @@ import type * as ThreeNamespace from 'three';
         </div>
         <div class="data-expanded">
           <div class="flavor-note">Crates off a West Side freighter, no serial numbers. Guns arm your crew for pushes and wars — and they get spent and lost in the fighting.</div>
-          <div class="btn-row"><button class="mini-btn" ${state.cash>=gunPackCost()?'':'disabled'} id="buy-guns">BUY ${GUN_PACK} GUNS <span class="cost">${fmt(gunPackCost())}</span></button></div>
+          <div class="btn-row"><button class="mini-btn" ${state.cash>=gunPackCost()?'':'disabled'} id="buy-guns">BUY ${GUN_PACK} GUNS <span class="cost">${formatMoney(gunPackCost())}</span></button></div>
         </div>
       </div>
       ${gangRecruits.map(g=>{
@@ -3410,7 +3412,7 @@ import type * as ThreeNamespace from 'three';
               ${g.inducted
                 ? `<button class="mini-btn manager" data-checkin="${g.id}">CHECK IN</button>`
                 : eligible
-                  ? `<button class="mini-btn" ${state.cash>=g.cost?'':'disabled'} data-initiate="${g.id}">INITIATE <span class="cost">${fmt(g.cost)}</span></button>`
+                  ? `<button class="mini-btn" ${state.cash>=g.cost?'':'disabled'} data-initiate="${g.id}">INITIATE <span class="cost">${formatMoney(g.cost)}</span></button>`
                   : `<div class="lock-note">Needs ${g.reqRespect} respect (currently ${Math.round(state.respect)})</div>`
               }
             </div>
@@ -3442,8 +3444,7 @@ import type * as ThreeNamespace from 'three';
       <div class="col-name">${b.name}<div class="col-name-sub">${b.category==='legit'?'Corporate Front':'Illicit Operation'}</div></div>`;
       
     if(!unlocked){
-      let note = b.unlock.type==='cash' ? `Requires ${fmt(b.unlock.value)} cash` : ('value' in b.unlock ? `Requires ${b.unlock.value} **Respect**` : '');
-      main += `<div class="col-lvl">-</div><div class="col-inc">-</div><div class="col-crew">-</div><div class="col-status">${note}</div></div>`;
+      main += `<div class="col-lvl">-</div><div class="col-inc">-</div><div class="col-crew">-</div><div class="col-status">${unlockRequirement(b)}</div></div>`;
       el.innerHTML = main;
       return el;
     }
@@ -3453,7 +3454,7 @@ import type * as ThreeNamespace from 'three';
       const rc = researchCostFor(b);
       const exp = `<div class="data-expanded">
         <div class="flavor-note">${b.flavor}</div>
-        <div class="btn-row"><button class="mini-btn" ${state.cash>=rc?'':'disabled'} data-action="research" data-id="${b.id}">RESEARCH <span class="cost">${fmt(rc)}</span></button></div>
+        <div class="btn-row"><button class="mini-btn" ${state.cash>=rc?'':'disabled'} data-action="research" data-id="${b.id}">RESEARCH <span class="cost">${formatMoney(rc)}</span></button></div>
       </div>`;
       el.innerHTML = main + exp;
       return el;
@@ -3481,20 +3482,20 @@ import type * as ThreeNamespace from 'three';
     let exp = `<div class="data-expanded">
       <div class="flavor-note">${b.flavor}</div>
       <div class="btn-row">
-        <button class="mini-btn" ${state.cash>=cost?'':'disabled'} data-action="expand" data-id="${b.id}">${b.level===0?'OPEN':'EXPAND'} <span class="cost">${fmt(cost)}</span></button>
+        <button class="mini-btn" ${state.cash>=cost?'':'disabled'} data-action="expand" data-id="${b.id}">${b.level===0?'OPEN':'EXPAND'} <span class="cost">${formatMoney(cost)}</span></button>
       </div>`;
 
     if(b.manager){
       exp += `<div class="lock-note" style="margin-top:6px;">Manager ${b.managerName} installed. Operations optimal.</div>`;
     } else {
       exp += `<div class="btn-row" style="margin-top:6px;">
-        <button class="mini-btn" ${canHireCrew?'':'disabled'} data-action="hirecrew" data-id="${b.id}">ASSIGN CREW <span class="cost">${fmt(crewCost)}</span></button>
+        <button class="mini-btn" ${canHireCrew?'':'disabled'} data-action="hirecrew" data-id="${b.id}">ASSIGN CREW <span class="cost">${formatMoney(crewCost)}</span></button>
         <button class="mini-btn fire" ${canFireCrew?'':'disabled'} data-action="firecrew" data-id="${b.id}">FIRE CREW <span class="cost">RND 50%</span></button>
       </div>`;
       if(b.level >= b.managerLevelReq){
         const mc = managerCostFor(b);
         exp += `<div class="btn-row" style="margin-top:6px;">
-          <button class="mini-btn manager" ${state.cash>=mc?'':'disabled'} data-action="hiremanager" data-id="${b.id}">HIRE MGR <span class="cost">${fmt(mc)}</span></button>
+          <button class="mini-btn manager" ${state.cash>=mc?'':'disabled'} data-action="hiremanager" data-id="${b.id}">HIRE MGR <span class="cost">${formatMoney(mc)}</span></button>
         </div>`;
       }
     }
@@ -3523,7 +3524,6 @@ import type * as ThreeNamespace from 'three';
       if(b.category==='street') state.respect += 1;
       if(b.level===1) {
         log(`<i class="ph-duotone ph-briefcase"></i> ${b.name} opens its doors.`);
-        triggerMilestone('first_venture');
         if(b.id==='restaurant') triggerMilestone('chaat_house');
         if(b.id==='syndicate_logistics') triggerMilestone('docks');
       }
@@ -3593,7 +3593,7 @@ import type * as ThreeNamespace from 'three';
     else if(btn.id === 'hire-muscle'){ if(state.cash<muscleCost()) return; state.cash -= muscleCost(); state.muscleCount += 1; renderAll(); }
     else if(btn.id === 'toggle-bribe'){ state.bribeOn = !state.bribeOn; log(state.bribeOn ? '👮 You put the beat cops on the payroll.' : '👮 You cut the cops off. Heat will build faster.'); renderAll(); }
     else if(btn.id === 'toggle-laylow'){ state.layingLow = !state.layingLow; log(state.layingLow ? '🤫 Word goes out — everything goes quiet. Income drops while the heat bleeds off.' : '💼 Back to business. The operation spins up again.'); renderAll(); }
-    else if(btn.id === 'retain-counsel'){ const cost = counselCost(); if(state.investigation<=5 || state.cash<cost) return; state.cash -= cost; state.investigation = Math.max(0, state.investigation-45); log(`⚖️ Your lawyer goes to work. The case cools — for now. (${fmt(cost)})`); renderAll(); }
+    else if(btn.id === 'retain-counsel'){ const cost = counselCost(); if(state.investigation<=5 || state.cash<cost) return; state.cash -= cost; state.investigation = Math.max(0, state.investigation-45); log(`⚖️ Your lawyer goes to work. The case cools — for now. (${formatMoney(cost)})`); renderAll(); }
     else if(btn.id === 'hire-rat'){ if(state.cash<ratsCashCost() || state.respect<ratsRespectCost()) return; state.cash -= ratsCashCost(); state.respect -= ratsRespectCost(); state.ratCount += 1; renderAll(); }
     else if(btn.id === 'buy-territory'){ if(state.respect<territoryCost()) return; state.respect -= territoryCost(); state.territoryTier += 1; log(`🗺️ New blocks fall under your control. Crew capacity is now ${crewCapGlobal()}.`); renderAll(); }
     else if(btn.id === 'buy-negotiate'){ if(state.respect<negotiateCost()) return; state.respect -= negotiateCost(); state.negotiateTier += 1; log(`<i class="ph-duotone ph-handshake"></i> You've got leverage now. Everyone's prices just got friendlier.`); renderAll(); }
@@ -3812,11 +3812,11 @@ import type * as ThreeNamespace from 'three';
           <div class="col-stat">Muscle: ${state.muscleCount}</div>
           <div class="col-stat">Respect: +${respectPerSec().toFixed(1)}/s</div>
           <div class="col-stat">Heat: +${(state.muscleCount*0.5*heatMult()).toFixed(1)}/s</div>
-          <div class="col-status">ACTIVE</div>
+          <div class="col-status">${state.muscleCount>0?'ACTIVE':'NONE'}</div>
         </div>
         <div class="data-expanded">
           <div class="flavor-note">Earns respect passively. Draws heat while active.</div>
-          <div class="btn-row"><button class="mini-btn" ${state.cash>=mc?'':'disabled'} id="hire-muscle">HIRE <span class="cost">${fmt(mc)}</span></button></div>
+          <div class="btn-row"><button class="mini-btn" ${state.cash>=mc?'':'disabled'} id="hire-muscle">HIRE <span class="cost">${formatMoney(mc)}</span></button></div>
         </div>
       </div>
       <div class="data-row">
@@ -3854,7 +3854,7 @@ import type * as ThreeNamespace from 'three';
         </div>
         <div class="data-expanded">
           <div class="flavor-note">Buy the right lawyer and bury the investigation before it culminates in a raid. Cost scales with how deep the case has dug.</div>
-          <div class="btn-row"><button class="mini-btn" ${state.investigation>5 && state.cash>=counselCost()?'':'disabled'} id="retain-counsel">RETAIN <span class="cost">${fmt(counselCost())}</span></button></div>
+          <div class="btn-row"><button class="mini-btn" ${state.investigation>5 && state.cash>=counselCost()?'':'disabled'} id="retain-counsel">RETAIN <span class="cost">${formatMoney(counselCost())}</span></button></div>
         </div>
       </div>
       <div class="data-row">
@@ -3863,11 +3863,11 @@ import type * as ThreeNamespace from 'three';
           <div class="col-name">Informants</div>
           <div class="col-stat">Informants: ${state.ratCount}</div>
           <div class="col-stat" style="color:var(--green);">-RISK</div>
-          <div class="col-status">ACTIVE</div>
+          <div class="col-status">${state.ratCount>0?'ACTIVE':'NONE'}</div>
         </div>
         <div class="data-expanded">
           <div class="flavor-note">Cuts the odds of bad news finding you, and softens any raid that does land.</div>
-          <div class="btn-row"><button class="mini-btn" ${(state.cash>=rcCash && state.respect>=rcResp)?'':'disabled'} id="hire-rat">HIRE <span class="cost">${fmt(rcCash)} + ${rcResp} resp</span></button></div>
+          <div class="btn-row"><button class="mini-btn" ${(state.cash>=rcCash && state.respect>=rcResp)?'':'disabled'} id="hire-rat">HIRE <span class="cost">${formatMoney(rcCash)} + ${rcResp} resp</span></button></div>
         </div>
       </div>
       <div class="data-row">
@@ -3900,11 +3900,11 @@ import type * as ThreeNamespace from 'three';
           <div class="col-name">The Lab</div>
           <div class="col-stat">LEVEL ${state.productLevel}</div>
           <div class="col-stat">STOCK: ${state.product.toFixed(0)}/${productCap()}</div>
-          <div class="col-status">ACTIVE</div>
+          <div class="col-status">${state.productLevel>0?'ACTIVE':'NOT BUILT'}</div>
         </div>
         <div class="data-expanded">
           <div class="flavor-note">Produces product for your dealers to sell. No product in stock, corners just idle.</div>
-          <div class="btn-row"><button class="mini-btn" ${state.cash>=labCost()?'':'disabled'} id="upgrade-lab">UPGRADE <span class="cost">${fmt(labCost())}</span></button></div>
+          <div class="btn-row"><button class="mini-btn" ${state.cash>=labCost()?'':'disabled'} id="upgrade-lab">UPGRADE <span class="cost">${formatMoney(labCost())}</span></button></div>
         </div>
       </div>
       <div class="data-row">
@@ -3913,7 +3913,7 @@ import type * as ThreeNamespace from 'three';
           <div class="col-name">The Trade</div>
           <div class="col-stat">DEALERS: ${activeCorners().length}/${corners.length}</div>
           <div class="col-stat">INCOME: +${cornerIncomePerSec().toFixed(1)}/s</div>
-          <div class="col-status">ACTIVE</div>
+          <div class="col-status">${corners.some(c=>c.dealer && !c.busted)?'ACTIVE':'NO DEALERS'}</div>
         </div>
         <div class="data-expanded">
           <div class="flavor-note">Dealers are managed from the map — walk up to a corner and press E. This is just the read-out.</div>
@@ -3924,7 +3924,7 @@ import type * as ThreeNamespace from 'three';
         <div class="data-main">
           <div class="col-id">${ICONS.box}</div>
           <div class="col-name">Black Market Trade</div>
-          <div class="col-stat">INCOME: +${fmt(blackMarketTradeIncome())}/s</div>
+          <div class="col-stat">INCOME: +${formatMoney(blackMarketTradeIncome())}/s</div>
           <div class="col-stat">HEAT: +${blackMarketTradeHeat().toFixed(2)}/s</div>
           <div class="col-status">ACTIVE</div>
         </div>
@@ -3954,30 +3954,9 @@ import type * as ThreeNamespace from 'three';
     renderMissionPhoneApp();
     renderMissionNotificationBadges();
 
-    byId('hud-cash').textContent = fmt(state.cash);
-    byId('hud-income').textContent = (netIncome()>=0?'+':'') + fmt(netIncome()) + '/s';
-    byId('hud-rank').textContent = currentRank();
-    byId('hud-respect').textContent = `${fmtR(state.respect)} respect`;
-    updateHeatHud();
-    byId('hud-crew').textContent = `${crewUsedGlobal()} / ${crewCapGlobal()}`;
-
-    const prestigeBtn = byId<HTMLButtonElement>('prestige-btn');
-    const threshold = 50000 * Math.pow(4, state.prestigeCount);
-    const nextFamily = familyTiers[state.prestigeCount];
-    if(!nextFamily){ prestigeBtn.style.display = 'none'; return; }
-    if(state.cash >= threshold*0.2 || state.prestigeCount>0){
-      prestigeBtn.style.display = 'inline-block';
-      prestigeBtn.disabled = state.cash < threshold;
-      prestigeBtn.textContent = state.cash >= threshold ? `Bring in ${nextFamily.name}` : `Bring in ${nextFamily.name} (Requires ${fmt(threshold)})`;
-    }
+    refreshHUD();
   }
 
-  // LEGAL: Cheap per-tick refresh: updates numbers and enabled/disabled state on the
-  // LEGAL: EXISTING dom nodes without rebuilding them. renderAll() (above) tears down
-  // LEGAL: and rebuilds every card/button, which is only safe to call right after a
-  // LEGAL: user action — never on a timer, or a click can land mid-rebuild and get
-  // LEGAL: silently swallowed by the browser. This function is what the game hub
-  // LEGAL: calls every 250ms instead.
   // LEGAL: Paints the Heat gauge in its current WANTED-tier colour, the tier label,
   // LEGAL: and the Investigation sub-bar (hidden until a case actually opens).
   function updateHeatHud(){
@@ -4028,12 +4007,18 @@ import type * as ThreeNamespace from 'three';
     }
   }
 
+  // LEGAL: Cheap per-tick refresh: updates numbers and enabled/disabled state on the
+  // LEGAL: EXISTING dom nodes without rebuilding them. renderAll() (above) tears down
+  // LEGAL: and rebuilds every card/button, which is only safe to call right after a
+  // LEGAL: user action — never on a timer, or a click can land mid-rebuild and get
+  // LEGAL: silently swallowed by the browser. This function is what the game hub
+  // LEGAL: calls every 250ms instead.
   function refreshHUD(){
     const rank = currentRank();
-    byId('hud-cash').textContent = fmt(state.cash);
-    byId('hud-income').textContent = (netIncome()>=0?'+':'') + fmt(netIncome()) + '/s';
+    byId('hud-cash').textContent = formatMoney(state.cash);
+    byId('hud-income').textContent = (netIncome()>=0?'+':'') + formatMoneyRate(netIncome()) + '/s';
     byId('hud-rank').textContent = rank;
-    byId('hud-respect').textContent = `${fmtR(state.respect)} respect`;
+    byId('hud-respect').textContent = `${formatCount(state.respect)} respect`;
     updateHeatHud();
     byId('hud-crew').textContent = `${crewUsedGlobal()} / ${crewCapGlobal()}`;
 
@@ -4041,13 +4026,13 @@ import type * as ThreeNamespace from 'three';
     if(rank === 'West Side Kingpin') triggerMilestone('kingpin');
 
     const prestigeBtn = byId<HTMLButtonElement>('prestige-btn');
-    const threshold = 50000 * Math.pow(4, state.prestigeCount);
+    const threshold = prestigeThreshold();
     const nextFamily = familyTiers[state.prestigeCount];
     if(!nextFamily){ prestigeBtn.style.display = 'none'; return; }
     if(state.cash >= threshold*0.2 || state.prestigeCount>0){
       prestigeBtn.style.display = 'inline-block';
       prestigeBtn.disabled = state.cash < threshold;
-      prestigeBtn.textContent = state.cash >= threshold ? `Bring in ${nextFamily.name}` : `Bring in ${nextFamily.name} (Requires ${fmt(threshold)})`;
+      prestigeBtn.textContent = state.cash >= threshold ? `Bring in ${nextFamily.name}` : `Bring in ${nextFamily.name} (Requires ${formatMoney(threshold)})`;
     }
   }
   function refreshAffordability(){
@@ -4073,8 +4058,8 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: The bank balance/on-hand chips only exist while the phone's vault view is
     // LEGAL: rendered (absent in the Stocks view), so look them up null-safely. The old
     // LEGAL: start-heist / heist-status-value HUD elements are gone — robbing is in person.
-    const bankedEl=byIdOrNull('bank-banked-value'); if(bankedEl) bankedEl.textContent=fmt(bankedTotal());
-    const onhandEl=byIdOrNull('bank-onhand-value'); if(onhandEl) onhandEl.textContent=fmt(state.cash);
+    const bankedEl=byIdOrNull('bank-banked-value'); if(bankedEl) bankedEl.textContent=formatMoney(bankedTotal());
+    const onhandEl=byIdOrNull('bank-onhand-value'); if(onhandEl) onhandEl.textContent=formatMoney(state.cash);
     const labBtn=byId<HTMLButtonElement>('upgrade-lab'); if(labBtn) labBtn.disabled = state.cash<labCost();
     document.querySelectorAll<HTMLButtonElement>('[data-push]').forEach(btn=>{
       const d = districts.find(x=>x.id===btn.getAttribute('data-push'));
@@ -4111,7 +4096,7 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: ================= PRESTIGE =================
   byId('prestige-btn').addEventListener('click', function(){
     if(state.prestigeCount >= familyTiers.length) return;
-    const threshold = 50000 * Math.pow(4, state.prestigeCount);
+    const threshold = prestigeThreshold();
     if(state.cash < threshold) return;
     const tier = familyTiers[state.prestigeCount];
     showModal({
@@ -4405,7 +4390,7 @@ import type * as ThreeNamespace from 'three';
       spots.push({ id:'owner', x:ROOM_W*0.68, y:80, label:biz.owner, icon:'🙂', action:()=> openOwnerPanel(biz) });
       spots.push({ id:'board', x:AMBIENT_X, y:AMBIENT_Y, label:'Community Board', icon:'📌', action:()=>
         showRoomBrief('Community Board', biz.name, 'Flyers for lost cats, a rent notice, a block party nobody has funded yet.',
-          briefRow('Your respect', fmtR(state.respect)),
+          briefRow('Your respect', formatCount(state.respect)),
           [{ label:'Sponsor the block party ($200)', onClick:function(){
               if(state.cash>=200){ state.cash-=200; state.respect+=3; log(`<i class="ph-duotone ph-confetti"></i> You quietly cover the block party at ${biz.name}. The neighborhood notices.`); renderAll(); }
               else { log('Not enough cash to sponsor the block party.'); }
@@ -4423,7 +4408,7 @@ import type * as ThreeNamespace from 'three';
       } });
       spots.push({ id:'notices', x:AMBIENT_X, y:AMBIENT_Y, label:'Notices', icon:'📄', action:()=>
         showRoomBrief('Lobby Notices', 'First Windhaven', 'Rate sheets and fine print. Whatever is banked here stays out of reach when the feds come knocking.',
-          briefRow('Banked (raid-safe)', fmt(bankedTotal()))) });
+          briefRow('Banked (raid-safe)', formatMoney(bankedTotal()))) });
     } else if(kind==='heist'){
       spots.push({ id:'vault', x:ROOM_W/2, y:75, label:'Case the Banks', icon:'🔐', action:openHeistPlanning });
       spots.push({ id:'security-desk', x:ROOM_W*0.2, y:ROOM_H*0.76, label:'Security Office', icon:'🗂️', action:openHeistSecurityDesk });
@@ -4444,7 +4429,7 @@ import type * as ThreeNamespace from 'three';
       spots.push({ id:'slots', x:ROOM_W/2 - 90, y:110, label:'Slots', icon:'🎰', action:openSlots });
       spots.push({ id:'bar', x:AMBIENT_X, y:AMBIENT_Y, label:'Bar', icon:'🥃', action:()=>
         showRoomBrief('The Bar', 'The Gilded Kettle', 'Free while you are losing. The moment you stop, so does the service.',
-          briefRow('Table stake', fmt(casinoStake)) + briefRow('Your cash', fmt(state.cash))) });
+          briefRow('Table stake', formatMoney(casinoStake)) + briefRow('Your cash', formatMoney(state.cash))) });
     } else if(kind==='respray'){
       spots.push({ id:'bay', x:ROOM_W/2, y:80, label:'Paint Bay', icon:'🎨', action:openResprayBay });
     } else if(kind==='dealership' || kind==='brokerage'){
@@ -6873,9 +6858,9 @@ import type * as ThreeNamespace from 'three';
     state.cash += earned;
     const mins = Math.max(1, Math.round(capped/60));
     showModal({ eyebrow:'Business Report', title:"WHILE YOU WERE OUT",
-      body:`<p>Managers and crew kept things running. In the <strong>${mins} minute${mins===1?'':'s'}</strong> you were gone, the operation cleared <strong>${fmt(earned)}</strong>.</p>`,
+      body:`<p>Managers and crew kept things running. In the <strong>${mins} minute${mins===1?'':'s'}</strong> you were gone, the operation cleared <strong>${formatMoney(earned)}</strong>.</p>`,
       buttons:[{label:'Good'}] });
-    log(`Business Report: ${fmt(earned)} earned while you were away.`);
+    log(`Business Report: ${formatMoney(earned)} earned while you were away.`);
     return true;
   }
 

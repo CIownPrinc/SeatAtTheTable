@@ -16,8 +16,8 @@ export const milestones: Milestone[] = [
 
 export const familyTiers: FamilyTier[] = [
   { name:'Brother Ravi', desc:'Permanent +50% income, every venture.' },
-  { name:'Mother Kavita', desc:'Permanent -35% **Heat** generation, everywhere.' },
+  { name:'Mother Kavita', desc:'Permanent -35% <strong>Heat</strong> generation, everywhere.' },
   { name:"Sister's family", desc:'+6 permanent crew capacity. Crew costs -20% forever.' },
   { name:'Deepak, childhood friend', desc:'Managed ventures now auto-reinvest 10% of their income into leveling themselves.' },
-  { name:'Grandmother', desc:'Unlocks a capstone venture, and +25% **Respect** gain forever.' },
+  { name:'Grandmother', desc:'Unlocks a capstone venture, and +25% <strong>Respect</strong> gain forever.' },
 ];

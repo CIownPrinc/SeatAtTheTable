@@ -20,6 +20,14 @@ test.describe('progressive onboarding', () => {
     await expect(page.locator('#advisor-list')).not.toContainText('Open your first front');
   });
 
+  test('opening the cart does not announce the $200 profit headline early', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    await page.locator('#grid-legit [data-action="expand"][data-id="cart"]').click();
+    await page.waitForTimeout(800);
+    await expect(page.locator('#modal-overlay')).toHaveClass(/hidden/);
+  });
+
   test('walks the whole early-game sequence: cart, crew, lab, first corner', async ({ page }) => {
     test.setTimeout(60_000);
     const pageErrors: string[] = [];

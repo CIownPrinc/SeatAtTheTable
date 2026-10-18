@@ -111,7 +111,7 @@ export const VENTURE_ARCHETYPES: Record<string, PlaceArchetype> = {
   wire_network: 'alley',            // LEGAL: Bookmaking & wire ops behind an unmarked door.
   chop_ring: 'works',               // LEGAL: Stolen Vehicle Export Ring — a yard and a shed.
   garage: 'works',                  // LEGAL: Ashok's Auto Garage — a workshop, not a showroom.
-  cab: 'lot',                       // LEGAL: Windy City Cab Co. — a depot yard of parked cabs.
+  cab: 'lot',                       // LEGAL: Windhaven Cab Co. — a depot yard of parked cabs.
   syndicate_logistics: 'works',     // LEGAL: A freight warehouse.
   realestate: 'office',             // LEGAL: West Side Holdings.
   family_office: 'tower',           // LEGAL: Hub corporate.

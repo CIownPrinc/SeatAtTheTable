@@ -31,6 +31,18 @@ function baseSnapshot(): OnboardingSnapshot {
 }
 
 describe('onboarding steps', function () {
+  it('does not also offer the unopened cart as "the next venture"', function () {
+    const steps = getOnboardingSteps({
+      ...baseSnapshot(),
+      cartLevel:0,
+      hasUnlockedUnopenedVenture:true,
+      unopenedVentureName:"Kailash's Cart",
+    });
+
+    expect(steps.map(step => step.id)).toContain('early-open-cart');
+    expect(steps.map(step => step.id)).not.toContain('open-venture');
+  });
+
   it('starts with opening the cart before other lessons', function () {
     const steps = getOnboardingSteps({
       ...baseSnapshot(),

@@ -258,7 +258,8 @@ export function getOnboardingSteps(snapshot: OnboardingSnapshot): OnboardingStep
     });
   }
 
-  if(snapshot.hasUnlockedUnopenedVenture){
+  // LEGAL: An unopened cart is the first-move lesson already; don't offer it twice.
+  if(snapshot.hasUnlockedUnopenedVenture && snapshot.cartLevel > 0){
     steps.push({
       id:'open-venture',
       title:'Open the next venture',

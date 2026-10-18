@@ -207,7 +207,7 @@ off it), **Devlin Courts**, **Rockwell Pet Supply**, **Rentport City National**.
 **Works and freight** across the north and the whole eastern edge; what housing exists sits
 south-west and is **the poorest in the city**. The rail line runs down its east side.
 Contains: **West Side Chop Shop**, **the railyard** (open ground, not a building), **the
-dockmaster's yard**, **West Side Holdings**, **Windy City Cab Co.** (a depot yard).
+dockmaster's yard**, **West Side Holdings**, **Windhaven Cab Co.** (a depot yard).
 
 ### **The Hub** — money, east
 **Financial core** north and centre (towers), **Gilt Shore money** along the east edge
