@@ -471,13 +471,14 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: ================= STOCK MARKET =================
 
   // LEGAL: ================= STATE =================
+  function firstEventDelay(): number { return 110 + Math.random()*60; }
   const state: GameState = {
     cash: 47, respect: 0, heat: 0,
     investigation: 0, layingLow: false, crackdownUntil: 0, nextCrackdownAt: 360,
     territoryTier: 0, negotiateTier: 0,
     muscleCount: 0, guns: 0, ratCount: 0, bribeOn: false,
     prestigeCount: 0, seenMilestones: new Set<string>(),
-    started: false, lastTick: Date.now(), nextEventAt: 110 + Math.random()*60,
+    started: false, lastTick: Date.now(), nextEventAt: firstEventDelay(),
     playSeconds: 0, investorPenalty: 0,
     procNpc: generateNPC(),
     bankAccounts: {}, selectedBank: DEFAULT_BANK_ID, nextHeistAt: 0,
@@ -6726,6 +6727,7 @@ import type * as ThreeNamespace from 'three';
           if(typeof content !== 'string') return;
           const parsed = JSON.parse(content);
           if(typeof parsed.cash === 'number' && Array.isArray(parsed.businesses)){
+            stopSaving();
             await storageAdapter.set('seat-save-v1', JSON.stringify(parsed));
             showModal({
               eyebrow: 'Save File Loaded', title: 'IMPORT SUCCESSFUL', stamp: 'Restored',
@@ -6751,6 +6753,7 @@ import type * as ThreeNamespace from 'three';
       buttons:[
         { label:'Cancel', secondary:true },
         { label:'Reset Everything', onClick:async function(){
+          stopSaving();
           try{ await storageAdapter.delete('seat-save-v1'); }catch(e){}
           location.reload();
         }},
@@ -6790,13 +6793,18 @@ import type * as ThreeNamespace from 'three';
       cityNews: state.cityNews, nextCityNewsAt: state.nextCityNewsAt,
       investigation: state.investigation, layingLow: state.layingLow,
       crackdownUntil: state.crackdownUntil, nextCrackdownAt: state.nextCrackdownAt,
-      eventRepeats: state.eventRepeats, eventHistory: state.eventHistory,
+      eventRepeats: state.eventRepeats, eventHistory: state.eventHistory, nextEventAt: state.nextEventAt,
       activeMissions: state.activeMissions, completedMissions: state.completedMissions,
       worldMemory: state.worldMemory
     };
   }
   let saveTimer: ReturnType<typeof setTimeout> | null = null;
   let lastSaveTime = 0;
+  // LEGAL: Reset, Start New Game and import replace the save and then reload. The game also
+  // LEGAL: saves on a timer and when the page closes, so it must stop saving first, or that
+  // LEGAL: last save writes the old game straight back over the replacement.
+  let savingStopped = false;
+  function stopSaving(): void { savingStopped = true; }
   function scheduleSave(){
     const now = Date.now();
     if(saveTimer) return;
@@ -6808,6 +6816,7 @@ import type * as ThreeNamespace from 'three';
     }, delay);
   }
   async function saveGame(manual: boolean){
+    if(savingStopped) return;
     try{
       await storageAdapter.set('seat-save-v1', JSON.stringify(serializeState()));
       const stamp = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
@@ -6880,6 +6889,8 @@ import type * as ThreeNamespace from 'three';
         state.layingLow = !!d.layingLow;
         state.crackdownUntil = Number(d.crackdownUntil)||0;
         state.nextCrackdownAt = Number(d.nextCrackdownAt) || (state.playSeconds + 360);
+        // LEGAL: Saves from before the event timer was saved would otherwise fire an event on load.
+        state.nextEventAt = Number(d.nextEventAt) || (state.playSeconds + firstEventDelay());
         const missionSave = missionSaveDefaults(d);
         state.eventRepeats = missionSave.eventRepeats;
         state.eventHistory = missionSave.eventHistory;
@@ -6905,6 +6916,9 @@ import type * as ThreeNamespace from 'three';
     const now = Date.now();
     const dt = Math.min(2, (now-lastFrame)/1000);
     lastFrame = now;
+    // LEGAL: Browsers keep a hidden tab's timers running, only slower. Time away is paid by
+    // LEGAL: the business report on return; ticking here as well would pay it twice.
+    if(document.visibilityState !== 'visible') return;
     state.playSeconds += dt;
     syncTonicVision();
     deliverDelayedFollowUp();
@@ -7089,6 +7103,7 @@ import type * as ThreeNamespace from 'three';
   byId('start-credits-btn').addEventListener('click', function(){ toggleStartPanel('start-credits-panel'); });
   byId('cancel-new-game-btn').addEventListener('click', function(){ byId('start-new-warning').classList.add('hidden'); });
   byId('confirm-new-game-btn').addEventListener('click', async function(){
+    stopSaving();
     try{ await storageAdapter.delete('seat-save-v1'); }catch(e){}
     try{ window.sessionStorage.setItem('seat-start-new-after-reload', '1'); }catch(e){}
     location.reload();
