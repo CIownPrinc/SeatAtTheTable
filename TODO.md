@@ -175,55 +175,97 @@ every test. Locally, `.tmp-assets/` (ignored Kenney zips) can be deleted by hand
 - **Title screen:** the start screen became a night skyline with a neon sign.
 - Suite: 286 unit tests and 143 e2e tests, green.
 
-## 10. Map overhaul — from the 2026-10-18 play-through (ACTIVE)
+## 10. Map overhaul: every note from the 2026-10-18 play-through (ACTIVE)
 
-The player's own notes from playing, grouped and ordered: fix what's broken, then feel, then
-new places. V1 stays feature-frozen everywhere else; this list is the exception the player asked for.
+Every request the player made while playing, word for word in intent, so none get lost.
+Status: **DONE** shipped and verified · **PART** partly done (what's left is noted) · open.
+V1 stays feature-frozen everywhere else; this list is the exception the player asked for.
+Most of the open items will be built in the new map engine (section 11), not patched into the
+old one.
 
-**Done so far:** an angled camera that follows smoothly and leads where you're heading
-(`map/cameraRig.ts`), sun shadows that follow the player with no stripes, building textures
-(Kenney `colormap.png` was never shipped), a new animated figure in the game's own style with
-a wardrobe in the save (`map/personModel.ts`, `map/characters.ts`), and cheat codes
-`moneymoneymoney` / `cash4ever` (+$1M).
+**A. Broken things**
+1. **DONE** Lines strobed (z-fighting between stacked road, sidewalk and paint layers). The camera
+   near plane moved from 1 to 40.
+2. **DONE** Bridge ends clipped: the canal walls ran through the decks.
+3. **PART** Beach, coast and canal lines showed in the ocean. All hairlines are removed and the canal
+   water and walls now stop at the canal's ends. Still open: shoreline foam done properly.
+4. **DONE** Waves were broken (strips sliding over land); they're now drawn by the water shader.
+5. **DONE** Shadows were broken (striped, and missing outside the world's middle).
+6. **DONE** The GPS broke in the countryside: there were no roads there. Country lanes fix it.
+7. Roads end in the middle of the ocean (reported after the lane change). Find and fix them.
+8. A few buildings stand fully or partly in the streets.
+9. Some roads meant to curve are drawn as straight pieces: find them and use real curves.
+10. Cars and trains aren't solid. Neither are some trees and buildings.
+11. A car breakdown gives no warning (it threw the player out). Add smoke from the car and a
+    "broken down" message when you try to use it.
+12. Streetlights face the wrong way and stay on in daytime.
+13. The beach stops abruptly for no reason.
+14. **PART** Roads lead nowhere. Short stubs are now T-junctions and real dead ends have a turning
+    circle and sign. Still open: check every remaining one.
 
-**A. Broken: fix first**
-1. Lines strobe (z-fighting between road, sidewalk, lane paint and canal lines).
-2. Bridge ends: canal banks run through the decks.
-3. Beach and canal lines show in the ocean; canal water runs past the coast.
-4. Waves look broken.
-5. The GPS breaks in the countryside: there's no road graph out there.
-6. Cars and trains aren't solid.
-7. A car breakdown gives no warning: add smoke, plus a "broken down" prompt on interact.
-8. Streetlights face the wrong way and stay on in daytime.
-9. Roads stop dead before bridges and the coast: they're drawn only inside district outlines.
-   They should run to the bridge and end with a turning circle and a dead-end sign, or
-   continue into the countryside as a dirt lane.
+**B. A checker that catches map mistakes**
+15. A system that knows when buildings are on roads, roads are over water, beaches are cut off,
+    or there are stray lines. It flags each one while the game runs in dev and fails the tests,
+    so mistakes can't come back.
 
-**B. Feel**
-10. Getting hit by a car knocks you flat, and you get back up.
-11. A wardrobe UI to dress Arjun (the slots already exist).
-12. Remove floating 3D icons over places; keep only meaningful ones and put the rest on the
-    minimap.
-13. A simpler, GTA-style minimap.
-14. Smoother coastlines and curves; less polygonal.
-15. Countryside dirt trails, which the GPS can also route on.
-16. Building models that match what they are.
-17. Cars that look like what they are: sports car, pickup, SUV, sedan, bike, beater, luxury.
-    The textured Kenney car kit has distinct models for each.
-18. Countryside ground is flat polygons in different shades with hard edges. Replace them with
-    one ground mesh that blends colours smoothly.
+**C. Feel**
+16. **DONE** The camera was primitive. It now follows smoothly, leads where you're heading and
+    pulls back at speed.
+17. **DONE** Arjun looked like Gru (bald, stiff, big nose). There's a new animated figure in the
+    game's own style. The Kenney blocky characters were tried and dropped as too Roblox-like.
+18. Get splatted on the ground when a car hits you, then get back up.
+19. Customise Arjun's clothes. The wardrobe is saved already; it needs a UI.
+20. **DONE** Cheat codes: `moneymoneymoney` and `cash4ever` (+$1,000,000 each).
+21. Remove the floating 3D icons over places. Keep only ones that matter to the design; the rest
+    go on the minimap. (Still there as of the last report.)
+22. A simpler, easier-on-the-eyes, GTA-style minimap.
+23. Traffic is too random to look real: lanes, junctions, believable routes.
+24. Police cars that patrol at random.
+25. Cars that look like what they are: sports car, truck, pickup, motorbike, sedan, SUV, beaters,
+    expensive cars. Many are reskins of each other.
 
-**C. Interiors**
-19. Interiors you walk around in like outside, in 3D: a front desk looks like a front desk, and
-    every hotspot is a real thing (a person, a bulletin board) instead of an icon that opens a
-    text box.
+**D. How the world looks**
+26. Audit the whole map for primitive designs that could be better, not just the ground.
+27. The map is very polygonal: smooth the coastlines and curves.
+28. Countryside ground is flat polygons in hard-edged shades and looks cheap. Blend it smoothly.
+29. Zoning: make rich, poor, commercial, residential, countryside, farmland and forest areas
+    clearly distinct, but grade them into each other gradually, like real life.
+30. **PART** Dirt trails in the countryside. The country lanes are in. Still open: smaller trails
+    off them.
+31. Building models that look like what they are for, and don't look out of place.
+32. Remodel everything properly in Blender, step by step. Blocked: Blender isn't installed yet
+    (blender.org refused the automated download, so the player will install it).
 
-**D. New places**
-20. A mall with a parking garage. Inside feels like outdoors: food court, ice cream, perfume
-    stall owners calling out to you, an indoor playground.
-21. A central park.
-22. A suburbs area.
-23. Snow that settles on the ground, and a plow that clears the roads.
+**E. Interiors**
+33. Interiors you walk around in like outside, in 3D. A front desk looks like a front desk, and
+    every hotspot is something real (a person to talk to, a bulletin board), seen in first
+    person or at least in 3D, instead of an icon that opens a text box or restates the obvious.
+
+**F. New places**
+34. A big mall with a parking garage. Inside should feel like walking around outside: an indoor
+    playground, stall owners trying to get you to try their perfume, ice cream vendors, a food
+    court.
+35. A central park, with more greenery generally.
+36. A suburbs area.
+37. Construction sites.
+38. Snow that collects on the ground and turns it white, and a plow that comes through.
+
+## 11. New map engine (decided 2026-10-18)
+
+Rebuild the map from scratch in `SeatAtTheTable/src/world/`, beside the old one, instead of
+patching the old map's foundations: authored coordinates stretched by `widenAuthoredX`, a street
+grid clipped to district outlines, randomly scattered scenery, and a 3D scene inside the
+7,000-line `header.ts`. A "New map (beta)" setting switches between them. Missions, economy,
+places, the phone and saves stay as they are. When the new map matches the old one, the old map
+is deleted. It can later move into SeatAtTheTable 2 unchanged.
+
+Build order:
+1. The world audit (item 15) comes first, so correctness is tested from the first line.
+2. Ground: one terrain mesh, with zoning as a smooth field driving its colour and what's built.
+3. A road graph with real curves, and building lots laid out along the roads.
+4. Scenery placed from zoning that keeps clear of roads.
+5. Models: Blender-made, instanced, with levels of detail.
+6. The new places from section 10F, built on the new engine rather than the old one.
 
 ---
 
