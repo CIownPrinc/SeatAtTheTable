@@ -1,6 +1,6 @@
 import type * as ThreeNamespace from 'three';
 import type { Solid } from '../config/types';
-import { interiorLayout, type FloorPattern, type InteriorCar, type InteriorPiece, type InteriorSpot, type RoomSize } from './interiorLayout';
+import { DOOR_WIDTH, FRONT_WALL_HEIGHT, WALL_HEIGHT, interiorLayout, type FloorPattern, type InteriorCar, type InteriorPiece, type InteriorSpot, type RoomSize } from './interiorLayout';
 import { mergeMeshesWithin, type MergeGeometries } from './mergeScenery';
 
 // LEGAL: A room you walk around in, in 3D. Room units (what the player moves in) are scaled down by
@@ -11,6 +11,9 @@ export interface InteriorView {
   root: ThreeNamespace.Group;
   // LEGAL: Furniture you can't walk through, in room units.
   solids: Solid[];
+  // LEGAL: Shows the ceiling and the full front wall, which only first person needs: from the
+  // LEGAL: overhead camera they'd hide the room.
+  setEnclosed(on: boolean): void;
   // LEGAL: Lights up the ring of the hotspot you're next to ('door' for the way out).
   setHighlight(key: string | null, time: number): void;
   // LEGAL: Moves the people who walk round the room.
@@ -214,6 +217,33 @@ export function buildInteriorRoom3d(THREE: typeof ThreeNamespace, build: Interio
     root.add(label);
   });
   addRing('door', build.door.x, build.door.y, '#5ad1ff');
+
+  // LEGAL: The ceiling, with light panels, and the front wall above its kerb with the doorway cut out.
+  const enclosure = new THREE.Group();
+  enclosure.name = 'interior:enclosure';
+  enclosure.visible = false;
+  // LEGAL: Unlit: it faces down, away from every light, and would otherwise read as dark brown.
+  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(room.w * s, room.h * s), new THREE.MeshBasicMaterial({ color:'#cfc9bc' }));
+  ceiling.rotation.x = Math.PI / 2;
+  ceiling.position.set(room.w * s / 2, WALL_HEIGHT * s, room.h * s / 2);
+  enclosure.add(ceiling);
+  const panel = new THREE.MeshStandardMaterial({ color:'#ffffff', emissive:'#fff4d8', emissiveIntensity:0.9 });
+  for(let x = room.w / 6; x < room.w; x += room.w / 3) for(let z = room.h / 4; z < room.h; z += room.h / 2){
+    const light = new THREE.Mesh(new THREE.BoxGeometry(40 * s, 1, 18 * s), panel);
+    light.position.set(x * s, WALL_HEIGHT * s - 0.6, z * s);
+    enclosure.add(light);
+  }
+  const wall = new THREE.MeshStandardMaterial({ color:layout.wallColor, roughness:0.85 });
+  const left = room.door.x - DOOR_WIDTH / 2, right = room.door.x + DOOR_WIDTH / 2, doorTop = 44;
+  const front = (x0: number, x1: number, y0: number, y1: number) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry((x1 - x0) * s, (y1 - y0) * s, 8 * s), wall);
+    mesh.position.set((x0 + x1) / 2 * s, (y0 + y1) / 2 * s, (room.h + 4) * s);
+    enclosure.add(mesh);
+  };
+  front(-8, left, FRONT_WALL_HEIGHT, WALL_HEIGHT);
+  front(right, room.w + 8, FRONT_WALL_HEIGHT, WALL_HEIGHT);
+  front(left, right, doorTop, WALL_HEIGHT);
+  root.add(enclosure);
   const exitLabel = labelSprite(THREE, 'Exit');
   exitLabel.position.set(build.door.x * s, 18, (room.h + 10) * s);
   exitLabel.scale.set(30, 7.5, 1);
@@ -222,6 +252,7 @@ export function buildInteriorRoom3d(THREE: typeof ThreeNamespace, build: Interio
   return {
     root,
     solids:layout.solids,
+    setEnclosed(on){ enclosure.visible = on; },
     setHighlight(keyName, time){
       rings.forEach(function(ring, name){
         const on = name === keyName;

@@ -6723,9 +6723,29 @@ import type * as ThreeNamespace from 'three';
   let interiorScene3d: ThreeNamespace.Scene | null = null;
   let interiorCamera: ThreeNamespace.PerspectiveCamera | null = null;
   function interiorSolids(): Solid[] { return interiorView?.solids ?? []; }
+  // LEGAL: First person indoors, switched with the view button or V and remembered in this browser.
+  // LEGAL: W and S walk forward and back, A and D turn.
+  const FIRST_PERSON_KEY = 'seat-first-person';
+  const FIRST_PERSON_EYE = 19;
+  const FIRST_PERSON_TURN = 2.6;
+  let firstPerson = (function(){ try{ return window.localStorage.getItem(FIRST_PERSON_KEY) === '1'; }catch(e){ return false; } })();
+  function setFirstPerson(on: boolean): void {
+    firstPerson = on;
+    try{ window.localStorage.setItem(FIRST_PERSON_KEY, on ? '1' : '0'); }catch(e){}
+    byId('view-toggle').textContent = on ? '👁 Overhead view' : '👁 First person';
+  }
+  byId('view-toggle').addEventListener('click', () => setFirstPerson(!firstPerson));
+  window.addEventListener('keydown', function(e){
+    if(e.key.toLowerCase() !== 'v' || !state.currentInterior || e.repeat) return;
+    const target = e.target as HTMLElement | null;
+    if(target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+    setFirstPerson(!firstPerson);
+  });
+  setFirstPerson(firstPerson);
   function leaveInteriorView(): void {
     if(interiorView){ interiorScene3d?.remove(interiorView.root); interiorView.dispose(); interiorView = null; interiorViewKey = ''; }
     if(playerGroup && playerGroup.parent !== scene) scene.add(playerGroup);
+    if(playerGroup) playerGroup.visible = true;
     byId('scene3d-container').classList.remove('indoors');
   }
   // LEGAL: Your own car stands in your garage; a showroom or paint bay shows one in the room's colour.
@@ -6766,7 +6786,18 @@ import type * as ThreeNamespace from 'three';
     characterLibrary.animator.tick(dt, state.playSeconds);
     // LEGAL: A raised camera in front of the room, drifting with you so the far corners stay in view.
     const camera = interiorCamera!;
-    if(camera.aspect !== camera3d.aspect){ camera.aspect = camera3d.aspect; camera.updateProjectionMatrix(); }
+    const fov = firstPerson ? 72 : 50;
+    if(camera.aspect !== camera3d.aspect || camera.fov !== fov){ camera.aspect = camera3d.aspect; camera.fov = fov; camera.updateProjectionMatrix(); }
+    playerGroup.visible = !firstPerson;
+    interiorView?.setEnclosed(firstPerson);
+    if(firstPerson){
+      // LEGAL: Through Arjun's eyes: eye height, looking the way he faces.
+      const eyeX = player.x * s, eyeZ = player.y * s;
+      camera.position.set(eyeX, FIRST_PERSON_EYE, eyeZ);
+      camera.lookAt(eyeX + Math.cos(player.facing) * 20, FIRST_PERSON_EYE - 2.5, eyeZ + Math.sin(player.facing) * 20);
+      renderer.render(interiorScene3d, camera);
+      return;
+    }
     // LEGAL: The mall is too big to keep in view, so there the camera follows you closely.
     const room = roomSize();
     const follow = room.w > ROOM_W ? 0.92 : 0.55;
@@ -7016,6 +7047,13 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: Target velocity from input, then ease the actual velocity toward it so
     // LEGAL: movement accelerates and coasts instead of snapping on/off. Cars are
     // LEGAL: heavier (slower to respond and to turn) than the player on foot.
+    // LEGAL: In first person indoors the keys are relative to where you face: left/right turn,
+    // LEGAL: up/down walk forward and back.
+    if(state.currentInterior && firstPerson && (dx || dy)){
+      player.facing += dx * FIRST_PERSON_TURN * dt;
+      const forward = -dy;
+      dx = Math.cos(player.facing) * forward; dy = Math.sin(player.facing) * forward;
+    }
     const spd = currentSpeed();
     let tvx=0, tvy=0;
     // LEGAL: Keys give a unit direction (diagonals normalised); a thumbstick pushed part-way
@@ -7029,7 +7067,8 @@ import type * as ThreeNamespace from 'three';
     if(speed > 2){
       // LEGAL: Steer the heading toward the travel direction at a capped rate — the
       // LEGAL: old code snapped facing instantly, which made the car spin on a dime.
-      const targetFacing = Math.atan2(player.vy, player.vx);
+      // LEGAL: In first person the keys turn you, so walking backwards mustn't swing you round.
+      const targetFacing = state.currentInterior && firstPerson ? player.facing : Math.atan2(player.vy, player.vx);
       let af = targetFacing - player.facing;
       while(af > Math.PI) af -= Math.PI*2;
       while(af < -Math.PI) af += Math.PI*2;
