@@ -4664,7 +4664,7 @@ import type * as ThreeNamespace from 'three';
     }));
   }
 
-  const CHEAT_CASH = 1_000_000;
+  const CHEAT_CASH = 1_000_000_000;
   const cheats = createCheatListener(['moneymoneymoney', 'cash4ever']);
   window.addEventListener('keydown', function(e){
     const k = e.key.toLowerCase();

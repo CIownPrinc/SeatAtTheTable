@@ -215,7 +215,7 @@ old one.
     game's own style. The Kenney blocky characters were tried and dropped as too Roblox-like.
 18. Get splatted on the ground when a car hits you, then get back up.
 19. Customise Arjun's clothes. The wardrobe is saved already; it needs a UI.
-20. **DONE** Cheat codes: `moneymoneymoney` and `cash4ever` (+$1,000,000 each).
+20. **DONE** Cheat codes: `moneymoneymoney` and `cash4ever` (+$1,000,000,000 each).
 21. Remove the floating 3D icons over places. Keep only ones that matter to the design; the rest
     go on the minimap. (Still there as of the last report.)
 22. A simpler, easier-on-the-eyes, GTA-style minimap.
