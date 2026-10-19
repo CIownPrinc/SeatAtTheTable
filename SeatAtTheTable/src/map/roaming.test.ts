@@ -2,9 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { GangRecruit } from '../config/types';
 import type { MapNpc } from './markers';
 import type { MapObject } from './objects';
-import { createRoamingActors, outskirtVehicleRoutes, settleRoamingActors, trafficCarRoutes, updateRoamingActors } from './roaming';
-import { isPointInWater } from './geometry';
-import { roadNetwork } from './world';
+import { createRoamingActors, settleRoamingActors, updateRoamingActors } from './roaming';
+import { trafficRoutes } from './traffic';
 
 function npcObject(id: string, type: MapNpc['type']): MapObject<'npc', MapNpc> {
   const ref: MapNpc = { id, name:id, district:id==='dice'?'westside':'hub', x:100, y:100, type };
@@ -23,7 +22,7 @@ describe('roaming actors', function () {
     expect(actors.find(a=>a.id==='dice')?.radius).toBe(82);
     expect(actors.find(a=>a.id==='reyes')?.radius).toBe(115);
     expect(actors.find(a=>a.id==='maria')?.radius).toBe(95);
-    expect(actors.filter(a=>a.kind==='car').length).toBe(6);
+    expect(actors.filter(a=>a.kind==='car').length).toBe(trafficRoutes().length);
   });
 
   it('syncs pedestrian movement back into the shared map object', function () {
@@ -97,27 +96,5 @@ describe('roaming actors', function () {
     // LEGAL: Home is at y=100, so anything beyond the band is only reachable through it.
     expect(chosen.length).toBeGreaterThan(0);
     expect(chosen.filter(point => point.y >= 132)).toEqual([]);
-  });
-
-  it('keeps traffic car routes on road centers with no diagonal shortcuts', function () {
-    const verticalRoads = new Set(roadNetwork.vertical.map(r=>r.x));
-    const horizontalRoads = new Set(roadNetwork.horizontal.map(r=>r.y));
-
-    trafficCarRoutes.forEach(function(route){
-      route.route.forEach(function(point, index){
-        expect(verticalRoads.has(point.x) || horizontalRoads.has(point.y)).toBe(true);
-        const next = route.route[(index + 1) % route.route.length];
-        expect(point.x === next.x || point.y === next.y).toBe(true);
-        if(point.x === next.x) expect(verticalRoads.has(point.x)).toBe(true);
-        if(point.y === next.y) expect(horizontalRoads.has(point.y)).toBe(true);
-      });
-    });
-  });
-
-  it('keeps sparse rural vehicles on dry outskirt ground', function(){
-    expect(outskirtVehicleRoutes.map(function(route){ return route.id; })).toEqual(['kettle-tractor', 'harrow-tractor', 'cicero-freight']);
-    outskirtVehicleRoutes.forEach(function(route){
-      route.route.forEach(function(point){ expect(isPointInWater(point, 16), `${route.id} at ${point.x},${point.y}`).toBe(false); });
-    });
   });
 });

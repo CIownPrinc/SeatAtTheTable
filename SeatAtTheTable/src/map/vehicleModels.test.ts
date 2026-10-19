@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { cars } from '../config/assets';
 import { brandById } from '../config/brands';
-import { trafficCarRoutes, outskirtVehicleRoutes } from './roaming';
+import { trafficRoutes } from './traffic';
 import { VEHICLE_CLASSES, fitScale, vehicleClassForCar, vehicleClassForTraffic } from './vehicleModels';
 
 describe('vehicle classes', function () {
@@ -18,10 +18,11 @@ describe('vehicle classes', function () {
   });
 
   it('gives every traffic and countryside vehicle a model', function () {
-    [...trafficCarRoutes, ...outskirtVehicleRoutes].forEach(function(route){
+    trafficRoutes().forEach(function(route){
       expect(VEHICLE_CLASSES, route.id).toContain(vehicleClassForTraffic(route.id));
     });
-    expect(vehicleClassForTraffic('hub-cab')).toBe('taxi');
+    expect(vehicleClassForTraffic('city-cab')).toBe('taxi');
+    expect(vehicleClassForTraffic('patrol-cruiser-1')).toBe('police');
     expect(vehicleClassForTraffic('kettle-tractor')).toBe('tractor');
   });
 });

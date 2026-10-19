@@ -231,8 +231,11 @@ old one.
 21. **DONE** The floating 3D icons over places are gone; the minimap already shows them. Mission
     objectives and the waypoint beacon keep their markers.
 22. A simpler, easier-on-the-eyes, GTA-style minimap.
-23. Traffic is too random to look real: lanes, junctions, believable routes.
-24. Police cars that patrol at random.
+23. **PART** Traffic looked random. Routes now come from the road graph (`map/traffic.ts`): real
+    directions between junctions, driven in the right-hand lane with rounded corners, and the
+    countryside vehicles stay on the lanes instead of crossing fields. Still open: stopping at
+    junctions and for each other.
+24. **DONE** Three police cruisers patrol the city on random loops between junctions.
 25. **PART** Cars that look like what they are. 19 Blender models are in the game: beater,
     wagon, muscle car, SUV, armoured SUV, pickup, van, EV, EV luxury, EV van, supercar, roadster,
     police car, taxi, box truck, tractor, garbage truck and helicopter (`art/blender/vehicles.py`,
