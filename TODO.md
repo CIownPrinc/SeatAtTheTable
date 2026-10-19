@@ -193,7 +193,8 @@ old one.
 4. **DONE** Waves were broken (strips sliding over land); they're now drawn by the water shader.
 5. **DONE** Shadows were broken (striped, and missing outside the world's middle).
 6. **DONE** The GPS broke in the countryside: there were no roads there. Country lanes fix it.
-7. Roads end in the middle of the ocean (reported after the lane change). Find and fix them.
+7. **DONE** Roads end in the middle of the ocean (reported after the lane change). The world audit
+   tests check every road for water (`worldAudit.world.test.ts`, `roadEnds.test.ts`); none do.
 8. **DONE** A few buildings stood fully or partly in the streets. The lot allocators and filler
     now keep clear of the diagonal streets, and two landmarks moved off the road; the world audit
     finds none.
@@ -207,8 +208,8 @@ old one.
 12. **DONE** Streetlights faced the wrong way and stayed on in daytime. Each arm now reaches over
     its junction, and all bulbs share one material the day/night cycle dims to off by day.
 13. **DONE** The beach stopped abruptly. It's now derived from the lake shore end to end.
-14. **PART** Roads lead nowhere. Short stubs are now T-junctions and real dead ends have a turning
-    circle and sign. Still open: check every remaining one.
+14. **DONE** Roads lead nowhere. Short stubs are now T-junctions and real dead ends have a turning
+    circle and sign; `roadEnds.test.ts` checks every dead end has one, on dry land.
 
 **B. A checker that catches map mistakes**
 15. **DONE** The world audit (`map/worldAudit.ts`, `map/sceneAudit.ts`) catches roads over water,
@@ -236,10 +237,11 @@ old one.
     objectives and the waypoint beacon keep their markers.
 22. **DONE** A simpler, easier-on-the-eyes, GTA-style minimap: one dark muted palette, light
     roads as the brightest thing, no outlines on every region, no dashed centre lines.
-23. **PART** Traffic looked random. Routes now come from the road graph (`map/traffic.ts`): real
+23. **DONE** Traffic looked random. Routes now come from the road graph (`map/traffic.ts`): real
     directions between junctions, driven in the right-hand lane with rounded corners, and the
-    countryside vehicles stay on the lanes instead of crossing fields. Still open: stopping at
-    junctions and for each other.
+    countryside vehicles stay on the lanes instead of crossing fields. Every city junction now has
+    working traffic lights, and cars stop on red and keep their distance from the car in front
+    (`map/trafficRules.ts`). The lights are out of step across the city, so it never all stops at once.
 24. **DONE** Three police cruisers patrol the city on random loops between junctions.
 25. **PART** Cars that look like what they are. 19 Blender models are in the game: beater,
     wagon, muscle car, SUV, armoured SUV, pickup, van, EV, EV luxury, EV van, supercar, roadster,

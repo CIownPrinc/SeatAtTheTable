@@ -1,4 +1,5 @@
-import { trafficRoutes, walkerRoutes } from './traffic';
+import { CITY_JUNCTIONS, trafficRoutes, walkerRoutes } from './traffic';
+import { followingPace, signalPace } from './trafficRules';
 
 // LEGAL: Enough that a street is rarely empty; few enough that phones keep their frame rate.
 const WALKER_COUNT = 36;
@@ -27,6 +28,8 @@ export interface RoamingActor {
   group: ThreeNamespace.Group | null;
   route?: Point[];
   routeIndex: number;
+  // LEGAL: Share of its speed a car is using (0 stopped, 1 cruising), eased so it brakes and pulls away.
+  pace?: number;
 }
 
 export interface RoamingUpdateOptions {
@@ -174,7 +177,7 @@ function moveActorToward(actor: RoamingActor, options: RoamingUpdateOptions): vo
     }
     return;
   }
-  const step = Math.min(dist, actor.speed * options.dt);
+  const step = Math.min(dist, actor.speed * (actor.pace ?? 1) * options.dt);
   const nx = actor.x + dx / dist * step;
   const ny = actor.y + dy / dist * step;
   actor.facing = Math.atan2(dy, dx);
@@ -197,8 +200,22 @@ function moveActorToward(actor: RoamingActor, options: RoamingUpdateOptions): vo
   }
 }
 
+// LEGAL: Red lights and the car in front set how fast each car may go this frame.
+function updateCarPace(actors: RoamingActor[], options: RoamingUpdateOptions): void {
+  const cars = actors.filter(actor => actor.kind === 'car');
+  cars.forEach(function(car){
+    const target = Math.min(signalPace(car, CITY_JUNCTIONS, options.playSeconds), followingPace(car, cars));
+    const current = car.pace ?? 1;
+    // LEGAL: Braking is quicker than pulling away.
+    const rate = target < current ? 6 : 1.6;
+    car.pace = current + (target - current) * Math.min(1, rate * options.dt);
+    if(target === 0 && car.pace < 0.04) car.pace = 0;
+  });
+}
+
 export function updateRoamingActors(actors: RoamingActor[], options: RoamingUpdateOptions): void {
   if(options.indoors) return;
+  updateCarPace(actors, options);
   actors.forEach(function(actor){
     moveActorToward(actor, options);
     if(actor.group){

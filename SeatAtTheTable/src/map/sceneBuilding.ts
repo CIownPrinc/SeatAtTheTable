@@ -40,7 +40,7 @@ export interface BaseSceneOptions {
 
 export interface RoadSceneOptions extends BaseSceneOptions {
   roadNetwork: RoadNetworkRenderData;
-  buildIntersectionFurniture: (x: number, z: number, index: number) => void;
+  buildIntersectionFurniture: (x: number, z: number) => void;
 }
 
 export interface SceneRenderHelpers {
@@ -277,7 +277,7 @@ export function buildRoadNetwork(options: RoadSceneOptions): void {
         crosswalkWide.push({ x:v.x - h.w/2 - 10, y:0.091, z:h.y + offset, rotationX:-Math.PI/2 });
         crosswalkWide.push({ x:v.x + h.w/2 + 10, y:0.091, z:h.y + offset, rotationX:-Math.PI/2 });
       }
-      options.buildIntersectionFurniture(v.x, h.y, vi * roadNetwork.horizontal.length + hi);
+      options.buildIntersectionFurniture(v.x, h.y);
     });
   });
   // LEGAL: Streets that join nothing end in a turning circle with a dead-end sign, instead of a

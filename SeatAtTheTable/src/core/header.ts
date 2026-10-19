@@ -88,7 +88,8 @@ import {
 } from '../map/casino';
 import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, buildLandmarks, buildOutskirtScenery, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
 import { createMapSceneMaterials, createSceneBuildTimer } from '../map/scenePerformance';
-import { buildIntersectionFurniture as buildMapIntersectionFurniture, nearestLamps, streetLampBulbs, type LampHead } from '../map/streetFurniture';
+import { buildIntersectionFurniture as buildMapIntersectionFurniture, nearestLamps, showSignal, streetLampBulbs, type LampHead, type SignalHeads } from '../map/streetFurniture';
+import { signalState } from '../map/trafficRules';
 import { DISTRICT_OFFSETS, OUTSKIRT_PLACE_LOTS, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
 import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/viewport';
@@ -5689,8 +5690,16 @@ import type * as ThreeNamespace from 'three';
     }
     return g;
   }
-  function buildIntersectionFurniture(x: number, z: number, index: number): void {
-    buildMapIntersectionFurniture({ THREE, worldGroup, streetLamps }, x, z, index);
+  // LEGAL: The traffic lights the cars obey (map/trafficRules), updated as their phases change.
+  const signalHeads: SignalHeads[] = [];
+  function buildIntersectionFurniture(x: number, z: number): void {
+    signalHeads.push(buildMapIntersectionFurniture({ THREE, worldGroup, streetLamps }, x, z));
+  }
+  function updateSignalHeads(): void {
+    signalHeads.forEach(function(heads){
+      showSignal(heads, 'ns', signalState('ns', heads.junction, state.playSeconds));
+      showSignal(heads, 'ew', signalState('ew', heads.junction, state.playSeconds));
+    });
   }  // LEGAL: Set by the weather cheats; the normal cycle takes back over after it expires.
   let weatherOverride: { kind: 'clear' | 'rain' | 'snow'; until: number } | null = null;
   function weatherKindAtTime(): 'clear' | 'rain' | 'snow' {
@@ -6998,6 +7007,7 @@ import type * as ThreeNamespace from 'three';
       updateDayNightLighting();
       updateWeather(dt);
       updateWaterMotion();
+      updateSignalHeads();
       updateRoamingActors(roamingActors, { dt, playSeconds:state.playSeconds, indoors:!!state.currentInterior, canMove:function(x,y){ return tryMove(x,y,currentSolids); }, rescue:rescuePoint });
       characterLibrary?.animator.tick(dt, state.playSeconds, { x:player.x, z:player.y });
       updateDealerArrivals(dt);

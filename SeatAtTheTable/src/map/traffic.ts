@@ -47,7 +47,8 @@ function seeded(seed: number): () => number {
   return function(){ s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
 }
 
-const CITY_JUNCTIONS: Point[] = roadNetwork.vertical.flatMap(v => roadNetwork.horizontal.map(h => ({ x:v.x, y:h.y })));
+// LEGAL: Every crossing of two city streets; the traffic lights stand at these (map/trafficRules).
+export const CITY_JUNCTIONS: Point[] = roadNetwork.vertical.flatMap(v => roadNetwork.horizontal.map(h => ({ x:v.x, y:h.y })));
 const RING = COUNTRY_ROADS.find(road => road.id === 'road-country-ring')!;
 const COUNTRY_STOPS: Point[] = RING.path.filter((_p, i) => i % 9 === 0);
 
