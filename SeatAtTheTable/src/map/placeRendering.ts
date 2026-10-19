@@ -1,5 +1,6 @@
 import type { Business, Corner, LocalBusiness, MapAmenity, ServiceBuilding } from '../config/types';
 import type * as ThreeNamespace from 'three';
+import { GARAGE_OFFICE, garageOfficeCenter } from './driveIn';
 import type { MapBuilding } from './markers';
 import type { MapObject } from './objects';
 import type { VentureFootprint } from './objectFactory';
@@ -118,9 +119,30 @@ function renderServiceBuildings(options: MapPlaceRenderOptions): void {
     if(built.hasBuilding) helpers.addServiceDetail(building, mesh);
     mesh.position.set(object.x, built.y, object.y);
     mesh.name = `service:${building.id}:${building.name}`;
+    if(building.kind === 'playerGarage') addGarageOffice(options.THREE, mesh, silhouette.w, silhouette.d);
     worldGroup.add(mesh);
     helpers.addSign(mesh, building.name, Math.min(54, silhouette.w * 0.72), 9, built.hasBuilding ? silhouette.h - 8 : silhouette.h + 12, '#ffe6a0');
   });
+}
+
+// LEGAL: The garage's office annex: a small block on its east side with a door and a window onto
+// LEGAL: the street. Its door is where you interact with the garage (map/driveIn garageOfficeDoor).
+function addGarageOffice(THREE: typeof ThreeNamespace, garage: ThreeNamespace.Group, w: number, d: number): void {
+  const office = garageOfficeCenter({ x:0, y:0 }, w, d);
+  const wall = new THREE.MeshStandardMaterial({ color:'#8a7560', roughness:0.85 });
+  const block = new THREE.Mesh(new THREE.BoxGeometry(GARAGE_OFFICE.w, 24, GARAGE_OFFICE.d), wall);
+  block.position.set(office.x, 12, office.y);
+  block.castShadow = true; block.receiveShadow = true;
+  garage.add(block);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(GARAGE_OFFICE.w + 2, 1.6, GARAGE_OFFICE.d + 2), new THREE.MeshStandardMaterial({ color:'#3a3d44', roughness:0.9 }));
+  roof.position.set(office.x, 24.8, office.y);
+  garage.add(roof);
+  const door = new THREE.Mesh(new THREE.BoxGeometry(8, 13, 0.8), new THREE.MeshStandardMaterial({ color:'#3b2a20', roughness:0.6 }));
+  door.position.set(office.x - 5, 6.5, office.y + GARAGE_OFFICE.d / 2 + 0.3);
+  garage.add(door);
+  const window = new THREE.Mesh(new THREE.BoxGeometry(9, 6, 0.6), new THREE.MeshStandardMaterial({ color:'#ffd98a', emissive:'#ffcf70', emissiveIntensity:0.5 }));
+  window.position.set(office.x + 7, 11, office.y + GARAGE_OFFICE.d / 2 + 0.3);
+  garage.add(window);
 }
 
 // LEGAL: Stage 7 — real estate exists in the world whether or not you hold the deed, so
@@ -184,7 +206,8 @@ function baseServiceSilhouette(building: ServiceBuilding): BuildingSilhouette {
   // LEGAL: the walls — see BAY_WALL. Depth is 68 and not 70 because the allocator keeps lot
   // LEGAL: centres 72 from a road centre and the roads are 74 wide: at 70 deep the back of
   // LEGAL: the garage would land exactly on the kerb line.
-  if(building.kind === 'playerGarage') return { w:84, h:26, d:68, color:'#7d6a54', zoneType:'industrial' };
+  // LEGAL: Wide enough to park two cars side by side; the office annex sits beside it.
+  if(building.kind === 'playerGarage') return { w:140, h:28, d:76, color:'#7d6a54', zoneType:'industrial' };
   // LEGAL: Stage 5 — branded shops finally get their own footprints instead of falling
   // LEGAL: through to the generic service silhouette. This was written and reverted during
   // LEGAL: Phase 4 because the bigger footprints walled off the shoreline near spawn and

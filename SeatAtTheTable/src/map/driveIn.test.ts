@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { serviceBuildings } from '../config/serviceBuildings';
 import { archetypeExtraSolids, serviceArchetype } from './archetypes';
-import { bayClearance, bayParkSpot, bayStandSpot, garageBay, isCarInBay } from './driveIn';
+import { bayClearance, bayParkSpot, bayStandSpot, garageBay, garageOfficeDoor, isCarInBay, shouldParkInBay } from './driveIn';
 import { canMoveTo, actorRadius } from './movement';
 import { serviceBuildingSilhouette } from './placeRendering';
 
@@ -69,5 +69,28 @@ describe('drive-in garage', function () {
 
     expect(canMoveTo(stand.x, stand.y, walls, false)).toBe(true);
     expect(Math.hypot(stand.x - parked.x, stand.y - parked.y)).toBeGreaterThan(actorRadius(false));
+  });
+});
+
+describe('garage layout', function () {
+  // LEGAL: The bay is for cars; the garage's door is a separate office beside it. Standing by
+  // LEGAL: your parked car used to count as standing at the garage, so E took you inside it.
+  it('puts the garage door in an office beside the bay, well away from the parked car', function () {
+    const { shape, bay } = garageShape();
+    const door = garageOfficeDoor({ x:GARAGE!.x, y:GARAGE!.y }, shape.w, shape.d);
+    expect(isCarInBay(door, bay)).toBe(false);
+    const spot = bayParkSpot(bay);
+    expect(Math.hypot(door.x - spot.x, door.y - spot.y)).toBeGreaterThan(70);
+  });
+
+  it('is wide enough to park two cars side by side', function () {
+    const { bay } = garageShape();
+    expect(bayClearance(bay)).toBeGreaterThan(actorRadius(true) * 4 + 8);
+  });
+
+  it('parks a car only when it drives in, so you can pull out again', function () {
+    expect(shouldParkInBay(false, true)).toBe(true);
+    expect(shouldParkInBay(true, true)).toBe(false);
+    expect(shouldParkInBay(true, false)).toBe(false);
   });
 });

@@ -107,4 +107,26 @@ test.describe('the drive-in garage', function () {
     // LEGAL: ...and no return-to-garage clock running, because it is already home.
     expect(after.carParkedAt).toBeNull();
   });
+
+  // LEGAL: The bug: getting into a car parked in the bay started inside the bay, which counted as
+  // LEGAL: "just drove in" and parked you again at once, and E near the car opened the garage.
+  test('you can get back into the parked car and drive it out', async function ({ page }) {
+    await waitForScene(page);
+    const garage = await garagePosition(page);
+    await page.evaluate(function(spot: { x: number; y: number }){
+      const seat = (window as never as { __seat: SeatHook & { state: { ownedCars: string[]; equippedCar: string | null } } }).__seat;
+      seat.state.ownedCars = ['sedan']; seat.state.equippedCar = 'sedan';
+      seat.state.inVehicle = true;
+      seat.player.x = spot.x; seat.player.y = spot.y; seat.player.vx = 0; seat.player.vy = 0;
+    }, garage);
+    await expect.poll(() => page.evaluate(() => (window as never as { __seat: SeatHook }).__seat.state.inVehicle)).toBe(false);
+    await page.keyboard.press('e');
+    await page.waitForTimeout(600);
+    const after = await page.evaluate(() => {
+      const seat = (window as never as { __seat: SeatHook & { state: { currentInterior: unknown } } }).__seat;
+      return { inVehicle: seat.state.inVehicle, interior: seat.state.currentInterior };
+    });
+    expect(after.interior).toBeNull();
+    expect(after.inVehicle).toBe(true);
+  });
 });

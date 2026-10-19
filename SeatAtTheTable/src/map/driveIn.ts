@@ -44,7 +44,9 @@ export function bayParkSpot(bay: Bay): Point {
 // LEGAL: the walls so stepping out never puts you through one.
 export function bayStandSpot(bay: Bay): Point {
   const spot = bayParkSpot(bay);
-  const offset = Math.max(12, bay.hw - actorRadius(false) - 3);
+  // LEGAL: Just clear of the car and within reach of it (interact reach is 46), so pressing E gets
+  // LEGAL: you straight back in. Kept inside the walls for narrow bays.
+  const offset = Math.min(actorRadius(true) + actorRadius(false) + 6, bay.hw - actorRadius(false) - 3);
   return { x: bay.x + offset, y: spot.y + 6 };
 }
 
@@ -54,4 +56,23 @@ export function bayStandSpot(bay: Bay): Point {
 // LEGAL: garage and bounce off it.
 export function bayClearance(bay: Bay): number {
   return bay.hw * 2;
+}
+
+// LEGAL: The office annex on the garage's east side, and its door onto the street. The door is
+// LEGAL: the garage's interaction point, so the bay itself is only ever about the car.
+export const GARAGE_OFFICE = { w: 30, d: 34 };
+
+export function garageOfficeCenter(garage: Point, w: number, d: number): Point {
+  return { x: garage.x + w / 2 + GARAGE_OFFICE.w / 2, y: garage.y + d / 2 - GARAGE_OFFICE.d / 2 };
+}
+
+export function garageOfficeDoor(garage: Point, w: number, d: number): Point {
+  const office = garageOfficeCenter(garage, w, d);
+  return { x: office.x, y: office.y + GARAGE_OFFICE.d / 2 + 10 };
+}
+
+// LEGAL: Park on the frame the car crosses into the bay, not on every frame it's inside. Getting
+// LEGAL: into a car that was parked in the bay starts inside it, and used to re-park you at once.
+export function shouldParkInBay(wasInBay: boolean, isInBay: boolean): boolean {
+  return isInBay && !wasInBay;
 }

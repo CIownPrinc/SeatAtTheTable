@@ -50,7 +50,7 @@ import { buildMapObjects, ventureFootprint } from '../map/objectFactory';
 import { GARAGE_RETURN_SECONDS, PARKING_DISTRICT_IDS, carSpawnPositionForDistrict, defaultParkedCarPositions, parkedCarPositionForDistrict, secondsUntilGarageReturn, shouldReturnToGarage } from '../map/parking';
 import { renderMapPlaces, serviceBuildingSilhouette } from '../map/placeRendering';
 import { archetypeExtraSolids, serviceArchetype } from '../map/archetypes';
-import { bayParkSpot, bayStandSpot, garageBay, isCarInBay, type Bay } from '../map/driveIn';
+import { GARAGE_OFFICE, bayParkSpot, bayStandSpot, garageBay, garageOfficeCenter, garageOfficeDoor, isCarInBay, shouldParkInBay, type Bay } from '../map/driveIn';
 import { allRegions, regionNameAt } from '../map/regions';
 import { propertyPlaces, type PropertyPlace } from '../map/propertyPlaces';
 import { createMapPlaceRecords, mapPlaceCategoryLabel, type MapPlaceCategory, type MapPlaceRecord } from '../map/places';
@@ -2206,10 +2206,16 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: prompt: the bay is only enterable by aiming a car at it, so having driven in there
   // LEGAL: is already an unambiguous statement of intent, and asking "park here? y/n" after
   // LEGAL: you have parked is the kind of confirmation that makes a game feel like a form.
+  // LEGAL: Whether the car was already in the bay last frame. Getting into a car parked in the bay
+  // LEGAL: starts inside it; only driving across the mouth parks it again.
+  let carWasInBay = false;
   function tickDriveInGarage(): void {
-    if(!state.inVehicle || state.currentInterior) return;
+    if(!state.inVehicle || state.currentInterior){ carWasInBay = !state.inVehicle ? false : carWasInBay; return; }
     const bay = garageBayRect();
-    if(!bay || !isCarInBay({ x: player.x, y: player.y }, bay)) return;
+    const inBay = !!bay && isCarInBay({ x: player.x, y: player.y }, bay);
+    const arrived = shouldParkInBay(carWasInBay, inBay);
+    carWasInBay = inBay;
+    if(!bay || !arrived) return;
 
     const spot = bayParkSpot(bay);
     const stand = bayStandSpot(bay);
@@ -4361,6 +4367,15 @@ import type * as ThreeNamespace from 'three';
   const mapPropertyPlaces = propertyPlaces();
   const mapObjects = buildMapObjects({ mapBuildings, serviceBuildings, propertyPlaces:mapPropertyPlaces, localBusinesses, amenities:mapAmenities, corners, npcs:mapNpcs, gangRecruits });
   const mapPlaces = createMapPlaceRecords(mapObjects, landmarks);
+  // LEGAL: You use the garage at its office door, not in the bay where your car is parked.
+  (function(){
+    const garage = serviceBuildings.find(s => s.id === 'playerGarage');
+    const record = mapPlaces.find(place => place.id === 'playerGarage');
+    if(!garage || !record) return;
+    const shape = serviceBuildingSilhouette(garage);
+    const door = garageOfficeDoor({ x:garage.x, y:garage.y }, shape.w, shape.d);
+    record.x = door.x; record.y = door.y;
+  })();
   const roamingActors = createRoamingActors(mapObjects);
   // LEGAL: District landmarks — unique, recognisable "spots" so each area reads as a
   // LEGAL: place rather than interchangeable blocks. Coords are world-space, sited on
@@ -4399,6 +4414,12 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: Trees, barns and silos used to be walk-through. Trunks are small boxes; countryside
     // LEGAL: buildings take most of their drawn footprint.
     streetTreeSpots.forEach(spot => list.push({ x:spot.x, y:spot.y, hw:4, hd:4 }));
+    const garage = serviceBuildings.find(s => s.id === 'playerGarage');
+    if(garage){
+      const shape = serviceBuildingSilhouette(garage);
+      const office = garageOfficeCenter({ x:garage.x, y:garage.y }, shape.w, shape.d);
+      list.push({ x:office.x, y:office.y, hw:GARAGE_OFFICE.w / 2, hd:GARAGE_OFFICE.d / 2 });
+    }
     createOutskirtSceneryLayout().forEach(function(item){
       const half = item.kind === 'tree' ? 4 : radiusForKind(item.kind) * 0.72;
       list.push({ x:item.x, y:item.y, hw:half, hd:half });
@@ -4637,6 +4658,8 @@ import type * as ThreeNamespace from 'three';
     }
     state.inVehicle = true;
     flyingUntil = 0; // LEGAL: the rocketman jetpack doesn't come with you into a car.
+    const bayNow = garageBayRect();
+    carWasInBay = !!bayNow && isCarInBay({ x: player.x, y: player.y }, bayNow);
     state.carParkedAt = null; // LEGAL: you are driving it; the garage clock stops.
     player.vx=0; player.vy=0;
     // LEGAL: A car is much wider than a pedestrian (radius 8 -> 24), so the spot you walked
@@ -4883,8 +4906,9 @@ import type * as ThreeNamespace from 'three';
     if(car){
       const parked = parkedCarPositionForDistrict(state.parkedCarPos, state.currentDistrict);
       const d = Math.hypot(player.x-parked.x, player.y-parked.y);
-      // LEGAL: The car takes a contested press only when it is CLEARLY the nearer thing.
-      if(d < bestDist - 14) best = { type:'car', ref:parked };
+      // LEGAL: The car takes a contested press only when it is CLEARLY the nearer thing. With no
+      // LEGAL: door in reach there is no contest, and the margin used to leave the car unreachable.
+      if(d < (best ? bestDist - 14 : REACH)) best = { type:'car', ref:parked };
     }
     return best;
   }
