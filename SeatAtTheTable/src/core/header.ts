@@ -90,6 +90,7 @@ import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, b
 import { createMapSceneMaterials, createSceneBuildTimer } from '../map/scenePerformance';
 import { buildIntersectionFurniture as buildMapIntersectionFurniture, nearestLamps, showSignal, streetLampBulbs, type LampHead, type SignalHeads } from '../map/streetFurniture';
 import { signalState } from '../map/trafficRules';
+import { plowOut, snowSurfaceFor, snowWhiteness, stepPlowed, stepSnowCover } from '../map/snow';
 import { DISTRICT_OFFSETS, OUTSKIRT_PLACE_LOTS, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
 import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/viewport';
@@ -5456,9 +5457,26 @@ import type * as ThreeNamespace from 'three';
     const model = buildingModelFor(archetype);
     return model && buildingLibrary ? buildingLibrary.create(model, color, w, h, d) : null;
   }
+  // LEGAL: The plow's blade across the front and an amber beacon on the roof.
+  function addPlowBlade(model: ThreeNamespace.Group): void {
+    // LEGAL: Measured in the model's own space: the catalog sizes a model by scaling its root.
+    model.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(model).applyMatrix4(model.matrixWorld.clone().invert());
+    const width = box.max.x - box.min.x;
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(width * 1.35, 9, 3), new THREE.MeshStandardMaterial({ color:'#d4691a', roughness:0.6, metalness:0.3 }));
+    blade.position.set(0, 5, box.max.z + 4);
+    blade.rotation.x = -0.25;
+    const beacon = new THREE.Mesh(new THREE.SphereGeometry(2.4, 8, 6), new THREE.MeshStandardMaterial({ color:'#ffb000', emissive:'#ff9a00', emissiveIntensity:1.4 }));
+    beacon.position.set(0, box.max.y + 2, (box.min.z + box.max.z) / 2);
+    model.add(blade, beacon);
+  }
   function buildTrafficCarModel(id: string, color: string): ThreeNamespace.Group {
     const size = trafficFootprint(id);
-    if(vehicleLibrary) return vehicleLibrary.create(vehicleClassForTraffic(id), color, size.length, size.width);
+    if(vehicleLibrary){
+      const model = vehicleLibrary.create(vehicleClassForTraffic(id), color, size.length, size.width);
+      if(id.startsWith('snowplow')) addPlowBlade(model);
+      return model;
+    }
     return buildCarModel({ id, name:id, icon:'', cost:0, speedMult:1, heistBonus:0, respectPerSec:0, color, len:id.includes('cab')?30:34, wid:id.includes('cruiser')?17:15 });
   }
   function buildAmenityModel(amenity: typeof mapAmenities[number]): ThreeNamespace.Group {
@@ -5701,6 +5719,7 @@ import type * as ThreeNamespace from 'three';
       showSignal(heads, 'ew', signalState('ew', heads.junction, state.playSeconds));
     });
   }  // LEGAL: Set by the weather cheats; the normal cycle takes back over after it expires.
+  let sceneMaterials: ReturnType<typeof createMapSceneMaterials> | null = null;
   let weatherOverride: { kind: 'clear' | 'rain' | 'snow'; until: number } | null = null;
   function weatherKindAtTime(): 'clear' | 'rain' | 'snow' {
     if(weatherOverride && state.playSeconds < weatherOverride.until) return weatherOverride.kind;
@@ -5727,7 +5746,29 @@ import type * as ThreeNamespace from 'three';
     weatherPoints = new THREE.Points(geometry, material);
     scene.add(weatherPoints);
   }
+  // LEGAL: ---- Settling snow (map/snow) ----
+  let snowCover = 0, snowPlowed = 0, snowShown = -1;
+  let snowSurfaces: Array<{ material: ThreeNamespace.MeshStandardMaterial; base: ThreeNamespace.Color; surface: 'ground' | 'tree' | 'road' }> = [];
+  const SNOW_WHITE = '#f4f6fa';
+  function updateSnow(dt: number): void {
+    snowCover = stepSnowCover(snowCover, weatherKindAtTime() === 'snow', dt);
+    snowPlowed = stepPlowed(snowPlowed, snowCover, dt);
+    const plow = roamingActors.find(actor => actor.id.startsWith('snowplow'));
+    if(plow) plow.dormant = !plowOut(snowCover, snowPlowed);
+    if(Math.abs(snowCover - snowShown) < 0.01 && !(snowCover === 0 && snowShown > 0)) return;
+    if(!snowSurfaces.length && sceneMaterials){
+      snowSurfaces = sceneMaterials.entries().flatMap(function([key, material]){
+        const surface = snowSurfaceFor(key);
+        return surface ? [{ material, base:material.color.clone(), surface }] : [];
+      });
+    }
+    snowShown = snowCover;
+    snowSurfaces.forEach(function(entry){
+      entry.material.color.copy(entry.base).lerp(new THREE.Color(SNOW_WHITE), snowWhiteness(entry.surface, snowCover, snowPlowed));
+    });
+  }
   function updateWeather(dt: number){
+    updateSnow(dt);
     const kind = weatherKindAtTime();
     if(kind !== activeWeather) rebuildWeather(kind);
     if(!weatherPoints) return;
@@ -5770,6 +5811,8 @@ import type * as ThreeNamespace from 'three';
 
     const timer = createSceneBuildTimer();
     const materials = createMapSceneMaterials(THREE);
+    sceneMaterials = materials;
+    snowSurfaces = []; snowShown = -1;
     const baseScene = { THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, materials, newWorld:newMapBeta() };
     timer.measure('terrain', function(): void {
       tagWorld('terrain:ground', function(){ buildBaseGround(baseScene); });
@@ -6205,6 +6248,7 @@ import type * as ThreeNamespace from 'three';
         hotspots: function(){ return hotspotsFor(state.currentInterior); },
         interiorRoom: function(){ return interiorView?.root ?? null; },
         roadNetwork, districtOffsets: DISTRICT_OFFSETS,
+        snow: function(){ return { cover:snowCover, plowed:snowPlowed }; },
         roamingActors,
         // LEGAL: The world's own walkability rule, so the audit asks the game where an actor
         // LEGAL: may stand instead of re-deriving collision and grading its own homework.
@@ -6710,7 +6754,7 @@ import type * as ThreeNamespace from 'three';
   function updateMovingObstacles(dt: number): void {
     movingObstacles = [];
     roamingActors.forEach(function(actor){
-      if(actor.kind !== 'car') return;
+      if(actor.kind !== 'car' || actor.dormant) return;
       const last = lastTrafficPosition.get(actor.id) ?? { x:actor.x, y:actor.y };
       const velocity = dt > 0 ? { x:(actor.x - last.x) / dt, y:(actor.y - last.y) / dt } : { x:0, y:0 };
       lastTrafficPosition.set(actor.id, { x:actor.x, y:actor.y });

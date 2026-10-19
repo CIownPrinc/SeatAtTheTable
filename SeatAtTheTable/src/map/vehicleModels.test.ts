@@ -1,10 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { cars } from '../config/assets';
 import { brandById } from '../config/brands';
 import { trafficRoutes } from './traffic';
 import { VEHICLE_CLASSES, fitScale, vehicleClassForCar, vehicleClassForTraffic } from './vehicleModels';
 
 describe('vehicle classes', function () {
+  // LEGAL: The routes are built once, on first use; doing it here keeps that cost out of a test's time limit.
+  beforeAll(function () { trafficRoutes(); }, 30_000);
+
   it('gives every car on sale a model, except the bikes', function () {
     cars.filter(car => brandById(car.brand)?.category !== 'bike').forEach(function(car){
       expect(VEHICLE_CLASSES, car.id).toContain(vehicleClassForCar(car.id));

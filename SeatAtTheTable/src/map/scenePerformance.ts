@@ -42,7 +42,11 @@ export class MapSceneMaterialCache {
     return material;
   }
 
-
+  // LEGAL: Every lit material by its key, so a world-wide change (settling snow) can find the
+  // LEGAL: ground, trees and roads without each builder having to register them.
+  entries(): Array<[string, ThreeNamespace.MeshStandardMaterial]> {
+    return [...this.standardMaterials.entries()];
+  }
 
   dispose(): void {
     this.standardMaterials.forEach(material => material.dispose());

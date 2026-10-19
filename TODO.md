@@ -328,7 +328,10 @@ old one.
 37. A central park, with more greenery generally.
 38. A suburbs area.
 39. Construction sites.
-40. Snow that collects on the ground and turns it white, and a plow that comes through.
+40. **DONE** Snow that collects on the ground and turns it white, and a plow that comes through.
+    While it snows the grass, roofs, trees and roads whiten over about 25 seconds and melt after
+    (`map/snow.ts`). Once it has settled, a yellow plow truck with a blade and a beacon joins the
+    traffic and the roads clear behind it; it goes back to the depot when the snow is gone.
 
 ## 11. New map engine (decided 2026-10-18)
 

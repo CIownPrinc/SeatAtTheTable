@@ -30,6 +30,8 @@ export interface RoamingActor {
   routeIndex: number;
   // LEGAL: Share of its speed a car is using (0 stopped, 1 cruising), eased so it brakes and pulls away.
   pace?: number;
+  // LEGAL: Off duty: not drawn, not moving, and not in anyone's way (the snow plow between snowfalls).
+  dormant?: boolean;
 }
 
 export interface RoamingUpdateOptions {
@@ -101,6 +103,7 @@ export function createRoamingActors(mapObjects: MapObject[]): RoamingActor[] {
       group: null,
       route: route.route,
       routeIndex: 1,
+      dormant: route.id.startsWith('snowplow'),
     });
   });
   return actors;
@@ -202,7 +205,7 @@ function moveActorToward(actor: RoamingActor, options: RoamingUpdateOptions): vo
 
 // LEGAL: Red lights and the car in front set how fast each car may go this frame.
 function updateCarPace(actors: RoamingActor[], options: RoamingUpdateOptions): void {
-  const cars = actors.filter(actor => actor.kind === 'car');
+  const cars = actors.filter(actor => actor.kind === 'car' && !actor.dormant);
   cars.forEach(function(car){
     const target = Math.min(signalPace(car, CITY_JUNCTIONS, options.playSeconds), followingPace(car, cars));
     const current = car.pace ?? 1;
@@ -217,6 +220,8 @@ export function updateRoamingActors(actors: RoamingActor[], options: RoamingUpda
   if(options.indoors) return;
   updateCarPace(actors, options);
   actors.forEach(function(actor){
+    if(actor.group) actor.group.visible = !actor.dormant;
+    if(actor.dormant) return;
     moveActorToward(actor, options);
     if(actor.group){
       actor.group.position.set(actor.x, 0, actor.y);

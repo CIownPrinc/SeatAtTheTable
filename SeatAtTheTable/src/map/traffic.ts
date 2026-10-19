@@ -101,6 +101,8 @@ export function trafficRoutes(): TrafficRoute[] {
   route('kettle-tractor', '#5d753e', 34, pick(COUNTRY_STOPS, 3, random), 44),
   route('harrow-tractor', '#b37a32', 32, pick(COUNTRY_STOPS, 3, random), 44),
   route('ring-freight', '#59616c', 60, pick(COUNTRY_STOPS, 4, random), 44),
+  // LEGAL: The snow plow, a municipal truck that only comes out once snow has settled (map/snow).
+  route('snowplow-truck', '#e8a317', 56, pick(CITY_JUNCTIONS, 5, random), 74),
   ];
   return cached;
 }
