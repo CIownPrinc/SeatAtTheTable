@@ -223,7 +223,8 @@ export interface GangRecruit {
 export interface Stock {
   symbol: string;
   name: string;
-  logo: string;
+  // LEGAL: Omitted for companies with no artwork yet; the market shows a lettermark instead.
+  logo?: string;
   desc: string;
   founded: number;
   fullDesc: string;

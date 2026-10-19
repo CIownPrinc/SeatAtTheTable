@@ -2616,13 +2616,15 @@ import type * as ThreeNamespace from 'three';
 
   }
 
-  // LEGAL: Company badge for the market UI. Shows the designed logo from /public;
-  // LEGAL: falls back to a two-letter lettermark if the image is missing (FWT/HLG have
-  // LEGAL: no artwork yet), so the row never renders a broken image.
+  // LEGAL: Company badge for the market UI. Shows the designed logo from /public, or a
+  // LEGAL: two-letter lettermark for companies without artwork (or if the image fails to load).
   function stockBadgeHtml(s: typeof stockMarket[number], size: number){
     const letters = s.symbol.substring(0, 2);
+    const inner = s.logo
+      ? `<img src="/${s.logo}" alt="${s.name}" width="${size}" height="${size}" style="width:100%;height:100%;object-fit:cover;display:block;" data-fallback-text="${letters}">`
+      : `<span role="img" aria-label="${s.name}">${letters}</span>`;
     return `<div style="width:${size}px;height:${size}px;border-radius:8px;overflow:hidden;background:var(--bg-row);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--gold);font-family:var(--font-mono);font-weight:700;font-size:${Math.round(size*0.34)}px;flex-shrink:0;">`
-      + `<img src="/${s.logo}" alt="${s.name}" style="width:100%;height:100%;object-fit:cover;display:block;" data-fallback-text="${letters}"></div>`;
+      + `${inner}</div>`;
   }
 
   function renderBankPanel(){
@@ -2713,7 +2715,7 @@ import type * as ThreeNamespace from 'three';
           <button class="mini-btn fire" id="go-vault">DISCONNECT</button>
         </div>
         
-        <div class="data-table" style="grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));">
+        <div class="data-table" style="grid-template-columns: repeat(auto-fit, minmax(min(340px,100%),1fr));">
           <div class="data-row">
             <div class="data-main">
               <div class="col-id">${ICONS.store}</div>
@@ -2791,7 +2793,7 @@ import type * as ThreeNamespace from 'three';
         <div style="margin:20px 0;">
           <canvas id="stock-chart" width="400" height="150" style="width:100%; max-width:100%; height:150px; background:#07090c; border:1px solid var(--line); box-sizing:border-box; image-rendering:pixelated; border-radius:6px;"></canvas>
         </div>
-        <div class="data-table" style="grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));">
+        <div class="data-table" style="grid-template-columns: repeat(auto-fit, minmax(min(340px,100%),1fr));">
           <!-- Card 1: Position Summary -->
           <div class="data-row">
             <div class="data-main">

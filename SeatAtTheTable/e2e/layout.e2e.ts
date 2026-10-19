@@ -13,6 +13,26 @@ test.describe('phone-width layout', () => {
     }
     await expect(page.locator('#phone-btn')).toBeInViewport();
   });
+
+  test('every phone app fits inside the handset screen', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    await page.locator('#phone-btn').click();
+    for (const app of ['bank', 'stocks', 'missions', 'automart', 'realty', 'contacts']) {
+      await page.locator(`.device-app[data-app="${app}"]`).click();
+      // LEGAL: The handset clips its content, so page-level scroll width can't see this overflow.
+      const overflowing = await page.evaluate(function(){
+        const screen = document.querySelector('.device-screen:not(.hidden):not([hidden])') as HTMLElement;
+        const right = screen.getBoundingClientRect().right;
+        return Array.from(screen.querySelectorAll('*')).filter(function(el){
+          const box = el.getBoundingClientRect();
+          return box.width > 0 && box.right > right + 1;
+        }).length;
+      });
+      expect(overflowing, `${app} app`).toBe(0);
+      await page.locator('#device-home-btn').click();
+    }
+  });
 });
 
 test('the tab bar stays visible after scrolling a long tab', async ({ page }) => {
