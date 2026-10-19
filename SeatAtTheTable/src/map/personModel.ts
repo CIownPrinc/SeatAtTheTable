@@ -289,3 +289,53 @@ export function animatePerson(rig: PersonRig, phase: number, speed: number, dt: 
   rig.upper.rotation.x += (lean - rig.upper.rotation.x) * ease;
   return nextPhase % (Math.PI * 2);
 }
+
+// LEGAL: ---- Baking a person into a few draw calls ----
+// LEGAL: A person is about 24 meshes, one per part and colour, so a street of walkers cost
+// LEGAL: hundreds of draw calls. Each rigid part (body, head, each arm, each leg) is merged into one
+// LEGAL: mesh around its own pivot, with the colours moved into vertex colours, so the person still
+// LEGAL: animates exactly as before in six meshes or fewer. `merge` is three's mergeGeometries,
+// LEGAL: passed in so this module doesn't pull three.js into the first-load bundle.
+export type MergeGeometries = (geometries: ThreeNamespace.BufferGeometry[]) => ThreeNamespace.BufferGeometry | null;
+
+let bakedMaterial: ThreeNamespace.MeshStandardMaterial | null = null;
+
+export function bakePerson(THREE: typeof ThreeNamespace, root: ThreeNamespace.Object3D, merge: MergeGeometries): void {
+  if(!bakedMaterial) bakedMaterial = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.75, metalness:0.05 });
+  const upper = root.children[0];
+  const pivots = new Set<ThreeNamespace.Object3D>([root, upper, ...root.children.slice(1), ...upper.children.filter(c => !(c as ThreeNamespace.Mesh).isMesh && (c.name === 'head-pivot' || c.children.some(k => k.name === 'hand')))]);
+  root.updateMatrixWorld(true);
+  const owner = (node: ThreeNamespace.Object3D): ThreeNamespace.Object3D => {
+    let at = node.parent!;
+    while(!pivots.has(at)) at = at.parent!;
+    return at;
+  };
+  const byPivot = new Map<ThreeNamespace.Object3D, ThreeNamespace.Mesh[]>();
+  root.traverse(function(node){
+    const mesh = node as ThreeNamespace.Mesh;
+    if(!mesh.isMesh) return;
+    const pivot = owner(mesh);
+    byPivot.set(pivot, [...(byPivot.get(pivot) ?? []), mesh]);
+  });
+  byPivot.forEach(function(meshes, pivot){
+    const inverse = pivot.matrixWorld.clone().invert();
+    const pieces = meshes.map(function(mesh){
+      const geometry = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry.clone();
+      geometry.applyMatrix4(inverse.clone().multiply(mesh.matrixWorld));
+      geometry.deleteAttribute('uv');
+      const color = (mesh.material as ThreeNamespace.MeshStandardMaterial).color;
+      const count = geometry.getAttribute('position').count;
+      const colors = new Float32Array(count * 3);
+      for(let i = 0; i < count; i++){ colors[i * 3] = color.r; colors[i * 3 + 1] = color.g; colors[i * 3 + 2] = color.b; }
+      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      return geometry;
+    });
+    const merged = merge(pieces);
+    if(!merged) return;
+    meshes.forEach(mesh => mesh.parent?.remove(mesh));
+    const baked = new THREE.Mesh(merged, bakedMaterial!);
+    baked.name = 'baked';
+    baked.castShadow = true;
+    pivot.add(baked);
+  });
+}

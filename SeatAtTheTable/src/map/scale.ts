@@ -16,3 +16,9 @@ export const BUILDING_HEIGHT_SCALE = 1.9;
 export function storeys(authoredHeight: number): number {
   return authoredHeight * BUILDING_HEIGHT_SCALE;
 }
+
+// LEGAL: Street lamps, traffic lights and signs were sized against the old oversized people: a
+// LEGAL: lamp was 3 m tall. Scaled up to real height (about 6-8 m for a lamp).
+export const STREET_FURNITURE_SCALE = 1.8;
+// LEGAL: Street trees likewise: from shrub-height to a young city tree, about 5-6 m.
+export const TREE_SCALE = 1.6;

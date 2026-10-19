@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { laneOffsetPath, roundCorners, trafficRoutes } from './traffic';
+import { laneOffsetPath, roundCorners, trafficRoutes, walkerRoutes } from './traffic';
 import { roadLandSegments } from './mapModel';
 import { isPointInWater } from './geometry';
 
@@ -31,8 +31,10 @@ describe('roundCorners', function () {
 
 describe('trafficRoutes', function () {
   const TRAFFIC_ROUTES = trafficRoutes();
-  it('includes police patrols', function () {
-    expect(TRAFFIC_ROUTES.filter(route => route.id.includes('cruiser')).length).toBeGreaterThanOrEqual(3);
+  it('patrols with police, but mostly carries ordinary traffic', function () {
+    const police = TRAFFIC_ROUTES.filter(route => route.id.includes('cruiser')).length;
+    expect(police).toBeGreaterThanOrEqual(1);
+    expect(TRAFFIC_ROUTES.length - police).toBeGreaterThan(police * 5);
   });
 
   it('keeps every car on a road and out of the water', function () {
@@ -46,5 +48,25 @@ describe('trafficRoutes', function () {
 
   it('gives every route somewhere to go', function () {
     TRAFFIC_ROUTES.forEach(route => expect(route.route.length, route.id).toBeGreaterThan(4));
+  });
+});
+
+describe('walkerRoutes', function () {
+  const walkers = walkerRoutes(36);
+
+  it('fills the streets with a crowd of unnamed walkers', function () {
+    expect(walkers.length).toBe(36);
+    expect(new Set(walkers.map(w => w.id)).size).toBe(36);
+  });
+
+  it('keeps every walker on a pavement, beside the road but not in it', function () {
+    walkers.forEach(function(walker){
+      walker.route.forEach(function(p){
+        const nearest = Math.min(...roadLandSegments().filter(s => s.road.roadClass !== 'country').map(s => Math.min(...s.path.slice(0, -1).map((a, i) => distanceToSegment(p, a, s.path[i + 1])))));
+        expect(nearest, `${walker.id} at ${Math.round(p.x)},${Math.round(p.y)}`).toBeGreaterThan(36);
+        expect(nearest, `${walker.id} at ${Math.round(p.x)},${Math.round(p.y)}`).toBeLessThan(50);
+        expect(isPointInWater(p, 8)).toBe(false);
+      });
+    });
   });
 });

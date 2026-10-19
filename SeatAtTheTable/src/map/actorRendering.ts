@@ -33,6 +33,7 @@ export function renderRoamingActors(options: MapActorRenderOptions): void {
     pedestrian.rotation.y = -actor.facing + Math.PI / 2;
     worldGroup.add(pedestrian);
     actor.group = pedestrian;
-    helpers.addSign(pedestrian, actorDisplayName(actor), 28, 7, PERSON_HEIGHT + 6, '#f0efe8');
+    // LEGAL: Only people who matter get a name over their head; the background crowd doesn't.
+    if(actor.object) helpers.addSign(pedestrian, actorDisplayName(actor), 28, 7, PERSON_HEIGHT + 6, '#f0efe8');
   });
 }

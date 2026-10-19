@@ -1,3 +1,4 @@
+import { STREET_FURNITURE_SCALE } from './scale';
 import type * as ThreeNamespace from 'three';
 
 export interface LampHead { x: number; y: number; z: number }
@@ -46,8 +47,9 @@ export function buildStreetLight(options: StreetFurnitureOptions, x: number, z: 
   const angle = Math.atan2(toward.z - z, toward.x - x);
   group.rotation.y = -angle;
   group.position.set(x,0,z);
+  group.scale.setScalar(STREET_FURNITURE_SCALE);
   worldGroup.add(group);
-  streetLamps.push({ x: x + Math.cos(angle) * 13, y: 32, z: z + Math.sin(angle) * 13 });
+  streetLamps.push({ x: x + Math.cos(angle) * 13 * STREET_FURNITURE_SCALE, y: 32 * STREET_FURNITURE_SCALE, z: z + Math.sin(angle) * 13 * STREET_FURNITURE_SCALE });
 }
 
 export function buildStopSign(options: StreetFurnitureOptions, x: number, z: number, rot: number): void {
@@ -83,7 +85,7 @@ export function buildStopSign(options: StreetFurnitureOptions, x: number, z: num
   const tex = new THREE.CanvasTexture(face);
   const label = new THREE.Mesh(new THREE.PlaneGeometry(9.2,9.2), new THREE.MeshBasicMaterial({map:tex, transparent:true, depthWrite:false}));
   label.position.set(0,20,0.34); group.add(label);
-  group.position.set(x,0,z); group.rotation.y=rot; worldGroup.add(group);
+  group.position.set(x,0,z); group.rotation.y=rot; group.scale.setScalar(STREET_FURNITURE_SCALE); worldGroup.add(group);
 }
 
 export function buildTrafficLight(options: StreetFurnitureOptions, x: number, z: number, rot: number): void {
@@ -97,7 +99,7 @@ export function buildTrafficLight(options: StreetFurnitureOptions, x: number, z:
     const lamp = new THREE.Mesh(new THREE.SphereGeometry(2.1,10,8), new THREE.MeshStandardMaterial({color, emissive:color, emissiveIntensity:i===0?0.9:0.25}));
     lamp.position.set(22,29-i*5,2.7); group.add(lamp);
   });
-  group.position.set(x,0,z); group.rotation.y=rot; worldGroup.add(group);
+  group.position.set(x,0,z); group.rotation.y=rot; group.scale.setScalar(STREET_FURNITURE_SCALE); worldGroup.add(group);
 }
 
 export function buildIntersectionFurniture(options: StreetFurnitureOptions, x: number, z: number, index: number): void {

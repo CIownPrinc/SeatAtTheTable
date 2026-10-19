@@ -36,7 +36,7 @@ import { waterClock } from '../map/waterShader';
 import { auditScene, flagIssues } from '../map/sceneAudit';
 import { CHEAT_VEHICLES, buildJetpack, isFlyingVehicle } from '../map/cheatVehicles';
 import { circleHitsObstacle, isRunOverBy, vehicleObstacle, type Obstacle } from '../map/obstacles';
-import { loadVehicleLibrary, vehicleClassForCar, vehicleClassForTraffic, type VehicleLibrary } from '../map/vehicleModels';
+import { loadVehicleLibrary, trafficFootprint, vehicleClassForCar, vehicleClassForTraffic, type VehicleLibrary } from '../map/vehicleModels';
 import { buildingModelFor, loadBuildingLibrary, type BuildingLibrary } from '../map/buildingModels';
 import type { PlaceArchetype } from '../map/archetypes';
 import { buildAmenityModel as buildMapAmenityModel } from '../map/amenityRendering';
@@ -4307,7 +4307,7 @@ import type * as ThreeNamespace from 'three';
         THREE = await import('three');
         mergeSceneryGeometries = (await import('three/examples/jsm/utils/BufferGeometryUtils.js')).mergeGeometries;
         [mapAssets, vehicleLibrary, buildingLibrary] = await Promise.all([loadMapAssetLibrary(THREE), loadVehicleLibrary(THREE), loadBuildingLibrary(THREE)]);
-        characterLibrary = createCharacterLibrary(THREE, function(){ return state.appearance; });
+        characterLibrary = createCharacterLibrary(THREE, function(){ return state.appearance; }, mergeSceneryGeometries ?? undefined);
         if(!sceneInitialized){
           initScene();
           sceneInitialized = true;
@@ -4413,7 +4413,7 @@ import type * as ThreeNamespace from 'three';
     });
     // LEGAL: Trees, barns and silos used to be walk-through. Trunks are small boxes; countryside
     // LEGAL: buildings take most of their drawn footprint.
-    streetTreeSpots.forEach(spot => list.push({ x:spot.x, y:spot.y, hw:4, hd:4 }));
+    streetTreeSpots.forEach(spot => list.push({ x:spot.x, y:spot.y, hw:5, hd:5 }));
     const garage = serviceBuildings.find(s => s.id === 'playerGarage');
     if(garage){
       const shape = serviceBuildingSilhouette(garage);
@@ -5358,7 +5358,8 @@ import type * as ThreeNamespace from 'three';
     return model && buildingLibrary ? buildingLibrary.create(model, color, w, h, d) : null;
   }
   function buildTrafficCarModel(id: string, color: string): ThreeNamespace.Group {
-    if(vehicleLibrary) return vehicleLibrary.create(vehicleClassForTraffic(id), color, id.includes('cab')?30:34, id.includes('cruiser')?17:15);
+    const size = trafficFootprint(id);
+    if(vehicleLibrary) return vehicleLibrary.create(vehicleClassForTraffic(id), color, size.length, size.width);
     return buildCarModel({ id, name:id, icon:'', cost:0, speedMult:1, heistBonus:0, respectPerSec:0, color, len:id.includes('cab')?30:34, wid:id.includes('cruiser')?17:15 });
   }
   function buildAmenityModel(amenity: typeof mapAmenities[number]): ThreeNamespace.Group {
@@ -6569,7 +6570,8 @@ import type * as ThreeNamespace from 'three';
       const velocity = dt > 0 ? { x:(actor.x - last.x) / dt, y:(actor.y - last.y) / dt } : { x:0, y:0 };
       lastTrafficPosition.set(actor.id, { x:actor.x, y:actor.y });
       // LEGAL: The same footprint the traffic model is drawn at (see buildTrafficCarModel).
-      const length = (actor.id.includes('cab') ? 30 : 34) * 1.6, width = (actor.id.includes('cruiser') ? 17 : 15) * 1.6;
+      const size = trafficFootprint(actor.id);
+      const length = size.length * 1.6, width = size.width * 1.6;
       movingObstacles.push({ obstacle:vehicleObstacle(actor.x, actor.y, actor.facing, length, width), velocity });
     });
     const train = activeTrainSnapshot(Date.now(), windhavenMapModel.railLines[0]);

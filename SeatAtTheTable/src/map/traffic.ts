@@ -1,6 +1,7 @@
 import type { Point } from '../config/types';
 import { COUNTRY_ROADS } from './countryRoads';
 import { routeHintBetween } from './queries';
+import { windhavenMapModel } from './mapModel';
 import { roadNetwork } from './world';
 
 // LEGAL: Traffic routes, built on the same road graph the GPS uses. They used to be hand-drawn
@@ -83,16 +84,72 @@ export function trafficRoutes(): TrafficRoute[] {
   // LEGAL: The id decides the model (map/vehicleModels vehicleClassForTraffic): cruiser, cab, van,
   // LEGAL: tractor, freight; anything else is a sedan.
   cached = [
+  // LEGAL: One patrol, not three: three cruisers to four civilian cars made the city a police state.
   route('patrol-cruiser-1', '#1c1f26', 82, pick(CITY_JUNCTIONS, 4, random), 74),
-  route('patrol-cruiser-2', '#1c1f26', 82, pick(CITY_JUNCTIONS, 4, random), 74),
-  route('patrol-cruiser-3', '#1c1f26', 82, pick(CITY_JUNCTIONS, 4, random), 74),
-  route('city-cab', '#d4a017', 86, pick(CITY_JUNCTIONS, 5, random), 74),
+  route('city-cab-1', '#d4a017', 86, pick(CITY_JUNCTIONS, 5, random), 74),
+  route('city-cab-2', '#d4a017', 84, pick(CITY_JUNCTIONS, 4, random), 74),
   route('city-sedan-1', '#704040', 76, pick(CITY_JUNCTIONS, 4, random), 74),
   route('city-sedan-2', '#3e6b8a', 78, pick(CITY_JUNCTIONS, 4, random), 74),
+  route('city-sedan-3', '#6b6f78', 74, pick(CITY_JUNCTIONS, 4, random), 74),
+  route('city-beater', '#8a7a5a', 66, pick(CITY_JUNCTIONS, 4, random), 74),
+  route('city-suv', '#20242c', 80, pick(CITY_JUNCTIONS, 4, random), 74),
+  route('city-pickup', '#3d4a35', 74, pick(CITY_JUNCTIONS, 4, random), 74),
+  route('city-ev', '#d8dce2', 80, pick(CITY_JUNCTIONS, 4, random), 74),
   route('delivery-van', '#e8e2d2', 70, pick(CITY_JUNCTIONS, 4, random), 74),
+  route('city-truck', '#59616c', 60, pick(CITY_JUNCTIONS, 4, random), 74),
   route('kettle-tractor', '#5d753e', 34, pick(COUNTRY_STOPS, 3, random), 44),
   route('harrow-tractor', '#b37a32', 32, pick(COUNTRY_STOPS, 3, random), 44),
   route('ring-freight', '#59616c', 60, pick(COUNTRY_STOPS, 4, random), 44),
   ];
   return cached;
+}
+
+// LEGAL: ---- Walkers ----
+// LEGAL: Unnamed people going about their day, so the streets aren't empty between the handful of
+// LEGAL: story characters. Each walks a loop round one city block on the pavement (42 units off
+// LEGAL: the road's centre line, inside the 37-48 pavement band), so they never cross traffic.
+const PAVEMENT = 42;
+
+export interface WalkerRoute { id: string; speed: number; route: Point[] }
+
+// LEGAL: The diagonal streets cut through the middle of some blocks; a walk round one of those
+// LEGAL: would cross the diagonal's carriageway.
+function crossedByDiagonal(block: { x0: number; x1: number; y0: number; y1: number }): boolean {
+  return windhavenMapModel.roadPaths.filter(road => road.roadClass === 'diagonal').some(function(road){
+    return road.path.slice(0, -1).some(function(a, i){
+      const b = road.path[i + 1];
+      for(let t = 0; t <= 1; t += 0.05){
+        const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t;
+        if(x > block.x0 + 20 && x < block.x1 - 20 && y > block.y0 + 20 && y < block.y1 - 20) return true;
+      }
+      return false;
+    });
+  });
+}
+
+export function walkerRoutes(count: number): WalkerRoute[] {
+  const random = seeded(9091);
+  const xs = roadNetwork.vertical.map(v => v.x).sort((a, b) => a - b);
+  const ys = roadNetwork.horizontal.map(h => h.y).sort((a, b) => a - b);
+  // LEGAL: Only blocks inside one district: a pair of streets either side of a canal would send
+  // LEGAL: walkers along the bridge edge and over the water.
+  const blocks: Array<{ x0: number; x1: number; y0: number; y1: number }> = [];
+  for(let i = 0; i < xs.length - 1; i++){
+    if(xs[i + 1] - xs[i] > 800) continue;
+    for(let j = 0; j < ys.length - 1; j++){
+      const block = { x0:xs[i], x1:xs[i + 1], y0:ys[j], y1:ys[j + 1] };
+      if(!crossedByDiagonal(block)) blocks.push(block);
+    }
+  }
+  return Array.from({ length:count }, function(_unused, n){
+    const b = blocks[Math.floor(random() * blocks.length)];
+    const corners = [
+      { x:b.x0 + PAVEMENT, y:b.y0 + PAVEMENT }, { x:b.x1 - PAVEMENT, y:b.y0 + PAVEMENT },
+      { x:b.x1 - PAVEMENT, y:b.y1 - PAVEMENT }, { x:b.x0 + PAVEMENT, y:b.y1 - PAVEMENT },
+    ];
+    // LEGAL: Half go clockwise, and each starts at a different corner, so they pass each other.
+    const loop = random() > 0.5 ? corners : [...corners].reverse();
+    const start = Math.floor(random() * 4);
+    return { id:`walker-${n}`, speed:22 + random() * 14, route:[...loop.slice(start), ...loop.slice(0, start)] };
+  });
 }

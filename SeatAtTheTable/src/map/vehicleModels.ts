@@ -19,11 +19,27 @@ export function vehicleClassForCar(id: string): VehicleClass | null {
 // LEGAL: Traffic is keyed by its route id: cruisers are police, cabs are taxis, and so on.
 export function vehicleClassForTraffic(id: string): VehicleClass {
   if(id.includes('cruiser')) return 'police';
+  const named = VEHICLE_CLASSES.find(cls => id.split('-').includes(cls));
+  if(named) return named;
   if(id.includes('cab')) return 'taxi';
   if(id.includes('tractor')) return 'tractor';
   if(id.includes('freight') || id.includes('truck')) return 'truck';
   if(id.includes('van')) return 'van';
   return 'sedan';
+}
+
+// LEGAL: Footprint (catalog units, before the 1.6x city scale) for each traffic class, so a box
+// LEGAL: truck isn't squashed to a sedan's length. Drawing and collision both read this.
+const TRAFFIC_FOOTPRINT: Record<VehicleClass, { length: number; width: number }> = {
+  sedan:{ length:32, width:15 }, beater:{ length:28, width:14 }, wagon:{ length:32, width:15 }, muscle:{ length:34, width:16 },
+  suv:{ length:33, width:17 }, armored:{ length:35, width:19 }, pickup:{ length:35, width:17 }, van:{ length:34, width:17 },
+  ev:{ length:31, width:15 }, 'ev-luxury':{ length:34, width:16 }, 'ev-van':{ length:33, width:17 }, supercar:{ length:31, width:16 },
+  roadster:{ length:29, width:15 }, police:{ length:34, width:17 }, taxi:{ length:32, width:15 }, truck:{ length:50, width:18 },
+  tractor:{ length:22, width:13 }, garbage:{ length:40, width:15 }, helicopter:{ length:40, width:40 },
+};
+
+export function trafficFootprint(id: string): { length: number; width: number } {
+  return TRAFFIC_FOOTPRINT[vehicleClassForTraffic(id)];
 }
 
 // LEGAL: Length and width come from the car catalog (they drive collision too), height follows

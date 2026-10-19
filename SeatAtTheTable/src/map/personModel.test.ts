@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { animatePerson, buildPerson, createPersonParts, DEFAULT_PLAYER_LOOK, lookForStranger, normalizeLook, WARDROBE } from './personModel';
+import { animatePerson, bakePerson, buildPerson, createPersonParts, DEFAULT_PLAYER_LOOK, lookForStranger, normalizeLook, WARDROBE } from './personModel';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 function heightOf(object: THREE.Object3D): { min: number; max: number } {
   const box = new THREE.Box3().setFromObject(object);
@@ -99,5 +100,34 @@ describe('looks', function () {
     expect(WARDROBE.top).toContain(look.top);
     expect(look.hat).toBe('fedora');
     expect(look.skin).toBe(DEFAULT_PLAYER_LOOK.skin);
+  });
+});
+
+describe('bakePerson', function () {
+  const parts = createPersonParts(THREE);
+  const countMeshes = (o: THREE.Object3D) => { let n = 0; o.traverse(node => { if((node as THREE.Mesh).isMesh) n++; }); return n; };
+
+  it('draws a person in a handful of meshes instead of one per part', function () {
+    const plain = buildPerson(THREE, parts, DEFAULT_PLAYER_LOOK);
+    const baked = buildPerson(THREE, parts, DEFAULT_PLAYER_LOOK);
+    bakePerson(THREE, baked.root, mergeGeometries);
+    expect(countMeshes(plain.root)).toBeGreaterThan(18);
+    expect(countMeshes(baked.root)).toBeLessThanOrEqual(6);
+  });
+
+  it('keeps the colours, as vertex colours', function () {
+    const baked = buildPerson(THREE, parts, { ...DEFAULT_PLAYER_LOOK, topColor: '#d4a017' });
+    bakePerson(THREE, baked.root, mergeGeometries);
+    let colors = 0;
+    baked.root.traverse(node => { const mesh = node as THREE.Mesh; if(mesh.isMesh && mesh.geometry.getAttribute('color')) colors++; });
+    expect(colors).toBeGreaterThan(0);
+  });
+
+  it('still animates: the limbs keep their own pivots', function () {
+    const baked = buildPerson(THREE, parts, DEFAULT_PLAYER_LOOK);
+    bakePerson(THREE, baked.root, mergeGeometries);
+    let phase = 0;
+    for(let i = 0; i < 12; i++) phase = animatePerson(baked.rig, phase, 30, 1 / 60, 0);
+    expect(Math.abs(baked.rig.legLeft.rotation.x)).toBeGreaterThan(0.05);
   });
 });

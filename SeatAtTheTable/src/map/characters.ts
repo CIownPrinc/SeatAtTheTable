@@ -1,5 +1,5 @@
 import type * as ThreeNamespace from 'three';
-import { animatePerson, buildPerson, createPersonParts, lookForStranger, type PersonLook, type PersonRig } from './personModel';
+import { animatePerson, bakePerson, buildPerson, createPersonParts, lookForStranger, type MergeGeometries, type PersonLook, type PersonRig } from './personModel';
 import { PERSON_SCALE } from './scale';
 
 // LEGAL: Everyone on the map, and the loop that animates them. Callers only move a person's root;
@@ -71,7 +71,8 @@ export interface CharacterLibrary {
   animator: CharacterAnimator;
 }
 
-export function createCharacterLibrary(THREE: typeof ThreeNamespace, playerLook: () => PersonLook): CharacterLibrary {
+// LEGAL: With `merge`, each person is baked into a few meshes (personModel bakePerson).
+export function createCharacterLibrary(THREE: typeof ThreeNamespace, playerLook: () => PersonLook, merge?: MergeGeometries): CharacterLibrary {
   const parts = createPersonParts(THREE);
   const animator = createCharacterAnimator(THREE);
   return {
@@ -79,6 +80,7 @@ export function createCharacterLibrary(THREE: typeof ThreeNamespace, playerLook:
     create(identity, coat){
       const look = identity === 'arjun' ? playerLook() : lookForStranger(identity, coat);
       const person = buildPerson(THREE, parts, look);
+      if(merge) bakePerson(THREE, person.root, merge);
       // LEGAL: The body is drawn at PERSON_SCALE inside an unscaled wrapper, so name signs and
       // LEGAL: anything else callers attach keep their own size.
       person.root.name = 'person-body';

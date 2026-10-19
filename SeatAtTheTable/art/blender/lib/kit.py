@@ -104,11 +104,37 @@ def wheel(name, radius, width, location, tyre, hub):
     cylinder(f"{name}-hub", radius * 0.58, width * 0.3, hub_location, hub, vertices=16, bevel=0.15)
 
 
+# Parts the game finds by name and must stay separate: the rotor spins, the lenses light at night.
+KEEP_SEPARATE = ("rotor", "headlight", "lightbar-front")
+
+
+def _join_by_material():
+    """Merges every mesh sharing a material into one, so a model is a few draw calls, not dozens."""
+    groups = {}
+    for obj in list(bpy.context.scene.objects):
+        if obj.type != "MESH" or obj.name.startswith(KEEP_SEPARATE):
+            continue
+        key = obj.data.materials[0].name if obj.data.materials else ""
+        groups.setdefault(key, []).append(obj)
+    for name, objs in groups.items():
+        bpy.ops.object.select_all(action="DESELECT")
+        for obj in objs:
+            obj.select_set(True)
+        bpy.context.view_layer.objects.active = objs[0]
+        # Modifiers (the bevels) have to be applied first; joining keeps only the active one's.
+        bpy.ops.object.convert(target="MESH")
+        if len(objs) > 1:
+            bpy.ops.object.join()
+        bpy.context.active_object.name = f"part-{name or 'plain'}"
+
+
 def export(path):
-    """Writes every mesh in the scene to a .glb, with modifiers applied."""
+    """Writes every mesh in the scene to a .glb, merged by material, with modifiers applied."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    _join_by_material()
     bpy.ops.object.select_all(action="SELECT")
-    bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", export_apply=True, export_yup=True, use_selection=True)
+    # No textures on these models, so no texture coordinates: they were most of the file size.
+    bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", export_apply=True, export_yup=True, use_selection=True, export_texcoords=False)
     print(f"EXPORTED {path}")
 
 

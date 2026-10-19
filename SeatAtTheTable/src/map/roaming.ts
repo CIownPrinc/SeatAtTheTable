@@ -1,4 +1,7 @@
-import { trafficRoutes } from './traffic';
+import { trafficRoutes, walkerRoutes } from './traffic';
+
+// LEGAL: Enough that a street is rarely empty; few enough that phones keep their frame rate.
+const WALKER_COUNT = 36;
 import type { GangRecruit, Point } from '../config/types';
 import type { MapObject } from './objects';
 import type { MapNpc } from './markers';
@@ -65,6 +68,15 @@ export function createRoamingActors(mapObjects: MapObject[]): RoamingActor[] {
       object: object as MapObject<'npc'> | MapObject<'gangnpc'>,
       group: null,
       routeIndex: 0,
+    });
+  });
+  // LEGAL: The background crowd: no name, no mission, just people walking round the block.
+  walkerRoutes(WALKER_COUNT).forEach(function(walker){
+    const start = walker.route[0], next = walker.route[1];
+    actors.push({
+      id: walker.id, kind: 'pedestrian', x: start.x, y: start.y, homeX: start.x, homeY: start.y,
+      targetX: next.x, targetY: next.y, radius: 0, speed: walker.speed, color: '', facing: Math.atan2(next.y - start.y, next.x - start.x),
+      group: null, route: walker.route, routeIndex: 1,
     });
   });
   trafficRoutes().forEach(function(route){
