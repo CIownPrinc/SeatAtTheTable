@@ -4665,16 +4665,44 @@ import type * as ThreeNamespace from 'three';
   }
 
   const CHEAT_CASH = 1_000_000_000;
-  const cheats = createCheatListener(['moneymoneymoney', 'cash4ever']);
+  const CHEAT_WEATHER_SECONDS = 90;
+  // LEGAL: Seconds to add to the clock so it lands on a given hour.
+  function secondsUntilHour(hour: number): number {
+    return ((((hour / 24) - mapDayFraction()) % 1) + 1) % 1 * MAP_DAY_SECONDS;
+  }
+  function setCheatWeather(kind: 'clear' | 'rain' | 'snow'): void {
+    weatherOverride = { kind, until:state.playSeconds + CHEAT_WEATHER_SECONDS };
+  }
+  // LEGAL: Every cheat, in the order the `cheatcode` list shows them.
+  const CHEATS: Array<{ codes: string[]; effect: string; apply: () => void }> = [
+    { codes:['moneymoneymoney', 'cash4ever'], effect:`${formatMoney(CHEAT_CASH)} in your pocket`, apply:function(){ state.cash += CHEAT_CASH; } },
+    { codes:['cleanrecord'], effect:'Heat and investigation wiped to zero', apply:function(){ state.heat = 0; state.investigation = 0; } },
+    { codes:['respectme'], effect:'+5,000 respect', apply:function(){ state.respect += 5000; } },
+    { codes:['daylight'], effect:'Skip to noon', apply:function(){ clockOffsetSeconds += secondsUntilHour(12); } },
+    { codes:['nightowl'], effect:'Skip to midnight', apply:function(){ clockOffsetSeconds += secondsUntilHour(0); } },
+    { codes:['letitrain'], effect:'Rain for a while', apply:function(){ setCheatWeather('rain'); } },
+    { codes:['letitsnow'], effect:'Snow for a while', apply:function(){ setCheatWeather('snow'); } },
+    { codes:['clearskies'], effect:'Clear skies for a while', apply:function(){ setCheatWeather('clear'); } },
+  ];
+  function showCheatList(): void {
+    const rows = CHEATS.map(cheat => `<div class="row"><span><strong>${cheat.codes.join('</strong> or <strong>')}</strong></span><span>${cheat.effect}</span></div>`).join('');
+    showModal({ eyebrow:'Cheat codes', title:'Type one anywhere in the game', body:rows, buttons:[{ label:'Got it' }] });
+  }
+  const cheats = createCheatListener(['cheatcode', ...CHEATS.flatMap(cheat => cheat.codes)]);
+  function runCheat(code: string): void {
+    if(code === 'cheatcode'){ showCheatList(); return; }
+    const cheat = CHEATS.find(c => c.codes.includes(code));
+    if(!cheat) return;
+    cheat.apply();
+    log(`<i aria-hidden="true" class="ph-duotone ph-magic-wand"></i> Cheat activated: ${cheat.effect}.`);
+    refreshHUD();
+    scheduleSave();
+  }
   window.addEventListener('keydown', function(e){
     const k = e.key.toLowerCase();
     const typingInField = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
-    if(!typingInField && cheats.feed(e.key)){
-      state.cash += CHEAT_CASH;
-      log(`<i aria-hidden="true" class="ph-duotone ph-money"></i> Cheat activated: ${formatMoney(CHEAT_CASH)} appears in your pocket.`);
-      refreshHUD();
-      scheduleSave();
-    }
+    const code = typingInField ? null : cheats.feed(e.key);
+    if(code) runCheat(code);
     if(k==='escape' && deviceOpen()){ closeDevice(); return; }
     keys[k] = true;
     if(k==='e') tryInteract();
@@ -4857,6 +4885,12 @@ import type * as ThreeNamespace from 'three';
   let lastTrainWarningAt = 0;
   const MAP_DAY_SECONDS = 240;
   const MAP_START_HOUR = 10;
+  // LEGAL: Shifted by the time cheats. A separate offset, because event timers also run off
+  // LEGAL: playSeconds and jumping that forward would fire them early.
+  let clockOffsetSeconds = 0;
+  function mapDayFraction(): number {
+    return (((state.playSeconds + clockOffsetSeconds) / MAP_DAY_SECONDS) + MAP_START_HOUR / 24) % 1;
+  }
 
   function syncRendererSize(): void {
     if(!renderer || !camera3d) return;
@@ -5215,7 +5249,7 @@ import type * as ThreeNamespace from 'three';
   }
   function updateDayNightLighting(){
     if(!scene || !sunLight || !moonLight || !ambientLight) return;
-    const dayFraction = ((state.playSeconds / MAP_DAY_SECONDS) + MAP_START_HOUR / 24) % 1;
+    const dayFraction = mapDayFraction();
     const phase = dayFraction * Math.PI * 2;
     const sun = Math.max(0, Math.sin(phase - Math.PI / 2));
     const dusk = Math.max(0, 1 - Math.abs(sun * 2 - 1));
@@ -5254,7 +5288,7 @@ import type * as ThreeNamespace from 'three';
     });
   }
   function mapClockLabel(): string {
-    const totalMinutes = Math.floor((((state.playSeconds / MAP_DAY_SECONDS) + MAP_START_HOUR / 24) % 1) * 24 * 60);
+    const totalMinutes = Math.floor(mapDayFraction() * 24 * 60);
     const hours24 = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
     const suffix = hours24 >= 12 ? 'PM' : 'AM';
@@ -5491,7 +5525,10 @@ import type * as ThreeNamespace from 'three';
   }
   function buildIntersectionFurniture(x: number, z: number, index: number): void {
     buildMapIntersectionFurniture({ THREE, worldGroup, streetLamps }, x, z, index);
-  }  function weatherKindAtTime(): 'clear' | 'rain' | 'snow' {
+  }  // LEGAL: Set by the weather cheats; the normal cycle takes back over after it expires.
+  let weatherOverride: { kind: 'clear' | 'rain' | 'snow'; until: number } | null = null;
+  function weatherKindAtTime(): 'clear' | 'rain' | 'snow' {
+    if(weatherOverride && state.playSeconds < weatherOverride.until) return weatherOverride.kind;
     const t = state.playSeconds % 360;
     if(t > 72 && t < 118) return 'rain';
     if(t > 226 && t < 258) return 'snow';
