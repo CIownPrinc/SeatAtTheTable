@@ -221,15 +221,18 @@ old one.
 19. Customise Arjun's clothes. The wardrobe is saved already; it needs a UI.
 20. **DONE** Cheat codes; type `cheatcode` for the list. `moneymoneymoney` / `cash4ever` (+$1B),
     `cleanrecord`, `respectme`, `daylight`, `nightowl`, `letitrain`, `letitsnow`, `clearskies`,
-    `beammeup` (teleport), `rocketman` (fly), `getdachoppa` (helicopter), `bigdumper` (dump
-    truck), `liquidcourage` (drunk) and `bigheadmode`.
+    `beammeup` (teleport), `rocketman` (fly with a jetpack, 2.6x speed), `getdachoppa`
+    (helicopter), `bigdumper` (garbage truck), `liquidcourage` (drunk) and `bigheadmode`.
+    Getting into any vehicle cancels rocketman.
 21. Remove the floating 3D icons over places. Keep only ones that matter to the design; the rest
     go on the minimap. (Still there as of the last report.)
 22. A simpler, easier-on-the-eyes, GTA-style minimap.
 23. Traffic is too random to look real: lanes, junctions, believable routes.
 24. Police cars that patrol at random.
-25. Cars that look like what they are: sports car, truck, pickup, motorbike, sedan, SUV, beaters,
-    expensive cars. Many are reskins of each other.
+25. **PART** Cars that look like what they are. 19 Blender models are in the game: beater,
+    wagon, muscle car, SUV, armoured SUV, pickup, van, EV, EV luxury, EV van, supercar, roadster,
+    police car, taxi, box truck, tractor, garbage truck and helicopter (`art/blender/vehicles.py`,
+    `map/vehicleModels.ts`). Still open: the motorbikes, and spinning wheels.
 
 **D. How the world looks**
 26. Audit the whole map for primitive designs that could be better, not just the ground.

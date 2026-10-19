@@ -34,7 +34,8 @@ import { createCheatListener } from './cheats';
 import { createCameraRig, SHADOW_HALF_SIZE, sunShadowFrame } from '../map/cameraRig';
 import { waterClock } from '../map/waterShader';
 import { auditScene, flagIssues } from '../map/sceneAudit';
-import { CHEAT_VEHICLES, buildDumpTruckModel, buildHelicopterModel, isFlyingVehicle } from '../map/cheatVehicles';
+import { CHEAT_VEHICLES, buildJetpack, isFlyingVehicle } from '../map/cheatVehicles';
+import { loadVehicleLibrary, vehicleClassForCar, vehicleClassForTraffic, type VehicleLibrary } from '../map/vehicleModels';
 import { buildAmenityModel as buildMapAmenityModel } from '../map/amenityRendering';
 import { createFillerLayoutProvider, seededRandom } from '../map/filler';
 import { applyMapWorldCoordinates, createMapBuildings, mapNpcs } from '../map/markers';
@@ -4143,6 +4144,7 @@ import type * as ThreeNamespace from 'three';
   let mapScenePromise: Promise<void> | null = null;
   let mapAssets: MapAssetLibrary | null = null;
   let characterLibrary: CharacterLibrary | null = null;
+  let vehicleLibrary: VehicleLibrary | null = null;
   document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.addEventListener('click', function(){ setTab(btn.getAttribute('data-tab')!); });
   });
@@ -4291,7 +4293,7 @@ import type * as ThreeNamespace from 'three';
       mapScenePromise = (async function(){
         THREE = await import('three');
         mergeSceneryGeometries = (await import('three/examples/jsm/utils/BufferGeometryUtils.js')).mergeGeometries;
-        mapAssets = await loadMapAssetLibrary(THREE);
+        [mapAssets, vehicleLibrary] = await Promise.all([loadMapAssetLibrary(THREE), loadVehicleLibrary(THREE)]);
         characterLibrary = createCharacterLibrary(THREE, function(){ return state.appearance; });
         if(!sceneInitialized){
           initScene();
@@ -4617,6 +4619,7 @@ import type * as ThreeNamespace from 'three';
       return;
     }
     state.inVehicle = true;
+    flyingUntil = 0; // LEGAL: the rocketman jetpack doesn't come with you into a car.
     state.carParkedAt = null; // LEGAL: you are driving it; the garage clock stops.
     player.vx=0; player.vy=0;
     // LEGAL: A car is much wider than a pedestrian (radius 8 -> 24), so the spot you walked
@@ -4692,6 +4695,11 @@ import type * as ThreeNamespace from 'three';
     wasFlying = flying;
     const rotor = playerGroup.getObjectByName('rotor');
     if(rotor) rotor.rotation.y += dt * 28;
+    const wantJetpack = flying && !state.inVehicle;
+    let jetpack = playerGroup.getObjectByName('jetpack');
+    if(wantJetpack && !jetpack){ jetpack = buildJetpack(THREE); playerGroup.children[0]?.add(jetpack); }
+    if(!wantJetpack && jetpack) jetpack.parent?.remove(jetpack);
+    if(wantJetpack && jetpack) jetpack.traverse(function(node){ if(node.name === 'jetpack-flame') node.scale.y = 0.75 + Math.random() * 0.6; });
     byId('scene3d-container').classList.toggle('drunk', isDrunk());
   }
   // LEGAL: Waypoint first; with none set, a random countryside place, dropped at its gate.
@@ -4707,6 +4715,7 @@ import type * as ThreeNamespace from 'three';
     if(state.currentInterior) exitBuilding();
     state.equippedCar = id;
     state.inVehicle = true;
+    flyingUntil = 0;
     state.carParkedAt = null;
     refreshPlayerModel(); updateParkedCarMesh();
   }
@@ -4893,6 +4902,8 @@ import type * as ThreeNamespace from 'three';
 
   function currentSpeed(){
     if(state.currentInterior) return 150;
+    // LEGAL: The rocketman cheat: a jetpack is a lot faster than legs.
+    if(!state.inVehicle && isFlying()) return 150 * 2.6;
     if(state.inVehicle){
       const car = getEquippedCar();
       return 210 * (car ? car.speedMult : 1) * offRoadSpeedMultiplier({ x:player.x, y:player.y }, car?.brand);
@@ -5189,6 +5200,10 @@ import type * as ThreeNamespace from 'three';
   function buildCarModel(base: Car, withRider = true){
     const car = carPaint(base);
     if(isBikeCar(car)) return buildBikeModel(car, withRider);
+    // LEGAL: The Blender catalog (map/vehicleModels.ts) when it has this car; the procedural body
+    // LEGAL: below stays as the fallback if the models fail to load.
+    const cls = vehicleClassForCar(car.id);
+    if(vehicleLibrary && cls) return vehicleLibrary.create(cls, car.color, car.len, car.wid);
     const g = new THREE.Group();
     const bodyH = car.id==='escalade'?18:(car.id==='bentley'?16:14);
     const halfW = car.wid/2;
@@ -5298,6 +5313,7 @@ import type * as ThreeNamespace from 'three';
     return outer;
   }
   function buildTrafficCarModel(id: string, color: string): ThreeNamespace.Group {
+    if(vehicleLibrary) return vehicleLibrary.create(vehicleClassForTraffic(id), color, id.includes('cab')?30:34, id.includes('cruiser')?17:15);
     return buildCarModel({ id, name:id, icon:'', cost:0, speedMult:1, heistBonus:0, respectPerSec:0, color, len:id.includes('cab')?30:34, wid:id.includes('cruiser')?17:15 });
   }
   function buildAmenityModel(amenity: typeof mapAmenities[number]): ThreeNamespace.Group {
@@ -5831,10 +5847,7 @@ import type * as ThreeNamespace from 'three';
   function refreshPlayerModel(){
     if(!sceneInitialized || !playerGroup) return;
     clearGroup(playerGroup);
-    if(state.inVehicle){
-      const car=getEquippedCar();
-      if(car) playerGroup.add(car.id === 'cheat-dumptruck' ? buildDumpTruckModel(THREE) : car.id === 'cheat-helicopter' ? buildHelicopterModel(THREE) : buildCarModel(car));
-    }
+    if(state.inVehicle){ const car=getEquippedCar(); if(car) playerGroup.add(buildCarModel(car)); }
     else playerGroup.add(buildPedestrianModel('#f0efe8', 'arjun'));
     // LEGAL: clearGroup strips the beam with the model, so it is re-attached every rebuild.
     headlightBeam = null;
