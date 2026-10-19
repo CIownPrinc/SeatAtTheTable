@@ -115,8 +115,7 @@
         <canvas id="interior-canvas" width="760" height="440"></canvas>
         <canvas id="minimap-canvas" width="150" height="150"></canvas>
         <button class="minimap-expand-btn" id="minimap-expand" title="Expand minimap"><i aria-hidden="true" class="ph-duotone ph-arrows-out-simple"></i></button>
-        <button class="minimap-expand-btn" id="territory-toggle" title="Show gang territory"><i aria-hidden="true" class="ph-duotone ph-flag-banner"></i></button>
-        <div class="territory-legend hidden" id="territory-legend"></div>
+        <div class="minimap-turf" id="minimap-turf" aria-live="polite"></div>
         <button class="minimap-clear-btn" id="minimap-clear" title="Clear waypoint">✕</button>
         <button class="touch-interact-btn" id="touch-interact" aria-label="Interact">E</button>
       </div>
@@ -311,7 +310,7 @@
       </div>
     </div>
     <div class="citymap-body">
-      <div class="citymap-canvas-wrap"><canvas id="citymap-canvas" width="900" height="520"></canvas></div>
+      <div class="citymap-canvas-wrap"><canvas id="citymap-canvas" width="1200" height="420"></canvas></div>
       <div class="citymap-side">
         <div class="citymap-search">
           <input id="citymap-search" type="search" placeholder="Search places" autocomplete="off" />
@@ -320,7 +319,7 @@
         <div class="citymap-results" id="citymap-results"></div>
         <div class="territory-legend citymap-territory-legend hidden" id="citymap-districts-legend"></div>
         <div class="territory-legend citymap-territory-legend hidden" id="citymap-territory-legend"></div>
-        <div class="citymap-legend" id="citymap-legend"></div>
+        <details class="citymap-legend-wrap"><summary>Legend</summary><div class="citymap-legend" id="citymap-legend"></div></details>
       </div>
     </div>
     <div class="citymap-hint" id="citymap-hint">Click the expanded map to drop a waypoint · hover places to inspect them</div>

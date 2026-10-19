@@ -230,6 +230,10 @@ test.describe('game boot', () => {
     await page.getByRole('button', { name: 'Start', exact: true }).click();
     await page.locator('.tab-btn[data-tab="map"]').click();
     await waitForMapScene(page);
+    // LEGAL: Stand on the lakefront so water is actually in view; the closer follow camera no
+    // LEGAL: longer reaches the lake from the starting spot.
+    await page.waitForFunction(() => !!(window as never as { __seat?: unknown }).__seat, undefined, { timeout: 45000 });
+    await page.evaluate(() => { const seat = (window as never as { __seat: { player: { x: number; y: number } } }).__seat; seat.player.y = 230; });
     await page.waitForTimeout(1600);
 
     const stats = mapCanvasColorStats(await clippedElementScreenshot(page, '#scene3d-container canvas.webgl-canvas'));
@@ -295,6 +299,9 @@ test.describe('game boot', () => {
       await expect(page.locator('#start-screen')).toHaveClass(/hidden/);
       await page.locator('.tab-btn[data-tab="map"]').click();
       await waitForMapScene(page);
+      // LEGAL: On the lakefront, so the review always has water in view (see the test above).
+      await page.waitForFunction(() => !!(window as never as { __seat?: unknown }).__seat, undefined, { timeout: 45000 });
+      await page.evaluate(() => { const seat = (window as never as { __seat: { player: { x: number; y: number } } }).__seat; seat.player.y = 230; });
       // LEGAL: The scene keeps populating after the canvas first appears, so sampling too
       // LEGAL: early reads a half-built city and the colour counts come out noisy.
       await page.waitForTimeout(2000);

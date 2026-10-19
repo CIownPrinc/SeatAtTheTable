@@ -230,7 +230,8 @@ old one.
     Getting into any vehicle cancels rocketman.
 21. **DONE** The floating 3D icons over places are gone; the minimap already shows them. Mission
     objectives and the waypoint beacon keep their markers.
-22. A simpler, easier-on-the-eyes, GTA-style minimap.
+22. **DONE** A simpler, easier-on-the-eyes, GTA-style minimap: one dark muted palette, light
+    roads as the brightest thing, no outlines on every region, no dashed centre lines.
 23. **PART** Traffic looked random. Routes now come from the road graph (`map/traffic.ts`): real
     directions between junctions, driven in the right-hand lane with rounded corners, and the
     countryside vehicles stay on the lanes instead of crossing fields. Still open: stopping at
@@ -267,8 +268,10 @@ old one.
     kinds (cabs, sedans, a beater, SUV, pickup, EV, van, truck), each sized to its type.
 42. **DONE** A living city: 36 unnamed walkers loop round city blocks on the pavements, with
     no name signs. People are baked into six meshes each so a crowd stays cheap to draw.
-43. The territory toggle and the minimap as a whole are ugly, convoluted and overwhelming. Redesign
-    them into something much cooler (with item 22, the GTA-style minimap).
+43. **DONE** The territory toggle and the minimap were overwhelming. The minimap's toggle and its
+    panel of small text are gone: the rim takes the colour of whoever holds the block you're on,
+    and one line underneath names it. The City Map fills its window, its territory layer shows
+    district names instead of a label on every block, and its legend folds away.
 
 **E. Interiors**
 34. Interiors you walk around in like outside, in 3D. Today most rooms are a few small icons that

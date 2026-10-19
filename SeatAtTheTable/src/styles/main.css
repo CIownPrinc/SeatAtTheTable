@@ -221,12 +221,12 @@ body.quiet .card-flavor, body.quiet .pillar-desc, body.quiet .modal-body p.flavo
 .citymap-overlay{position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;background:rgba(4,6,10,0.82);padding:20px;}
 #scene3d-container.fullscreen .citymap-overlay,#scene3d-container:fullscreen .citymap-overlay{position:absolute;inset:0;z-index:10050;}
 .citymap-overlay.hidden{display:none;}
-.citymap-panel{position:relative;z-index:10051;background:var(--bg-panel);border:1px solid var(--line-bright);border-radius:10px;max-width:min(1000px,96vw);max-height:92vh;max-height:92dvh;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.6);overflow:hidden;display:flex;flex-direction:column;}
+.citymap-panel{position:relative;z-index:10051;background:var(--bg-panel);border:1px solid var(--line-bright);border-radius:10px;max-width:min(1360px,96vw);max-height:92vh;max-height:92dvh;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.6);overflow:hidden;display:flex;flex-direction:column;}
 .citymap-head{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--line);font-family:var(--font-display);font-weight:700;font-size:16px;color:var(--gold);letter-spacing:0.04em;}
 .citymap-close{position:relative;z-index:10052;background:none;border:1px solid var(--line);color:var(--text-dim);width:30px;height:30px;border-radius:6px;cursor:pointer;font-size:15px;}
 .citymap-close:hover{color:var(--text);border-color:var(--line-bright);}
 .citymap-body{display:flex;gap:16px;padding:16px 18px;flex-wrap:wrap;min-height:0;overflow:auto;}
-.citymap-canvas-wrap{flex:1;min-width:280px;background:#0b0d13;border:1px solid var(--line);border-radius:6px;overflow:hidden;}
+.citymap-canvas-wrap{flex:1;align-self:flex-start;min-width:280px;background:#0b0d13;border:1px solid var(--line);border-radius:6px;overflow:hidden;}
 #citymap-canvas{width:100%;height:auto;display:block;cursor:crosshair;}
 .citymap-side{width:232px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;min-height:0;}
 .citymap-search{display:flex;flex-direction:column;gap:8px;}
@@ -573,3 +573,12 @@ main{max-width:1240px;margin:0 auto;padding:26px 24px 60px;}
 /* A short message over the map, for things you must notice while driving (a breakdown). */
 .map-toast { position:absolute; left:50%; top:18px; transform:translate(-50%, -8px); z-index:25; max-width:min(520px, calc(100% - 32px)); padding:10px 16px; border-radius:8px; background:rgba(12,14,20,0.88); border:1px solid var(--red); color:var(--text); font-size:14px; text-align:center; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; }
 .map-toast.show { opacity:1; transform:translate(-50%, 0); }
+
+/* The turf line under the minimap: which block you're on and whose it is. */
+.minimap-turf { position:absolute; top:178px; right:12px; width:160px; text-align:center; font-size:11px; line-height:1.3; color:var(--text-muted, #c9c4b6); background:rgba(10,12,18,0.72); border-radius:6px; padding:3px 6px; pointer-events:none; z-index:6; }
+.minimap-turf strong { color:var(--text, #f0efe8); font-weight:600; }
+#minimap-canvas { transition:border-color .4s; }
+
+/* The City Map legend folds away: you open it when you need it, not every time. */
+.citymap-legend-wrap summary { cursor:pointer; font-family:var(--font-display); font-weight:700; font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-faint); }
+.citymap-legend-wrap[open] summary { margin-bottom:8px; }

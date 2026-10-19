@@ -8,13 +8,28 @@ import type { BlockHolding } from './territory';
 import type { RegionRecord } from './regions';
 import { OUTSKIRT_REGIONS, type OutskirtRegion } from './world';
 
-// LEGAL: Minimap tints for the outskirt belts. Lighter than the 3D terrain colours because
-// LEGAL: the minimap sits behind icons and must not compete with them.
+// LEGAL: One quiet palette, GTA-style: dark muted land and water so the roads, icons, your arrow
+// LEGAL: and the GPS line are what the eye finds. The old map used a different bright tint per
+// LEGAL: district and outlined every region, which was busy and hard on the eyes.
+const MINIMAP_COLORS = {
+  water: '#152b40',
+  canal: '#1a3550',
+  land: '#2f3b2e',
+  city: '#3a3f3d',
+  beach: '#5b5440',
+  building: 'rgba(92,98,108,0.78)',
+  park: '#2f4a32',
+  road: '#b9bdc4',
+  arterial: '#e3dfd2',
+  lane: '#8a7556',
+  bridge: '#cfd2d8',
+};
+
 function minimapOutskirtColor(kind: OutskirtRegion['kind']): string {
-  if(kind === 'forest') return '#4a6b40';
-  if(kind === 'suburb') return '#7d8a63';
-  if(kind === 'industrial') return '#79786a';
-  return '#8c9c52';
+  if(kind === 'forest') return '#26382a';
+  if(kind === 'suburb') return '#34412f';
+  if(kind === 'industrial') return '#3d3b36';
+  return '#3d4030';
 }
 
 export const MINIMAP_SIZE = 150;
@@ -228,29 +243,14 @@ function drawStaticMinimapLayer(mctx: CanvasRenderingContext2D, options: Minimap
       mctx.stroke();
     }
   };
-  const drawPolyline = function(points: Point[], stroke: string, lineWidth: number): void {
-    if(points.length < 2) return;
-    mctx.beginPath();
-    points.forEach(function(point, index){
-      const p = proj(point.x, point.y);
-      if(index === 0) mctx.moveTo(p.x, p.y);
-      else mctx.lineTo(p.x, p.y);
-    });
-    mctx.strokeStyle = stroke;
-    mctx.lineWidth = lineWidth;
-    mctx.stroke();
-  };
 
-  mctx.fillStyle = mapTerrainTheme.openWater; mctx.fillRect(0,0,viewW,viewH);
+  mctx.fillStyle = MINIMAP_COLORS.water; mctx.fillRect(0,0,viewW,viewH);
 
   mctx.save();
   if(options.landmass.length){
     traceLandmass(mctx, options.landmass, proj);
-    mctx.fillStyle = mapTerrainTheme.baseLand;
+    mctx.fillStyle = MINIMAP_COLORS.land;
     mctx.fill();
-    mctx.strokeStyle = 'rgba(217,210,184,0.48)';
-    mctx.lineWidth = Math.max(1, 1.5*glyphScale);
-    mctx.stroke();
     mctx.clip();
   }
 
@@ -258,24 +258,22 @@ function drawStaticMinimapLayer(mctx: CanvasRenderingContext2D, options: Minimap
   // LEGAL: the whole ring renders as one flat field on the minimap and City Map even though
   // LEGAL: the 3D world shows farmland, forest, suburb and industrial edge.
   OUTSKIRT_REGIONS.forEach(function(region){
-    drawPolygon(region.area, minimapOutskirtColor(region.kind), 'rgba(235,226,190,0.14)', Math.max(1, 0.8*glyphScale));
+    drawPolygon(region.area, minimapOutskirtColor(region.kind), null, 0);
   });
 
   windhavenMapModel.districts.forEach(function(district){
-    drawPolygon(district.landArea, terrainForDistrict(district.id).minimapLand, 'rgba(235,226,190,0.32)', Math.max(1, 1.2*glyphScale));
+    drawPolygon(district.landArea, MINIMAP_COLORS.city, null, 0);
   });
 
+  // LEGAL: Canals end where they really end (they used to run the height of the world here).
   windhavenMapModel.canals.forEach(function(channel){
-    const x0 = channel.x, x1 = channel.x + channel.width;
-    const a = proj(x0, -90);
-    const b = proj(x1, options.worldHeight + 90);
-    mctx.fillStyle = mapTerrainTheme.canalWater;
+    const a = proj(channel.x, channel.top - 80);
+    const b = proj(channel.x + channel.width, channel.bottom);
+    mctx.fillStyle = MINIMAP_COLORS.canal;
     mctx.fillRect(a.x, a.y, b.x - a.x, b.y - a.y);
-    drawPolyline([{x:x0+18,y:0},{x:x0+34,y:260},{x:x0+12,y:620},{x:x0+30,y:980},{x:x0+18,y:options.worldHeight}], 'rgba(228,239,232,0.28)', Math.max(1, 1.1*glyphScale));
-    drawPolyline([{x:x1-18,y:0},{x:x1-34,y:320},{x:x1-12,y:680},{x:x1-30,y:1030},{x:x1-18,y:options.worldHeight}], 'rgba(228,239,232,0.28)', Math.max(1, 1.1*glyphScale));
   });
 
-  drawPolygon(windhavenMapModel.lake, mapTerrainTheme.canalWater, 'rgba(228,239,232,0.28)', Math.max(1, 1.2*glyphScale));
+  drawPolygon(windhavenMapModel.lake, MINIMAP_COLORS.water, null, 0);
 
   ['devlin','westside','hub'].forEach(function(distId){
     const off = options.districtOffsets[distId];
@@ -285,28 +283,25 @@ function drawStaticMinimapLayer(mctx: CanvasRenderingContext2D, options: Minimap
         if(!isOnMap(p, viewW, viewH)) return;
         const bw = Math.max(1.5, f.w*scale);
         const bd = Math.max(1.5, f.d*scale);
-        mctx.fillStyle = 'rgba(120,126,142,0.72)';
+        mctx.fillStyle = MINIMAP_COLORS.building;
         mctx.fillRect(p.x-bw/2, p.y-bd/2, bw, bd);
       } else if(f.kind==='park'){
         const p = proj((f.x0+f.x1)/2+off,(f.y0+f.y1)/2);
         if(!isOnMap(p, viewW, viewH)) return;
         const w=(f.x1-f.x0)*scale;
         const d=(f.y1-f.y0)*scale;
-        mctx.fillStyle='rgba(58,128,76,0.72)';
+        mctx.fillStyle=MINIMAP_COLORS.park;
         mctx.fillRect(p.x-w/2,p.y-d/2,w,d);
-        mctx.strokeStyle='rgba(115,180,120,0.5)';
-        mctx.lineWidth=Math.max(1, 1*glyphScale);
-        mctx.strokeRect(p.x-w/2,p.y-d/2,w,d);
       }
     });
   });
 
-  drawPolygon(windhavenMapModel.lakefrontBeach, 'rgba(185,167,119,0.55)', 'rgba(217,210,184,0.34)', Math.max(1, 1*glyphScale));
+  drawPolygon(windhavenMapModel.lakefrontBeach, MINIMAP_COLORS.beach, null, 0);
 
   const drawRoad = function(road: RoadPath){
     if(road.roadClass === 'country'){
       // LEGAL: Dirt lanes read as tracks, not streets: thinner, earth-coloured, no kerb outline.
-      mctx.strokeStyle='rgba(150,122,82,0.9)';
+      mctx.strokeStyle=MINIMAP_COLORS.lane;
       mctx.lineWidth=Math.max(1.5, road.width*0.7*scale);
       mctx.lineJoin='round';
       mctx.beginPath();
@@ -314,44 +309,21 @@ function drawStaticMinimapLayer(mctx: CanvasRenderingContext2D, options: Minimap
       mctx.stroke();
       return;
     }
-    const surfaceWidth = road.width + (road.roadClass === 'arterial' ? 10 : road.roadClass === 'diagonal' ? 4 : 0);
-    const coreColor = road.roadClass === 'arterial' ? 'rgba(102,108,121,0.98)' : road.roadClass === 'diagonal' ? 'rgba(91,96,109,0.96)' : 'rgba(76,82,96,0.94)';
-    const edgeColor = road.roadClass === 'arterial' ? 'rgba(18,20,27,0.98)' : 'rgba(22,24,31,0.95)';
-    mctx.strokeStyle='rgba(22,24,31,0.95)';
-    mctx.strokeStyle=edgeColor;
-    mctx.lineWidth=Math.max(2, surfaceWidth*scale + 2*glyphScale);
+    // LEGAL: Roads are the brightest thing on the map: one light stroke, no dark kerb outline.
+    const surfaceWidth = road.width * 0.8 + (road.roadClass === 'arterial' ? 8 : 0);
+    mctx.strokeStyle = road.roadClass === 'arterial' ? MINIMAP_COLORS.arterial : MINIMAP_COLORS.road;
+    mctx.lineWidth = Math.max(1.4, surfaceWidth*scale);
+    mctx.lineJoin = 'round';
+    mctx.lineCap = 'round';
     mctx.beginPath();
     road.path.forEach(function(point, index){ const p=proj(point.x,point.y); if(index===0) mctx.moveTo(p.x,p.y); else mctx.lineTo(p.x,p.y); });
     mctx.stroke();
-    mctx.strokeStyle=coreColor;
-    mctx.lineWidth=Math.max(1, surfaceWidth*scale);
-    mctx.beginPath();
-    road.path.forEach(function(point, index){ const p=proj(point.x,point.y); if(index===0) mctx.moveTo(p.x,p.y); else mctx.lineTo(p.x,p.y); });
-    mctx.stroke();
-    if(road.roadClass === 'arterial'){
-      mctx.strokeStyle='rgba(193,188,158,0.28)';
-      mctx.lineWidth=Math.max(1, 1.2*glyphScale);
-      mctx.setLineDash([8*glyphScale, 8*glyphScale]);
-      mctx.beginPath();
-      road.path.forEach(function(point, index){ const p=proj(point.x,point.y); if(index===0) mctx.moveTo(p.x,p.y); else mctx.lineTo(p.x,p.y); });
-      mctx.stroke();
-      mctx.setLineDash([]);
-    }
   };
   roadLandSegments().forEach(function(segment){
     drawRoad({ ...segment.road, path:segment.path });
   });
 
-  windhavenMapModel.bridges.forEach(function(bridge){
-    const a=proj(bridge.path[0].x, bridge.path[0].y);
-    const b=proj(bridge.path[1].x, bridge.path[1].y);
-    mctx.strokeStyle='rgba(154,160,174,0.96)';
-    mctx.lineWidth=Math.max(3, (bridge.width + 4)*scale);
-    mctx.beginPath(); mctx.moveTo(a.x,a.y); mctx.lineTo(b.x,b.y); mctx.stroke();
-    mctx.strokeStyle='rgba(60,64,76,0.95)';
-    mctx.lineWidth=Math.max(2, Math.max(56, bridge.width - 16)*scale);
-    mctx.beginPath(); mctx.moveTo(a.x,a.y); mctx.lineTo(b.x,b.y); mctx.stroke();
-  });
+  // LEGAL: Bridges need no drawing of their own: the streets now run straight across the canals.
 
   windhavenMapModel.railLines.forEach(function(rail){
     const railA = proj(rail.path[0].x, rail.path[0].y);

@@ -29,7 +29,9 @@ test.describe('branded shops + territory overlay', () => {
     expect(pageErrors, `uncaught page errors: ${pageErrors.join(' | ')}`).toEqual([]);
   });
 
-  test('the minimap territory overlay toggles and names the crew holding each district', async ({ page }) => {
+  // LEGAL: GTA-style: no panel over the game. The minimap's rim takes the colour of whoever holds
+  // LEGAL: the block you're on, and one line underneath says whose turf it is.
+  test('the minimap says whose turf you are standing on', async ({ page }) => {
     const pageErrors: string[] = [];
     page.on('pageerror', (e) => pageErrors.push(e.message));
 
@@ -37,26 +39,16 @@ test.describe('branded shops + territory overlay', () => {
     await page.getByRole('button', { name: 'Start', exact: true }).click();
     await page.locator('.tab-btn[data-tab="map"]').click();
 
-    // LEGAL: Off by default, so the minimap is untouched until you ask for it.
-    await expect(page.locator('#territory-legend')).toHaveClass(/hidden/);
+    const turf = page.locator('#minimap-turf');
+    await expect(turf).toBeVisible();
+    await expect(turf).toContainText(/turf|Contested|open ground/);
+    await expect(page.locator('#territory-toggle')).toHaveCount(0);
 
-    // LEGAL: dispatchEvent rather than click() — the sticky HUD overlaps the minimap
-    // LEGAL: controls, the same reason the smoke suite dispatches on #minimap-expand.
-    await page.locator('#territory-toggle').dispatchEvent('click');
-    await expect(page.locator('#territory-legend')).not.toHaveClass(/hidden/);
-    await expect(page.locator('#territory-toggle')).toHaveClass(/active/);
-
-    // LEGAL: Every district must name its crew, or the colors mean nothing.
-    await expect(page.locator('#territory-legend')).toContainText('Rockwell Kings');
-    await expect(page.locator('#territory-legend')).toContainText('Cicero Firm');
-    await expect(page.locator('#territory-legend')).toContainText('Meridian Group');
-    await expect(page.locator('#territory-legend .territory-row')).toHaveCount(3);
-
-    // LEGAL: Let the map loop run with the overlay up — the tint is drawn every frame.
-    await page.waitForTimeout(1000);
-
-    await page.locator('#territory-toggle').dispatchEvent('click');
-    await expect(page.locator('#territory-legend')).toHaveClass(/hidden/);
+    // LEGAL: Moving to another district changes the label.
+    await page.waitForFunction(() => !!(window as unknown as { __seat?: unknown }).__seat, undefined, { timeout: 45000 });
+    const before = await turf.textContent();
+    await page.evaluate(() => { const seat = (window as unknown as { __seat: { player: { x: number; y: number } } }).__seat; seat.player.x = 6200; seat.player.y = 450; });
+    await expect.poll(() => turf.textContent()).not.toBe(before);
 
     expect(pageErrors, `uncaught page errors: ${pageErrors.join(' | ')}`).toEqual([]);
   });
@@ -78,10 +70,6 @@ test.describe('branded shops + territory overlay', () => {
     await expect(page.locator('#citymap-territory')).toHaveClass(/active/);
     await expect(page.locator('#citymap-territory-legend')).toContainText('Rockwell Kings');
     await expect(page.locator('#citymap-territory-legend .territory-row')).toHaveCount(3);
-
-    // LEGAL: The two maps track their toggles separately — turning the layer on for the
-    // LEGAL: full map must not switch it on for the follow-cam minimap.
-    await expect(page.locator('#territory-legend')).toHaveClass(/hidden/);
 
     await page.locator('#citymap-territory').dispatchEvent('click');
     await expect(page.locator('#citymap-territory-legend')).toHaveClass(/hidden/);

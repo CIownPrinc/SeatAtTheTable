@@ -6156,20 +6156,16 @@ import type * as ThreeNamespace from 'three';
       landmass:WINDHAVEN_LANDMASS,
       landmarks,
       waypoint:currentWaypoint(),
-      territory: territoryShown ? currentHoldings() : null,
-      warnObjectIds: territoryShown ? rivalTurfShopIds() : undefined,
     });
-    if(territoryShown) renderTerritoryLegend();
+    updateMinimapTurf();
     refreshWaypointGuide();
     if(cityMapOpen) drawCityMap();
   }
 
-  // LEGAL: ---- Territory overlay (minimap) ----
-  // LEGAL: Turf-gated shop pricing is invisible until you can see whose block a shop sits
-  // LEGAL: on. This tints the minimap by block owner and rings the shops that will mark you
-  // LEGAL: up. Purely a view over districts[].control — it changes no game state.
-  let territoryShown = false;
-
+  // LEGAL: ---- Turf under your feet (minimap) ----
+  // LEGAL: The minimap used to carry a territory toggle that tinted it and dropped a panel of small
+  // LEGAL: text over the game. Now its rim takes the colour of whoever holds the block you're on,
+  // LEGAL: and one line underneath names it; the full picture lives on the City Map's layer.
   function currentHoldings(){
     return territoryBlocks.map(function(block){ return holdingFor(block, districtControl(block.district)); });
   }
@@ -6183,20 +6179,31 @@ import type * as ThreeNamespace from 'three';
     });
     return ids;
   }
+  let turfKey = '';
+  function updateMinimapTurf(): void {
+    const block = blockAtPoint(territoryBlocks, { x:player.x, y:player.y });
+    const holding = block ? holdingFor(block, districtControl(block.district)) : null;
+    const owned = block ? ownedBlockCount(districtControl(block.district)) : 0;
+    const key = holding ? `${block!.id}:${holding.owner}:${owned}` : 'none';
+    if(key === turfKey) return;
+    turfKey = key;
+    const label = byId('minimap-turf');
+    const canvas = byId('minimap-canvas');
+    if(!block || !holding){
+      label.textContent = 'Open ground';
+      canvas.style.borderColor = '';
+      return;
+    }
+    const whose = holding.owner === 'yours' ? 'Your turf' : holding.owner === 'contested' ? 'Contested' : `${holding.gang?.name ?? 'Rival'} turf`;
+    label.innerHTML = `<strong>${block.name}</strong> · ${whose}`;
+    label.title = `You hold ${owned} of 8 blocks in this district`;
+    canvas.style.borderColor = holding.color;
+  }
 
-  // LEGAL: The legend only changes when district control does, so it is rebuilt on a
+  // LEGAL: The City Map legend only changes when district control does, so it is rebuilt on a
   // LEGAL: signature rather than every frame — the same discipline as the heat breakdown.
-  let territoryLegendKey = '';
   function territoryLegendSignature(){
     return districts.map(d=>`${d.id}:${ownedBlockCount(d.control)}`).join('|');
-  }
-  function renderTerritoryLegend(force = false){
-    const panel = byId('territory-legend');
-    if(!panel || !territoryShown) return;
-    const key = territoryLegendSignature();
-    if(!force && key === territoryLegendKey) return;
-    territoryLegendKey = key;
-    panel.innerHTML = territoryLegendHtml();
   }
 
   // LEGAL: One markup builder for both the minimap legend and the City Map side rail, so
@@ -6221,14 +6228,6 @@ import type * as ThreeNamespace from 'three';
     return `<h4>Territory</h4>${rows}`
       + `<div class="t-sub" style="margin-top:8px;">○ ringed shops sit on rival turf and charge more.</div>`;
   }
-
-  function setTerritoryShown(on: boolean){
-    territoryShown = on;
-    byId('territory-toggle').classList.toggle('active', on);
-    byId('territory-legend').classList.toggle('hidden', !on);
-    if(on) renderTerritoryLegend(true);
-  }
-  byId('territory-toggle').addEventListener('click', function(){ setTerritoryShown(!territoryShown); });
 
   // LEGAL: The City Map carries the same layer, tracked separately so toggling the big
   // LEGAL: map does not change what the follow-cam minimap shows.
@@ -6381,7 +6380,8 @@ import type * as ThreeNamespace from 'three';
       // LEGAL: names, so it turns labels on.
       territory: cityTerritoryShown ? currentHoldings() : null,
       warnObjectIds: cityTerritoryShown ? rivalTurfShopIds() : undefined,
-      territoryLabels: cityTerritoryShown,
+      // LEGAL: District names only; a label on every block crowded the whole map.
+      territoryLabels: false,
       regions: cityDistrictsShown ? mapRegions : null,
       viewW:CITY_W, viewH:CITY_H, scale:cityViewport.scale, center:cityViewport.center, glyphScale:1.9,
       districtNames:windhavenMapModel.districts.map(function(district){ return { x: district.labelPoint.x, y: district.labelPoint.y, name: district.name }; }),
