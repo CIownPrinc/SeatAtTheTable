@@ -1,3 +1,4 @@
+import { CENTRAL_PARK, CENTRAL_POND } from './centralPark';
 import type { Corner, FillerItem, Point } from '../config/types';
 import type { MapObject, MinimapIcon } from './objects';
 import { roadLandSegments, windhavenMapModel } from './mapModel';
@@ -274,6 +275,16 @@ function drawStaticMinimapLayer(mctx: CanvasRenderingContext2D, options: Minimap
   });
 
   drawPolygon(windhavenMapModel.lake, MINIMAP_COLORS.water, null, 0);
+
+  // LEGAL: Central Park and its pond (map/centralPark).
+  CENTRAL_PARK.forEach(function(rect){
+    const a = proj(rect.x0, rect.y0), b = proj(rect.x1, rect.y1);
+    mctx.fillStyle = MINIMAP_COLORS.park;
+    mctx.fillRect(a.x, a.y, b.x - a.x, b.y - a.y);
+  });
+  const pond = proj(CENTRAL_POND.x, CENTRAL_POND.y);
+  mctx.fillStyle = MINIMAP_COLORS.water;
+  mctx.beginPath(); mctx.ellipse(pond.x, pond.y, Math.max(1, CENTRAL_POND.rx * scale), Math.max(1, CENTRAL_POND.ry * scale), 0, 0, Math.PI * 2); mctx.fill();
 
   ['devlin','westside','hub'].forEach(function(distId){
     const off = options.districtOffsets[distId];

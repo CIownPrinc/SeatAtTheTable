@@ -35,9 +35,9 @@ export function snowWhiteness(surface: 'ground' | 'tree' | 'road', cover: number
 // LEGAL: or null for one snow doesn't settle on (water, walls, signs).
 export function snowSurfaceFor(key: string): 'ground' | 'tree' | 'road' | null {
   if(key.includes('water')) return null;
-  if(key.startsWith('ground:') || key.startsWith('terrain:outskirt:') || key.startsWith('terrain:district:')) return 'ground';
+  if(key.startsWith('ground:') || key.startsWith('terrain:outskirt:') || key.startsWith('terrain:district:') || key.startsWith('terrain:park')) return 'ground';
   if(key === 'transport:lane-verge' || key === 'transport:dirt' || key.endsWith(':roof')) return 'ground';
   if(key.startsWith('prop:tree-crown') || key === 'outskirt:tree-canopy') return 'tree';
-  if(key.startsWith('path:') || key === 'transport:lane') return 'road';
+  if(key.startsWith('path:') || key === 'transport:lane' || key === 'park:path') return 'road';
   return null;
 }

@@ -27,6 +27,7 @@ import { DEFAULT_PLAYER_LOOK, WARDROBE, normalizeLook } from '../map/personModel
 import { isItemOwned, itemKey, itemPrice, lookPrice, ownedWardrobe, type MallShop, type WardrobeSlot } from '../config/mallShops';
 import { MALL_ROOM, MALL_SPOTS } from '../map/mallInterior';
 import { buildMall, mallSolids } from '../map/mall';
+import { buildCentralPark, centralParkSolids } from '../map/centralPark';
 import { renderRoamingActors } from '../map/actorRendering';
 import { createAmenityModal, mapAmenities } from '../map/amenities';
 import { isFireRoadBest, minigameOpen, playMinigame, type MinigameResult } from '../map/minigames';
@@ -4487,7 +4488,7 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: Trees, barns and silos used to be walk-through. Trunks are small boxes; countryside
     // LEGAL: buildings take most of their drawn footprint.
     streetTreeSpots.forEach(spot => list.push({ x:spot.x, y:spot.y, hw:5, hd:5 }));
-    list.push(...mallSolids());
+    list.push(...mallSolids(), ...centralParkSolids());
     const garage = serviceBuildings.find(s => s.id === 'playerGarage');
     if(garage){
       const shape = serviceBuildingSilhouette(garage);
@@ -5852,6 +5853,7 @@ import type * as ThreeNamespace from 'three';
       tagWorld('landmark', function(){
         buildLandmarks({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, landmarks, helpers:{ box, addSign } });
         worldGroup.add(buildMall(THREE, mergeSceneryGeometries ?? undefined));
+        worldGroup.add(buildCentralPark(THREE, materials, addSign));
       });
       tagWorld('rail-and-river', function(){ buildRailAndRiver(baseScene); });
     });
