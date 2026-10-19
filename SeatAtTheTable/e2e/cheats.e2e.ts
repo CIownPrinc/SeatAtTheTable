@@ -46,14 +46,14 @@ test.describe('cheat codes', () => {
       await page.keyboard.type(code);
       await page.waitForTimeout(300);
     }
-    await page.waitForTimeout(1500);
-    const height = await page.evaluate(function(){
+    // LEGAL: Polled, not read once: under a loaded test run the climb can take longer than a fixed wait.
+    const height = () => page.evaluate(function(){
       const seat = (window as unknown as { __seat: { scene: import('three').Scene } }).__seat;
       let y = 0;
       seat.scene.traverse(function(node){ if(node.name === 'rotor'){ const p = node.getWorldPosition(new (node.position.constructor as typeof import('three').Vector3)()); y = p.y; } });
       return y;
     });
-    expect(height).toBeGreaterThan(60);
+    await expect.poll(height, { timeout: 15_000 }).toBeGreaterThan(60);
     expect(errors).toEqual([]);
   });
 });

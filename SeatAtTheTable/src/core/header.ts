@@ -23,7 +23,7 @@ import { appreciationMult, breakdownChancePerSec, caveatEffectLabel, effectiveHe
 import type { MapAssetKey, MapAssetLibrary } from '../map/assets';
 import { loadMapAssetLibrary } from '../map/assets';
 import { createCharacterLibrary, type CharacterLibrary } from '../map/characters';
-import { DEFAULT_PLAYER_LOOK, WARDROBE, createPersonParts, normalizeLook } from '../map/personModel';
+import { DEFAULT_PLAYER_LOOK, WARDROBE, createPersonParts, normalizeLook, useSculptedPersonParts } from '../map/personModel';
 import { BIKE_SEATS, seatedRider, type BikeClass } from '../map/bikeRider';
 import { isItemOwned, itemKey, itemPrice, lookPrice, ownedWardrobe, type MallShop, type WardrobeSlot } from '../config/mallShops';
 import { MALL_ROOM, MALL_SPOTS } from '../map/mallInterior';
@@ -102,6 +102,7 @@ import { buildCityLots } from '../world/render/lots';
 import { generateStreetProps, streetPropSolids, type StreetProp } from '../world/data/streetProps';
 import { loadPropLibrary, type PropLibrary } from '../world/assets/props';
 import { LANDMARK_MODELS, loadModelCatalog, type ModelCatalog } from '../world/assets/catalog';
+import { loadPersonGeometries } from '../world/assets/people';
 import { DISTRICT_OFFSETS, OUTSKIRT_PLACE_LOTS, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
 import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/viewport';
@@ -4392,7 +4393,9 @@ import type * as ThreeNamespace from 'three';
       mapScenePromise = (async function(){
         THREE = await import('three');
         mergeSceneryGeometries = (await import('three/examples/jsm/utils/BufferGeometryUtils.js')).mergeGeometries;
-        [mapAssets, vehicleLibrary, buildingLibrary, propLibrary, landmarkCatalog] = await Promise.all([loadMapAssetLibrary(THREE), loadVehicleLibrary(THREE), loadBuildingLibrary(THREE), loadPropLibrary(THREE), loadModelCatalog(THREE, '/assets/world/landmarks/', LANDMARK_MODELS)]);
+        let personParts: Awaited<ReturnType<typeof loadPersonGeometries>> = null;
+        [mapAssets, vehicleLibrary, buildingLibrary, propLibrary, landmarkCatalog, personParts] = await Promise.all([loadMapAssetLibrary(THREE), loadVehicleLibrary(THREE), loadBuildingLibrary(THREE), loadPropLibrary(THREE), loadModelCatalog(THREE, '/assets/world/landmarks/', LANDMARK_MODELS), loadPersonGeometries(THREE)]);
+        useSculptedPersonParts(personParts);
         characterLibrary = createCharacterLibrary(THREE, function(){ return state.appearance; }, mergeSceneryGeometries ?? undefined);
         if(!sceneInitialized){
           initScene();

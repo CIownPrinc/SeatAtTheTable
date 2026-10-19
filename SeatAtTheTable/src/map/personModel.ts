@@ -94,6 +94,13 @@ export interface PersonParts {
   material(color: string, kind?: 'cloth' | 'skin' | 'shiny' | 'eye'): ThreeNamespace.Material;
 }
 
+// LEGAL: Sculpted Blender shapes for some parts (world/assets/people.ts), used in place of the
+// LEGAL: primitive for that key wherever a person is built: the street, the wardrobe, a bike's rider.
+let sculptedParts: ReadonlyMap<string, ThreeNamespace.BufferGeometry> | null = null;
+export function useSculptedPersonParts(parts: ReadonlyMap<string, ThreeNamespace.BufferGeometry> | null): void {
+  sculptedParts = parts;
+}
+
 // LEGAL: One cache per scene: every person shares the same few dozen geometries and one material
 // LEGAL: per colour, so fifty people cost little more GPU memory than one.
 export function createPersonParts(THREE: typeof ThreeNamespace): PersonParts {
@@ -102,7 +109,7 @@ export function createPersonParts(THREE: typeof ThreeNamespace): PersonParts {
   return {
     geometry(key, make){
       let geometry = geometries.get(key);
-      if(!geometry){ geometry = make(); geometries.set(key, geometry); }
+      if(!geometry){ geometry = sculptedParts?.get(key) ?? make(); geometries.set(key, geometry); }
       return geometry;
     },
     material(color, kind = 'cloth'){
