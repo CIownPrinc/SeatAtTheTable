@@ -9,7 +9,7 @@ const CLASS_FOR_CAR: Record<string, VehicleClass> = {
   sedan:'beater', impala:'muscle', escalade:'suv', electron3:'ev', bentley:'ev-luxury', exotic:'supercar',
   beater_wagon:'wagon', panel_van:'van', mudster_pickup:'pickup', mudster_armored:'armored',
   electron_van:'ev-van', diamond_roadster:'roadster',
-  'cheat-dumptruck':'garbage', 'cheat-helicopter':'helicopter',
+  'cheat-dumptruck':'garbage', 'cheat-helicopter':'helicopter', 'race-loaner':'muscle',
 };
 
 export function vehicleClassForCar(id: string): VehicleClass | null {

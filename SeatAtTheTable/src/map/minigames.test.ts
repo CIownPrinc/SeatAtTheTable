@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fireRoadPayout, isFireRoadBest, shotOutcome, CHESS_PUZZLES } from './minigames';
+import { isFireRoadBest, shotOutcome, CHESS_PUZZLES } from './minigames';
 
 // LEGAL: Guards the pure scoring helpers that decide minigame rewards. These carry the
 // LEGAL: game-affecting logic; the DOM overlay/input code is exercised by hand.
@@ -35,16 +35,6 @@ describe('CHESS_PUZZLES', () => {
     for(const p of CHESS_PUZZLES){
       expect(p.fen.split('/')).toHaveLength(8);
     }
-  });
-});
-
-describe('fireRoadPayout', () => {
-  it('pays only for a completed run and reserves the top purse for a clean course', () => {
-    expect(fireRoadPayout(0, 6)).toBe(0);
-    expect(fireRoadPayout(2, 6)).toBe(0);
-    expect(fireRoadPayout(3, 6)).toBe(350);
-    expect(fireRoadPayout(5, 6)).toBe(700);
-    expect(fireRoadPayout(6, 6)).toBe(1100);
   });
 });
 

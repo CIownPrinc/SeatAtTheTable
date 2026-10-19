@@ -26,7 +26,8 @@ import { createCharacterLibrary, type CharacterLibrary } from '../map/characters
 import { DEFAULT_PLAYER_LOOK, normalizeLook } from '../map/personModel';
 import { renderRoamingActors } from '../map/actorRendering';
 import { createAmenityModal, mapAmenities } from '../map/amenities';
-import { fireRoadPayout, isFireRoadBest, minigameOpen, playMinigame, type MinigameResult } from '../map/minigames';
+import { isFireRoadBest, minigameOpen, playMinigame, type MinigameResult } from '../map/minigames';
+import { FIRE_ROAD_COURSE, advanceRacer, placings, pointAlong, progressAlong, racePrize, type RaceCourse, type Racer } from '../map/race';
 import { offRoadSpeedMultiplier } from '../map/offRoad';
 import { mountTouchStick } from '../map/touchControls';
 import { createQualityGovernor } from '../map/adaptiveQuality';
@@ -4612,28 +4613,11 @@ import type * as ThreeNamespace from 'three';
         ] : [{ label:'Keep driving' }] });
       } });
     } else if(interior.refId==='fireRoadKestrel'){
-      spots.push({ id:'trailhead', x:ROOM_W/2, y:80, label:'Fire Road Time Trial', icon:'ðŸ', action:function(){
+      spots.push({ id:'trailhead', x:ROOM_W/2, y:80, label:'Street Race', icon:'🏁', action:function(){
         const car = getEquippedCar();
         const bestSeconds = typeof state.worldMemory.fireRoadBestSeconds === 'number' ? state.worldMemory.fireRoadBestSeconds : 0;
-        if(!car){
-          showRoomBrief('Kestrel Woods Fire Road', 'Trailhead', 'The keeper points at the ruts and asks where you plan to find a car. Bring one from your garage, then come back.', '');
-          return;
-        }
-        showModal({ eyebrow:'Kestrel Woods Fire Road', title:'Six Gates, One Car', body:`<p class='flavor'>The keeper marks six blind turns on a paper napkin. Clear at least three and there is cash in it. A clean run pays $1,100. Any paid finish earns the hand-painted Fire Road stripe for the car you brought.</p><p>Best paid time: <strong>${bestSeconds ? `${bestSeconds.toFixed(1)} seconds` : 'no time posted'}</strong>.</p>`, buttons:[
-          { label:'Run the course', onClick:function(){ void playMinigame('fireRoad', 'Fire Road Time Trial').then(function(res: MinigameResult){
-            const payout = fireRoadPayout(res.score, res.max);
-            const elapsedSeconds = res.elapsedSeconds ?? 0;
-            const newBest = payout > 0 && isFireRoadBest(bestSeconds, elapsedSeconds);
-            if(payout > 0){
-              state.cash += payout;
-              state.carDecals[car.id] = 'fire-road';
-              state.worldMemory.fireRoadRun = String(res.score);
-              if(newBest) state.worldMemory.fireRoadBestSeconds = elapsedSeconds;
-              log(`<i aria-hidden=\"true\" class=\"ph-duotone ph-flag-checkered\"></i> Fire Road finish: ${res.score}/${res.max} gates in ${elapsedSeconds.toFixed(1)}s; cash +$${payout}; Fire Road stripe unlocked for ${car.name}.${newBest ? ' New best time.' : ''}`);
-              refreshPlayerModel(); updateParkedCarMesh();
-            } else log(`<i aria-hidden=\"true\" class=\"ph-duotone ph-flag-checkered\"></i> Fire Road: ${res.score}/${res.max} gates in ${elapsedSeconds.toFixed(1)}s; no payout. Clear 3 of 6 for cash and the stripe.`);
-            renderAll(); scheduleSave();
-          }); } },
+        showModal({ eyebrow:'Kestrel Woods Fire Road', title:'The Kestrel Run', body:`<p class='flavor'>Three locals and their cars, idling at the trailhead. ${FIRE_ROAD_COURSE.checkpoints.length} checkpoints west along the north-shore lane to the far side of the lake. ${car ? `You'll race the ${car.name}.` : "No car? They'll lend you a Chevalier, and want it back."}</p><p>First pays ${formatMoney(racePrize(1, 4).cash)} and the Fire Road stripe; second ${formatMoney(racePrize(2, 4).cash)}; third ${formatMoney(racePrize(3, 4).cash)}.</p><p>Best time: <strong>${bestSeconds ? `${bestSeconds.toFixed(1)} seconds` : 'none yet'}</strong>.</p>`, buttons:[
+          { label:'Line up', onClick:startRace },
           { label:'Walk the trail', secondary:true },
         ]});
       } });
@@ -6640,6 +6624,7 @@ import type * as ThreeNamespace from 'three';
       const length = size.length * 1.6, width = size.width * 1.6;
       movingObstacles.push({ obstacle:vehicleObstacle(actor.x, actor.y, actor.facing, length, width), velocity });
     });
+    race?.rivals.forEach(function(rival){ movingObstacles.push({ obstacle:vehicleObstacle(rival.x, rival.y, rival.heading, 29 * 1.6, 15 * 1.6), velocity:rival.velocity }); });
     const train = activeTrainSnapshot(Date.now(), windhavenMapModel.railLines[0]);
     if(train) movingObstacles.push({ obstacle:{ x:train.point.x, y:train.point.y, halfLength:TRAIN_HALF_LENGTH, halfWidth:TRAIN_HALF_WIDTH, angle:Math.PI / 2 }, velocity:{ x:0, y:0 } });
   }
@@ -6681,6 +6666,152 @@ import type * as ThreeNamespace from 'three';
     body.scale.y += (squash - body.scale.y) * ease;
   }
 
+  // LEGAL: ---- Street racing (map/race.ts has the rules) ----
+  // LEGAL: A countdown on the start line, three rivals driving the course for real, checkpoints you
+  // LEGAL: have to pass in order (the GPS always points at the next), and a prize by placing.
+  const RACE_COUNTDOWN = 3.2;
+  const RACE_TIME_LIMIT = 180;
+  const RIVALS = [
+    { id:'rival-muscle', cls:'muscle' as const, color:'#7a1f2a', pace:0.93, lane:-10 },
+    { id:'rival-supercar', cls:'supercar' as const, color:'#d4a017', pace:0.99, lane:10 },
+    { id:'rival-roadster', cls:'roadster' as const, color:'#1f4f6b', pace:1.03, lane:-10 },
+  ];
+  interface RaceRival extends Racer { group: ThreeNamespace.Object3D; lane: number; x: number; y: number; heading: number; velocity: { x: number; y: number } }
+  interface ActiveRace {
+    course: RaceCourse;
+    rivals: RaceRival[];
+    playerAlong: number;
+    nextCheckpoint: number;
+    startsAt: number;
+    playerFinishedAt: number | null;
+    marker: ThreeNamespace.Object3D;
+    previousCar: string | null;
+    previousInVehicle: boolean;
+    loaner: boolean;
+  }
+  let race: ActiveRace | null = null;
+  function raceFrozen(): boolean { return !!race && state.playSeconds < race.startsAt; }
+  // LEGAL: A point on the course, `lateral` units to the right; negative `along` is behind the line.
+  function racePoint(course: RaceCourse, along: number, lateral: number): { x: number; y: number; heading: number } {
+    const at = pointAlong(course, Math.max(0, along));
+    const dx = Math.cos(at.heading), dy = Math.sin(at.heading);
+    const back = Math.min(0, along);
+    return { x:at.point.x + dx * back - dy * lateral, y:at.point.y + dy * back + dx * lateral, heading:at.heading };
+  }
+  function raceHud(): HTMLElement {
+    let hud = byIdOrNull('race-hud');
+    if(!hud){ hud = document.createElement('div'); hud.id = 'race-hud'; hud.className = 'race-hud'; byId('scene3d-container').appendChild(hud); }
+    return hud;
+  }
+  function startRace(): void {
+    if(race || !sceneInitialized) return;
+    if(state.currentInterior) exitBuilding();
+    const course = FIRE_ROAD_COURSE;
+    const previousCar = state.equippedCar, previousInVehicle = state.inVehicle;
+    const loaner = !getEquippedCar() || state.brokenCars.includes(state.equippedCar ?? '') || isFlyingVehicle(state.equippedCar);
+    if(loaner) state.equippedCar = 'race-loaner';
+    state.inVehicle = true;
+    flyingUntil = 0;
+    // LEGAL: A two-by-two grid: you and the roadster on the front row, the other two behind.
+    const start = racePoint(course, -26, 10);
+    player.x = start.x; player.y = start.y; player.vx = 0; player.vy = 0;
+    player.facing = start.heading;
+    cameraRig.snap();
+    refreshPlayerModel(); updateParkedCarMesh();
+    const top = currentSpeed();
+    const rivals: RaceRival[] = RIVALS.map(function(spec, i){
+      const group = vehicleLibrary ? vehicleLibrary.create(spec.cls, spec.color, 29, 15) : buildTrafficCarModel(spec.id, spec.color);
+      group.name = `race:${spec.id}`;
+      worldGroup.add(group);
+      return { id:spec.id, along:-26 - (i === 2 ? 0 : 54), speed:top * spec.pace, finishedAt:null, group, lane:spec.lane, x:0, y:0, heading:0, velocity:{ x:0, y:0 } };
+    });
+    // LEGAL: The checkpoint gate: a ring standing across the road, turned to face the racers.
+    const marker = new THREE.Mesh(new THREE.TorusGeometry(46, 3.4, 10, 36), new THREE.MeshStandardMaterial({ color:'#ffd23a', emissive:'#ffb800', emissiveIntensity:1.2, transparent:true, opacity:0.75 }));
+    marker.name = 'race:checkpoint';
+    worldGroup.add(marker);
+    race = { course, rivals, playerAlong:0, nextCheckpoint:0, startsAt:state.playSeconds + RACE_COUNTDOWN, playerFinishedAt:null, marker, previousCar, previousInVehicle, loaner };
+    placeRaceMarker();
+    log('<i aria-hidden="true" class="ph-duotone ph-flag-checkered"></i> You pull up to the line at the Kestrel trailhead. Engines rev.');
+  }
+  function placeRaceMarker(): void {
+    if(!race) return;
+    const checkpoint = race.course.checkpoints[race.nextCheckpoint];
+    if(!checkpoint) return;
+    const at = pointAlong(race.course, checkpoint.along);
+    race.marker.position.set(checkpoint.x, 34, checkpoint.y);
+    race.marker.rotation.y = -at.heading;
+    setGlobalWaypoint({ x:checkpoint.x, y:checkpoint.y });
+    rebuildWaypointBeacon();
+  }
+  function updateRace(dt: number): void {
+    if(!race) return;
+    const r = race;
+    const elapsed = state.playSeconds - r.startsAt;
+    const hud = raceHud();
+    if(elapsed < 0){
+      hud.innerHTML = `<div class="race-count">${Math.ceil(-elapsed)}</div>`;
+    }
+    // LEGAL: Getting out of the car is giving up.
+    if(!state.inVehicle){ endRace('abandoned'); return; }
+    if(elapsed >= 0){
+      r.playerAlong = progressAlong(r.course, { x:player.x, y:player.y }, r.playerAlong);
+      const checkpoint = r.course.checkpoints[r.nextCheckpoint];
+      if(checkpoint && Math.hypot(player.x - checkpoint.x, player.y - checkpoint.y) < 80){
+        r.nextCheckpoint++;
+        if(r.nextCheckpoint >= r.course.checkpoints.length) r.playerFinishedAt = elapsed;
+        else placeRaceMarker();
+      }
+    }
+    // LEGAL: You can't rank ahead of a checkpoint you haven't passed.
+    const rankAlong = r.playerFinishedAt !== null ? r.course.length : Math.min(r.playerAlong, r.course.checkpoints[r.nextCheckpoint]?.along ?? r.course.length);
+    r.rivals.forEach(function(rival){
+      if(elapsed >= 0) advanceRacer(rival, r.course, dt, rankAlong, elapsed);
+      const at = racePoint(r.course, rival.along, rival.lane);
+      rival.velocity = dt > 0 ? { x:(at.x - rival.x) / dt, y:(at.y - rival.y) / dt } : { x:0, y:0 };
+      rival.x = at.x; rival.y = at.y; rival.heading = at.heading;
+      rival.group.position.set(at.x, 0, at.y);
+      rival.group.rotation.y = -at.heading + Math.PI / 2;
+    });
+    const order = placings([{ id:'you', along:rankAlong, finishedAt:r.playerFinishedAt }, ...r.rivals]);
+    const place = order.indexOf('you') + 1;
+    if(elapsed >= 0){
+      const clock = Math.max(0, elapsed);
+      hud.innerHTML = `${elapsed < 1 ? '<div class="race-count go">GO</div>' : ''}<div class="race-line"><strong>${place}</strong>/${order.length} · Checkpoint ${Math.min(r.nextCheckpoint + 1, r.course.checkpoints.length)}/${r.course.checkpoints.length} · ${Math.floor(clock / 60)}:${String(Math.floor(clock % 60)).padStart(2, '0')}</div>`;
+    }
+    if(r.playerFinishedAt !== null) endRace('finished', place, order.length);
+    else if(elapsed > RACE_TIME_LIMIT) endRace('timeout', order.length, order.length);
+  }
+  function endRace(reason: 'finished' | 'timeout' | 'abandoned', place = 4, field = 4): void {
+    const r = race;
+    if(!r) return;
+    race = null;
+    r.rivals.forEach(rival => worldGroup.remove(rival.group));
+    worldGroup.remove(r.marker);
+    byIdOrNull('race-hud')?.remove();
+    setGlobalWaypoint(null); rebuildWaypointBeacon(); byId('minimap-clear').classList.remove('show');
+    const racedCar = getEquippedCar();
+    if(reason === 'finished'){
+      const prize = racePrize(place, field);
+      state.cash += prize.cash; state.respect += prize.respect;
+      const seconds = r.playerFinishedAt ?? 0;
+      const best = typeof state.worldMemory.fireRoadBestSeconds === 'number' ? state.worldMemory.fireRoadBestSeconds : 0;
+      if(isFireRoadBest(best, seconds)) state.worldMemory.fireRoadBestSeconds = seconds;
+      if(place === 1 && racedCar && !r.loaner) state.carDecals[racedCar.id] = 'fire-road';
+      const ordinal = ['1st', '2nd', '3rd', '4th'][place - 1] ?? `${place}th`;
+      const message = `${ordinal} in ${seconds.toFixed(1)}s${prize.cash ? ` · +${formatMoney(prize.cash)}` : ''}${place === 1 && !r.loaner ? ' · Fire Road stripe' : ''}`;
+      showMapToast(`Kestrel Run: ${message}`);
+      log(`<i aria-hidden="true" class="ph-duotone ph-flag-checkered"></i> Kestrel Run: ${message}.`);
+    } else {
+      showMapToast(reason === 'timeout' ? 'The race clock ran out.' : 'You pulled out of the race.');
+    }
+    // LEGAL: A borrowed car goes back; you're left standing where you stopped.
+    if(r.loaner){
+      state.equippedCar = r.previousCar;
+      state.inVehicle = false;
+    }
+    refreshPlayerModel(); updateParkedCarMesh(); renderAll(); scheduleSave();
+  }
+
   function aimCamera(dt: number): void {
     const view = cameraRig.update({ x:player.x, y:player.y, vx:player.vx, vy:player.vy, inVehicle:state.inVehicle, dt });
     camera3d.position.set(view.eye.x, view.eye.y, view.eye.z);
@@ -6700,7 +6831,7 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: player token doesn't drift under it; the loop keeps running to hold the scene.
     // LEGAL: The expanded City Map is a full-screen overlay you read, not play through —
     // LEGAL: moving underneath it meant you walked blind and came back somewhere else.
-    if(!minigameOpen() && !deviceOpen() && !cityMapOpen && !isKnockedDown() && !document.getElementById('wardrobe-overlay')){
+    if(!minigameOpen() && !deviceOpen() && !cityMapOpen && !isKnockedDown() && !raceFrozen() && !document.getElementById('wardrobe-overlay')){
       if(keys['arrowup']||keys['w']) dy -= 1;
       if(keys['arrowdown']||keys['s']) dy += 1;
       if(keys['arrowleft']||keys['a']) dx -= 1;
@@ -6783,6 +6914,7 @@ import type * as ThreeNamespace from 'three';
       updateTrain();
       updateCheatEffects(dt);
       updateSmokePlumes();
+      updateRace(dt);
       updateMovingObstacles(dt);
       checkRunOver();
       updateKnockdown(dt);

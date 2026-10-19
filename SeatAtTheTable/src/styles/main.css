@@ -606,3 +606,10 @@ main{max-width:1240px;margin:0 auto;padding:26px 24px 60px;}
 .minimap-gps-clear { position:absolute; top:206px; right:12px; width:160px; display:none; align-items:center; justify-content:center; gap:4px; padding:5px 8px; border:1px solid var(--gold); border-radius:6px; background:rgba(10,12,18,0.82); color:var(--gold); font-size:12px; cursor:pointer; z-index:7; }
 .minimap-gps-clear.show { display:flex; }
 .minimap-gps-clear:hover { background:rgba(212,160,23,0.16); }
+
+/* Street race HUD: a big countdown, then position, checkpoint and time. */
+.race-hud { position:absolute; left:50%; top:56px; transform:translateX(-50%); z-index:24; text-align:center; pointer-events:none; }
+.race-count { font-family:var(--font-display); font-size:72px; font-weight:800; color:#ffd23a; text-shadow:0 4px 18px rgba(0,0,0,0.7); }
+.race-count.go { color:#5fdc8f; }
+.race-line { margin-top:6px; padding:6px 14px; border-radius:8px; background:rgba(10,12,18,0.82); color:var(--text); font-size:14px; }
+.race-line strong { color:#ffd23a; font-size:18px; }

@@ -285,7 +285,11 @@ old one.
     colours, real glasses and sunglasses, a heavier chain with a pendant, a watch and an earring.
     Still open: accessory shops in the mall.
 46. Minigames look primitive: make them 3D, or even first person.
-47. Street racing like GTA: get a car, race real opponents round a course.
+47. **DONE** Street racing like GTA. At the Kestrel Woods trailhead you line up on a grid against
+    three rival cars (muscle, supercar, roadster) for a 3-2-1-GO start, then race ten checkpoint
+    rings west along the north-shore road with the GPS on the next gate. The HUD shows your place,
+    checkpoint and time. Prizes go by place, and first in your own car earns the Fire Road stripe.
+    No car? They lend you one and take it back. Getting out of the car forfeits the race.
 
 48. **DONE** Pulling a dealer made them vanish; now they walk off the corner down the street.
 

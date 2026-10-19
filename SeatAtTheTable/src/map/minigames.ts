@@ -9,7 +9,7 @@
 // LEGAL: chess board). Shops (pet store, newsstand) are plain buy/sell modals built in
 // LEGAL: map/amenities.ts — a memory match or a haggle bar would be a game bolted onto
 // LEGAL: something that isn't one.
-export type MinigameKind = 'basketball' | 'parkgame' | 'fireRoad';
+export type MinigameKind = 'basketball' | 'parkgame';
 
 export interface MinigameReward { cash: number; respect: number; }
 export interface MinigameResult {
@@ -50,13 +50,6 @@ export const CHESS_PUZZLES: ChessPuzzle[] = [
 // LEGAL: Reward tables — modest, since these build standing rather than exploit anyone.
 function basketballReward(makes: number): MinigameReward { return { cash: makes * 45, respect: makes }; }
 function chessReward(solved: number): MinigameReward { return { cash: 0, respect: solved * 2 }; }
-
-export function fireRoadPayout(gates: number, total: number): number {
-  if(gates < Math.ceil(total / 2)) return 0;
-  if(gates === total) return 1100;
-  if(gates >= total - 1) return 700;
-  return 350;
-}
 
 export function isFireRoadBest(previousSeconds: number, elapsedSeconds: number): boolean {
   return previousSeconds <= 0 || elapsedSeconds < previousSeconds;
@@ -237,55 +230,6 @@ function playChess(shell: Shell, done: (r: MinigameResult) => void): void {
   render();
 }
 
-function playFireRoad(shell: Shell, done: (r: MinigameResult) => void): void {
-  const GATES = 6;
-  const canvas = document.createElement('canvas');
-  canvas.className = 'mg-canvas'; canvas.width = 400; canvas.height = 150;
-  shell.stage.appendChild(canvas);
-  const ctx = canvas.getContext('2d')!;
-  let gate = 0, cleared = 0, pos = 0, dir = 1, running = true, raf = 0;
-  const startedAt = performance.now();
-  const target = 0.5, half = 0.10;
-  shell.setPrompt('Hit <strong>Clear gate</strong> (or <strong>Space</strong>) as your line crosses the gap. Six blind turns; three clears brings you home.');
-
-  function frame(now: number): void {
-    if(!running) return;
-    pos += dir * (0.014 + gate * 0.0025);
-    if(pos > 1){ pos = 1; dir = -1; } else if(pos < 0){ pos = 0; dir = 1; }
-    const w = canvas.width, h = canvas.height, pad = 24, roadW = w - pad * 2;
-    ctx.fillStyle = '#101710'; ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = '#5e4b38'; ctx.fillRect(pad, 43, roadW, 62);
-    ctx.strokeStyle = '#d4a017'; ctx.lineWidth = 3;
-    ctx.setLineDash([12, 10]); ctx.beginPath(); ctx.moveTo(pad, 74); ctx.lineTo(w - pad, 74); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = 'rgba(74,154,90,.7)'; ctx.fillRect(pad + (target-half) * roadW, 42, half * 2 * roadW, 64);
-    ctx.fillStyle = '#f0efe8'; ctx.fillRect(pad + pos * roadW - 3, 34, 6, 80);
-    ctx.fillStyle = '#d4693a'; ctx.fillRect(pad + target * roadW - 2, 27, 4, 95);
-    ctx.fillStyle = '#c8cad8'; ctx.font = '12px sans-serif'; ctx.textAlign = 'left';
-    ctx.fillText(`TIME ${Math.floor((now - startedAt) / 1000)}s · KEEP IT BETWEEN THE TREES`, pad, 20);
-    raf = requestAnimationFrame(frame);
-  }
-
-  function clearGate(): void {
-    if(!running) return;
-    if(Math.abs(pos - target) <= half) cleared++;
-    gate++;
-    shell.setProgress(`Gate ${Math.min(gate + 1, GATES)} of ${GATES}`, `Cleared ${cleared}`);
-    if(gate >= GATES){
-      running = false; cancelAnimationFrame(raf);
-      const payout = fireRoadPayout(cleared, GATES);
-      const elapsedSeconds = (performance.now() - startedAt) / 1000;
-      done({ kind:'fireRoad', success:payout > 0, score:cleared, max:GATES, reward:{cash:0,respect:0},
-        message:payout > 0 ? `You bring the car back with ${cleared} of ${GATES} gates clean.` : `The ridge wins this run: ${cleared} of ${GATES} gates.`, elapsedSeconds });
-    }
-  }
-
-  shell.setProgress('Gate 1 of 6', 'Cleared 0');
-  addButton(shell.foot, 'Clear gate', clearGate);
-  addButton(shell.foot, 'Pull over', function(){ running = false; cancelAnimationFrame(raf); done({ kind:'fireRoad', success:false, score:cleared, max:GATES, reward:{cash:0,respect:0}, message:'You pull over before the course is done.', elapsedSeconds:(performance.now() - startedAt) / 1000 }); }, true);
-  onKey(shell.overlay, ' ', clearGate);
-  raf = requestAnimationFrame(frame);
-}
-
 // LEGAL: ---------- shared helpers ----------
 
 function addButton(foot: HTMLElement, label: string, onClick: () => void, secondary = false): void {
@@ -314,12 +258,10 @@ function shuffle<T>(arr: T[]): T[] {
 const RUNNERS: Record<MinigameKind, (shell: Shell, done: (r: MinigameResult) => void) => void> = {
   basketball: playBasketball,
   parkgame: playChess,
-  fireRoad: playFireRoad,
 };
 
 const EYEBROWS: Record<MinigameKind, string> = {
   basketball: 'Neighborhood Court', parkgame: 'Park Tables',
-  fireRoad: 'Kestrel Woods Fire Road',
 };
 
 // LEGAL: True while any minigame overlay is on screen — header gates map input on this.

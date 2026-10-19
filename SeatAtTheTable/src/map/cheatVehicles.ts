@@ -5,6 +5,8 @@ import type { Car } from '../config/types';
 export const CHEAT_VEHICLES: Car[] = [
   { id:'cheat-dumptruck', name:'Garbage Truck', icon:'', cost:0, speedMult:0.85, heistBonus:0, respectPerSec:0, color:'#2f6b3a', len:40, wid:15 },
   { id:'cheat-helicopter', name:'Helicopter', icon:'', cost:0, speedMult:1.7, heistBonus:0, respectPerSec:0, color:'#2c3a4a', len:40, wid:40 },
+  // LEGAL: Lent for a street race when you don't own a car; handed back at the finish.
+  { id:'race-loaner', name:'Borrowed Chevalier', icon:'', cost:0, speedMult:1.25, heistBonus:0, respectPerSec:0, color:'#3e6b8a', len:29, wid:15 },
 ];
 
 export function isFlyingVehicle(id: string | null): boolean {
