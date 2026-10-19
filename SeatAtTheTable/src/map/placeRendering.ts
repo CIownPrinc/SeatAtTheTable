@@ -247,8 +247,7 @@ function renderAmenities(options: MapPlaceRenderOptions): void {
   mapObjects.filter(object => object.kind === 'amenity').forEach(function(object){
     const amenity = object.ref as MapAmenity;
     const mesh = helpers.buildAmenityModel(amenity);
-    const y = amenity.kind === 'petstore' || amenity.kind === 'shop' ? 10 : 0;
-    mesh.position.set(object.x, y, object.y);
+    mesh.position.set(object.x, 0, object.y);
     mesh.name = `amenity:${amenity.kind}:${amenity.id}`;
     worldGroup.add(mesh);
   });

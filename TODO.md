@@ -253,7 +253,12 @@ old one.
     real, dressed Arjun seated on them (`map/bikeRider.ts`). Still open: spinning wheels.
 
 **D. How the world looks**
-26. Audit the whole map for primitive designs that could be better, not just the ground.
+26. **PART** Audit the whole map for primitive designs that could be better, not just the ground.
+    Done so far: countryside buildings, filler buildings, the newsstand (now a kiosk), the park
+    chess tables (round stone tables with inlaid boards), the pet store (a shopfront with an
+    awning), Devlin Hall (a civic hall under its dome), parking-lot cars (real models, parked in
+    the bays), building sites, parks, the suburb, the plow, the bikes and their rider. Still open:
+    a full tour for anything else that's still boxes.
 27. **PART** The map was very polygonal. The coast and lake shore are now smoothed in the map data
     itself (Chaikin, two passes), and a spliced-on needle of sea in the east coast is gone. Still
     open: curves elsewhere (roads come with the new road graph).

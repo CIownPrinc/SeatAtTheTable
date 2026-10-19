@@ -77,7 +77,8 @@ export function buildMapObjects(input: MapObjectFactoryInput): MapObject[] {
       return { kind:'local', id:m.id, district:m.district, x:m.x, y:m.y, bounds:archetypeBounds(localArchetype(m),m.x,m.y,shape.w,shape.d), interactRadius:Math.max(46, shape.w*0.62), minimapColor:'#7a6fb0', minimapSize:2.5, minimapIcon:minimapIconForLocalBusiness(m), ref:m };
     }),
     ...input.amenities.map(function(m): MapObject<'amenity', MapAmenity> {
-      const bounds = amenityHasSolidFootprint(m.kind) ? createBounds(m.x,m.y,27,24) : undefined;
+      // LEGAL: The pet store is a shop building; the newsstand only a kiosk.
+      const bounds = amenityHasSolidFootprint(m.kind) ? (m.kind === 'shop' ? createBounds(m.x,m.y,14,10) : createBounds(m.x,m.y,27,24)) : undefined;
       return { kind:'amenity', id:m.id, district:m.district, x:m.x, y:m.y, bounds, interactRadius:52, minimapColor:m.kind==='basketball'?'#d47a2a':'#5fbf8f', minimapSize:2.5, minimapIcon:'amenity', ref:m };
     }),
     ...input.corners.map(function(m): MapObject<'corner', Corner> {

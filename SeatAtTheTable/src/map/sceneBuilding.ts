@@ -56,6 +56,8 @@ export interface FillerSceneHelpers extends SceneRenderHelpers {
   buildDetailedBuilding: (w: number, h: number, d: number, color: number | string, zoneType: string, variant: number) => ThreeNamespace.Group;
   // LEGAL: The Blender model for this archetype, or null when the models didn't load.
   buildPlaceModel: (archetype: PlaceArchetype, color: string, w: number, h: number, d: number) => ThreeNamespace.Group | null;
+  // LEGAL: A parked car model (`seed` picks which), or null when the models didn't load.
+  buildParkedCar: (color: string, seed: number) => ThreeNamespace.Object3D | null;
   renderZoneType: (zone: MapZoneType) => string;
   seededRandom: (seed: number) => () => number;
 }
@@ -77,6 +79,8 @@ export interface TreeSceneOptions extends BaseSceneOptions {
 export interface LandmarkSceneOptions extends BaseSceneOptions {
   landmarks: Landmark[];
   helpers: SceneRenderHelpers;
+  // LEGAL: The Blender model for an archetype, or null when the models didn't load.
+  buildPlaceModel?: (archetype: PlaceArchetype, color: string, w: number, h: number, d: number) => ThreeNamespace.Group | null;
 }
 
 function shapeFromPoints(THREE: typeof ThreeNamespace, points: Array<{ x: number; y: number }>): ThreeNamespace.Shape {
@@ -563,13 +567,23 @@ export function buildFillerCity(options: FillerSceneOptions): void {
         }
         addInstancedMesh(THREE, worldGroup, new THREE.PlaneGeometry(2,d-24), stripeMat, stripeInstances);
         const curb = helpers.box(w,2,3,'#565a63'); curb.position.set(cx,1,f.y0+8); worldGroup.add(curb);
+        // LEGAL: Cars parked nose-in, in the bays, on two rows facing each other; real models,
+        // LEGAL: merged into one group per lot.
         const rand = helpers.seededRandom(Math.floor(cx*11+cy*17));
-        const carColors=['#556070','#704040','#405560','#606050'];
-        for(let i=0;i<10;i++){
-          const px=f.x0+off+18+rand()*(w-36), py=f.y0+18+rand()*(d-36);
-          const c=helpers.box(20,9,11,carColors[Math.floor(rand()*carColors.length)]);
-          c.position.set(px,4.5,py); c.rotation.y=Math.round(rand()*1)*Math.PI/2; worldGroup.add(c);
+        const carColors=['#556070','#704040','#405560','#606050','#d8dce2','#20242c','#8a7a5a'];
+        const parked = new THREE.Group();
+        parked.name = `filler:lot-cars:${distId}@${Math.round(cx)},${Math.round(cy)}`;
+        for(let bx=f.x0+off+30; bx<f.x1+off-30; bx+=24){
+          for(const row of [-1, 1]){
+            if(rand() < 0.4) continue;
+            const color = carColors[Math.floor(rand()*carColors.length)];
+            const car = helpers.buildParkedCar(color, Math.floor(rand()*1000)) ?? helpers.box(20,9,11,color);
+            car.position.set(bx, car.type === 'Mesh' ? 4.5 : 0, cy + row*d/4);
+            car.rotation.y = row < 0 ? 0 : Math.PI;
+            parked.add(car);
+          }
         }
+        worldGroup.add(parked);
       }
     });
   });
@@ -624,7 +638,8 @@ export function buildLandmarks(options: LandmarkSceneOptions): void {
     worldGroup.name = `landmark:${lm.id}`;
     options.worldGroup.add(worldGroup);
     if(lm.id==='devlinHall'){
-      const base = helpers.box(70,26,70,'#6a5b3e'); base.position.set(lm.x,13,lm.y); worldGroup.add(base);
+      // LEGAL: A civic hall under its dome: the same model as City Hall when the models are loaded.
+      const base = options.buildPlaceModel?.('civic', '#8a7a5a', 70, 26, 70) ?? helpers.box(70,26,70,'#6a5b3e'); base.position.set(lm.x,13,lm.y); worldGroup.add(base);
       const steps = helpers.box(84,6,84,'#565049'); steps.position.set(lm.x,3,lm.y); worldGroup.add(steps);
       const dome = new THREE.Mesh(new THREE.SphereGeometry(30,20,14,0,Math.PI*2,0,Math.PI/2), materials.standard('landmark:civic-dome', {color:'#c9a227', metalness:0.6, roughness:0.3}));
       dome.position.set(lm.x,26,lm.y); dome.castShadow=true; worldGroup.add(dome);

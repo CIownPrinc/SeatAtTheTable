@@ -5089,7 +5089,7 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: Only the resort: it was ~1,900 of ~5,000 scene objects (measured 2026-10-17; merging
   // LEGAL: it took idle fps from ~44 to ~56). Trees, outskirts, filler and landmarks were tried too
   // LEGAL: and saved nothing measurable, so they stay as authored.
-  const MERGEABLE_SCENERY_PREFIXES = ['resort:', 'filler:construction:', 'crane:', 'suburb:', 'outskirt:'];
+  const MERGEABLE_SCENERY_PREFIXES = ['resort:', 'filler:construction:', 'filler:lot-cars:', 'crane:', 'suburb:', 'outskirt:'];
   let scene: ThreeNamespace.Scene, camera3d: ThreeNamespace.PerspectiveCamera, renderer: ThreeNamespace.WebGLRenderer, worldGroup: ThreeNamespace.Group, playerGroup: ThreeNamespace.Group, ambientLight: ThreeNamespace.AmbientLight, sunLight: ThreeNamespace.DirectionalLight, moonLight: ThreeNamespace.DirectionalLight, waypointBeacon: ThreeNamespace.Group | null = null, missionObjectiveMarker: ThreeNamespace.Group | null = null, parkedCarMesh: ThreeNamespace.Group | null = null, trainGroup: ThreeNamespace.Group | null = null;
   let missionObjectiveMarkerKey = '';
   let streetLamps: LampHead[] = [];
@@ -5491,6 +5491,14 @@ import type * as ThreeNamespace from 'three';
     beacon.position.set(0, box.max.y + 2, (box.min.z + box.max.z) / 2);
     model.add(blade, beacon);
   }
+  // LEGAL: Ordinary cars for the parking lots.
+  const PARKED_CLASSES = ['sedan', 'beater', 'wagon', 'suv', 'ev', 'pickup', 'van'] as const;
+  function buildParkedCar(color: string, seed: number): ThreeNamespace.Object3D | null {
+    const cls = PARKED_CLASSES[seed % PARKED_CLASSES.length];
+    const size = trafficFootprint(`parked-${cls}`);
+    // LEGAL: A little narrower than in traffic, so neighbours fit between the bay lines.
+    return vehicleLibrary ? vehicleLibrary.create(cls, color, size.length * 0.9, size.width * 0.82) : null;
+  }
   function buildTrafficCarModel(id: string, color: string): ThreeNamespace.Group {
     const size = trafficFootprint(id);
     if(vehicleLibrary){
@@ -5501,7 +5509,7 @@ import type * as ThreeNamespace from 'three';
     return buildCarModel({ id, name:id, icon:'', cost:0, speedMult:1, heistBonus:0, respectPerSec:0, color, len:id.includes('cab')?30:34, wid:id.includes('cruiser')?17:15 });
   }
   function buildAmenityModel(amenity: typeof mapAmenities[number]): ThreeNamespace.Group {
-    return buildMapAmenityModel(THREE, amenity, { box, addSign, buildDetailedBuilding, variantForId });
+    return buildMapAmenityModel(THREE, amenity, { box, addSign, buildDetailedBuilding, buildPlaceModel, variantForId });
   }
   function updateDayNightLighting(){
     if(!scene || !sunLight || !moonLight || !ambientLight) return;
@@ -5869,10 +5877,10 @@ import type * as ThreeNamespace from 'three';
 
     timer.measure('fill-and-landmarks', function(): void {
       tagWorld('filler', function(){
-        buildFillerCity({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, districtOffsets:DISTRICT_OFFSETS, fillerFor, helpers:{ box, addSign, buildDetailedBuilding, buildPlaceModel, renderZoneType, seededRandom } });
+        buildFillerCity({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, districtOffsets:DISTRICT_OFFSETS, fillerFor, helpers:{ box, addSign, buildDetailedBuilding, buildPlaceModel, buildParkedCar, renderZoneType, seededRandom } });
       });
       tagWorld('landmark', function(){
-        buildLandmarks({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, landmarks, helpers:{ box, addSign } });
+        buildLandmarks({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, landmarks, helpers:{ box, addSign }, buildPlaceModel });
         worldGroup.add(buildMall(THREE, mergeSceneryGeometries ?? undefined));
         worldGroup.add(buildCentralPark(THREE, materials, addSign));
         worldGroup.add(buildSuburb(THREE, materials));
