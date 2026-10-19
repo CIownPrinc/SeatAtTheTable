@@ -392,7 +392,9 @@ Build order:
    street, its type, height and colour from the block's character, a few left as building sites.
    They keep clear of every place, its frontage and the garage's apron, and draw as instanced
    Blender models (about 25 draw calls a district). Still open: curved city streets.
-4. Scenery placed from zoning that keeps clear of roads.
+4. **PART** Scenery placed from zoning that keeps clear of roads. Street furniture is in: benches,
+   bins, hydrants, planters, postboxes and bus shelters modelled in Blender (`art/blender/props.py`)
+   and set out in front of the lots by block character (`world/data/streetProps.ts`), instanced.
 5. Models: Blender-made, instanced, with levels of detail.
 6. The new places from section 10F, built on the new engine rather than the old one.
 

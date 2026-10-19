@@ -99,6 +99,8 @@ import { plowOut, snowSurfaceFor, snowWhiteness, stepPlowed, stepSnowCover } fro
 import { terrainSnow } from '../world/render/terrain';
 import { frontageClearance, generateLots, lotSolid, type Lot } from '../world/data/lots';
 import { buildCityLots } from '../world/render/lots';
+import { generateStreetProps, streetPropSolids, type StreetProp } from '../world/data/streetProps';
+import { loadPropLibrary, type PropLibrary } from '../world/assets/props';
 import { DISTRICT_OFFSETS, OUTSKIRT_PLACE_LOTS, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
 import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/viewport';
@@ -4239,6 +4241,7 @@ import type * as ThreeNamespace from 'three';
   let characterLibrary: CharacterLibrary | null = null;
   let vehicleLibrary: VehicleLibrary | null = null;
   let buildingLibrary: BuildingLibrary | null = null;
+  let propLibrary: PropLibrary | null = null;
   document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.addEventListener('click', function(){ setTab(btn.getAttribute('data-tab')!); });
   });
@@ -4387,7 +4390,7 @@ import type * as ThreeNamespace from 'three';
       mapScenePromise = (async function(){
         THREE = await import('three');
         mergeSceneryGeometries = (await import('three/examples/jsm/utils/BufferGeometryUtils.js')).mergeGeometries;
-        [mapAssets, vehicleLibrary, buildingLibrary] = await Promise.all([loadMapAssetLibrary(THREE), loadVehicleLibrary(THREE), loadBuildingLibrary(THREE)]);
+        [mapAssets, vehicleLibrary, buildingLibrary, propLibrary] = await Promise.all([loadMapAssetLibrary(THREE), loadVehicleLibrary(THREE), loadBuildingLibrary(THREE), loadPropLibrary(THREE)]);
         characterLibrary = createCharacterLibrary(THREE, function(){ return state.appearance; }, mergeSceneryGeometries ?? undefined);
         if(!sceneInitialized){
           initScene();
@@ -4521,6 +4524,13 @@ import type * as ThreeNamespace from 'three';
     cityLotsCache = generateLots(taken);
     return cityLotsCache;
   }
+  // LEGAL: Benches, bins, hydrants and shelters in front of the lots (world/data/streetProps).
+  let cityPropsCache: StreetProp[] | null = null;
+  function cityProps(): StreetProp[] {
+    if(!newMapBeta()) return [];
+    cityPropsCache ??= generateStreetProps(cityLots(), streetTreeSpots, solidsFromObjects(mapObjects));
+    return cityPropsCache;
+  }
   function placeExtraSolids(): Solid[] {
     const list: Solid[] = [];
     mapObjects.filter(object => object.kind === 'service').forEach(function(object){
@@ -4538,7 +4548,7 @@ import type * as ThreeNamespace from 'three';
   }
   function buildAllSolids(){
     const list: Solid[] = solidsFromObjects(mapObjects);
-    if(newMapBeta()) list.push(...cityLots().filter(lot => !lot.site).map(lotSolid), ...cityLots().filter(lot => lot.site).map(lot => { const s = lotSolid(lot); return { ...s, hw:s.hw + 2, hd:s.hd + 2 }; }));
+    if(newMapBeta()) list.push(...streetPropSolids(cityProps()), ...cityLots().filter(lot => !lot.site).map(lotSolid), ...cityLots().filter(lot => lot.site).map(lot => { const s = lotSolid(lot); return { ...s, hw:s.hw + 2, hd:s.hd + 2 }; }));
     else list.push(...fillerLayout.fillerSolids());
     // LEGAL: An alley is the gap BETWEEN two buildings: the gap is walkable and the buildings
     // LEGAL: forming it are not. A single bounds box cannot say "blocked, open, blocked", so
@@ -5912,6 +5922,9 @@ import type * as ThreeNamespace from 'three';
       streetTreeSpots.length = 0;
       tagWorld('tree:street', function(){ buildStreetTrees({ ...baseScene, roadNetwork, districtOffsets:DISTRICT_OFFSETS, seededRandom, treeSpots:streetTreeSpots }); });
       tagWorld('outskirt:scenery', function(){ buildOutskirtScenery(baseScene); });
+      // LEGAL: Street furniture in front of the lots, laid out once the street trees are known.
+      cityPropsCache = null;
+      if(propLibrary && cityProps().length) worldGroup.add(propLibrary.instanced(cityProps()));
     });
     // LEGAL: Venture buildings — all districts
     timer.measure('places', function(): void {
