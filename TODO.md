@@ -18,6 +18,7 @@ repo. If a task below starts turning into a new feature, it belongs there instea
 | [`docs/world-expansion-plan.md`](SeatAtTheTable/docs/world-expansion-plan.md) | Bigger districts, outskirts, lot allocator, zoning, garage, real estate | Complete |
 | [`docs/map-asset-usage-audit.md`](SeatAtTheTable/docs/map-asset-usage-audit.md) | Which CC0 assets are used vs. reserved | Reference |
 | [`docs/map-architecture-notes.md`](SeatAtTheTable/docs/map-architecture-notes.md) | The one data-model rule map edits must not break, plus what the visual/perf review checks | Reference |
+| [`docs/map-rebuild-plan.md`](SeatAtTheTable/docs/map-rebuild-plan.md) | The from-scratch map rebuild: why, principles, layout, phases, budget | Active |
 
 That's the complete set. If a `.md` file isn't in this table, it's
 `SeatAtTheTable/README.md` (game description, not a plan). Any new plan/audit doc must be
@@ -255,6 +256,8 @@ old one.
 38. Snow that collects on the ground and turns it white, and a plow that comes through.
 
 ## 11. New map engine (decided 2026-10-18)
+
+Full plan: [`docs/map-rebuild-plan.md`](SeatAtTheTable/docs/map-rebuild-plan.md).
 
 Rebuild the map from scratch in `SeatAtTheTable/src/world/`, beside the old one, instead of
 patching the old map's foundations: authored coordinates stretched by `widenAuthoredX`, a street
