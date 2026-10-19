@@ -259,19 +259,26 @@ old one.
 32. **PART** Remodel everything properly in Blender, step by step. Blender 5.2 is installed and
     scripted (`art/blender/`); the first model, a sedan, is exported. Next: the full catalog.
 
+33. Proportions are off between people, cars and buildings. Measured against the roads (74 units for
+    two lanes, about 7 m): a person should be about 19 units tall and is 38, a storey should be
+    about 31 and is 16, and cars are roughly right. Set one world scale (units per metre) in one
+    module and size everything from it.
+
 **E. Interiors**
-33. Interiors you walk around in like outside, in 3D. A front desk looks like a front desk, and
+34. Interiors you walk around in like outside, in 3D. A front desk looks like a front desk, and
     every hotspot is something real (a person to talk to, a bulletin board), seen in first
     person or at least in 3D, instead of an icon that opens a text box or restates the obvious.
 
 **F. New places**
-34. A big mall with a parking garage. Inside should feel like walking around outside: an indoor
+35. A home of your own: a vault to stash cash and a wardrobe to change clothes (item 19). Arjun has
+    no home today; the garage and owned properties are the only places that are his.
+36. A big mall with a parking garage. Inside should feel like walking around outside: an indoor
     playground, stall owners trying to get you to try their perfume, ice cream vendors, a food
     court.
-35. A central park, with more greenery generally.
-36. A suburbs area.
-37. Construction sites.
-38. Snow that collects on the ground and turns it white, and a plow that comes through.
+37. A central park, with more greenery generally.
+38. A suburbs area.
+39. Construction sites.
+40. Snow that collects on the ground and turns it white, and a plow that comes through.
 
 ## 11. New map engine (decided 2026-10-18)
 
