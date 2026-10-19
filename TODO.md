@@ -257,11 +257,15 @@ old one.
 27. **PART** The map was very polygonal. The coast and lake shore are now smoothed in the map data
     itself (Chaikin, two passes), and a spliced-on needle of sea in the east coast is gone. Still
     open: curves elsewhere (roads come with the new road graph).
-28. **PART** Countryside ground was flat polygons with hard-edged shades. The new map (beta) has one
-    blended terrain painted from a zoning field (`world/render/terrain.ts`). Still open: making it
-    the default once the rest of the new map catches up.
-29. Zoning: make rich, poor, commercial, residential, countryside, farmland and forest areas
-    clearly distinct, but grade them into each other gradually, like real life.
+28. **DONE** Countryside ground was flat polygons with hard-edged shades. One blended terrain is
+    painted from a zoning field (`world/render/terrain.ts`), and it's now the default; the "New map
+    (beta)" setting switches back to the classic flat ground. Snow settles on it too.
+29. **DONE** Zoning: make rich, poor, commercial, residential, countryside, farmland and forest areas
+    clearly distinct, but grade them into each other gradually, like real life. Each block's
+    character (affluent, working, rough, shopping, corporate...) and each countryside kind has its
+    own ground colour and detail (crop rows, forest-floor clumps, worn patches), blurred over half
+    a block into its neighbours (`world/data/zoning.ts`); the farms, woods, suburb and city
+    buildings on top of it now match what each area is.
 30. **DONE** Dirt trails in the countryside. The country lanes are in, and five footpaths run off
     them (`map/trails.ts`): through Ridgewood forest to the lodge's door and to a clearing, from the
     Kestrel trailhead along the north woods, and tractor tracks into the south and west fields.

@@ -96,6 +96,7 @@ import { createMapSceneMaterials, createSceneBuildTimer } from '../map/scenePerf
 import { buildIntersectionFurniture as buildMapIntersectionFurniture, nearestLamps, showSignal, streetLampBulbs, type LampHead, type SignalHeads } from '../map/streetFurniture';
 import { signalState } from '../map/trafficRules';
 import { plowOut, snowSurfaceFor, snowWhiteness, stepPlowed, stepSnowCover } from '../map/snow';
+import { terrainSnow } from '../world/render/terrain';
 import { DISTRICT_OFFSETS, OUTSKIRT_PLACE_LOTS, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
 import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/viewport';
@@ -5783,6 +5784,7 @@ import type * as ThreeNamespace from 'three';
       });
     }
     snowShown = snowCover;
+    terrainSnow.value = snowWhiteness('ground', snowCover, snowPlowed);
     snowSurfaces.forEach(function(entry){
       entry.material.color.copy(entry.base).lerp(new THREE.Color(SNOW_WHITE), snowWhiteness(entry.surface, snowCover, snowPlowed));
     });
@@ -5910,7 +5912,8 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: it saves and reloads.
   const NEW_MAP_KEY = 'seat-new-map';
   function newMapBeta(): boolean {
-    try{ return window.localStorage.getItem(NEW_MAP_KEY) === '1'; }catch(e){ return false; }
+    // LEGAL: On unless switched off: its blended ground is what the zoning should look like (TODO 29).
+    try{ return window.localStorage.getItem(NEW_MAP_KEY) !== '0'; }catch(e){ return true; }
   }
 
   function isLocalDevBuild(): boolean {

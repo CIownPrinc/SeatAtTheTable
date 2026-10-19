@@ -129,10 +129,15 @@ export function paintGroundTexture(canvas: HTMLCanvasElement): void {
 }
 
 // LEGAL: Fine grass grain in the shader, at a scale the texture can't hold.
+// LEGAL: How much snow lies on the ground, 0 to 1 (map/snow): the ground's colour comes from a
+// LEGAL: texture, so it's whitened in the shader rather than through the material colour.
+export const terrainSnow = { value: 0 };
+
 const GRAIN_CHUNK = `
   vec2 grainCell = floor(vTerrainPos * 0.35);
   float grain = fract(sin(dot(grainCell, vec2(12.9898, 78.233))) * 43758.5453);
   diffuseColor.rgb *= 0.94 + grain * 0.1;
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86, 0.89, 0.93), uTerrainSnow);
 `;
 
 export function buildTerrainMesh(THREE: typeof ThreeNamespace): ThreeNamespace.Mesh {
@@ -160,7 +165,8 @@ export function buildTerrainMesh(THREE: typeof ThreeNamespace): ThreeNamespace.M
   const material = new THREE.MeshStandardMaterial({ map:texture, roughness:1, side:THREE.DoubleSide });
   material.onBeforeCompile = function(shader){
     shader.vertexShader = 'varying vec2 vTerrainPos;\n' + shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vTerrainPos = (modelMatrix * vec4(transformed, 1.0)).xz;');
-    shader.fragmentShader = 'varying vec2 vTerrainPos;\n' + shader.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n' + GRAIN_CHUNK);
+    shader.uniforms.uTerrainSnow = terrainSnow;
+    shader.fragmentShader = 'uniform float uTerrainSnow;\nvarying vec2 vTerrainPos;\n' + shader.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n' + GRAIN_CHUNK);
   };
   material.customProgramCacheKey = function(){ return 'terrain-grain'; };
   const mesh = new THREE.Mesh(geometry, material);
