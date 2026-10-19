@@ -38,7 +38,8 @@ walkable, the route between two points, what's near the player, and what to draw
    authored twice.
 3. **World coordinates from the start.** No authored-then-stretched numbers.
 4. **Data first, then drawing.** `src/world/data/` is plain TypeScript with no three.js, so it's
-   fast to unit test. `src/world/build/` turns it into meshes.
+   fast to unit test. `src/world/render/` turns it into meshes. (Not `build/`: `.gitignore`
+   ignores every folder by that name, which is how the first terrain commit broke the deploy.)
 5. **Real models.** Buildings, vehicles, people and props are made in Blender from scripts in
    `art/blender/`, exported as `.glb`, instanced, and kept within a triangle budget per category.
 6. **Gradual zoning.** Zoning is a smooth field over the whole world: wealth, density, use,
@@ -50,7 +51,7 @@ walkable, the route between two points, what's near the player, and what to draw
 ```
 src/world/
   data/      terrain, zoning field, road graph, blocks and lots, place assignments (no three.js)
-  build/     terrain mesh, roads, water, buildings, scenery, props, from the data above
+  render/    terrain mesh, roads, water, buildings, scenery, props, from the data above
   assets/    the model catalog: Blender glb files, instancing, levels of detail
   runtime/   camera, people, vehicles, traffic, police, collision, day and night, weather
   index.ts   createWorld(): what core/header.ts calls when "New map (beta)" is on

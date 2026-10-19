@@ -240,7 +240,7 @@ old one.
     itself (Chaikin, two passes), and a spliced-on needle of sea in the east coast is gone. Still
     open: curves elsewhere (roads come with the new road graph).
 28. **PART** Countryside ground was flat polygons with hard-edged shades. The new map (beta) has one
-    blended terrain painted from a zoning field (`world/build/terrain.ts`). Still open: making it
+    blended terrain painted from a zoning field (`world/render/terrain.ts`). Still open: making it
     the default once the rest of the new map catches up.
 29. Zoning: make rich, poor, commercial, residential, countryside, farmland and forest areas
     clearly distinct, but grade them into each other gradually, like real life.

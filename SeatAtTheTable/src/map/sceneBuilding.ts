@@ -4,7 +4,7 @@ import { characterDetail, characterProfile } from './neighbourhoods';
 import { createOutskirtSceneryLayout } from './outskirtScenery';
 import { ribbonGeometry } from './ribbon';
 import { applyWaterWaves } from './waterShader';
-import { buildTerrainMesh } from '../world/build/terrain';
+import { buildTerrainMesh } from '../world/render/terrain';
 
 // LEGAL: One colour per outskirt belt kind, read from the shared terrain theme so the 3D
 // LEGAL: world and any future minimap treatment cannot drift apart.
