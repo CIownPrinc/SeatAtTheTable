@@ -30,6 +30,7 @@ import { MALL_ROOM, MALL_SPOTS } from '../map/mallInterior';
 import { buildMall, mallSolids } from '../map/mall';
 import { buildCentralPark, centralParkSolids } from '../map/centralPark';
 import { buildSuburb, suburbSolids } from '../map/suburb';
+import { countryFootprint } from '../map/countryBuildings';
 import { renderRoamingActors } from '../map/actorRendering';
 import { createAmenityModal, mapAmenities } from '../map/amenities';
 import { isFireRoadBest, minigameOpen, playMinigame, type MinigameResult } from '../map/minigames';
@@ -64,7 +65,8 @@ import { allRegions, regionNameAt } from '../map/regions';
 import { propertyPlaces, type PropertyPlace } from '../map/propertyPlaces';
 import { createMapPlaceRecords, mapPlaceCategoryLabel, type MapPlaceCategory, type MapPlaceRecord } from '../map/places';
 import { activeTrainSnapshot, bridgeAtPoint, mapPointContext, nearestPlaceAtPoint, placesByCategory, routeHintBetween, routeSummary, trainCrossingBlockAtPoint } from '../map/queries';
-import { createOutskirtSceneryLayout, radiusForKind } from '../map/outskirtScenery';
+import { createOutskirtSceneryLayout } from '../map/outskirtScenery';
+import { rotatedHalfExtents } from '../map/layout';
 import { outskirtPlaceLabel } from '../map/outskirts';
 import { allocateServiceLots } from '../map/serviceLots';
 import { createRoamingActors, settleRoamingActors, updateRoamingActors } from '../map/roaming';
@@ -4498,8 +4500,10 @@ import type * as ThreeNamespace from 'three';
       list.push({ x:office.x, y:office.y, hw:GARAGE_OFFICE.w / 2, hd:GARAGE_OFFICE.d / 2 });
     }
     createOutskirtSceneryLayout().forEach(function(item){
-      const half = item.kind === 'tree' ? 4 : radiusForKind(item.kind) * 0.72;
-      list.push({ x:item.x, y:item.y, hw:half, hd:half });
+      if(item.kind === 'tree'){ list.push({ x:item.x, y:item.y, hw:4, hd:4 }); return; }
+      const size = countryFootprint(item.kind);
+      const ext = rotatedHalfExtents(size.w, size.d, item.rotation);
+      list.push({ x:item.x, y:item.y, hw:ext.hw, hd:ext.hd });
     });
     return list;
   }
@@ -5084,7 +5088,7 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: Only the resort: it was ~1,900 of ~5,000 scene objects (measured 2026-10-17; merging
   // LEGAL: it took idle fps from ~44 to ~56). Trees, outskirts, filler and landmarks were tried too
   // LEGAL: and saved nothing measurable, so they stay as authored.
-  const MERGEABLE_SCENERY_PREFIXES = ['resort:', 'filler:construction:', 'crane:', 'suburb:'];
+  const MERGEABLE_SCENERY_PREFIXES = ['resort:', 'filler:construction:', 'crane:', 'suburb:', 'outskirt:'];
   let scene: ThreeNamespace.Scene, camera3d: ThreeNamespace.PerspectiveCamera, renderer: ThreeNamespace.WebGLRenderer, worldGroup: ThreeNamespace.Group, playerGroup: ThreeNamespace.Group, ambientLight: ThreeNamespace.AmbientLight, sunLight: ThreeNamespace.DirectionalLight, moonLight: ThreeNamespace.DirectionalLight, waypointBeacon: ThreeNamespace.Group | null = null, missionObjectiveMarker: ThreeNamespace.Group | null = null, parkedCarMesh: ThreeNamespace.Group | null = null, trainGroup: ThreeNamespace.Group | null = null;
   let missionObjectiveMarkerKey = '';
   let streetLamps: LampHead[] = [];
@@ -5863,7 +5867,7 @@ import type * as ThreeNamespace from 'three';
 
     timer.measure('fill-and-landmarks', function(): void {
       tagWorld('filler', function(){
-        buildFillerCity({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, districtOffsets:DISTRICT_OFFSETS, fillerFor, helpers:{ box, addSign, buildDetailedBuilding, renderZoneType, seededRandom } });
+        buildFillerCity({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, districtOffsets:DISTRICT_OFFSETS, fillerFor, helpers:{ box, addSign, buildDetailedBuilding, buildPlaceModel, renderZoneType, seededRandom } });
       });
       tagWorld('landmark', function(){
         buildLandmarks({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, landmarks, helpers:{ box, addSign } });

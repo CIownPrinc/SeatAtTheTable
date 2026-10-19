@@ -4,6 +4,8 @@ import type { DiagonalRoad, HorizontalRoad, Landmark, OutskirtRegion, VerticalRo
 import { OUTSKIRT_REGIONS } from './world';
 import { characterDetail, characterProfile } from './neighbourhoods';
 import { createOutskirtSceneryLayout } from './outskirtScenery';
+import { buildCountryBuilding } from './countryBuildings';
+import { fillerArchetype, type PlaceArchetype } from './archetypes';
 import { ribbonGeometry } from './ribbon';
 import { TRAILS, TRAIL_WIDTH } from './trails';
 import { applyShoreFoam, applyWaterWaves } from './waterShader';
@@ -52,6 +54,8 @@ export interface SceneRenderHelpers {
 
 export interface FillerSceneHelpers extends SceneRenderHelpers {
   buildDetailedBuilding: (w: number, h: number, d: number, color: number | string, zoneType: string, variant: number) => ThreeNamespace.Group;
+  // LEGAL: The Blender model for this archetype, or null when the models didn't load.
+  buildPlaceModel: (archetype: PlaceArchetype, color: string, w: number, h: number, d: number) => ThreeNamespace.Group | null;
   renderZoneType: (zone: MapZoneType) => string;
   seededRandom: (seed: number) => () => number;
 }
@@ -496,7 +500,7 @@ export function buildFillerCity(options: FillerSceneOptions): void {
           ? ['#6a4b3f', '#705848', '#61564d', '#7a6254', '#5d4a46']
           : characterProfile(f.character).palette;
         const color = palette[Math.floor(f.hue * palette.length) % palette.length];
-        const mesh = helpers.buildDetailedBuilding(f.w,f.h,f.d,color,zoneType,f.hue);
+        const mesh = helpers.buildPlaceModel(fillerArchetype(f.zone, f.style === 'apartment', f.h), color, f.w, f.h, f.d) ?? helpers.buildDetailedBuilding(f.w,f.h,f.d,color,zoneType,f.hue);
         if(f.style==='apartment'){
           const stoop = helpers.box(Math.min(22,f.w*0.45),3,8,'#4b423d');
           stoop.position.set(0,-f.h/2+2,f.d/2+4); mesh.add(stoop);
@@ -582,37 +586,27 @@ export function buildOutskirtScenery(options: BaseSceneOptions): void {
   });
   const trees: SceneInstance[] = [];
   const trunks: SceneInstance[] = [];
+  const regions = new Map<string, ThreeNamespace.Group>();
+  let variant = 0;
   createOutskirtSceneryLayout().forEach(function(item){
     if(item.kind === 'tree'){
       trunks.push({ x:item.x, y:6, z:item.y, rotationY:item.rotation });
       trees.push({ x:item.x, y:20, z:item.y, rotationY:item.rotation });
       return;
     }
-    const group = new THREE.Group();
-    const baseMaterial = materials.standard(`outskirt:${item.kind}:base`, { color:item.kind === 'suburbHouse' ? '#c9b59a' : item.kind === 'shed' ? '#69706a' : '#8b684c', roughness:0.86 });
-    const roofMaterial = materials.standard(`outskirt:${item.kind}:roof`, { color:item.kind === 'suburbHouse' ? '#775348' : '#4b5051', roughness:0.82 });
-    if(item.kind === 'silo' || item.kind === 'tank'){
-      const cylinder = new THREE.Mesh(new THREE.CylinderGeometry(9, 11, item.kind === 'silo' ? 38 : 24, 10), baseMaterial);
-      cylinder.position.y = item.kind === 'silo' ? 19 : 12;
-      group.add(cylinder);
-      const cap = new THREE.Mesh(new THREE.ConeGeometry(10, 9, 10), roofMaterial);
-      cap.position.y = item.kind === 'silo' ? 42.5 : 28.5;
-      group.add(cap);
-    } else {
-      const dimensions = item.kind === 'barn' ? [50, 28, 36] : item.kind === 'farmhouse' ? [32, 22, 28] : item.kind === 'shed' ? [38, 18, 28] : [26, 20, 24];
-      const body = new THREE.Mesh(new THREE.BoxGeometry(dimensions[0], dimensions[1], dimensions[2]), baseMaterial);
-      body.position.y = dimensions[1] / 2;
-      group.add(body);
-      const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(dimensions[0], dimensions[2]) * 0.78, 13, 4), roofMaterial);
-      roof.rotation.y = Math.PI / 4;
-      roof.scale.z = dimensions[2] / dimensions[0];
-      roof.position.y = dimensions[1] + 6.5;
-      group.add(roof);
+    // LEGAL: Built to look like what it is (map/countryBuildings), and gathered into one group per
+    // LEGAL: region so the whole region merges into a handful of draw calls.
+    const building = buildCountryBuilding(THREE, materials, item.kind, variant++);
+    building.position.set(item.x, 0, item.y);
+    building.rotation.y = item.rotation;
+    let region = regions.get(item.regionId);
+    if(!region){
+      region = new THREE.Group();
+      region.name = `outskirt:${item.regionId}:buildings`;
+      regions.set(item.regionId, region);
+      worldGroup.add(region);
     }
-    group.position.set(item.x, 0, item.y);
-    group.rotation.y = item.rotation;
-    group.name = `outskirt:${item.regionId}:${item.kind}`;
-    worldGroup.add(group);
+    region.add(building);
   });
   addInstancedMesh(THREE, worldGroup, new THREE.CylinderGeometry(2, 2.5, 12, 6), materials.standard('outskirt:tree-trunk', { color:'#5c4930', roughness:1 }), trunks, { cast:true });
   addInstancedMesh(THREE, worldGroup, new THREE.ConeGeometry(12, 27, 7), materials.standard('outskirt:tree-canopy', { color:'#325f38', roughness:0.94 }), trees, { cast:true });

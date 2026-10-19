@@ -1,4 +1,4 @@
-import type { LocalBusiness, ServiceBuilding, Solid } from '../config/types';
+import type { LocalBusiness, MapZoneType, ServiceBuilding, Solid } from '../config/types';
 import { brandById } from '../config/brands';
 import type { MapBuilding } from './markers';
 import type { PropertyPlace } from './propertyPlaces';
@@ -175,6 +175,16 @@ const PROPERTY_CATEGORY_ARCHETYPES: Record<string, PlaceArchetype> = {
   waterfront: 'tower',
   commercial: 'works',
 };
+
+// LEGAL: What an unnamed filler building is, from its block's land use: so the background city is
+// LEGAL: drawn from the same Blender models as the named places rather than a different kit.
+export function fillerArchetype(zone: MapZoneType, apartment: boolean, height: number): PlaceArchetype {
+  if(apartment || zone === 'residential') return 'tenement';
+  if(zone === 'corporate') return height > 160 ? 'tower' : 'office';
+  if(zone === 'industrial' || zone === 'logistics') return 'works';
+  if(zone === 'civic') return 'civic';
+  return 'storefront';
+}
 
 export function ventureArchetype(building: MapBuilding): PlaceArchetype | null {
   return VENTURE_ARCHETYPES[building.id] ?? null;

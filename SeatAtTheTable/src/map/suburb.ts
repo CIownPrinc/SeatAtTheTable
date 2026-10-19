@@ -64,7 +64,8 @@ const SIDING = ['#d8c7a6', '#a8c0c8', '#c8a8a0', '#e0dccc', '#9fb59a', '#c9b48e'
 const ROOFS = ['#5a4a42', '#3e4652', '#6a3a32', '#4a5040'];
 const DOORS = ['#7a2630', '#2f4a6a', '#3f5a3a', '#1d2028', '#c9a227'];
 
-function buildHouse(THREE: typeof ThreeNamespace, materials: MapSceneMaterialCache, lot: HouseLot): ThreeNamespace.Group {
+// LEGAL: One family house at the origin, front (+z) toward its street; `variant` picks its colours.
+export function buildHouseModel(THREE: typeof ThreeNamespace, materials: MapSceneMaterialCache, variant: number): ThreeNamespace.Group {
   const g = new THREE.Group();
   // LEGAL: Roofs, lawns and drives carry their own keys so settling snow (map/snow) finds them.
   const mat = (color: string, emissive?: string, key?: string) => materials.standard(key ?? `suburb:${color}${emissive ? ':' + emissive : ''}`, { color, roughness:0.85, ...(emissive ? { emissive, emissiveIntensity:0.35 } : {}) });
@@ -74,7 +75,7 @@ function buildHouse(THREE: typeof ThreeNamespace, materials: MapSceneMaterialCac
     g.add(mesh);
     return mesh;
   };
-  const v = lot.variant;
+  const v = variant;
   const siding = SIDING[v % SIDING.length], roof = ROOFS[(v * 3) % ROOFS.length], door = DOORS[(v * 2) % DOORS.length];
   const { w, d, garageW } = HOUSE;
   const hx = -garageW / 2, gx = w / 2;
@@ -121,8 +122,6 @@ function buildHouse(THREE: typeof ThreeNamespace, materials: MapSceneMaterialCac
     const crown = add(new THREE.SphereGeometry(10 * TREE_SCALE, 12, 9), '#2f6a3d', hx - w * 0.36, 20 * TREE_SCALE, lawnZ + 2, undefined, 'prop:tree-crown-yard');
     crown.scale.y = 0.9;
   }
-  g.position.set(lot.x, 0, lot.y);
-  g.rotation.y = lot.facing;
   return g;
 }
 
@@ -131,6 +130,11 @@ function buildHouse(THREE: typeof ThreeNamespace, materials: MapSceneMaterialCac
 export function buildSuburb(THREE: typeof ThreeNamespace, materials: MapSceneMaterialCache): ThreeNamespace.Group {
   const street = new THREE.Group();
   street.name = 'suburb:lakeridge';
-  suburbLots().forEach(lot => street.add(buildHouse(THREE, materials, lot)));
+  suburbLots().forEach(function(lot){
+    const house = buildHouseModel(THREE, materials, lot.variant);
+    house.position.set(lot.x, 0, lot.y);
+    house.rotation.y = lot.facing;
+    street.add(house);
+  });
   return street;
 }

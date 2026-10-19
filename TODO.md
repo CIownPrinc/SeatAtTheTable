@@ -267,9 +267,13 @@ old one.
     Kestrel trailhead along the north woods, and tractor tracks into the south and west fields.
     They're for walking: the GPS and traffic don't use them. The forests are now real woods
     (300 trees each), and no countryside scenery grows inside a place like the lodge any more.
-31. **PART** Building models that look like what they are. Named places now use seven Blender
+31. **DONE** Building models that look like what they are. Named places now use seven Blender
     models (`art/blender/buildings.py`, `map/buildingModels.ts`): tenement, storefront, showroom,
-    office, tower, civic hall and works. Still open: filler buildings, houses, farms (new engine).
+    office, tower, civic hall and works. The unnamed filler buildings now use the same models,
+    picked by their block's land use (`fillerArchetype`). Countryside buildings are built to look
+    like what they are (`map/countryBuildings.ts`, in code rather than Blender): a farmhouse with a
+    porch, a red barn with a gambrel roof and cupola, banded silos, ribbed metal sheds, tanks, and
+    the suburb houses; each region's buildings merge into one group.
 32. **PART** Remodel everything properly in Blender, step by step. Blender 5.2 is installed and
     scripted (`art/blender/`); the first model, a sedan, is exported. Next: the full catalog.
 
