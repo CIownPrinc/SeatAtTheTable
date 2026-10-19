@@ -152,11 +152,27 @@ rule is `packages/eslint-plugin-comment-policy`, saboteur-tested after the clean
 instead of enforcing it. Kept on purpose: the `.gitignore` secret rules, the Husky gate and
 every test. Locally, `.tmp-assets/` (ignored Kenney zips) can be deleted by hand.
 
-## 8. Dependency upkeep
+## 8. Dependency upkeep — DONE 2026-10-18
 
-- PRs #23/#24 (Next.js security bump) are moot now that `apps/web` is gone — close them.
-- **Vitest 2 → 4 (PR #21)** — close it. Tested 2026-10-16: Vitest 4 needs Vite 6+, and the
-  game is on Vite 5, so it fails at startup. A toolchain upgrade is not a V1 goal.
+- All Dependabot PRs closed after the toolchain moved to Vite 7 + Vitest 4. `pnpm audit`:
+  24 vulnerabilities → 0. The security headers (CSP, nosniff, referrer and permissions
+  policy) live in `vercel.json`, and `vite preview` serves the same ones.
+- One stale remote branch is left, `dependabot/npm_and_yarn/vitest-4.1.11`. Delete it by hand.
+
+## 9. Audit, devices and screen shapes — DONE 2026-10-18
+
+- **Bugs fixed:** the prestige loophole (bank balances and stocks survived a reset), saves
+  written after "Start New Game", events firing instantly on load, the game ticking in a
+  hidden tab, the $200 milestone firing early, and the Stocks app overflowing phone screens.
+- **Map load:** 4.9 s → 0.28 s on desktop and 3.6 s → 0.53 s on a 4×-throttled phone. 54 lamp
+  lights became a pool of 6, and the scene is preloaded on the title screen. On phones,
+  15 → 39 fps: a frame-rate governor turns sun shadows off on slow devices.
+- **Touch and layout:** a thumbstick and an interact button for the map. The layout fits
+  360 px phones, landscape phones and 1920 px monitors, each guarded by `layout.e2e.ts`.
+- **Assets:** logos are resized WebP (960 KB → 59 KB, about 110 MB less decoded memory).
+- **Cleanup:** dead code and stray scripts removed, `noUnusedLocals` turned on.
+- **Title screen:** the start screen became a night skyline with a neon sign.
+- Suite: 286 unit tests and 143 e2e tests, green.
 
 ---
 
