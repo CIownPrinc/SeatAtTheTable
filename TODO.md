@@ -289,8 +289,9 @@ old one.
     the suburb houses; each region's buildings merge into one group.
 32. **PART** Remodel everything properly in Blender, step by step. Blender 5.2 is installed and
     scripted (`art/blender/`). Done: all 21 vehicle classes (cars, trucks, tractor, helicopter, the
-    two motorbikes) and the 7 building models, which the named places and the filler now use.
-    Still open: people, street furniture and props, and the landmarks.
+    two motorbikes), the 7 building models (named places, filler and the new lots), six street
+    props (bench, bin, hydrant, shelter, postbox, planter) and the three landmarks (the Cicero
+    water tower, Devlin Hall's dome, the Potato; `art/blender/landmarks.py`). Still open: people.
 
 33. **DONE** Proportions were off between people, cars, buildings and street furniture. One
     scale in `map/scale.ts` (10.5 units per metre): people 22 units, building heights x1.9,

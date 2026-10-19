@@ -101,6 +101,7 @@ import { frontageClearance, generateLots, lotSolid, type Lot } from '../world/da
 import { buildCityLots } from '../world/render/lots';
 import { generateStreetProps, streetPropSolids, type StreetProp } from '../world/data/streetProps';
 import { loadPropLibrary, type PropLibrary } from '../world/assets/props';
+import { LANDMARK_MODELS, loadModelCatalog, type ModelCatalog } from '../world/assets/catalog';
 import { DISTRICT_OFFSETS, OUTSKIRT_PLACE_LOTS, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
 import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/viewport';
@@ -4242,6 +4243,7 @@ import type * as ThreeNamespace from 'three';
   let vehicleLibrary: VehicleLibrary | null = null;
   let buildingLibrary: BuildingLibrary | null = null;
   let propLibrary: PropLibrary | null = null;
+  let landmarkCatalog: ModelCatalog | null = null;
   document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.addEventListener('click', function(){ setTab(btn.getAttribute('data-tab')!); });
   });
@@ -4390,7 +4392,7 @@ import type * as ThreeNamespace from 'three';
       mapScenePromise = (async function(){
         THREE = await import('three');
         mergeSceneryGeometries = (await import('three/examples/jsm/utils/BufferGeometryUtils.js')).mergeGeometries;
-        [mapAssets, vehicleLibrary, buildingLibrary, propLibrary] = await Promise.all([loadMapAssetLibrary(THREE), loadVehicleLibrary(THREE), loadBuildingLibrary(THREE), loadPropLibrary(THREE)]);
+        [mapAssets, vehicleLibrary, buildingLibrary, propLibrary, landmarkCatalog] = await Promise.all([loadMapAssetLibrary(THREE), loadVehicleLibrary(THREE), loadBuildingLibrary(THREE), loadPropLibrary(THREE), loadModelCatalog(THREE, '/assets/world/landmarks/', LANDMARK_MODELS)]);
         characterLibrary = createCharacterLibrary(THREE, function(){ return state.appearance; }, mergeSceneryGeometries ?? undefined);
         if(!sceneInitialized){
           initScene();
@@ -5960,7 +5962,7 @@ import type * as ThreeNamespace from 'three';
         buildFillerCity({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, districtOffsets:DISTRICT_OFFSETS, fillerFor:sceneFillerFor, helpers:{ box, addSign, buildDetailedBuilding, buildPlaceModel, buildParkedCar, renderZoneType, seededRandom } });
       });
       tagWorld('landmark', function(){
-        buildLandmarks({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, landmarks, helpers:{ box, addSign }, buildPlaceModel });
+        buildLandmarks({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, landmarks, helpers:{ box, addSign }, buildPlaceModel, landmarkModel:name => landmarkCatalog?.create(name) ?? null });
         worldGroup.add(buildMall(THREE, mergeSceneryGeometries ?? undefined));
         worldGroup.add(buildCentralPark(THREE, materials, addSign));
         worldGroup.add(buildSuburb(THREE, materials));

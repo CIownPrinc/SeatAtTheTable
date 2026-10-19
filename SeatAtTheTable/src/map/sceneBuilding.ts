@@ -81,6 +81,8 @@ export interface LandmarkSceneOptions extends BaseSceneOptions {
   helpers: SceneRenderHelpers;
   // LEGAL: The Blender model for an archetype, or null when the models didn't load.
   buildPlaceModel?: (archetype: PlaceArchetype, color: string, w: number, h: number, d: number) => ThreeNamespace.Group | null;
+  // LEGAL: A landmark's Blender model by name (art/blender/landmarks.py), or null when it didn't load.
+  landmarkModel?: (name: string) => ThreeNamespace.Group | null;
 }
 
 function shapeFromPoints(THREE: typeof ThreeNamespace, points: Array<{ x: number; y: number }>): ThreeNamespace.Shape {
@@ -641,11 +643,19 @@ export function buildLandmarks(options: LandmarkSceneOptions): void {
       // LEGAL: A civic hall under its dome: the same model as City Hall when the models are loaded.
       const base = options.buildPlaceModel?.('civic', '#8a7a5a', 70, 26, 70) ?? helpers.box(70,26,70,'#6a5b3e'); base.position.set(lm.x,13,lm.y); worldGroup.add(base);
       const steps = helpers.box(84,6,84,'#565049'); steps.position.set(lm.x,3,lm.y); worldGroup.add(steps);
-      const dome = new THREE.Mesh(new THREE.SphereGeometry(30,20,14,0,Math.PI*2,0,Math.PI/2), materials.standard('landmark:civic-dome', {color:'#c9a227', metalness:0.6, roughness:0.3}));
-      dome.position.set(lm.x,26,lm.y); dome.castShadow=true; worldGroup.add(dome);
-      const finial = new THREE.Mesh(new THREE.ConeGeometry(3,14,8), materials.standard('landmark:civic-finial', {color:'#e0c860', metalness:0.7, roughness:0.2}));
-      finial.position.set(lm.x,52,lm.y); worldGroup.add(finial);
+      const modelled = options.landmarkModel?.('dome');
+      if(modelled){ modelled.position.set(lm.x,26,lm.y); worldGroup.add(modelled); }
+      else {
+        const dome = new THREE.Mesh(new THREE.SphereGeometry(30,20,14,0,Math.PI*2,0,Math.PI/2), materials.standard('landmark:civic-dome', {color:'#c9a227', metalness:0.6, roughness:0.3}));
+        dome.position.set(lm.x,26,lm.y); dome.castShadow=true; worldGroup.add(dome);
+        const finial = new THREE.Mesh(new THREE.ConeGeometry(3,14,8), materials.standard('landmark:civic-finial', {color:'#e0c860', metalness:0.7, roughness:0.2}));
+        finial.position.set(lm.x,52,lm.y); worldGroup.add(finial);
+      }
       helpers.addSign(base,lm.name,44,9,36,'#ffe6a0');
+    } else if(lm.id==='ciceroWorks' && options.landmarkModel?.('water-tower')){
+      const tower = options.landmarkModel('water-tower')!;
+      tower.position.set(lm.x,0,lm.y); worldGroup.add(tower);
+      helpers.addSign(tower,lm.name,44,9,106,'#f0c0a0');
     } else if(lm.id==='ciceroWorks'){
       const legMat = materials.standard('landmark:water-tower-leg', {color:'#3a3d47', roughness:0.7});
       const tankMat = materials.standard('landmark:water-tower-tank', {color:'#7a3b32', roughness:0.8});
@@ -658,6 +668,10 @@ export function buildLandmarks(options: LandmarkSceneOptions): void {
       const cap = new THREE.Mesh(new THREE.ConeGeometry(26,14,14), tankMat);
       cap.position.set(lm.x,95,lm.y); worldGroup.add(cap);
       helpers.addSign(tank,lm.name,44,9,28,'#f0c0a0');
+    } else if(lm.id==='thePotato' && options.landmarkModel?.('potato')){
+      const potato = options.landmarkModel('potato')!;
+      potato.position.set(lm.x,0,lm.y); worldGroup.add(potato);
+      helpers.addSign(potato,lm.name,44,9,48,'#dfe7ef');
     } else if(lm.id==='thePotato'){
       // LEGAL: The Potato — a squashed mirror-polished blob on a low plaza. High metalness
       // LEGAL: and near-zero roughness so it picks up the skyline the way the real thing does.
