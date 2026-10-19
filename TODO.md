@@ -253,7 +253,9 @@ old one.
     clearly distinct, but grade them into each other gradually, like real life.
 30. **PART** Dirt trails in the countryside. The country lanes are in. Still open: smaller trails
     off them.
-31. Building models that look like what they are for, and don't look out of place.
+31. **PART** Building models that look like what they are. Named places now use seven Blender
+    models (`art/blender/buildings.py`, `map/buildingModels.ts`): tenement, storefront, showroom,
+    office, tower, civic hall and works. Still open: filler buildings, houses, farms (new engine).
 32. **PART** Remodel everything properly in Blender, step by step. Blender 5.2 is installed and
     scripted (`art/blender/`); the first model, a sedan, is exported. Next: the full catalog.
 

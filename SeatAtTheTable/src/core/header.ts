@@ -37,6 +37,8 @@ import { auditScene, flagIssues } from '../map/sceneAudit';
 import { CHEAT_VEHICLES, buildJetpack, isFlyingVehicle } from '../map/cheatVehicles';
 import { circleHitsObstacle, isRunOverBy, vehicleObstacle, type Obstacle } from '../map/obstacles';
 import { loadVehicleLibrary, vehicleClassForCar, vehicleClassForTraffic, type VehicleLibrary } from '../map/vehicleModels';
+import { buildingModelFor, loadBuildingLibrary, type BuildingLibrary } from '../map/buildingModels';
+import type { PlaceArchetype } from '../map/archetypes';
 import { buildAmenityModel as buildMapAmenityModel } from '../map/amenityRendering';
 import { createFillerLayoutProvider, seededRandom } from '../map/filler';
 import { applyMapWorldCoordinates, createMapBuildings, mapNpcs } from '../map/markers';
@@ -4149,6 +4151,7 @@ import type * as ThreeNamespace from 'three';
   let mapAssets: MapAssetLibrary | null = null;
   let characterLibrary: CharacterLibrary | null = null;
   let vehicleLibrary: VehicleLibrary | null = null;
+  let buildingLibrary: BuildingLibrary | null = null;
   document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.addEventListener('click', function(){ setTab(btn.getAttribute('data-tab')!); });
   });
@@ -4297,7 +4300,7 @@ import type * as ThreeNamespace from 'three';
       mapScenePromise = (async function(){
         THREE = await import('three');
         mergeSceneryGeometries = (await import('three/examples/jsm/utils/BufferGeometryUtils.js')).mergeGeometries;
-        [mapAssets, vehicleLibrary] = await Promise.all([loadMapAssetLibrary(THREE), loadVehicleLibrary(THREE)]);
+        [mapAssets, vehicleLibrary, buildingLibrary] = await Promise.all([loadMapAssetLibrary(THREE), loadVehicleLibrary(THREE), loadBuildingLibrary(THREE)]);
         characterLibrary = createCharacterLibrary(THREE, function(){ return state.appearance; });
         if(!sceneInitialized){
           initScene();
@@ -5326,6 +5329,10 @@ import type * as ThreeNamespace from 'three';
     outer.scale.setScalar(1.6);
     return outer;
   }
+  function buildPlaceModel(archetype: PlaceArchetype, color: string, w: number, h: number, d: number): ThreeNamespace.Group | null {
+    const model = buildingModelFor(archetype);
+    return model && buildingLibrary ? buildingLibrary.create(model, color, w, h, d) : null;
+  }
   function buildTrafficCarModel(id: string, color: string): ThreeNamespace.Group {
     if(vehicleLibrary) return vehicleLibrary.create(vehicleClassForTraffic(id), color, id.includes('cab')?30:34, id.includes('cruiser')?17:15);
     return buildCarModel({ id, name:id, icon:'', cost:0, speedMult:1, heistBonus:0, respectPerSec:0, color, len:id.includes('cab')?30:34, wid:id.includes('cruiser')?17:15 });
@@ -5646,7 +5653,7 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: Venture buildings — all districts
     timer.measure('places', function(): void {
       tagWorld('place', function(){
-        renderMapPlaces({ THREE, worldGroup, mapObjects, helpers:{ buildingColorFor, ventureFootprint, buildDetailedBuilding, buildAmenityModel, buildPedestrianModel, addVentureDetail, addServiceDetail, addLocalBusinessDetail, addSign, variantForId } });
+        renderMapPlaces({ THREE, worldGroup, mapObjects, helpers:{ buildingColorFor, ventureFootprint, buildDetailedBuilding, buildPlaceModel, buildAmenityModel, buildPedestrianModel, addVentureDetail, addServiceDetail, addLocalBusinessDetail, addSign, variantForId } });
       });
     });
 

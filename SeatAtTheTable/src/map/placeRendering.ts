@@ -49,6 +49,8 @@ function buildPlaceShell(
 ): { mesh: ThreeNamespace.Group; y: number; hasBuilding: boolean } {
   const shell = archetype ? buildArchetypeShell(options.THREE, archetype, silhouette.w, silhouette.d, silhouette.h, silhouette.color) : null;
   if(shell) return { mesh: shell, y: 0, hasBuilding: false };
+  const model = archetype ? options.helpers.buildPlaceModel(archetype, String(silhouette.color), silhouette.w, silhouette.h, silhouette.d) : null;
+  if(model) return { mesh: model, y: silhouette.h / 2, hasBuilding: true };
   const mesh = options.helpers.buildDetailedBuilding(silhouette.w, silhouette.h, silhouette.d, silhouette.color, silhouette.zoneType, variant);
   return { mesh, y: silhouette.h / 2, hasBuilding: true };
 }
@@ -57,6 +59,8 @@ export interface MapPlaceRenderHelpers {
   buildingColorFor: (business: Business) => BuildingVisualState;
   ventureFootprint: (building: MapBuilding) => VentureFootprint;
   buildDetailedBuilding: (w: number, h: number, d: number, color: number | string, zoneType: string, variant: number) => ThreeNamespace.Group;
+  // LEGAL: The Blender model for this archetype, or null to fall back to buildDetailedBuilding.
+  buildPlaceModel: (archetype: PlaceArchetype, color: string, w: number, h: number, d: number) => ThreeNamespace.Group | null;
   buildAmenityModel: (amenity: MapAmenity) => ThreeNamespace.Group;
   buildPedestrianModel: (color: number | string, identity?: string) => ThreeNamespace.Group;
   addVentureDetail: (building: MapBuilding, base: ThreeNamespace.Group) => void;
