@@ -257,7 +257,8 @@ patching the old map's foundations: authored coordinates stretched by `widenAuth
 grid clipped to district outlines, randomly scattered scenery, and a 3D scene inside the
 7,000-line `header.ts`. A "New map (beta)" setting switches between them. Missions, economy,
 places, the phone and saves stay as they are. When the new map matches the old one, the old map
-is deleted. It can later move into SeatAtTheTable 2 unchanged.
+is deleted. The new map stays in this game (Seat at the Table); it is not a SeatAtTheTable 2
+piece.
 
 Build order:
 1. The world audit (item 15) comes first, so correctness is tested from the first line.
