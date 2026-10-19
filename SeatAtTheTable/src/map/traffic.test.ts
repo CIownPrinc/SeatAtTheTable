@@ -9,8 +9,10 @@ function distanceToSegment(p: { x: number; y: number }, a: { x: number; y: numbe
   return Math.hypot(p.x - (a.x + dx * t), p.y - (a.y + dy * t));
 }
 
+// LEGAL: Built once: rebuilding the road list for every route point made this test time out.
+const SEGMENTS = roadLandSegments();
 function onSomeRoad(p: { x: number; y: number }): boolean {
-  return roadLandSegments().some(s => s.path.slice(0, -1).some((a, i) => distanceToSegment(p, a, s.path[i + 1]) <= s.road.width / 2 + 2));
+  return SEGMENTS.some(s => s.path.slice(0, -1).some((a, i) => distanceToSegment(p, a, s.path[i + 1]) <= s.road.width / 2 + 2));
 }
 
 describe('laneOffsetPath', function () {
@@ -62,7 +64,7 @@ describe('walkerRoutes', function () {
   it('keeps every walker on a pavement, beside the road but not in it', function () {
     walkers.forEach(function(walker){
       walker.route.forEach(function(p){
-        const nearest = Math.min(...roadLandSegments().filter(s => s.road.roadClass !== 'country').map(s => Math.min(...s.path.slice(0, -1).map((a, i) => distanceToSegment(p, a, s.path[i + 1])))));
+        const nearest = Math.min(...SEGMENTS.filter(s => s.road.roadClass !== 'country').map(s => Math.min(...s.path.slice(0, -1).map((a, i) => distanceToSegment(p, a, s.path[i + 1])))));
         expect(nearest, `${walker.id} at ${Math.round(p.x)},${Math.round(p.y)}`).toBeGreaterThan(36);
         expect(nearest, `${walker.id} at ${Math.round(p.x)},${Math.round(p.y)}`).toBeLessThan(50);
         expect(isPointInWater(p, 8)).toBe(false);
