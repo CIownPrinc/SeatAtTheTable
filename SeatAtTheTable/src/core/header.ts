@@ -23,7 +23,10 @@ import { appreciationMult, breakdownChancePerSec, caveatEffectLabel, effectiveHe
 import type { MapAssetKey, MapAssetLibrary } from '../map/assets';
 import { loadMapAssetLibrary } from '../map/assets';
 import { createCharacterLibrary, type CharacterLibrary } from '../map/characters';
-import { DEFAULT_PLAYER_LOOK, normalizeLook } from '../map/personModel';
+import { DEFAULT_PLAYER_LOOK, WARDROBE, normalizeLook } from '../map/personModel';
+import { isItemOwned, itemKey, itemPrice, lookPrice, ownedWardrobe, type MallShop, type WardrobeSlot } from '../config/mallShops';
+import { MALL_ROOM, MALL_SPOTS } from '../map/mallInterior';
+import { buildMall, mallSolids } from '../map/mall';
 import { renderRoamingActors } from '../map/actorRendering';
 import { createAmenityModal, mapAmenities } from '../map/amenities';
 import { isFireRoadBest, minigameOpen, playMinigame, type MinigameResult } from '../map/minigames';
@@ -462,7 +465,7 @@ import type * as ThreeNamespace from 'three';
     muscleCount: 0, guns: 0, ratCount: 0, bribeOn: false,
     prestigeCount: 0, seenMilestones: new Set<string>(),
     started: false, lastTick: Date.now(), nextEventAt: firstEventDelay(),
-    playSeconds: 0, investorPenalty: 0, appearance: { ...DEFAULT_PLAYER_LOOK }, vaultCash: 0,
+    playSeconds: 0, investorPenalty: 0, appearance: { ...DEFAULT_PLAYER_LOOK }, ownedWardrobe: [], vaultCash: 0,
     procNpc: generateNPC(),
     bankAccounts: {}, selectedBank: DEFAULT_BANK_ID, nextHeistAt: 0,
     ownedCars: [], equippedCar: null, ownedProperties: [],
@@ -1900,6 +1903,39 @@ import type * as ThreeNamespace from 'three';
       refreshPlayerModel();
       log('<i aria-hidden="true" class="ph-duotone ph-t-shirt"></i> You change, and catch yourself in the mirror on the way out.');
       scheduleSave();
+    }, {
+      title:'Wardrobe', subtitle:'Upstairs at your garage',
+      offer:(slot: WardrobeSlot) => WARDROBE[slot].filter(value => isItemOwned(state.ownedWardrobe, slot, value)),
+      footnote:'More hats, eyewear, jewellery, shoes and haircuts at Lakeridge Mall, at the end of Wabash Avenue.',
+    });
+  }
+  // LEGAL: A mall shop is a fitting room: only what this shop sells, priced, and the save button pays.
+  function openMallShop(shop: MallShop): void {
+    const offer = Object.keys(shop.items);
+    openWardrobe(THREE, state.appearance, function(look){
+      const cost = lookPrice(state.ownedWardrobe, look);
+      if(cost > state.cash) return;
+      state.cash -= cost;
+      (Object.keys(WARDROBE) as WardrobeSlot[]).forEach(function(slot){
+        if(itemPrice(slot, look[slot]) !== null && !state.ownedWardrobe.includes(itemKey(slot, look[slot]))) state.ownedWardrobe.push(itemKey(slot, look[slot]));
+      });
+      state.appearance = look;
+      refreshPlayerModel();
+      log(cost > 0
+        ? `<i aria-hidden="true" class="ph-duotone ph-shopping-bag"></i> ${shop.name}: ${formatMoney(cost)}. You wear it out of the shop. It's in your wardrobe at home now too.`
+        : `<i aria-hidden="true" class="ph-duotone ph-shopping-bag"></i> You try a few things on at ${shop.name} and leave looking how you like.`);
+      renderAll(); scheduleSave();
+    }, {
+      title:shop.name, subtitle:shop.tagline, slots:[shop.slot], colours:shop.colour ? [shop.colour] : [],
+      offer:() => offer,
+      note:(slot: WardrobeSlot, value: string) => {
+        const price = itemPrice(slot, value);
+        if(price === null) return '';
+        return isItemOwned(state.ownedWardrobe, slot, value) ? 'Yours' : formatMoney(price);
+      },
+      price:look => lookPrice(state.ownedWardrobe, look),
+      canAfford:price => state.cash >= price,
+      footnote:shop.pitch,
     });
   }
   const VAULT_STEP = 1000;
@@ -4449,6 +4485,7 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: Trees, barns and silos used to be walk-through. Trunks are small boxes; countryside
     // LEGAL: buildings take most of their drawn footprint.
     streetTreeSpots.forEach(spot => list.push({ x:spot.x, y:spot.y, hw:5, hd:5 }));
+    list.push(...mallSolids());
     const garage = serviceBuildings.find(s => s.id === 'playerGarage');
     if(garage){
       const shape = serviceBuildingSilhouette(garage);
@@ -4473,7 +4510,9 @@ import type * as ThreeNamespace from 'three';
 
   // LEGAL: ---- interiors: a room per building, with its hotspots (drawn by renderInteriorView) ----
   const ROOM_W = 480, ROOM_H = 280;
-  const DOOR_LOCAL = { x: ROOM_W/2, y: ROOM_H-6 };
+  // LEGAL: Every room is ROOM_W x ROOM_H except the mall, which is a hall (map/mallInterior MALL_ROOM).
+  function roomSize(): { w: number; h: number } { return state.currentInterior?.kind === 'mall' ? MALL_ROOM : { w:ROOM_W, h:ROOM_H }; }
+  function doorLocal(): { x: number; y: number } { const room = roomSize(); return { x:room.w / 2, y:room.h - 6 }; }
 
   type HotSpot = { id: string; x: number; y: number; label: string; icon: string; action: () => void };
 
@@ -4634,6 +4673,14 @@ import type * as ThreeNamespace from 'three';
       spots.push({ id:'manifest', x:ROOM_W*0.68, y:80, label:'Manifest Board', icon:'🗃️', action:openDockManifest });
     } else if(interior.refId==='marigoldLounge' && !missionId){
       spots.push({ id:'wartable', x:ROOM_W/2, y:80, label:'The Back-Room Table', icon:'🗺️', action:openMarigoldWarTable });
+    } else if(kind==='mall'){
+      MALL_SPOTS.shops.forEach(function(entry){
+        spots.push({ id:`shop:${entry.shop.id}`, x:entry.x, y:entry.y, label:entry.shop.name, icon:'🛍️', action:()=> openMallShop(entry.shop) });
+      });
+      spots.push({ id:'perfume', ...MALL_SPOTS.perfume, label:'Perfume Kiosk', icon:'🌸', action:openPerfumeKiosk });
+      spots.push({ id:'icecream', ...MALL_SPOTS.icecream, label:'Ice Cream', icon:'🍦', action:openIceCreamCart });
+      spots.push({ id:'foodcourt', ...MALL_SPOTS.foodcourt, label:'Food Court', icon:'🍜', action:openFoodCourt });
+      spots.push({ id:'playground', ...MALL_SPOTS.playground, label:'Play Area', icon:'🛝', action:openPlayArea });
     } else if(kind==='missionOffice'){
       const missionId = activeMissionForServiceId(interior.refId);
       spots.push({ id:'mission', x:ROOM_W/2, y:80, label:missionId ? 'Mission Contact' : 'Front Desk', icon:'📋', action:function(){
@@ -4642,15 +4689,44 @@ import type * as ThreeNamespace from 'three';
       } });
     }
     if(missionId && kind !== 'missionOffice'){
-      spots.push({ id:'mission', x:ROOM_W*0.18, y:80, label:'Mission Contact', icon:'📋', action:function(){ resolveMissionAtObjective(missionId); } });
+      const at = kind === 'mall' ? { x:150, y:560 } : { x:ROOM_W*0.18, y:80 };
+      spots.push({ id:'mission', ...at, label:'Mission Contact', icon:'📋', action:function(){ resolveMissionAtObjective(missionId); } });
     }
     return spots;
+  }
+
+  // LEGAL: ---- The mall's hall: the kiosks, the food court and the play area ----
+  function openPerfumeKiosk(): void {
+    showModal({ eyebrow:'Lakeridge Mall', title:'The Perfume Kiosk', body:"<p class='flavor'>She's out from behind the counter before you can change course, tester raised. \"Just one spray. It's called <em>Ambition</em>. It suits you, I can tell.\"</p>", buttons:[
+      { label:'Buy a bottle ($85)', cost:85, onClick:function(){ state.cash -= 85; state.respect += 2; state.worldMemory.cologne = 'ambition'; log('<i aria-hidden="true" class="ph-duotone ph-drop"></i> You walk off smelling of Ambition. People lean in a little when you talk: respect +2.'); renderAll(); scheduleSave(); } },
+      { label:'Let her spray you', onClick:function(){ log('<i aria-hidden="true" class="ph-duotone ph-drop"></i> One spray, then three more "so you get the full effect". You smell expensive for about an hour.'); } },
+      { label:'Keep walking', secondary:true },
+    ] });
+  }
+  function openIceCreamCart(): void {
+    showModal({ eyebrow:'Lakeridge Mall', title:'Ice Cream', body:"<p class='flavor'>Three tubs under a pink umbrella: vanilla, mango, and chocolate. The man behind the cart has opinions about mango.</p>", buttons:[
+      { label:'A mango cone ($6)', cost:6, onClick:function(){ state.cash -= 6; state.playSeconds += 15; log('<i aria-hidden="true" class="ph-duotone ph-ice-cream"></i> You eat a mango cone by the fountain. He was right about the mango.'); renderAll(); } },
+      { label:'Not today', secondary:true },
+    ] });
+  }
+  function openFoodCourt(): void {
+    showModal({ eyebrow:'Lakeridge Mall', title:'The Food Court', body:"<p class='flavor'>Noodles on one side, pizza by the slice on the other, and a lunchtime crowd nobody looks twice at.</p>", buttons:[
+      { label:'Sit down with a plate ($14)', cost:14, onClick:function(){ state.cash -= 14; state.playSeconds += 30; state.heat = Math.max(0, state.heat - 3); log('<i aria-hidden="true" class="ph-duotone ph-bowl-food"></i> Half an hour in the lunch crowd. Nobody is looking for you here: heat -3.'); renderAll(); } },
+      { label:'Keep walking', secondary:true },
+    ] });
+  }
+  function openPlayArea(): void {
+    showModal({ eyebrow:'Lakeridge Mall', title:'The Play Area', body:"<p class='flavor'>Kids going down the slide head first, a ball pit that is mostly socks, and parents on the bench pretending to read. One of them nods at you like you're somebody's dad.</p>", buttons:[
+      { label:'Sit on the bench a while', onClick:function(){ state.playSeconds += 20; state.heat = Math.max(0, state.heat - 1); log('<i aria-hidden="true" class="ph-duotone ph-baby"></i> You sit with the parents for a bit. It is the calmest twenty seconds of your week.'); renderAll(); } },
+      { label:'Move on', secondary:true },
+    ] });
   }
 
   function enterBuilding(kind: string, refId: string, name: string){
     if(state.inVehicle) exitVehicle();
     state.currentInterior = { kind, refId, name, returnX:player.x, returnY:player.y, returnDistrict:state.currentDistrict };
-    player.x = DOOR_LOCAL.x; player.y = DOOR_LOCAL.y - 40; player.facing = -Math.PI/2; player.vx=0; player.vy=0;
+    const door = doorLocal();
+    player.x = door.x; player.y = door.y - 40; player.facing = -Math.PI/2; player.vx=0; player.vy=0;
     Object.keys(keys).forEach(k=> keys[k]=false);
     lastFrame2 = Date.now();
     log(`🚪 You step into ${name}.`);
@@ -4901,7 +4977,8 @@ import type * as ThreeNamespace from 'three';
   function nearestMarker(): MapMarker | null {
     if(state.currentInterior){
       let best: MapMarker | null = null, bestDist=46;
-      const dDoor = Math.hypot(player.x-DOOR_LOCAL.x, player.y-DOOR_LOCAL.y);
+      const door = doorLocal();
+      const dDoor = Math.hypot(player.x-door.x, player.y-door.y);
       if(dDoor<bestDist){ bestDist=dDoor; best={type:'door', ref:{label:'Exit'}}; }
       hotspotsFor(state.currentInterior).forEach(h=>{
         const d = Math.hypot(player.x-h.x, player.y-h.y);
@@ -5722,6 +5799,7 @@ import type * as ThreeNamespace from 'three';
       });
       tagWorld('landmark', function(){
         buildLandmarks({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, landmarks, helpers:{ box, addSign } });
+        worldGroup.add(buildMall(THREE, mergeSceneryGeometries ?? undefined));
       });
       tagWorld('rail-and-river', function(){ buildRailAndRiver(baseScene); });
     });
@@ -6583,7 +6661,7 @@ import type * as ThreeNamespace from 'three';
       if(interiorView){ interiorScene3d.remove(interiorView.root); interiorView.dispose(); }
       const library = characterLibrary;
       interiorView = buildInteriorRoom3d(THREE, {
-        kind:interior.kind, refId:interior.refId, room:{ w:ROOM_W, h:ROOM_H, door:DOOR_LOCAL }, door:DOOR_LOCAL, spots,
+        kind:interior.kind, refId:interior.refId, room:{ ...roomSize(), door:doorLocal() }, door:doorLocal(), spots,
         makePerson:(identity, coat) => library.create(identity, coat),
         makeCar:interiorCarModel,
         merge:mergeSceneryGeometries ?? undefined,
@@ -6598,12 +6676,16 @@ import type * as ThreeNamespace from 'three';
     const near = nearestMarker();
     const index = near?.type === 'hotspot' ? spots.findIndex(h => h.id === near.ref.id && h.x === near.ref.x && h.y === near.ref.y) : -1;
     interiorView?.setHighlight(near?.type === 'door' ? 'door' : index >= 0 ? spotKey(index) : null, state.playSeconds);
+    interiorView?.tick(dt);
     characterLibrary.animator.tick(dt, state.playSeconds);
     // LEGAL: A raised camera in front of the room, drifting with you so the far corners stay in view.
     const camera = interiorCamera!;
     if(camera.aspect !== camera3d.aspect){ camera.aspect = camera3d.aspect; camera.updateProjectionMatrix(); }
-    const lookX = (ROOM_W / 2 + (player.x - ROOM_W / 2) * 0.55) * s;
-    const lookZ = (ROOM_H * 0.42 + (player.y - ROOM_H * 0.42) * 0.4) * s;
+    // LEGAL: The mall is too big to keep in view, so there the camera follows you closely.
+    const room = roomSize();
+    const follow = room.w > ROOM_W ? 0.92 : 0.55;
+    const lookX = (room.w / 2 + (player.x - room.w / 2) * follow) * s;
+    const lookZ = (room.h * 0.42 + (player.y - room.h * 0.42) * (room.w > ROOM_W ? 0.85 : 0.4)) * s;
     camera.position.set(lookX, 150, lookZ + 150);
     camera.lookAt(lookX, 6, lookZ);
     renderer.render(interiorScene3d, camera);
@@ -6869,8 +6951,9 @@ import type * as ThreeNamespace from 'three';
       player.facing += Math.max(-maxTurn, Math.min(maxTurn, af));
       const stepX = player.vx*dt, stepY = player.vy*dt;
       if(state.currentInterior){
-        const tryX = Math.max(20, Math.min(ROOM_W-20, player.x+stepX));
-        const tryY = Math.max(20, Math.min(ROOM_H-14, player.y+stepY));
+        const room = roomSize();
+        const tryX = Math.max(20, Math.min(room.w-20, player.x+stepX));
+        const tryY = Math.max(20, Math.min(room.h-14, player.y+stepY));
         const solids = interiorSolids();
         const clear = (x: number, y: number) => !collidesSolid(x, y, solids, actorRadius(false));
         if(clear(tryX, tryY)){ player.x = tryX; player.y = tryY; }
@@ -7075,7 +7158,7 @@ import type * as ThreeNamespace from 'three';
       territoryTier: state.territoryTier, negotiateTier: state.negotiateTier,
       muscleCount: state.muscleCount, guns: state.guns, ratCount: state.ratCount, bribeOn: state.bribeOn,
       prestigeCount: state.prestigeCount, seenMilestones: Array.from(state.seenMilestones),
-      playSeconds: state.playSeconds, investorPenalty: state.investorPenalty, appearance: state.appearance, vaultCash: state.vaultCash,
+      playSeconds: state.playSeconds, investorPenalty: state.investorPenalty, appearance: state.appearance, ownedWardrobe: state.ownedWardrobe, vaultCash: state.vaultCash,
       started: state.started, procNpc: state.procNpc, lastTick: state.lastTick,
       quiet: document.body.classList.contains('quiet'),
       light: document.body.classList.contains('theme-light'),
@@ -7145,6 +7228,7 @@ import type * as ThreeNamespace from 'three';
         state.prestigeCount=Math.max(0, Math.min(familyTiers.length, Number(d.prestigeCount)||0)); state.seenMilestones = new Set((d.seenMilestones||[]).map((x: any)=>String(x)));
         state.playSeconds=d.playSeconds||0; state.investorPenalty=Math.min(0.5, d.investorPenalty||0);
         state.appearance = normalizeLook(d.appearance);
+        state.ownedWardrobe = ownedWardrobe(d.ownedWardrobe, state.appearance);
         state.vaultCash = Math.max(0, Number(d.vaultCash) || 0);
         state.started = d.started; if(d.procNpc) state.procNpc = d.procNpc;
         if(d.lastTick) state.lastTick = d.lastTick;

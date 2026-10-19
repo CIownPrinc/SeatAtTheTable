@@ -3,6 +3,7 @@ import { distancePointToSegment } from './layout';
 import type { Point } from '../config/types';
 import { circleInsidePolygon, boundsForPoints, isPointInWater } from './geometry';
 import { OUTSKIRT_REGIONS, type OutskirtRegion } from './world';
+import { mallKeepClear } from './mall';
 
 export type OutskirtSceneryKind = 'farmhouse' | 'barn' | 'silo' | 'tree' | 'suburbHouse' | 'shed' | 'tank';
 
@@ -59,6 +60,7 @@ function samplesInRegion(region: OutskirtRegion, count: number, radius: number, 
     if(!circleInsidePolygon(point, radius, region.area)) continue;
     if(isPointInWater(point, radius)) continue;
     if(nearCountryRoad(point, radius)) continue;
+    if(mallKeepClear().some(s => Math.abs(point.x - s.x) < s.hw + radius && Math.abs(point.y - s.y) < s.hd + radius)) continue;
     if(points.some(function(existing){ return Math.hypot(existing.x - point.x, existing.y - point.y) < radius * 3; })) continue;
     points.push(point);
   }

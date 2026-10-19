@@ -1,4 +1,5 @@
 import type { MapZoneType, Point } from '../config/types';
+import { MALL_ENTRANCE } from './mall';
 
 export interface VerticalRoad {
   x: number;
@@ -423,6 +424,8 @@ export const OUTSKIRT_PLACE_LOTS: Record<string, Point> = {
   // LEGAL: Out in Lakeridge, the suburb belt on the south-east edge. Deliberately a drive
   // LEGAL: rather than a stroll: a casino you can walk to from your own block is not a trip.
   casinoLakeridge: { x: widenAuthoredX(5500), y: 1560 },
+  // LEGAL: The mall's front plaza, where Wabash Avenue's turning circle ends (map/mall).
+  mallLakeridge: MALL_ENTRANCE,
   airfieldKettle: { x: widenAuthoredX(-760), y: 760 },
   lodgeRidgewood: { x: widenAuthoredX(3100), y: 1560 },
   driveInBoundary: { x: widenAuthoredX(800), y: 1570 },

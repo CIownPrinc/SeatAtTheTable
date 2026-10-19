@@ -613,3 +613,6 @@ main{max-width:1240px;margin:0 auto;padding:26px 24px 60px;}
 .race-line strong { color:#ffd23a; font-size:18px; }
 /* LEGAL: Indoors the minimap has nothing to show, so it steps aside for the room. */
 #scene3d-container.indoors #minimap-canvas, #scene3d-container.indoors .minimap-expand-btn, #scene3d-container.indoors .minimap-turf, #scene3d-container.indoors .minimap-gps-clear { display: none; }
+.wardrobe-value small { display:block; font-size:10px; color:var(--gold); }
+.wardrobe-footnote { padding:0 18px 10px; font-size:12px; color:var(--text-faint); }
+.wardrobe-foot .wardrobe-save:disabled { opacity:0.45; cursor:not-allowed; }

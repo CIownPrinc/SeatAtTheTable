@@ -50,6 +50,8 @@ export const serviceBuildings: ServiceBuilding[] = [
   { id:'mudsterTrailhead', kind:'dealership', name:'Mudster Kestrel Trailhead', icon:ICONS.garage, district:'hub', x:0, y:0, brandId:'mudster' },
   // LEGAL: Out past the city limits in the Lakeridge belt — see OUTSKIRT_PLACE_LOTS for why
   // LEGAL: its position is absolute rather than district-local. Somewhere you drive TO.
+  // LEGAL: Lakeridge Mall, at the end of Wabash Avenue: shops, a food court and a play area (map/mall).
+  { id:'mallLakeridge', kind:'mall', name:'Lakeridge Mall', icon:ICONS.store, district:'hub', x:0, y:0 },
   { id:'casinoLakeridge', kind:'casino', name:'The Gilded Kettle', icon:ICONS.cards, district:'hub', x:0, y:0 },
   // LEGAL: Respray and trim. Stays in the city, on the West Side among the working garages.
   { id:'resprayShop', kind:'respray', name:'Vega Custom Paint & Trim', icon:ICONS.garage, district:'westside', x:640, y:300 },

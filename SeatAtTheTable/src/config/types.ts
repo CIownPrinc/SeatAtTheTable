@@ -393,6 +393,8 @@ export interface GameState {
   investorPenalty: number;
   // LEGAL: What Arjun wears on the map (see map/personModel WARDROBE). Kept through prestige.
   appearance: PersonLook;
+  // LEGAL: Wardrobe items bought at the mall, as config/mallShops itemKey strings. Kept through prestige.
+  ownedWardrobe: string[];
   // LEGAL: Cash locked in the vault in Arjun's flat; out of reach of anything that takes a share of your pocket.
   vaultCash: number;
   procNpc: ProceduralNPC;

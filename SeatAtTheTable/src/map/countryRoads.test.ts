@@ -4,6 +4,9 @@ import { isPointInWater } from './geometry';
 import { routeHintBetween } from './queries';
 import { OUTSKIRT_PLACE_LOTS } from './world';
 
+// LEGAL: The mall sits at the end of a city street (Wabash Avenue), not out on a country lane.
+const COUNTRY_LOTS = Object.entries(OUTSKIRT_PLACE_LOTS).filter(([id]) => id !== 'mallLakeridge');
+
 function distanceToPath(point: { x: number; y: number }, path: Array<{ x: number; y: number }>): number {
   let best = Infinity;
   for(let i = 0; i < path.length - 1; i++){
@@ -40,7 +43,7 @@ describe('country roads', function () {
   });
 
   it('pass beside each countryside place instead of through its building', function () {
-    Object.entries(OUTSKIRT_PLACE_LOTS).forEach(function([id, lot]){
+    COUNTRY_LOTS.forEach(function([id, lot]){
       const nearest = Math.min(...COUNTRY_ROADS.map(road => distanceToPath(lot, road.path)));
       expect(nearest, id).toBeGreaterThan(90);
       expect(nearest, id).toBeLessThan(260);
@@ -49,12 +52,18 @@ describe('country roads', function () {
 
   it('let the GPS route from the city to every countryside place by road', function () {
     const home = { x: 980, y: 600 };
-    Object.entries(OUTSKIRT_PLACE_LOTS).forEach(function([id, lot]){
+    COUNTRY_LOTS.forEach(function([id, lot]){
       const route = routeHintBetween(home, lot);
       expect(route.roads.some(road => road.roadClass === 'country'), id).toBe(true);
       route.waypoints.forEach(function(point){
         expect(isPointInWater(point, 0), `${id} route at ${Math.round(point.x)},${Math.round(point.y)}`).toBe(false);
       });
     });
+  });
+
+  it('reach the mall by road too: its plaza is where Wabash Avenue ends', function () {
+    const route = routeHintBetween({ x: 980, y: 600 }, OUTSKIRT_PLACE_LOTS.mallLakeridge);
+    expect(route.roads.some(road => road.name === 'Wabash Avenue')).toBe(true);
+    route.waypoints.forEach(point => expect(isPointInWater(point, 0)).toBe(false));
   });
 });

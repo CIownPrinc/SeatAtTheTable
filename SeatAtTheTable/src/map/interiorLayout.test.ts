@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { interiorLayout, type InteriorSpot } from './interiorLayout';
 import { actorRadius, collidesSolid } from './movement';
+import { MALL_ROOM, MALL_SPOTS } from './mallInterior';
 
 const ROOM = { w: 480, h: 280, door: { x: 240 } };
 const DOOR = { x: 240, y: 234 };
@@ -49,6 +50,36 @@ describe('interior rooms', function () {
         expect(solid.x + solid.hw, kind).toBeLessThanOrEqual(ROOM.w + 1);
         expect(solid.y + solid.hd, kind).toBeLessThanOrEqual(ROOM.h + 1);
       }
+    }
+  });
+});
+
+describe('the mall', function () {
+  const room = { ...MALL_ROOM, door: { x: MALL_ROOM.w / 2 } };
+  const spots = [
+    ...MALL_SPOTS.shops.map(entry => spot(`shop:${entry.shop.id}`, entry.x, entry.y, entry.shop.name)),
+    spot('perfume', MALL_SPOTS.perfume.x, MALL_SPOTS.perfume.y), spot('icecream', MALL_SPOTS.icecream.x, MALL_SPOTS.icecream.y),
+    spot('foodcourt', MALL_SPOTS.foodcourt.x, MALL_SPOTS.foodcourt.y), spot('playground', MALL_SPOTS.playground.x, MALL_SPOTS.playground.y),
+    spot('mission', 150, 560, 'Mission Contact'),
+  ];
+  const layout = interiorLayout('mall', 'mallLakeridge', room, spots);
+
+  it('lets you stand at every shop, kiosk and the door', function () {
+    for(const hotspot of spots) expect(free(hotspot.x, hotspot.y, layout.solids), hotspot.id).toBe(true);
+    expect(free(MALL_ROOM.w / 2, MALL_ROOM.h - 46, layout.solids)).toBe(true);
+  });
+
+  it('has a shopkeeper in every shop and shoppers walking round', function () {
+    expect(layout.people.length).toBeGreaterThanOrEqual(MALL_SPOTS.shops.length + 3);
+    expect(layout.walkers.some(walker => walker.scale < 1)).toBe(true);
+  });
+
+  it('keeps every walker\'s route clear of the furniture', function () {
+    for(const walker of layout.walkers){
+      walker.path.forEach(function(a, i){
+        const b = walker.path[(i + 1) % walker.path.length];
+        for(let t = 0; t <= 1; t += 0.05) expect(collidesSolid(a.x + (b.x - a.x) * t, a.z + (b.z - a.z) * t, layout.solids, 4), walker.identity).toBe(false);
+      });
     }
   });
 });

@@ -122,7 +122,8 @@ function renderServiceBuildings(options: MapPlaceRenderOptions): void {
     mesh.name = `service:${building.id}:${building.name}`;
     if(building.kind === 'playerGarage') addGarageOffice(options.THREE, mesh, silhouette.w, silhouette.d);
     worldGroup.add(mesh);
-    helpers.addSign(mesh, building.name, Math.min(54, silhouette.w * 0.72), 9, built.hasBuilding ? silhouette.h - 8 : silhouette.h + 12, '#ffe6a0');
+    // LEGAL: The mall carries its name on its own facade (map/mall).
+    if(building.kind !== 'mall') helpers.addSign(mesh, building.name, Math.min(54, silhouette.w * 0.72), 9, built.hasBuilding ? silhouette.h - 8 : silhouette.h + 12, '#ffe6a0');
   });
 }
 

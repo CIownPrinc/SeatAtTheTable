@@ -279,6 +279,27 @@ export function buildBayShell(THREE: typeof ThreeNamespace, w: number, d: number
 // LEGAL: Single entry point so callers never have to know which builder goes with which
 // LEGAL: archetype. Returns null for archetypes that DO have a building shell, so the caller
 // LEGAL: falls through to the detailed-building renderer.
+// LEGAL: A paved forecourt: stone paving with a darker border, planters with trees, and lamps.
+export function buildPlazaShell(THREE: typeof ThreeNamespace, w: number, d: number): ThreeNamespace.Group {
+  const group = new THREE.Group();
+  group.add(groundPlate(THREE, w, d, archetypeForm('plaza').ground ?? '#b5ad9c'));
+  const border = groundPlate(THREE, w - 12, d - 12, '#c9c1ae');
+  border.position.y = 0.16;
+  group.add(border);
+  [-1, 1].forEach(function(side){
+    const planter = mesh(THREE, new THREE.BoxGeometry(22, 6, 22), '#8a7a62', { roughness:0.9 });
+    planter.position.set(side * w * 0.36, 3, 0);
+    const tree = mesh(THREE, new THREE.SphereGeometry(12, 10, 8), '#3c7a44', { roughness:0.95 });
+    tree.position.set(side * w * 0.36, 20, 0);
+    const lamp = mesh(THREE, new THREE.CylinderGeometry(1, 1, 30, 6), '#3a3d44', { roughness:0.6, metalness:0.4 });
+    lamp.position.set(side * w * 0.18, 15, d * 0.3);
+    const bulb = mesh(THREE, new THREE.SphereGeometry(3, 8, 8), '#ffe6a0', { roughness:0.3 });
+    bulb.position.set(side * w * 0.18, 31, d * 0.3);
+    group.add(planter, tree, lamp, bulb);
+  });
+  return group;
+}
+
 export function buildArchetypeShell(
   THREE: typeof ThreeNamespace,
   archetype: PlaceArchetype,
@@ -290,6 +311,9 @@ export function buildArchetypeShell(
   const shell = archetypeForm(archetype).shell;
   if(shell === 'stall') return buildStallShell(THREE, w, d, h, color);
   if(shell === 'bay') return buildBayShell(THREE, w, d, h, color);
-  if(shell === 'open') return archetype === 'alley' ? buildAlleyShell(THREE, w, d, h) : buildLotShell(THREE, w, d, h);
+  if(shell === 'open'){
+    if(archetype === 'alley') return buildAlleyShell(THREE, w, d, h);
+    return archetype === 'plaza' ? buildPlazaShell(THREE, w, d) : buildLotShell(THREE, w, d, h);
+  }
   return null;
 }

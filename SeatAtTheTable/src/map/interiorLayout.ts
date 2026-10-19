@@ -1,32 +1,14 @@
 import type { Solid } from '../config/types';
 
-// LEGAL: What stands in each room, as plain data: boxes, cylinders and people in room units, with
-// LEGAL: x across the room and z from the back wall (0) to the door (the room's depth). The room
-// LEGAL: used to be a top-down 2D sketch with an emoji per hotspot; now every hotspot is a real
-// LEGAL: thing (a counter with a clerk behind it, a board you can read, a safe), and the furniture
-// LEGAL: blocks you. map/interiorRoom3d.ts turns this into meshes.
-export interface InteriorSpot { id: string; x: number; y: number; label: string; icon: string }
+import { PERSON_FACING_DOOR, WALL_HEIGHT, box, cyl, solidOf, type InteriorCar, type InteriorPerson, type InteriorPiece, type InteriorSpot, type InteriorWalker, type Prop } from './interiorPieces';
+import { mallDecor, mallSpotProp } from './mallInterior';
 
-export interface InteriorPiece {
-  shape: 'box' | 'cyl' | 'sphere';
-  x: number;
-  z: number;
-  w: number;
-  d: number;
-  h: number;
-  // LEGAL: Height of the piece's base above the floor.
-  y: number;
-  color: string;
-  emissive?: string;
-  // LEGAL: A cylinder stands up (y) unless it faces the room (z), like a vault door on the wall.
-  axis?: 'y' | 'z';
-}
+export type { InteriorCar, InteriorPerson, InteriorPiece, InteriorSpot, InteriorWalker } from './interiorPieces';
 
-export interface InteriorPerson { x: number; z: number; facing: number; identity: string; coat: string }
-
-// LEGAL: A real car model stands here: yours in the garage, the brand's on a showroom floor.
-export interface InteriorCar { x: number; z: number; heading: number; color: string; use: 'garage' | 'showroom' | 'bay' }
-
+// LEGAL: What stands in each room: furniture, people and cars, keyed by the kind of room and its
+// LEGAL: hotspots. The room used to be a top-down 2D sketch with an emoji per hotspot; now every
+// LEGAL: hotspot is a real thing (a counter with a clerk behind it, a board you can read, a safe),
+// LEGAL: and the furniture blocks you. map/interiorRoom3d.ts turns this into meshes.
 export type FloorPattern = 'wood' | 'tile' | 'marble' | 'carpet' | 'concrete';
 
 export interface InteriorLayout {
@@ -37,13 +19,14 @@ export interface InteriorLayout {
   pieces: InteriorPiece[];
   people: InteriorPerson[];
   cars: InteriorCar[];
+  walkers: InteriorWalker[];
   // LEGAL: In the same room units the player moves in.
   solids: Solid[];
 }
 
 export interface RoomSize { w: number; h: number; door: { x: number } }
 
-export const WALL_HEIGHT = 80;
+export { WALL_HEIGHT };
 export const FRONT_WALL_HEIGHT = 9;
 export const DOOR_WIDTH = 64;
 
@@ -60,29 +43,19 @@ const LOOKS: Record<string, Look> = {
   brokerage:    { floor:'carpet',   floorColor:'#4c5a54', wallColor:'#d9d3c6', trimColor:'#4a4356', accent:'#5a7c6b', wood:'#6a4a32' },
   cityhall:     { floor:'marble',   floorColor:'#cfc9bb', wallColor:'#c2baa6', trimColor:'#4e4638', accent:'#c9b26b', wood:'#5a4632' },
   casino:       { floor:'carpet',   floorColor:'#6a1e28', wallColor:'#3a1a22', trimColor:'#c9a227', accent:'#d4a017', wood:'#4a2a1c' },
+  mall:         { floor:'marble',   floorColor:'#e4dfd4', wallColor:'#e8e2d6', trimColor:'#8a7a62', accent:'#c9a227', wood:'#6a4a32' },
   missionOffice:{ floor:'wood',     floorColor:'#6e5440', wallColor:'#a89a84', trimColor:'#3e3226', accent:'#d4a017', wood:'#5c4330' },
 };
 const DEFAULT_LOOK = LOOKS.venture;
 
 export function lookFor(kind: string): Look { return LOOKS[kind] ?? DEFAULT_LOOK; }
 
-function box(x: number, z: number, w: number, d: number, h: number, color: string, y = 0, emissive?: string): InteriorPiece {
-  return { shape:'box', x, z, w, d, h, y, color, emissive };
-}
-function cyl(x: number, z: number, r: number, h: number, color: string, y = 0, emissive?: string): InteriorPiece {
-  return { shape:'cyl', x, z, w:r * 2, d:r * 2, h, y, color, emissive };
-}
-
 // LEGAL: Everything a hotspot is: the thing you walk up to, and who stands behind it. A hotspot's
 // LEGAL: point is where you stand, so its prop sits just behind it, toward the back wall.
-interface Prop { pieces: InteriorPiece[]; people: InteriorPerson[]; solids: Solid[]; cars?: InteriorCar[] }
-
-const PERSON_FACING_DOOR = Math.PI / 2;
 
 function counter(x: number, z: number, w: number, look: Look, top = '#e0d6bf'): InteriorPiece[] {
   return [box(x, z, w, 22, 24, look.wood), box(x, z, w + 4, 26, 3, top, 24)];
 }
-function solidOf(x: number, z: number, w: number, d: number): Solid { return { x, y:z, hw:w / 2, hd:d / 2 }; }
 function staffBehind(x: number, z: number, identity: string, coat: string): InteriorPerson {
   return { x, z, facing:PERSON_FACING_DOOR, identity, coat };
 }
@@ -250,6 +223,7 @@ function pedestalProp(spot: InteriorSpot, look: Look): Prop {
 }
 
 function propFor(spot: InteriorSpot, kind: string, refId: string, look: Look): Prop {
+  if(kind === 'mall') return mallSpotProp(spot, refId) ?? pedestalProp(spot, look);
   switch(spot.id){
     case 'counter': case 'register': case 'clerk': case 'frontdesk':
       return deskProp(spot, look, refId, spot.id === 'register' ? 80 : 96, spot.id === 'register' ? [box(spot.x + 20, spot.y - 30, 18, 14, 10, '#2a2d34', 27)] : []);
@@ -299,6 +273,7 @@ function decorFor(kind: string, room: RoomSize, look: Look): Prop {
   const cars: InteriorCar[] = [];
   const add = (piece: InteriorPiece, solid = true) => { pieces.push(piece); if(solid && piece.y < 20) solids.push(solidOf(piece.x, piece.z, piece.w, piece.d)); };
   switch(kind){
+    case 'mall': return mallDecor();
     case 'local': {
       // LEGAL: Open shelving down both walls: a back panel, three shelves, goods on each.
       for(const side of [-1, 1]){
@@ -369,7 +344,7 @@ function decorFor(kind: string, room: RoomSize, look: Look): Prop {
   }
   // LEGAL: Daylight through a window on each side wall, and framed pictures either side of the
   // LEGAL: back counter, so no wall is a blank sheet.
-  if(kind !== 'heist' && kind !== 'casino'){
+  if(kind !== 'heist' && kind !== 'casino' && kind !== 'mall'){
     for(const side of [-1, 1]){
       const wx = side < 0 ? 0.6 : w - 0.6;
       pieces.push(box(wx, h * 0.62, 2, 70, 34, '#000000', 30, '#bcd8ea'), box(wx, h * 0.62, 3, 74, 3, look.trimColor, 28), box(wx, h * 0.62, 3, 3, 34, look.trimColor, 30));
@@ -406,6 +381,7 @@ export function interiorLayout(kind: string, refId: string, room: RoomSize, spot
     pieces:[...wallPieces(room, look), ...decor.pieces, ...props.flatMap(p => p.pieces)],
     people:[...decor.people, ...props.flatMap(p => p.people)],
     cars:[...(decor.cars ?? []), ...props.flatMap(p => p.cars ?? [])],
+    walkers:[...(decor.walkers ?? []), ...props.flatMap(p => p.walkers ?? [])],
     solids:[...decor.solids, ...props.flatMap(p => p.solids)],
   };
 }

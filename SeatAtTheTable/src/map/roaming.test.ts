@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import type { GangRecruit } from '../config/types';
 import type { MapNpc } from './markers';
 import type { MapObject } from './objects';
@@ -16,6 +16,9 @@ function gangObject(id: string): MapObject<'gangnpc', GangRecruit> {
 }
 
 describe('roaming actors', function () {
+  // LEGAL: The routes are built once, on first use; doing it here keeps that cost out of a test's time limit.
+  beforeAll(function () { createRoamingActors([]); }, 30_000);
+
   it('creates lore-constrained actors for notable NPCs and gang recruits', function () {
     const actors = createRoamingActors([npcObject('dice', 'named'), npcObject('reyes', 'named'), gangObject('maria')]);
 

@@ -279,11 +279,13 @@ old one.
 
 44. **DONE** Clearing a GPS waypoint wasn't obvious. A labelled "Clear GPS" button sits under the
     minimap whenever one is set, and clicking the waypoint again on the City Map clears it.
-45. **PART** Wardrobe: Arjun's skin is fixed brown (he's Indian; it's part of the story) and the
+45. **DONE** Wardrobe: Arjun's skin is fixed brown (he's Indian; it's part of the story) and the
     skin option is gone. The top colour is named after what you wear (coat, jacket, hoodie, suit).
     Nine hairstyles with sideburns and fringes, six hats, shoes/sneakers/boots, more hair and shoe
     colours, real glasses and sunglasses, a heavier chain with a pendant, a watch and an earring.
-    Still open: accessory shops in the mall.
+    The mall now has the accessory shops: Crown & Brim (hats), Spectacle (eyewear), Gold Standard
+    (chains, watches, earrings), Sole Society (shoes) and The Fade Room (haircuts). Each shop is a
+    fitting room with prices; what you buy stays in your wardrobe at home (`config/mallShops.ts`).
 46. Minigames look primitive: make them 3D, or even first person.
 47. **DONE** Street racing like GTA. At the Kestrel Woods trailhead you line up on a grid against
     three rival cars (muscle, supercar, roadster) for a 3-2-1-GO start, then race ten checkpoint
@@ -310,9 +312,13 @@ old one.
 35. **DONE** A home of your own: Arjun's flat above the garage, with the wardrobe and a vault
     (`core/vault.ts`). Vault cash isn't in your pocket, so pay-offs that take a share can't
     touch it. A bigger home could come later with property.
-36. A big mall with a parking garage. Inside should feel like walking around outside: an indoor
+36. **DONE** A big mall with a parking garage. Inside should feel like walking around outside: an indoor
     playground, stall owners trying to get you to try their perfume, ice cream vendors, a food
     court.
+    Lakeridge Mall stands at the end of Wabash Avenue, with a paved plaza, a glass atrium and a
+    three-deck parking garage (`map/mall.ts`). Inside (`map/mallInterior.ts`) are five shops, a
+    fountain, a perfume seller who comes out to spray you, an ice cream cart, a food court, a play
+    area with a slide and a ball pit, and shoppers and kids walking round.
 37. A central park, with more greenery generally.
 38. A suburbs area.
 39. Construction sites.

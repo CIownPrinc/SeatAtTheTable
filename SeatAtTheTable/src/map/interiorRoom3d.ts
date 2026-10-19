@@ -13,6 +13,8 @@ export interface InteriorView {
   solids: Solid[];
   // LEGAL: Lights up the ring of the hotspot you're next to ('door' for the way out).
   setHighlight(key: string | null, time: number): void;
+  // LEGAL: Moves the people who walk round the room.
+  tick(dt: number): void;
   dispose(): void;
 }
 
@@ -175,6 +177,24 @@ export function buildInteriorRoom3d(THREE: typeof ThreeNamespace, build: Interio
   });
   root.add(people);
 
+  const walkers = layout.walkers.map(function(walker){
+    const figure = build.makePerson(walker.identity, walker.coat);
+    figure.scale.setScalar(walker.scale);
+    people.add(figure);
+    const legs = walker.path.map((p, i) => { const q = walker.path[(i + 1) % walker.path.length]; return Math.hypot(q.x - p.x, q.z - p.z); });
+    const length = legs.reduce((a, b) => a + b, 0);
+    return { walker, figure, legs, length, along:walker.offset * length };
+  });
+  const placeWalker = (entry: typeof walkers[number]) => {
+    let d = entry.along % entry.length, i = 0;
+    while(d > entry.legs[i]){ d -= entry.legs[i]; i++; }
+    const a = entry.walker.path[i], b = entry.walker.path[(i + 1) % entry.walker.path.length];
+    const t = entry.legs[i] ? d / entry.legs[i] : 0;
+    entry.figure.position.set((a.x + (b.x - a.x) * t) * s, 0, (a.z + (b.z - a.z) * t) * s);
+    entry.figure.rotation.y = -Math.atan2(b.z - a.z, b.x - a.x) + Math.PI / 2;
+  };
+  walkers.forEach(placeWalker);
+
   // LEGAL: A ring on the floor where you stand to use each hotspot, and its name above the thing.
   const rings = new Map<string, ThreeNamespace.Mesh>();
   const ringGeometry = new THREE.RingGeometry(10, 13, 40);
@@ -208,6 +228,9 @@ export function buildInteriorRoom3d(THREE: typeof ThreeNamespace, build: Interio
         (ring.material as ThreeNamespace.MeshBasicMaterial).opacity = on ? 0.95 : 0.35;
         ring.scale.setScalar(on ? 1.12 + Math.sin(time * 6) * 0.06 : 1);
       });
+    },
+    tick(dt){
+      walkers.forEach(function(entry){ entry.along = (entry.along + entry.walker.speed * dt) % entry.length; placeWalker(entry); });
     },
     dispose(){
       root.remove(people);

@@ -25,7 +25,8 @@ export type PlaceArchetype =
   | 'tower'
   | 'civic'
   | 'works'
-  | 'bay';
+  | 'bay'
+  | 'plaza';
 
 // LEGAL: What to draw. `stall`, `open` and `bay` deliberately have NO building shell — that
 // LEGAL: is the whole point of them.
@@ -57,6 +58,8 @@ const FORMS: Record<PlaceArchetype, ArchetypeForm> = {
   // LEGAL: the middle of a garage is not solid, it is where the car goes. The walls come back
   // LEGAL: as extra solids below, so you can drive in but not through.
   bay:        { shell:'bay',      solidScale:0, ground:'#6b6459' },
+  // LEGAL: Paved open ground in front of a big building: the mall's forecourt.
+  plaza:      { shell:'open',     solidScale:0, ground:'#b5ad9c' },
 };
 
 export function archetypeForm(archetype: PlaceArchetype): ArchetypeForm {
@@ -77,6 +80,7 @@ const ZONE_TYPES: Record<PlaceArchetype, string> = {
   civic: 'service',
   works: 'industrial',
   bay: 'industrial',
+  plaza: 'commercial',
 };
 
 export function archetypeZoneType(archetype: PlaceArchetype): string {
@@ -91,6 +95,7 @@ const OPEN_SHAPES: Partial<Record<PlaceArchetype, { w: number; h: number; d: num
   alley: { w:46, h:40, d:104, color:'#3d3a38' },
   lot:   { w:118, h:18, d:86, color:'#4a453e' },
   cart:  { w:30, h:16, d:24, color:'#b4432f' },
+  plaza: { w:220, h:2, d:90, color:'#b5ad9c' },
 };
 
 export function archetypeSilhouette(archetype: PlaceArchetype): { w: number; h: number; d: number; color: string } | null {
@@ -146,6 +151,8 @@ export const SERVICE_ARCHETYPES: Record<string, PlaceArchetype> = {
   driveInBoundary: 'bay',           // LEGAL: The drive-in is an open parking bay facing one screen.
   motelSunset: 'storefront',        // LEGAL: The shore motel is one low, enterable roadside building.
   fireRoadKestrel: 'lot',           // LEGAL: A trailhead shed and dirt turnout, with the course beyond it.
+  // LEGAL: The mall's front plaza is the place you walk into; the building behind it is map/mall.
+  mallLakeridge: 'plaza',
   casinoLakeridge: 'civic',         // LEGAL: The Gilded Kettle — a big lit hall out of town.
   resprayShop: 'works',             // LEGAL: A paint shop is a workshop, not a showroom.
 };
