@@ -1,3 +1,4 @@
+import { COUNTRY_ROADS } from './countryRoads';
 import type { Point } from '../config/types';
 import { CANAL_CHANNELS, DISTRICT_OFFSETS, DISTRICT_W, LAKEFRONT_BEACH, WINDHAVEN_LAKE, WINDHAVEN_LANDMASS, WORLD_H, WORLD_W, districtParkSlots, landmarks, roadNetwork, widenAuthoredX } from './world';
 import { boundsForPoints, isPointInWater, pointInPolygon, type Bounds } from './geometry';
@@ -11,7 +12,7 @@ export interface MapDistrictRecord {
   landArea: Point[];
 }
 
-export type RoadClass = 'arterial' | 'local' | 'diagonal';
+export type RoadClass = 'arterial' | 'local' | 'diagonal' | 'country';
 
 export interface RoadPath {
   id: string;
@@ -111,6 +112,7 @@ const roadPaths: RoadPath[] = [
       ],
     };
   }),
+  ...COUNTRY_ROADS,
 ];
 
 const bridges: BridgeRecord[] = CANAL_CHANNELS.flatMap(function(channel): BridgeRecord[] {
@@ -282,33 +284,119 @@ function pointBetween(start: Point, end: Point, t: number): Point {
   return { x: start.x + (end.x - start.x) * t, y: start.y + (end.y - start.y) * t };
 }
 
+// LEGAL: Where a city street can be drawn: dry land (a bridge counts), off the beach, inside the
+// LEGAL: city. It used to be "inside a district outline", and the outlines stop short of the
+// LEGAL: canals and coast, so streets ended in a strip of grass before every bridge.
+function streetGroundAt(point: Point, road: RoadPath, model: WindhavenMapModel): boolean {
+  if(point.x < 0 || point.x > WORLD_W || point.y < 0 || point.y > WORLD_H) return false;
+  if(pointInPolygon(point, model.lakefrontBeach)) return false;
+  return !isPointInWater(point, road.width / 2);
+}
+
 export function roadLandSegments(model: WindhavenMapModel = windhavenMapModel, sampleLength = 36): RoadLandSegment[] {
   const segments: RoadLandSegment[] = [];
   model.roadPaths.forEach(function(road){
+    // LEGAL: Country lanes run through the countryside by design (and are tested to stay on dry
+    // LEGAL: land), so the street clip below would erase them.
+    if(road.roadClass === 'country'){ segments.push({ road, path:road.path }); return; }
     road.path.slice(0, -1).forEach(function(start, index){
       const end = road.path[index + 1];
       const length = Math.hypot(end.x - start.x, end.y - start.y);
       const sampleCount = Math.max(1, Math.ceil(length / sampleLength));
-      let runStart: Point | null = null;
-      let runEnd: Point | null = null;
-
+      const onGround = (t: number) => streetGroundAt(pointBetween(start, end, t), road, model);
+      // LEGAL: Pin a boundary between a dry and a wet sample to within a unit, so a street ends
+      // LEGAL: exactly where the ground does instead of up to a sample-length short.
+      const edge = (dry: number, wet: number) => { for(let i = 0; i < 12; i++){ const mid = (dry + wet) / 2; if(onGround(mid)) dry = mid; else wet = mid; } return dry; };
+      let runStart: number | null = onGround(0) ? 0 : null;
       for(let sample = 1; sample <= sampleCount; sample += 1){
         const t0 = (sample - 1) / sampleCount;
         const t1 = sample / sampleCount;
-        const mid = pointBetween(start, end, (t0 + t1) / 2);
-        const onLand = districtIdAtPoint(mid, model) !== null;
-        if(onLand){
-          if(!runStart) runStart = pointBetween(start, end, t0);
-          runEnd = pointBetween(start, end, t1);
-        } else if(runStart && runEnd){
-          segments.push({ road, path:[runStart, runEnd] });
+        const here = onGround(t1);
+        if(here && runStart === null) runStart = edge(t1, t0);
+        if(!here && runStart !== null){
+          segments.push({ road, path:[pointBetween(start, end, runStart), pointBetween(start, end, edge(t0, t1))] });
           runStart = null;
-          runEnd = null;
         }
       }
-
-      if(runStart && runEnd) segments.push({ road, path:[runStart, runEnd] });
+      if(runStart !== null) segments.push({ road, path:[pointBetween(start, end, runStart), end] });
     });
   });
-  return segments;
+  return trimShortStubs(segments);
+}
+
+// LEGAL: How far past its last junction a street may run before it earns a turning circle.
+// LEGAL: Anything shorter is cut back to a T at the cross street: a 40-unit stub ending at the
+// LEGAL: beach, with a turning circle sat on the junction, read as a road to nowhere.
+const MAX_STUB = 140;
+
+function crossingT(a: Point, b: Point, c: Point, d: Point): number | null {
+  const r = { x:b.x - a.x, y:b.y - a.y }, q = { x:d.x - c.x, y:d.y - c.y };
+  const denom = r.x * q.y - r.y * q.x;
+  if(Math.abs(denom) < 1e-9) return null;
+  const t = ((c.x - a.x) * q.y - (c.y - a.y) * q.x) / denom;
+  const u = ((c.x - a.x) * r.y - (c.y - a.y) * r.x) / denom;
+  return t >= 0 && t <= 1 && u >= 0 && u <= 1 ? t : null;
+}
+
+function endJoinsAnother(point: Point, segment: RoadLandSegment, segments: RoadLandSegment[]): boolean {
+  return segments.some(function(other){
+    if(other === segment) return false;
+    return other.path.slice(0, -1).some(function(a, i){
+      const b = other.path[i + 1];
+      return distancePointToSegment(point.x, point.y, a.x, a.y, b.x, b.y) <= other.road.width / 2 + 6;
+    });
+  });
+}
+
+function trimShortStubs(segments: RoadLandSegment[]): RoadLandSegment[] {
+  return segments.map(function(segment){
+    if(segment.road.roadClass === 'country' || segment.path.length !== 2) return segment;
+    const [a, b] = segment.path;
+    let newA = a, newB = b;
+    const length = Math.hypot(b.x - a.x, b.y - a.y);
+    if(length < 1) return segment;
+    // LEGAL: Every place another road crosses this one, as a fraction along it.
+    const crossings: Array<{ t: number; width: number }> = [];
+    segments.forEach(function(other){
+      if(other === segment) return;
+      other.path.slice(0, -1).forEach(function(c, i){
+        const t = crossingT(a, b, c, other.path[i + 1]);
+        if(t !== null) crossings.push({ t, width:other.road.width });
+      });
+    });
+    if(!endJoinsAnother(b, segment, segments)){
+      const last = crossings.filter(c => (1 - c.t) * length > 1 && (1 - c.t) * length < MAX_STUB).sort((x, y) => y.t - x.t)[0];
+      if(last) newB = pointBetween(a, b, last.t + (last.width / 2) / length);
+    }
+    if(!endJoinsAnother(a, segment, segments)){
+      const first = crossings.filter(c => c.t * length > 1 && c.t * length < MAX_STUB).sort((x, y) => x.t - y.t)[0];
+      if(first) newA = pointBetween(a, b, first.t - (first.width / 2) / length);
+    }
+    return newA === a && newB === b ? segment : { road:segment.road, path:[newA, newB] };
+  });
+}
+
+export interface RoadDeadEnd { road: RoadPath; point: Point; direction: Point }
+
+// LEGAL: Street ends that join nothing: they get a turning circle and a dead-end sign. An end
+// LEGAL: that meets another street or a country lane is a junction, not a dead end.
+export function roadDeadEnds(model: WindhavenMapModel = windhavenMapModel): RoadDeadEnd[] {
+  const segments = roadLandSegments(model);
+  const ends: RoadDeadEnd[] = [];
+  segments.filter(segment => segment.road.roadClass !== 'country').forEach(function(segment){
+    const path = segment.path;
+    [[path[0], path[1]], [path[path.length - 1], path[path.length - 2]]].forEach(function([point, before]){
+      const joined = segments.some(function(other){
+        if(other === segment) return false;
+        return other.path.slice(0, -1).some(function(a, i){
+          const b = other.path[i + 1];
+          return distancePointToSegment(point.x, point.y, a.x, a.y, b.x, b.y) <= other.road.width / 2 + 6;
+        });
+      });
+      if(joined) return;
+      const dx = point.x - before.x, dy = point.y - before.y, len = Math.hypot(dx, dy) || 1;
+      ends.push({ road:segment.road, point, direction:{ x:dx / len, y:dy / len } });
+    });
+  });
+  return ends;
 }

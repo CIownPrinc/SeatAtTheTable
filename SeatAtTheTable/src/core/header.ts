@@ -32,6 +32,7 @@ import { mountTouchStick } from '../map/touchControls';
 import { createQualityGovernor } from '../map/adaptiveQuality';
 import { createCheatListener } from './cheats';
 import { createCameraRig, SHADOW_HALF_SIZE, sunShadowFrame } from '../map/cameraRig';
+import { waterClock } from '../map/waterShader';
 import { buildAmenityModel as buildMapAmenityModel } from '../map/amenityRendering';
 import { createFillerLayoutProvider, seededRandom } from '../map/filler';
 import { applyMapWorldCoordinates, createMapBuildings, mapNpcs } from '../map/markers';
@@ -5533,23 +5534,8 @@ import type * as ThreeNamespace from 'three';
   }
 
   function updateWaterMotion(): void {
-    if(!worldGroup) return;
-    worldGroup.children.forEach(function(child){
-      const motion = child.userData.waterMotion as { baseX: number; baseZ: number; driftX: number; driftZ: number; phase: number } | undefined;
-      if(!motion) return;
-      // LEGAL: These used to oscillate around their base position, which averages out to
-      // LEGAL: standing still — the water read as a painted surface with a shimmer on it.
-      // LEGAL: Water FLOWS: the highlight travels in one direction and wraps, so the eye
-      // LEGAL: gets a direction of travel instead of a twitch.
-      const span = 150;
-      const travel = ((state.playSeconds * 12 + motion.phase * span) % span) - span/2;
-      const swell = Math.sin(state.playSeconds * 1.6 + motion.phase) * 4;
-      child.position.x = motion.baseX + Math.sign(motion.driftX || 0) * travel + (motion.driftZ ? swell : 0);
-      child.position.z = motion.baseZ + Math.sign(motion.driftZ || 0) * travel + (motion.driftX ? swell : 0);
-      // LEGAL: Fade in and out at the ends of the run so the wrap is not a visible jump.
-      const material = (child as ThreeNamespace.Mesh).material as ThreeNamespace.MeshBasicMaterial;
-      if(material) material.opacity = 0.26 * (1 - Math.abs(travel) / (span/2));
-    });
+    // LEGAL: Waves are drawn by the water shader (map/waterShader.ts); this just advances its clock.
+    waterClock.value = state.playSeconds;
   }
 
   // LEGAL: Names everything a builder just added to the world, so the scene audit can say
@@ -5879,7 +5865,11 @@ import type * as ThreeNamespace from 'three';
     scene.background = new THREE.Color('#0a0b10');
     scene.fog = new THREE.Fog(0x0a0b10, 480, 1050);
 
-    camera3d = new THREE.PerspectiveCamera(50, VIEW_W/VIEW_H, 1, 3000);
+    // LEGAL: Near plane at 40, not 1. Depth precision scales with near/distance, and the road,
+    // LEGAL: sidewalk, lane paint and canal lines are stacked 0.01-0.05 apart; at near=1 the
+    // LEGAL: buffer could not separate them past ~400 units and they strobed. The camera never
+    // LEGAL: comes within 200 units of anything, so nothing visible is clipped.
+    camera3d = new THREE.PerspectiveCamera(50, VIEW_W/VIEW_H, 40, 3000);
     renderer = new THREE.WebGLRenderer({antialias:true});
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;

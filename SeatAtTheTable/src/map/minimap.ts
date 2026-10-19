@@ -304,6 +304,16 @@ function drawStaticMinimapLayer(mctx: CanvasRenderingContext2D, options: Minimap
   drawPolygon(windhavenMapModel.lakefrontBeach, 'rgba(185,167,119,0.55)', 'rgba(217,210,184,0.34)', Math.max(1, 1*glyphScale));
 
   const drawRoad = function(road: RoadPath){
+    if(road.roadClass === 'country'){
+      // LEGAL: Dirt lanes read as tracks, not streets: thinner, earth-coloured, no kerb outline.
+      mctx.strokeStyle='rgba(150,122,82,0.9)';
+      mctx.lineWidth=Math.max(1.5, road.width*0.7*scale);
+      mctx.lineJoin='round';
+      mctx.beginPath();
+      road.path.forEach(function(point, index){ const p=proj(point.x,point.y); if(index===0) mctx.moveTo(p.x,p.y); else mctx.lineTo(p.x,p.y); });
+      mctx.stroke();
+      return;
+    }
     const surfaceWidth = road.width + (road.roadClass === 'arterial' ? 10 : road.roadClass === 'diagonal' ? 4 : 0);
     const coreColor = road.roadClass === 'arterial' ? 'rgba(102,108,121,0.98)' : road.roadClass === 'diagonal' ? 'rgba(91,96,109,0.96)' : 'rgba(76,82,96,0.94)';
     const edgeColor = road.roadClass === 'arterial' ? 'rgba(18,20,27,0.98)' : 'rgba(22,24,31,0.95)';

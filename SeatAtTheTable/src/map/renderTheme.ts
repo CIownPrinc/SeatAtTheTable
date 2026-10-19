@@ -14,9 +14,6 @@ export interface MapTerrainTheme {
   outskirtForest: string;
   outskirtSuburb: string;
   outskirtIndustrial: string;
-  coastline: string;
-  coastlineSecondary: string;
-  districtStroke: string;
   districts: DistrictTerrainTheme[];
 }
 
@@ -43,9 +40,6 @@ export const mapTerrainTheme: MapTerrainTheme = {
   outskirtForest: '#3f5c38',
   outskirtSuburb: '#6d7b58',
   outskirtIndustrial: '#6a6a5a',
-  coastline: '#f0e5bf',
-  coastlineSecondary: '#f6efcf',
-  districtStroke: '#f0e5bf',
   districts: [
     { id: 'devlin', land: '#7fa65b', minimapLand: '#7fa65b' },
     { id: 'westside', land: '#836f47', minimapLand: '#836f47' },

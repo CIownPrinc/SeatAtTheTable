@@ -195,28 +195,35 @@ a wardrobe in the save (`map/personModel.ts`, `map/characters.ts`), and cheat co
 6. Cars and trains aren't solid.
 7. A car breakdown gives no warning: add smoke, plus a "broken down" prompt on interact.
 8. Streetlights face the wrong way and stay on in daytime.
+9. Roads stop dead before bridges and the coast: they're drawn only inside district outlines.
+   They should run to the bridge and end with a turning circle and a dead-end sign, or
+   continue into the countryside as a dirt lane.
 
 **B. Feel**
-9. Getting hit by a car knocks you flat, and you get back up.
-10. A wardrobe UI to dress Arjun (the slots already exist).
-11. Remove floating 3D icons over places; keep only meaningful ones and put the rest on the
+10. Getting hit by a car knocks you flat, and you get back up.
+11. A wardrobe UI to dress Arjun (the slots already exist).
+12. Remove floating 3D icons over places; keep only meaningful ones and put the rest on the
     minimap.
-12. A simpler, GTA-style minimap.
-13. Smoother coastlines and curves; less polygonal.
-14. Countryside dirt trails, which the GPS can also route on.
-15. Building models that match what they are.
+13. A simpler, GTA-style minimap.
+14. Smoother coastlines and curves; less polygonal.
+15. Countryside dirt trails, which the GPS can also route on.
+16. Building models that match what they are.
+17. Cars that look like what they are: sports car, pickup, SUV, sedan, bike, beater, luxury.
+    The textured Kenney car kit has distinct models for each.
+18. Countryside ground is flat polygons in different shades with hard edges. Replace them with
+    one ground mesh that blends colours smoothly.
 
 **C. Interiors**
-16. Interiors you walk around in like outside, in 3D: a front desk looks like a front desk, and
+19. Interiors you walk around in like outside, in 3D: a front desk looks like a front desk, and
     every hotspot is a real thing (a person, a bulletin board) instead of an icon that opens a
     text box.
 
 **D. New places**
-17. A mall with a parking garage. Inside feels like outdoors: food court, ice cream, perfume
+20. A mall with a parking garage. Inside feels like outdoors: food court, ice cream, perfume
     stall owners calling out to you, an indoor playground.
-18. A central park.
-19. A suburbs area.
-20. Snow that settles on the ground, and a plow that clears the roads.
+21. A central park.
+22. A suburbs area.
+23. Snow that settles on the ground, and a plow that clears the roads.
 
 ---
 

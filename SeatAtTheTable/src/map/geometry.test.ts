@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pointInPolygon } from './geometry';
+import { isPointInWater, pointInPolygon } from './geometry';
 import { WINDHAVEN_LAKE, WINDHAVEN_LANDMASS } from './world';
 import type { Point } from '../config/types';
 
@@ -29,5 +29,20 @@ describe('pointInPolygon with a cached bounding box', function () {
 
     expect(pointInPolygon({ x:5, y:5 }, square)).toBe(true);
     expect(pointInPolygon({ x:50, y:5 }, square)).toBe(false);
+  });
+});
+
+describe('canal extent', function () {
+  it('is water inside the city, between its banks', function () {
+    expect(isPointInWater({ x: 2350, y: 450 }, 0)).toBe(true);
+  });
+
+  it('is dry land in the countryside north of the lake at the same x', function () {
+    expect(isPointInWater({ x: 2350, y: -1000 }, 0)).toBe(false);
+    expect(isPointInWater({ x: 4950, y: -1000 }, 0)).toBe(false);
+  });
+
+  it('is dry land south of the city where the canal ends', function () {
+    expect(isPointInWater({ x: 2350, y: 1500 }, 0)).toBe(false);
   });
 });

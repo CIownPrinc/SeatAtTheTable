@@ -73,7 +73,8 @@ export function isPointInLake(point: Point, radius: number): boolean {
 }
 
 export function isPointInCanal(point: Point, radius: number): boolean {
-  return CANAL_CHANNELS.some(channel => point.x > channel.x + 30 - radius && point.x < channel.x + channel.width - 30 + radius);
+  return CANAL_CHANNELS.some(channel => point.x > channel.x + 30 - radius && point.x < channel.x + channel.width - 30 + radius
+    && point.y > channel.top - radius && point.y < channel.bottom + radius);
 }
 
 export function isPointOnBridge(point: Point, radius: number): boolean {

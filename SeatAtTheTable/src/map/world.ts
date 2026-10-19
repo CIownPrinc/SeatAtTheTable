@@ -32,6 +32,11 @@ export interface Landmark {
 export interface CanalChannel {
   x: number;
   width: number;
+  // LEGAL: North and south ends. The canals open into the lake and stop at the city's southern
+  // LEGAL: edge; without these they were infinite strips, so the countryside north of the lake had
+  // LEGAL: two invisible walls of "canal" running through it.
+  top: number;
+  bottom: number;
   name: string;
 }
 
@@ -306,8 +311,8 @@ export const OUTSKIRT_REGIONS: OutskirtRegion[] = [
 // LEGAL: Canals keep their authored 500 width — only their position moves, so the
 // LEGAL: crossings stay the same length and the bridges still fit.
 export const CANAL_CHANNELS: CanalChannel[] = [
-  { x: widenAuthoredX(1500), width: CANAL_W, name: 'South Branch Canal' },
-  { x: widenAuthoredX(3500), width: CANAL_W, name: 'Lakefront Cut' },
+  { x: widenAuthoredX(1500), width: CANAL_W, top: 0, bottom: WORLD_H, name: 'South Branch Canal' },
+  { x: widenAuthoredX(3500), width: CANAL_W, top: 0, bottom: WORLD_H, name: 'Lakefront Cut' },
 ];
 
 

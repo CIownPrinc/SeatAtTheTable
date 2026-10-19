@@ -2,6 +2,8 @@ import type { DiagonalRoad, HorizontalRoad, Landmark, OutskirtRegion, VerticalRo
 import { OUTSKIRT_REGIONS } from './world';
 import { characterDetail, characterProfile } from './neighbourhoods';
 import { createOutskirtSceneryLayout } from './outskirtScenery';
+import { ribbonGeometry } from './ribbon';
+import { applyWaterWaves } from './waterShader';
 
 // LEGAL: One colour per outskirt belt kind, read from the shared terrain theme so the 3D
 // LEGAL: world and any future minimap treatment cannot drift apart.
@@ -11,7 +13,7 @@ function outskirtColor(kind: OutskirtRegion['kind']): string {
   if(kind === 'industrial') return mapTerrainTheme.outskirtIndustrial;
   return mapTerrainTheme.outskirtFarmland;
 }
-import { districtIdAtPlayablePoint, roadLandSegments, windhavenMapModel } from './mapModel';
+import { districtIdAtPlayablePoint, roadDeadEnds, roadLandSegments, windhavenMapModel } from './mapModel';
 import { boundsForPoints, isPointInWater } from './geometry';
 import { mapTerrainTheme, mapTransportTheme, terrainForDistrict } from './renderTheme';
 import { addInstancedMesh, createMapSceneMaterials, type MapSceneMaterialCache, type SceneInstance } from './scenePerformance';
@@ -91,28 +93,20 @@ function addGroundShape(options: BaseSceneOptions, points: Array<{ x: number; y:
 
 function addWaterShape(options: BaseSceneOptions, points: Array<{ x: number; y: number }>, height: number): ThreeNamespace.Mesh {
   const { THREE, worldGroup } = options;
-  const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPoints(THREE, points)), materialsFor(options).standard('terrain:river-water', {
+  const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPoints(THREE, points)), applyWaterWaves(materialsFor(options).standard('terrain:river-water', {
     color:mapTerrainTheme.canalWater,
     emissive:mapTerrainTheme.waterEmissive,
     emissiveIntensity:0.32,
     roughness:0.16,
     metalness:0.2,
     side:THREE.DoubleSide,
-  }));
+  })));
   mesh.rotation.x = Math.PI/2;
   mesh.position.y = height;
   mesh.receiveShadow = true;
   mesh.renderOrder = 2;
   worldGroup.add(mesh);
   return mesh;
-}
-
-function addGroundLine(options: BaseSceneOptions, points: Array<{ x: number; y: number }>, color: string, opacity: number, height: number): void {
-  const { THREE, worldGroup } = options;
-  const material = materialsFor(options).line(`line:${color}:${opacity}`, { color, transparent:true, opacity });
-  const vectors = points.map(point => new THREE.Vector3(point.x, height, point.y));
-  const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(vectors), material);
-  worldGroup.add(line);
 }
 
 function addPathPlane(options: BaseSceneOptions, points: Array<{ x: number; y: number }>, width: number, color: string, height: number, roughness: number): void {
@@ -147,74 +141,6 @@ function addPathLineDashes(points: Point[], spacing: number, inset: number, call
   });
 }
 
-function addSurfaceGrain(options: BaseSceneOptions): void {
-  const { THREE, worldGroup } = options;
-  const materials = materialsFor(options);
-  const sidewalkMat = materials.line('district:sidewalk-grain', { color:'#d7cfb8', transparent:true, opacity:0.08 });
-  windhavenMapModel.districts.forEach(function(district){
-    for(let y=210; y<options.worldHeight-130; y+=145){
-      const line = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([
-          new THREE.Vector3(district.centerX-610,0.17,y),
-          new THREE.Vector3(district.centerX+610,0.17,y + (district.id === 'hub' ? 18 : 0)),
-        ]),
-        sidewalkMat,
-      );
-      worldGroup.add(line);
-    }
-  });
-}
-
-function addCoastlineTexture(options: BaseSceneOptions): void {
-  const { THREE, worldGroup } = options;
-  const materials = materialsFor(options);
-  const foam: SceneInstance[] = [];
-  windhavenMapModel.landmass.slice(0, -1).forEach(function(start, index){
-    const end = windhavenMapModel.landmass[index + 1];
-    const dx = end.x-start.x;
-    const dy = end.y-start.y;
-    const length = Math.hypot(dx, dy);
-    const angle = Math.atan2(dy, dx);
-    for(let t=36; t<length-20; t+=112){
-      const wave = Math.sin((index + 1) * 17 + t * 0.09);
-      foam.push({
-        x:start.x + Math.cos(angle)*t,
-        y:0.18,
-        z:start.y + Math.sin(angle)*t + wave * 8,
-        rotationX:-Math.PI/2,
-        rotationZ:-angle + wave * 0.08,
-      });
-    }
-  });
-  addInstancedMesh(THREE, worldGroup, new THREE.PlaneGeometry(42,3), materials.basic('coast:foam-streak', {color:'#e4efe8', transparent:true, opacity:0.24}), foam);
-}
-
-function addWaterMotionStrip(options: BaseSceneOptions, x: number, z: number, width: number, rotationZ: number, driftX: number, driftZ: number, phase: number): void {
-  const { THREE, worldGroup } = options;
-  const material = materialsFor(options).basic('water:motion-strip', {color:mapTerrainTheme.waterHighlight, transparent:true, opacity:0.22, depthWrite:false});
-  const strip = new THREE.Mesh(new THREE.PlaneGeometry(width, 4), material);
-  strip.rotation.x = -Math.PI/2;
-  strip.rotation.z = rotationZ;
-  strip.position.set(x, 0.21, z);
-  strip.renderOrder = 4;
-  strip.userData.waterMotion = { baseX:x, baseZ:z, driftX, driftZ, phase };
-  worldGroup.add(strip);
-}
-
-function addWaterMotion(options: BaseSceneOptions): void {
-  windhavenMapModel.canals.forEach(function(channel, index){
-    for(let y=150; y<options.worldHeight; y+=145){
-      addWaterMotionStrip(options, channel.x + channel.width/2 + Math.sin(y*0.03)*34, y, channel.width*0.5, 0.04, 0, 16, index + y*0.01);
-    }
-  });
-  windhavenMapModel.lake.slice(3, -1).forEach(function(point, index){
-    addWaterMotionStrip(options, point.x, point.y + 14, 86, 0.02, 24, 0, index*0.7);
-  });
-  windhavenMapModel.lakefrontBeach.slice(1, -1).forEach(function(point, index){
-    addWaterMotionStrip(options, point.x, point.y + 28, 74, 0.08, 18, 8, index*0.9);
-  });
-}
-
 export function buildBaseGround(options: BaseSceneOptions): void {
   const { THREE, worldGroup } = options;
   const materials = materialsFor(options);
@@ -224,7 +150,7 @@ export function buildBaseGround(options: BaseSceneOptions): void {
   const land = boundsForPoints(windhavenMapModel.landmass);
   const oceanW = (land.maxX - land.minX) + 1400;
   const oceanD = (land.maxY - land.minY) + 1400;
-  const waterBase = new THREE.Mesh(new THREE.PlaneGeometry(oceanW, oceanD), materials.standard('terrain:open-water', {color:mapTerrainTheme.openWater, emissive:mapTerrainTheme.waterEmissive, emissiveIntensity:0.26, roughness:0.18, metalness:0.18}));
+  const waterBase = new THREE.Mesh(new THREE.PlaneGeometry(oceanW, oceanD), applyWaterWaves(materials.standard('terrain:open-water', {color:mapTerrainTheme.openWater, emissive:mapTerrainTheme.waterEmissive, emissiveIntensity:0.26, roughness:0.18, metalness:0.18})));
   waterBase.rotation.x=-Math.PI/2; waterBase.position.set((land.minX+land.maxX)/2, -0.04, (land.minY+land.maxY)/2); waterBase.receiveShadow=true; waterBase.renderOrder = 0; worldGroup.add(waterBase);
   addGroundShape(options, windhavenMapModel.landmass, mapTerrainTheme.baseLand, 0, 1);
   // LEGAL: Outskirt belts sit between the base land and the districts, so the countryside
@@ -254,48 +180,51 @@ export function buildBaseGround(options: BaseSceneOptions): void {
     mesh.position.y = 0.03;
     mesh.receiveShadow = true;
     worldGroup.add(mesh);
-    addGroundLine(options, district.landArea, mapTerrainTheme.districtStroke, 0.18, 0.16);
   });
-  addGroundLine(options, windhavenMapModel.landmass, mapTerrainTheme.coastline, 0.46, 0.13);
-  addGroundLine(options, windhavenMapModel.landmass.filter(function(_point, index){ return index % 2 === 0; }), mapTerrainTheme.coastlineSecondary, 0.24, 0.14);
-  // LEGAL: Surf lines just inside the shore. These used to be two hard-coded polylines
-  // LEGAL: authored against the ORIGINAL coastline; once the districts widened and the
-  // LEGAL: coast was reshaped they ran straight across the middle of the land as stray
-  // LEGAL: stripes. Derived from the real coastline now, so they can never drift again.
-  [0, 1].forEach(function(index){
-    const inset = 16 + index * 22;
-    const surf = windhavenMapModel.landmass.map(function(point, i){
-      const next = windhavenMapModel.landmass[(i + 1) % windhavenMapModel.landmass.length];
-      const dx = next.x - point.x;
-      const dy = next.y - point.y;
-      const len = Math.hypot(dx, dy) || 1;
-      // LEGAL: Offset along the inward normal of each coast segment.
-      return { x: point.x + (dy / len) * inset, y: point.y - (dx / len) * inset };
-    });
-    addGroundLine(options, surf, index === 0 ? '#8fb6c2' : '#e4efe8', index === 0 ? 0.2 : 0.12, 0.12 + index*0.01);
-  });
-  addSurfaceGrain(options);
-  addCoastlineTexture(options);
+  // LEGAL: No hairline coastline, surf or outline strokes: 1-pixel lines alias and flicker at
+  // LEGAL: any distance, and the outlines drew across the canal mouths and out over the water.
 }
 
+// LEGAL: Where the canal walls start: just past the beach, so they don't run out into the lake.
+const CANAL_WALL_START = 190;
+
 export function buildCanalWater(options: BaseSceneOptions): void {
-  const { THREE, worldGroup, worldHeight } = options;
+  const { THREE, worldGroup } = options;
   const materials = materialsFor(options);
-  const canalMat = materials.standard('terrain:canal-water', {color:mapTerrainTheme.canalWater, emissive:mapTerrainTheme.waterEmissive, emissiveIntensity:0.32, roughness:0.16, metalness:0.2});
+  const canalMat = applyWaterWaves(materials.standard('terrain:canal-water', {color:mapTerrainTheme.canalWater, emissive:mapTerrainTheme.waterEmissive, emissiveIntensity:0.32, roughness:0.16, metalness:0.2}));
   const bankMat = materials.standard('transport:canal-bank', {color:mapTransportTheme.seawall, roughness:0.85});
-  const bankInstances: SceneInstance[] = [];
   windhavenMapModel.canals.forEach(function(channel){
-    const canal = new THREE.Mesh(new THREE.PlaneGeometry(channel.width,worldHeight + 180), canalMat);
-    // LEGAL: Above the beach sand (0.09), not below it — the resort strip crosses both canal
-    // LEGAL: mouths, and at 0.04 the sand paved straight over the water.
-    canal.rotation.x=-Math.PI/2; canal.position.set(channel.x+channel.width/2,0.12,worldHeight/2); canal.renderOrder = 3; worldGroup.add(canal);
+    // LEGAL: The water reaches a little into the lake so the mouth has no seam, and stops at the
+    // LEGAL: canal's real southern end instead of running the whole height of the world.
+    const top = channel.top - 80;
+    const length = channel.bottom - top;
+    const canal = new THREE.Mesh(new THREE.PlaneGeometry(channel.width, length), canalMat);
+    // LEGAL: Above the beach sand (0.09), not below it: the resort strip crosses both canal mouths.
+    canal.rotation.x=-Math.PI/2; canal.position.set(channel.x+channel.width/2, 0.12, top + length/2); canal.renderOrder = 3; worldGroup.add(canal);
+    // LEGAL: Walls along both banks, broken where each bridge lands so the deck has nothing
+    // LEGAL: poking through it, plus a wall across the southern end.
+    const gaps = windhavenMapModel.bridges
+      .filter(bridge => Math.abs(bridge.path[0].x - channel.x) < 1)
+      .map(bridge => ({ from:bridge.path[0].y - bridge.width/2 - 4, to:bridge.path[0].y + bridge.width/2 + 4 }))
+      .sort((a, b) => a.from - b.from);
+    const runs: Array<{ from: number; to: number }> = [];
+    let cursor = channel.top + CANAL_WALL_START;
+    gaps.forEach(function(gap){ if(gap.from > cursor) runs.push({ from:cursor, to:gap.from }); cursor = Math.max(cursor, gap.to); });
+    runs.push({ from:cursor, to:channel.bottom });
     [channel.x+8, channel.x+channel.width-8].forEach(function(x){
-      bankInstances.push({ x, y:2, z:worldHeight/2 });
+      runs.forEach(function(run){
+        const wall = new THREE.Mesh(new THREE.BoxGeometry(12, 4, run.to - run.from), bankMat);
+        wall.position.set(x, 2, (run.from + run.to) / 2);
+        wall.receiveShadow = true;
+        wall.name = `canal-wall:${channel.name}`;
+        worldGroup.add(wall);
+      });
     });
-    addGroundLine(options, [{x:channel.x+18,y:0},{x:channel.x+34,y:260},{x:channel.x+12,y:620},{x:channel.x+30,y:980},{x:channel.x+18,y:worldHeight}], '#c7d7d0', 0.2, 0.13);
-    addGroundLine(options, [{x:channel.x+channel.width-18,y:0},{x:channel.x+channel.width-34,y:320},{x:channel.x+channel.width-12,y:680},{x:channel.x+channel.width-30,y:1030},{x:channel.x+channel.width-18,y:worldHeight}], '#c7d7d0', 0.2, 0.13);
+    const endWall = new THREE.Mesh(new THREE.BoxGeometry(channel.width, 4, 12), bankMat);
+    endWall.position.set(channel.x + channel.width/2, 2, channel.bottom + 6);
+    endWall.name = `canal-wall:${channel.name}`;
+    worldGroup.add(endWall);
   });
-  addInstancedMesh(THREE, worldGroup, new THREE.BoxGeometry(12,4,worldHeight+90), bankMat, bankInstances, { receive:true });
 }
 
 export function buildRoadNetwork(options: RoadSceneOptions): void {
@@ -308,6 +237,14 @@ export function buildRoadNetwork(options: RoadSceneOptions): void {
   const crosswalkWide: SceneInstance[] = [];
   roadLandSegments().forEach(function(segment){
     const road = segment.road;
+    if(road.roadClass === 'country'){
+      // LEGAL: Dirt lanes: a worn verge either side and packed earth down the middle. No kerbs,
+      // LEGAL: no lane paint. One ribbon each, so the curves have no seams.
+      const verge = new THREE.Mesh(ribbonGeometry(THREE, segment.path, road.width + 18, 0.045), materials.standard('transport:lane-verge', { color:'#6f6a42', roughness:1 }));
+      const dirt = new THREE.Mesh(ribbonGeometry(THREE, segment.path, road.width, 0.06), materials.standard('transport:dirt', { color:'#8a6f4b', roughness:1 }));
+      [verge, dirt].forEach(function(mesh){ mesh.receiveShadow = true; mesh.name = `road:${road.id}`; worldGroup.add(mesh); });
+      return;
+    }
     addPathPlane(options, segment.path, road.width + (road.roadClass === 'arterial' ? 34 : 22), mapTransportTheme.sidewalk, 0.04, 0.92);
     addPathPlane(options, segment.path, road.width, road.roadClass === 'arterial' ? mapTransportTheme.arterialSurface : mapTransportTheme.roadSurface, 0.06, 0.9);
     addPathLineDashes(segment.path, 94, 40, function(x, y, angle){
@@ -333,6 +270,31 @@ export function buildRoadNetwork(options: RoadSceneOptions): void {
       options.buildIntersectionFurniture(v.x, h.y, vi * roadNetwork.horizontal.length + hi);
     });
   });
+  // LEGAL: Streets that join nothing end in a turning circle with a dead-end sign, instead of a
+  // LEGAL: flat cut into the grass.
+  const signPostMat = materials.standard('transport:sign-post', { color:'#8d939c', roughness:0.5, metalness:0.6 });
+  const signFaceMat = materials.standard('transport:sign-dead-end', { color:'#f2c230', roughness:0.55 });
+  roadDeadEnds().forEach(function(end){
+    const radius = end.road.width * 0.82;
+    const kerb = new THREE.Mesh(new THREE.CircleGeometry(radius + 11, 28), materials.standard(`path:${mapTransportTheme.sidewalk}:0.92`, { color:mapTransportTheme.sidewalk, roughness:0.92 }));
+    const tarmac = new THREE.Mesh(new THREE.CircleGeometry(radius, 28), materials.standard(`path:${mapTransportTheme.roadSurface}:0.9`, { color:mapTransportTheme.roadSurface, roughness:0.9 }));
+    kerb.rotation.x = tarmac.rotation.x = -Math.PI/2;
+    kerb.position.set(end.point.x, 0.04, end.point.y);
+    tarmac.position.set(end.point.x, 0.06, end.point.y);
+    [kerb, tarmac].forEach(function(mesh){ mesh.receiveShadow = true; mesh.name = `road:dead-end:${end.road.id}`; worldGroup.add(mesh); });
+    // LEGAL: The sign stands at the kerb on the driver's right as they enter the turning circle.
+    const side = { x:-end.direction.y, y:end.direction.x };
+    const at = { x:end.point.x - end.direction.x * radius * 1.1 + side.x * (end.road.width / 2 + 8), y:end.point.y - end.direction.y * radius * 1.1 + side.y * (end.road.width / 2 + 8) };
+    const sign = new THREE.Group();
+    sign.name = 'sign:dead-end';
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 26, 8), signPostMat);
+    post.position.y = 13; post.castShadow = true; sign.add(post);
+    const face = new THREE.Mesh(new THREE.BoxGeometry(11, 11, 0.8), signFaceMat);
+    face.position.y = 26; face.rotation.z = Math.PI / 4; face.castShadow = true; sign.add(face);
+    sign.position.set(at.x, 0, at.y);
+    sign.rotation.y = Math.atan2(-end.direction.x, -end.direction.y);
+    worldGroup.add(sign);
+  });
   addInstancedMesh(THREE, worldGroup, new THREE.PlaneGeometry(48,3), laneMat, laneDashes);
   addInstancedMesh(THREE, worldGroup, new THREE.PlaneGeometry(46,4), crosswalkMat, crosswalkLong);
   addInstancedMesh(THREE, worldGroup, new THREE.PlaneGeometry(4,46), crosswalkMat, crosswalkWide);
@@ -348,7 +310,8 @@ export function buildCanalBridges(options: BaseSceneOptions): void {
     const end = bridge.path[1];
     const length = Math.hypot(end.x-start.x, end.y-start.y);
     const ry = start.y;
-    const deck = new THREE.Mesh(new THREE.BoxGeometry(length,4,bridge.width), deckMat);
+    // LEGAL: The deck overhangs each bank a little so the road runs onto it without a seam.
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(length + 24,4,bridge.width), deckMat);
     deck.position.set((start.x+end.x)/2,2,ry); worldGroup.add(deck);
     [-bridge.width/2+6, bridge.width/2-6].forEach(function(zOffset){
       const rail = new THREE.Mesh(new THREE.BoxGeometry(length,4,4), railMat);
@@ -783,9 +746,6 @@ export function buildRailAndRiver(options: BaseSceneOptions): void {
   addWaterShape(options, windhavenMapModel.lake, 0.06);
   addGroundShape(options, windhavenMapModel.lakefrontBeach, '#d8c489', 0.09, 1);
   buildBeachResort(options);
-  addGroundLine(options, windhavenMapModel.lake.slice(2), '#e4efe8', 0.18, 0.14);
-  addGroundLine(options, windhavenMapModel.lakefrontBeach, '#d9d2b8', 0.22, 0.15);
-  addWaterMotion(options);
   const pierMat = materials.standard('waterfront:pier', {color:'#736d5c', roughness:0.86});
   const pierLightMat = materials.standard('waterfront:pier-light', {color:'#343840', roughness:0.55});
   [4380, 4920, 5360].forEach(function(x, index){
