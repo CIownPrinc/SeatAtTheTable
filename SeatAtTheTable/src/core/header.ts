@@ -35,6 +35,7 @@ import { createCameraRig, SHADOW_HALF_SIZE, sunShadowFrame } from '../map/camera
 import { waterClock } from '../map/waterShader';
 import { auditScene, flagIssues } from '../map/sceneAudit';
 import { CHEAT_VEHICLES, buildJetpack, isFlyingVehicle } from '../map/cheatVehicles';
+import { circleHitsObstacle, isRunOverBy, vehicleObstacle, type Obstacle } from '../map/obstacles';
 import { loadVehicleLibrary, vehicleClassForCar, vehicleClassForTraffic, type VehicleLibrary } from '../map/vehicleModels';
 import { buildAmenityModel as buildMapAmenityModel } from '../map/amenityRendering';
 import { createFillerLayoutProvider, seededRandom } from '../map/filler';
@@ -51,7 +52,8 @@ import { bayParkSpot, bayStandSpot, garageBay, isCarInBay, type Bay } from '../m
 import { allRegions, regionNameAt } from '../map/regions';
 import { propertyPlaces, type PropertyPlace } from '../map/propertyPlaces';
 import { createMapPlaceRecords, mapPlaceCategoryLabel, type MapPlaceCategory, type MapPlaceRecord } from '../map/places';
-import { bridgeAtPoint, mapPointContext, nearestPlaceAtPoint, placesByCategory, routeHintBetween, routeSummary, trainCrossingBlockAtPoint } from '../map/queries';
+import { activeTrainSnapshot, bridgeAtPoint, mapPointContext, nearestPlaceAtPoint, placesByCategory, routeHintBetween, routeSummary, trainCrossingBlockAtPoint } from '../map/queries';
+import { createOutskirtSceneryLayout, radiusForKind } from '../map/outskirtScenery';
 import { outskirtPlaceLabel } from '../map/outskirts';
 import { allocateServiceLots } from '../map/serviceLots';
 import { createRoamingActors, settleRoamingActors, updateRoamingActors } from '../map/roaming';
@@ -4391,8 +4393,16 @@ import type * as ThreeNamespace from 'three';
       const shape = serviceBuildingSilhouette(building);
       list.push(...archetypeExtraSolids(serviceArchetype(building), object.x, object.y, shape.w, shape.d));
     });
+    // LEGAL: Trees, barns and silos used to be walk-through. Trunks are small boxes; countryside
+    // LEGAL: buildings take most of their drawn footprint.
+    streetTreeSpots.forEach(spot => list.push({ x:spot.x, y:spot.y, hw:4, hd:4 }));
+    createOutskirtSceneryLayout().forEach(function(item){
+      const half = item.kind === 'tree' ? 4 : radiusForKind(item.kind) * 0.72;
+      list.push({ x:item.x, y:item.y, hw:half, hd:half });
+    });
     return list;
   }
+  const streetTreeSpots: Point[] = [];
   let currentSolids: Solid[] = [];
 
   // LEGAL: Nearest standable point, shared by the player's vehicle-entry nudge and by the
@@ -5629,7 +5639,8 @@ import type * as ThreeNamespace from 'three';
       tagWorld('bridge:canal', function(){ buildCanalBridges(baseScene); });
     });
     timer.measure('street-trees', function(): void {
-      tagWorld('tree:street', function(){ buildStreetTrees({ ...baseScene, roadNetwork, districtOffsets:DISTRICT_OFFSETS, seededRandom }); });
+      streetTreeSpots.length = 0;
+      tagWorld('tree:street', function(){ buildStreetTrees({ ...baseScene, roadNetwork, districtOffsets:DISTRICT_OFFSETS, seededRandom, treeSpots:streetTreeSpots }); });
       tagWorld('outskirt:scenery', function(){ buildOutskirtScenery(baseScene); });
     });
     // LEGAL: Venture buildings — all districts
@@ -5732,15 +5743,13 @@ import type * as ThreeNamespace from 'three';
 
   function updateTrain(): void {
     if(!trainGroup) return;
-    const rail = windhavenMapModel.railLines[0];
-    const cycle = (Date.now() % rail.trainCycleMs) / rail.trainCycleMs;
-    if(cycle < rail.activeWindow.start || cycle > rail.activeWindow.end){
-      trainGroup.visible = false;
-      return;
-    }
-    trainGroup.visible = true;
-    trainGroup.position.x = rail.path[0].x;
-    trainGroup.position.z = -220 + ((cycle - rail.activeWindow.start) / (rail.activeWindow.end - rail.activeWindow.start)) * (WORLD_H + 440);
+    // LEGAL: Drawn where the crossing check and collision think it is. They used two different
+    // LEGAL: formulas, so the train you saw and the train that blocked you weren't in the same place.
+    const snapshot = activeTrainSnapshot(Date.now(), windhavenMapModel.railLines[0]);
+    trainGroup.visible = !!snapshot;
+    if(!snapshot) return;
+    trainGroup.position.x = snapshot.point.x;
+    trainGroup.position.z = snapshot.point.y;
   }
 
   const dealerArrivals: Array<{ group: ThreeNamespace.Group; corner: Corner; sx: number; sy: number; t: number }> = [];
@@ -6514,6 +6523,65 @@ import type * as ThreeNamespace from 'three';
     ictx.fillStyle='#d4a017'; ictx.fill(); ictx.restore();
   }
 
+  // LEGAL: ---- Moving solids: traffic and the train ----
+  // LEGAL: Rebuilt once a frame. Each traffic car's velocity is measured from how far it moved,
+  // LEGAL: so being run over depends on what the car actually did, not what it meant to do.
+  const TRAIN_HALF_LENGTH = 125;
+  const TRAIN_HALF_WIDTH = 15;
+  let movingObstacles: Array<{ obstacle: Obstacle; velocity: { x: number; y: number } }> = [];
+  const lastTrafficPosition = new Map<string, { x: number; y: number }>();
+  function updateMovingObstacles(dt: number): void {
+    movingObstacles = [];
+    roamingActors.forEach(function(actor){
+      if(actor.kind !== 'car') return;
+      const last = lastTrafficPosition.get(actor.id) ?? { x:actor.x, y:actor.y };
+      const velocity = dt > 0 ? { x:(actor.x - last.x) / dt, y:(actor.y - last.y) / dt } : { x:0, y:0 };
+      lastTrafficPosition.set(actor.id, { x:actor.x, y:actor.y });
+      // LEGAL: The same footprint the traffic model is drawn at (see buildTrafficCarModel).
+      const length = (actor.id.includes('cab') ? 30 : 34) * 1.6, width = (actor.id.includes('cruiser') ? 17 : 15) * 1.6;
+      movingObstacles.push({ obstacle:vehicleObstacle(actor.x, actor.y, actor.facing, length, width), velocity });
+    });
+    const train = activeTrainSnapshot(Date.now(), windhavenMapModel.railLines[0]);
+    if(train) movingObstacles.push({ obstacle:{ x:train.point.x, y:train.point.y, halfLength:TRAIN_HALF_LENGTH, halfWidth:TRAIN_HALF_WIDTH, angle:Math.PI / 2 }, velocity:{ x:0, y:0 } });
+  }
+  function playerCanMove(x: number, y: number): boolean {
+    if(!tryMove(x, y, currentSolids)) return false;
+    if(isFlying()) return true;
+    const radius = actorRadius(state.inVehicle);
+    return !movingObstacles.some(moving => circleHitsObstacle(x, y, radius, moving.obstacle));
+  }
+
+  // LEGAL: ---- Getting run over ----
+  const KNOCKDOWN_SECONDS = 2.2;
+  let knockedDownUntil = 0;
+  function isKnockedDown(): boolean { return state.playSeconds < knockedDownUntil; }
+  function checkRunOver(): void {
+    if(state.inVehicle || state.currentInterior || isFlying() || isKnockedDown()) return;
+    const hit = movingObstacles.find(moving => isRunOverBy(player.x, player.y, actorRadius(false), moving.obstacle, moving.velocity));
+    if(!hit) return;
+    knockedDownUntil = state.playSeconds + KNOCKDOWN_SECONDS;
+    player.vx = 0; player.vy = 0;
+    // LEGAL: Thrown sideways off the car's line, towards the side you were already on, and a little
+    // LEGAL: forward. Thrown straight ahead, the car just drove over you again.
+    const speed = Math.hypot(hit.velocity.x, hit.velocity.y) || 1;
+    const fx = hit.velocity.x / speed, fy = hit.velocity.y / speed;
+    const side = Math.sign((player.x - hit.obstacle.x) * -fy + (player.y - hit.obstacle.y) * fx) || 1;
+    const landing = nearestFreePoint(player.x - fy * side * 52 + fx * 16, player.y + fx * side * 52 + fy * 16, currentSolids, false, 200);
+    if(landing){ player.x = landing.x; player.y = landing.y; }
+    showMapToast('Splat! A car ran you over.');
+  }
+  // LEGAL: Flat on your back and a little squashed, then back on your feet for the last half second.
+  function updateKnockdown(dt: number): void {
+    const body = state.inVehicle ? null : playerGroup.children[0];
+    if(!body) return;
+    const down = isKnockedDown() && knockedDownUntil - state.playSeconds > 0.45;
+    const ease = 1 - Math.exp(-12 * dt);
+    body.rotation.x += ((down ? -Math.PI / 2 : 0) - body.rotation.x) * ease;
+    body.position.y += ((down ? 4 : 0) - body.position.y) * ease;
+    const squash = down ? 0.82 : 1;
+    body.scale.y += (squash - body.scale.y) * ease;
+  }
+
   function aimCamera(dt: number): void {
     const view = cameraRig.update({ x:player.x, y:player.y, vx:player.vx, vy:player.vy, inVehicle:state.inVehicle, dt });
     camera3d.position.set(view.eye.x, view.eye.y, view.eye.z);
@@ -6533,7 +6601,7 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: player token doesn't drift under it; the loop keeps running to hold the scene.
     // LEGAL: The expanded City Map is a full-screen overlay you read, not play through —
     // LEGAL: moving underneath it meant you walked blind and came back somewhere else.
-    if(!minigameOpen() && !deviceOpen() && !cityMapOpen){
+    if(!minigameOpen() && !deviceOpen() && !cityMapOpen && !isKnockedDown()){
       if(keys['arrowup']||keys['w']) dy -= 1;
       if(keys['arrowdown']||keys['s']) dy += 1;
       if(keys['arrowleft']||keys['a']) dx -= 1;
@@ -6571,9 +6639,9 @@ import type * as ThreeNamespace from 'three';
         player.y = Math.max(20, Math.min(ROOM_H-14, player.y+stepY));
       } else {
         const tryX = player.x+stepX, tryY = player.y+stepY;
-        if(tryMove(tryX,tryY,currentSolids)){ player.x=tryX; player.y=tryY; }
-        else if(tryMove(tryX,player.y,currentSolids)){ player.x=tryX; player.vy=0; }
-        else if(tryMove(player.x,tryY,currentSolids)){ player.y=tryY; player.vx=0; }
+        if(playerCanMove(tryX,tryY)){ player.x=tryX; player.y=tryY; }
+        else if(playerCanMove(tryX,player.y)){ player.x=tryX; player.vy=0; }
+        else if(playerCanMove(player.x,tryY)){ player.y=tryY; player.vx=0; }
         // LEGAL: Escape hatch. If we are already inside a solid every branch above fails
         // LEGAL: and the actor is trapped for good. Allow any step that reduces how deep we
         // LEGAL: are wedged, so you can always drive back out of a building you got stuck on.
@@ -6616,6 +6684,9 @@ import type * as ThreeNamespace from 'three';
       updateTrain();
       updateCheatEffects(dt);
       updateSmokePlumes();
+      updateMovingObstacles(dt);
+      checkRunOver();
+      updateKnockdown(dt);
       playerGroup.position.set(player.x, flightHeight, player.y);
       playerGroup.rotation.y = -player.facing + Math.PI/2;
       aimCamera(dt);

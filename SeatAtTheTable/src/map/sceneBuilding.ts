@@ -63,6 +63,8 @@ export interface TreeSceneOptions extends BaseSceneOptions {
   roadNetwork: RoadNetworkRenderData;
   districtOffsets: Record<string, number>;
   seededRandom: (seed: number) => () => number;
+  // LEGAL: Filled with every tree's position, so collision can make the trunks solid.
+  treeSpots: Point[];
 }
 
 export interface LandmarkSceneOptions extends BaseSceneOptions {
@@ -360,7 +362,7 @@ export function buildStreetTrees(options: TreeSceneOptions): void {
         const side = rand() > 0.5 ? -1 : 1;
         const treeX = x + (rand()-0.5)*18;
         const treeY = r.y + side*58 + (rand()-0.5)*14;
-        if(districtIdAtPlayablePoint({ x:treeX, y:treeY }, 8) === distId) buildStreetTree(options, treeX, treeY, 0.78 + rand()*0.45);
+        if(districtIdAtPlayablePoint({ x:treeX, y:treeY }, 8) === distId){ buildStreetTree(options, treeX, treeY, 0.78 + rand()*0.45); options.treeSpots.push({ x:treeX, y:treeY }); }
       }
     });
     options.roadNetwork.vertical.filter(v=>v.x>off && v.x<off+1500).forEach(function(v){
@@ -369,7 +371,7 @@ export function buildStreetTrees(options: TreeSceneOptions): void {
         const side = rand() > 0.5 ? -1 : 1;
         const treeX = v.x + side*50 + (rand()-0.5)*12;
         const treeY = y + (rand()-0.5)*18;
-        if(districtIdAtPlayablePoint({ x:treeX, y:treeY }, 8) === distId) buildStreetTree(options, treeX, treeY, 0.72 + rand()*0.38);
+        if(districtIdAtPlayablePoint({ x:treeX, y:treeY }, 8) === distId){ buildStreetTree(options, treeX, treeY, 0.72 + rand()*0.38); options.treeSpots.push({ x:treeX, y:treeY }); }
       }
     });
   });

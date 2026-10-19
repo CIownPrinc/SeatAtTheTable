@@ -196,7 +196,9 @@ old one.
 7. Roads end in the middle of the ocean (reported after the lane change). Find and fix them.
 8. A few buildings stand fully or partly in the streets.
 9. Some roads meant to curve are drawn as straight pieces: find them and use real curves.
-10. Cars and trains aren't solid. Neither are some trees and buildings.
+10. **DONE** Cars, trains and trees weren't solid. Traffic and the train are now moving obstacles
+    (`map/obstacles.ts`), and street trees, countryside trees, barns and silos are solid. The train
+    was also drawn at a different position from the one that blocked you; both now use one.
 11. **DONE** A car breakdown gave no warning (it threw the player out). The map now shows a
     "broken down" message when it happens and when you try to get back in, and the car smokes.
 12. **DONE** Streetlights faced the wrong way and stayed on in daytime. Each arm now reaches over
@@ -218,7 +220,8 @@ old one.
     pulls back at speed.
 17. **DONE** Arjun looked like Gru (bald, stiff, big nose). There's a new animated figure in the
     game's own style. The Kenney blocky characters were tried and dropped as too Roblox-like.
-18. Get splatted on the ground when a car hits you, then get back up.
+18. **DONE** Get splatted when a car hits you: you're knocked flat and squashed beside the road for
+    about two seconds, then you get back up.
 19. Customise Arjun's clothes. The wardrobe is saved already; it needs a UI.
 20. **DONE** Cheat codes; type `cheatcode` for the list. `moneymoneymoney` / `cash4ever` (+$1B),
     `cleanrecord`, `respectme`, `daylight`, `nightowl`, `letitrain`, `letitsnow`, `clearskies`,
