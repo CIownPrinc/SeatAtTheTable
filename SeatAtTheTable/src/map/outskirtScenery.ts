@@ -2,10 +2,11 @@ import { COUNTRY_ROADS } from './countryRoads';
 import { distancePointToSegment } from './layout';
 import type { Point } from '../config/types';
 import { circleInsidePolygon, boundsForPoints, isPointInWater } from './geometry';
-import { OUTSKIRT_REGIONS, type OutskirtRegion } from './world';
+import { OUTSKIRT_PLACE_LOTS, OUTSKIRT_REGIONS, type OutskirtRegion } from './world';
 import { mallKeepClear } from './mall';
 import { centralParkKeepClear } from './centralPark';
 import { suburbKeepClear } from './suburb';
+import { TRAIL_WIDTH, distanceToTrails } from './trails';
 
 export type OutskirtSceneryKind = 'farmhouse' | 'barn' | 'silo' | 'tree' | 'suburbHouse' | 'shed' | 'tank';
 
@@ -32,7 +33,8 @@ function seedForRegion(region: OutskirtRegion): number {
 
 function countForKind(kind: OutskirtRegion['kind']): Record<OutskirtSceneryKind, number> {
   if(kind === 'farmland') return { farmhouse:1, barn:2, silo:2, tree:10, suburbHouse:0, shed:0, tank:0 };
-  if(kind === 'forest') return { farmhouse:0, barn:0, silo:0, tree:42, suburbHouse:0, shed:0, tank:0 };
+  // LEGAL: A forest should read as woods, not a field with trees in it.
+  if(kind === 'forest') return { farmhouse:0, barn:0, silo:0, tree:300, suburbHouse:0, shed:0, tank:0 };
   if(kind === 'suburb') return { farmhouse:0, barn:0, silo:0, tree:18, suburbHouse:14, shed:0, tank:0 };
   return { farmhouse:0, barn:0, silo:0, tree:6, suburbHouse:0, shed:10, tank:4 };
 }
@@ -48,6 +50,9 @@ function nearCountryRoad(point: Point, radius: number): boolean {
   });
 }
 
+// LEGAL: Half the clear square round each countryside place: its building, yard and frontage.
+const PLACE_CLEARANCE = 95;
+
 export function radiusForKind(kind: OutskirtSceneryKind): number {
   if(kind === 'tree') return 10;
   if(kind === 'silo' || kind === 'tank') return 12;
@@ -57,13 +62,18 @@ export function radiusForKind(kind: OutskirtSceneryKind): number {
 function samplesInRegion(region: OutskirtRegion, count: number, radius: number, random: () => number): Point[] {
   const bounds = boundsForPoints(region.area);
   const points: Point[] = [];
-  // LEGAL: The mall, Central Park and the suburb's lots are built on; nothing wild grows there.
-  const keepClear = [...mallKeepClear(), ...centralParkKeepClear(), ...suburbKeepClear()];
+  // LEGAL: The mall, Central Park, the suburb's lots and every countryside place (the lodge, the
+  // LEGAL: casino, the motel...) are built on; nothing wild grows there.
+  const keepClear = [
+    ...mallKeepClear(), ...centralParkKeepClear(), ...suburbKeepClear(),
+    ...Object.values(OUTSKIRT_PLACE_LOTS).map(lot => ({ x:lot.x, y:lot.y, hw:PLACE_CLEARANCE, hd:PLACE_CLEARANCE })),
+  ];
   for(let attempt = 0; points.length < count && attempt < count * 80; attempt++){
     const point = { x:bounds.minX + random() * (bounds.maxX - bounds.minX), y:bounds.minY + random() * (bounds.maxY - bounds.minY) };
     if(!circleInsidePolygon(point, radius, region.area)) continue;
     if(isPointInWater(point, radius)) continue;
     if(nearCountryRoad(point, radius)) continue;
+    if(distanceToTrails(point) < TRAIL_WIDTH / 2 + 4 + radius) continue;
     if(keepClear.some(s => Math.abs(point.x - s.x) < s.hw + radius && Math.abs(point.y - s.y) < s.hd + radius)) continue;
     if(points.some(function(existing){ return Math.hypot(existing.x - point.x, existing.y - point.y) < radius * 3; })) continue;
     points.push(point);

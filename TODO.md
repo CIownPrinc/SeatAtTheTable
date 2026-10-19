@@ -262,8 +262,11 @@ old one.
     the default once the rest of the new map catches up.
 29. Zoning: make rich, poor, commercial, residential, countryside, farmland and forest areas
     clearly distinct, but grade them into each other gradually, like real life.
-30. **PART** Dirt trails in the countryside. The country lanes are in. Still open: smaller trails
-    off them.
+30. **DONE** Dirt trails in the countryside. The country lanes are in, and five footpaths run off
+    them (`map/trails.ts`): through Ridgewood forest to the lodge's door and to a clearing, from the
+    Kestrel trailhead along the north woods, and tractor tracks into the south and west fields.
+    They're for walking: the GPS and traffic don't use them. The forests are now real woods
+    (300 trees each), and no countryside scenery grows inside a place like the lodge any more.
 31. **PART** Building models that look like what they are. Named places now use seven Blender
     models (`art/blender/buildings.py`, `map/buildingModels.ts`): tenement, storefront, showroom,
     office, tower, civic hall and works. Still open: filler buildings, houses, farms (new engine).

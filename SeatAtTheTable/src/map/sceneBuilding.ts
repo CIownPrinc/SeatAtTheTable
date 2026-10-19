@@ -5,6 +5,7 @@ import { OUTSKIRT_REGIONS } from './world';
 import { characterDetail, characterProfile } from './neighbourhoods';
 import { createOutskirtSceneryLayout } from './outskirtScenery';
 import { ribbonGeometry } from './ribbon';
+import { TRAILS, TRAIL_WIDTH } from './trails';
 import { applyShoreFoam, applyWaterWaves } from './waterShader';
 import { buildTerrainMesh } from '../world/render/terrain';
 
@@ -573,6 +574,12 @@ export function buildFillerCity(options: FillerSceneOptions): void {
 export function buildOutskirtScenery(options: BaseSceneOptions): void {
   const { THREE, worldGroup } = options;
   const materials = materialsFor(options);
+  // LEGAL: Footpaths (map/trails): one worn ribbon each, lighter at the middle where feet go.
+  TRAILS.forEach(function(trail){
+    const edge = new THREE.Mesh(ribbonGeometry(THREE, trail.path, TRAIL_WIDTH + 6, 0.05), materials.standard('transport:trail-edge', { color:'#6a5a3e', roughness:1 }));
+    const worn = new THREE.Mesh(ribbonGeometry(THREE, trail.path, TRAIL_WIDTH - 4, 0.055), materials.standard('transport:trail', { color:'#8a7452', roughness:1 }));
+    [edge, worn].forEach(function(mesh){ mesh.receiveShadow = true; mesh.name = `trail:${trail.id}`; worldGroup.add(mesh); });
+  });
   const trees: SceneInstance[] = [];
   const trunks: SceneInstance[] = [];
   createOutskirtSceneryLayout().forEach(function(item){
