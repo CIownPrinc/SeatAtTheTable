@@ -111,6 +111,24 @@ export function widenAuthoredX(x: number): number {
 }
 
 // LEGAL: Convenience wrappers so the authored literals below stay readable.
+// LEGAL: Chaikin corner cutting, twice: turns the authored polygon into a smooth curve that stays
+// LEGAL: inside its corners. Applied to the data, so the water rules, beach, roads and scenery all
+// LEGAL: follow the same rounded shore the player sees.
+function smoothClosed(points: Point[], passes = 2): Point[] {
+  // LEGAL: Drop repeated points (the authored rings close on their first point); a zero-length
+  // LEGAL: edge has no direction and would survive smoothing as a spike.
+  let out = points.filter((p, i) => { const q = points[(i + 1) % points.length]; return Math.hypot(p.x - q.x, p.y - q.y) > 0.5; });
+  for(let pass = 0; pass < passes; pass++){
+    const next: Point[] = [];
+    out.forEach(function(p, i){
+      const q = out[(i + 1) % out.length];
+      next.push({ x:p.x * 0.75 + q.x * 0.25, y:p.y * 0.75 + q.y * 0.25 }, { x:p.x * 0.25 + q.x * 0.75, y:p.y * 0.25 + q.y * 0.75 });
+    });
+    out = next;
+  }
+  return out;
+}
+
 function widenPoints(points: Point[]): Point[] {
   return points.map(p => ({ x: widenAuthoredX(p.x), y: p.y }));
 }
@@ -131,7 +149,7 @@ export const NORTH_SHORE_LOT_Y = 205;
 // LEGAL: That coastline is now the lake's SOUTH shore rather than the edge of the world —
 // LEGAL: see WINDHAVEN_LAKE below. It still sits far enough north of the y=205 north-shore
 // LEGAL: lots that those buildings keep their footprints on land.
-export const WINDHAVEN_LANDMASS: Point[] = widenPoints([
+export const WINDHAVEN_LANDMASS: Point[] = smoothClosed(widenPoints([
   // LEGAL: ---- North shore of the WORLD, west to east ----
   // LEGAL: The land now wraps over the top of the lake. Everything between this line and the
   // LEGAL: district coastline below is northern outskirts; the lake itself is punched out of
@@ -152,9 +170,9 @@ export const WINDHAVEN_LANDMASS: Point[] = widenPoints([
   { x: 6290, y: -470 },
   { x: 6410, y: -120 },
   { x: 6450, y: 210 },
-  // LEGAL: ---- East, south and west outskirts ring (stage 1c), unchanged ----
-  { x: 5700, y: 182 },
-  { x: 6100, y: 302 },
+  // LEGAL: ---- East, south and west outskirts ring (stage 1c) ----
+  // LEGAL: The ring used to start at (5700, 182) and (6100, 302), where it was spliced onto the
+  // LEGAL: north shore: the coast doubled back on itself and left a needle of sea in the land.
   { x: 6320, y: 560 },
   { x: 6250, y: 862 },
   { x: 6420, y: 1150 },
@@ -175,14 +193,14 @@ export const WINDHAVEN_LANDMASS: Point[] = widenPoints([
   { x: -1200, y: 480 },
   { x: -1180, y: 120 },
   { x: -1150, y: -300 },
-]);
+]));
 
 // LEGAL: ---- The lake ----
 // LEGAL: Its SOUTH shore is the district coastline authored in stage 1b, point for point, so
 // LEGAL: Devlin's setback, the West Side's hard river edge and the Hub's northward headland
 // LEGAL: all still read exactly as before. Only the far side is new: the water now closes
 // LEGAL: back on itself instead of running away into the ocean.
-export const WINDHAVEN_LAKE: Point[] = widenPoints([
+export const WINDHAVEN_LAKE: Point[] = smoothClosed(widenPoints([
   { x: -210, y: 120 },
   { x: -40, y: 152 },
   { x: 300, y: 164 },
@@ -223,7 +241,7 @@ export const WINDHAVEN_LAKE: Point[] = widenPoints([
   { x: -400, y: -80 },
   { x: -300, y: 60 },
   { x: -210, y: 120 },
-]);
+]));
 
 // LEGAL: Terrain belts in the outskirts. Scenery only for now — no interactable places out
 // LEGAL: here (that is the deferred second pass). They render like district ground: a

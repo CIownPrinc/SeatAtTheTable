@@ -236,8 +236,12 @@ old one.
 
 **D. How the world looks**
 26. Audit the whole map for primitive designs that could be better, not just the ground.
-27. The map is very polygonal: smooth the coastlines and curves.
-28. Countryside ground is flat polygons in hard-edged shades and looks cheap. Blend it smoothly.
+27. **PART** The map was very polygonal. The coast and lake shore are now smoothed in the map data
+    itself (Chaikin, two passes), and a spliced-on needle of sea in the east coast is gone. Still
+    open: curves elsewhere (roads come with the new road graph).
+28. **PART** Countryside ground was flat polygons with hard-edged shades. The new map (beta) has one
+    blended terrain painted from a zoning field (`world/build/terrain.ts`). Still open: making it
+    the default once the rest of the new map catches up.
 29. Zoning: make rich, poor, commercial, residential, countryside, farmland and forest areas
     clearly distinct, but grade them into each other gradually, like real life.
 30. **PART** Dirt trails in the countryside. The country lanes are in. Still open: smaller trails

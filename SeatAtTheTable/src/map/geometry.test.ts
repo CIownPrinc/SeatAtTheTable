@@ -46,3 +46,24 @@ describe('canal extent', function () {
     expect(isPointInWater({ x: 2350, y: 1500 }, 0)).toBe(false);
   });
 });
+
+describe('smoothed coastlines', function () {
+  function sharpestTurn(points: Point[]): number {
+    let worst = 0;
+    points.forEach(function(p, i){
+      const a = points[(i - 1 + points.length) % points.length], b = points[(i + 1) % points.length];
+      const turn = Math.abs(Math.atan2(b.y - p.y, b.x - p.x) - Math.atan2(p.y - a.y, p.x - a.x));
+      worst = Math.max(worst, Math.min(turn, Math.PI * 2 - turn));
+    });
+    return worst * 180 / Math.PI;
+  }
+
+  it('rounds the island coast instead of meeting at sharp polygon corners', function () {
+    expect(WINDHAVEN_LANDMASS.length).toBeGreaterThan(100);
+    expect(sharpestTurn(WINDHAVEN_LANDMASS)).toBeLessThan(60);
+  });
+
+  it('rounds the lake shore too', function () {
+    expect(sharpestTurn(WINDHAVEN_LAKE)).toBeLessThan(45);
+  });
+});
