@@ -5,7 +5,7 @@ import { OUTSKIRT_REGIONS } from './world';
 import { characterDetail, characterProfile } from './neighbourhoods';
 import { createOutskirtSceneryLayout } from './outskirtScenery';
 import { ribbonGeometry } from './ribbon';
-import { applyWaterWaves } from './waterShader';
+import { applyShoreFoam, applyWaterWaves } from './waterShader';
 import { buildTerrainMesh } from '../world/render/terrain';
 
 // LEGAL: One colour per outskirt belt kind, read from the shared terrain theme so the 3D
@@ -173,8 +173,36 @@ export function buildBaseGround(options: BaseSceneOptions): void {
       worldGroup.add(mesh);
     });
   }
-  // LEGAL: No hairline coastline, surf or outline strokes: 1-pixel lines alias and flicker at
-  // LEGAL: any distance, and the outlines drew across the canal mouths and out over the water.
+  // LEGAL: No hairline coastline or outline strokes: 1-pixel lines alias and flicker at any
+  // LEGAL: distance, and the outlines drew across the canal mouths and out over the water. The
+  // LEGAL: surf is a strip with real width instead (buildShoreFoam).
+  buildShoreFoam(options);
+}
+
+// LEGAL: Foam breaking along the coast and the lake shore. Each strip is pushed half its width out
+// LEGAL: over the water (asked of the map's own water test, so it can't land on the beach) and laid
+// LEGAL: just above that water's surface: the sea at -0.04, the lake at 0.06.
+const FOAM_WIDTH = 14;
+export function shoreFoamPath(shore: Point[], width = FOAM_WIDTH): Point[] {
+  const closed = [...shore, shore[0]];
+  return closed.map(function(point, i){
+    const prev = closed[Math.max(0, i - 1)], next = closed[Math.min(closed.length - 1, i + 1)];
+    const len = Math.hypot(next.x - prev.x, next.y - prev.y) || 1;
+    const nx = -(next.y - prev.y) / len, ny = (next.x - prev.x) / len;
+    const toWater = isPointInWater({ x:point.x + nx * width, y:point.y + ny * width }, 0) ? 1 : -1;
+    return { x:point.x + nx * toWater * width / 2, y:point.y + ny * toWater * width / 2 };
+  });
+}
+
+function buildShoreFoam(options: BaseSceneOptions): void {
+  const { THREE, worldGroup } = options;
+  const material = applyShoreFoam(new THREE.MeshBasicMaterial({ color:'#eef7fa', transparent:true, opacity:0.55, depthWrite:false }));
+  [[windhavenMapModel.landmass, -0.03], [windhavenMapModel.lake, 0.07]].forEach(function([shore, height]){
+    const foam = new THREE.Mesh(ribbonGeometry(THREE, shoreFoamPath(shore as Point[]), FOAM_WIDTH, height as number), material);
+    foam.name = 'water:foam';
+    foam.renderOrder = 3;
+    worldGroup.add(foam);
+  });
 }
 
 // LEGAL: Where the canal walls start: just past the beach, so they don't run out into the lake.

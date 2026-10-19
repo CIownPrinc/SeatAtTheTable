@@ -188,8 +188,10 @@ old one.
 1. **DONE** Lines strobed (z-fighting between stacked road, sidewalk and paint layers). The camera
    near plane moved from 1 to 40.
 2. **DONE** Bridge ends clipped: the canal walls ran through the decks.
-3. **PART** Beach, coast and canal lines showed in the ocean. All hairlines are removed and the canal
-   water and walls now stop at the canal's ends. Still open: shoreline foam done properly.
+3. **DONE** Beach, coast and canal lines showed in the ocean. All hairlines are removed and the canal
+   water and walls now stop at the canal's ends. Surf now breaks along the coast and the lake shore:
+   a strip with real width, pushed out over the water and fading at both edges, its brightness
+   running along the shore with the waves (`buildShoreFoam`, `applyShoreFoam`).
 4. **DONE** Waves were broken (strips sliding over land); they're now drawn by the water shader.
 5. **DONE** Shadows were broken (striped, and missing outside the world's middle).
 6. **DONE** The GPS broke in the countryside: there were no roads there. Country lanes fix it.

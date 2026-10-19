@@ -36,3 +36,25 @@ export function applyWaterWaves<T extends ThreeNamespace.Material>(material: T):
   material.needsUpdate = true;
   return material;
 }
+
+// LEGAL: Surf along the shore: a strip whose brightness runs along it with the waves and fades to
+// LEGAL: nothing at both edges, so it reads as foam breaking rather than a painted line.
+export function applyShoreFoam<T extends ThreeNamespace.Material>(material: T): T {
+  material.onBeforeCompile = function(shader){
+    shader.uniforms.uWaterTime = waterClock;
+    shader.vertexShader = 'varying vec2 vFoamUv;\n' + shader.vertexShader.replace(
+      '#include <begin_vertex>',
+      '#include <begin_vertex>\n  vFoamUv = uv;',
+    );
+    shader.fragmentShader = 'uniform float uWaterTime;\nvarying vec2 vFoamUv;\n' + shader.fragmentShader.replace(
+      '#include <color_fragment>',
+      `#include <color_fragment>
+  float across = sin(vFoamUv.y * 3.14159);
+  float surge = 0.5 + 0.5 * sin(vFoamUv.x * 0.9 - uWaterTime * 1.3) * sin(vFoamUv.x * 0.23 + uWaterTime * 0.4);
+  diffuseColor.a *= across * (0.25 + 0.75 * surge);`,
+    );
+  };
+  material.customProgramCacheKey = function(){ return 'shore-foam'; };
+  material.needsUpdate = true;
+  return material;
+}
