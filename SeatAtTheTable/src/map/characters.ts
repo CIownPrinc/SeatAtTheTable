@@ -8,6 +8,8 @@ export interface CharacterAnimator {
   add(root: ThreeNamespace.Object3D, rig: PersonRig): void;
   tick(dt: number, time: number, focus?: { x: number; z: number }): void;
   count(): number;
+  // LEGAL: The big-head cheat: applies to everyone now on the map and everyone built later.
+  setHeadScale(scale: number): void;
 }
 
 // LEGAL: People beyond this distance from the player hold their pose; nobody can see their legs,
@@ -29,9 +31,15 @@ interface Entry {
 export function createCharacterAnimator(THREE: typeof ThreeNamespace): CharacterAnimator {
   const entries: Entry[] = [];
   const world = new THREE.Vector3();
+  let headScale = 1;
   return {
     add(root, rig){
+      rig.head.scale.setScalar(headScale);
       entries.push({ root, rig, phase:0, speed:0, lastX:NaN, lastZ:NaN, placed:!!root.parent });
+    },
+    setHeadScale(scale){
+      headScale = scale;
+      entries.forEach(entry => entry.rig.head.scale.setScalar(scale));
     },
     tick(dt, time, focus){
       for(let i = entries.length - 1; i >= 0; i--){

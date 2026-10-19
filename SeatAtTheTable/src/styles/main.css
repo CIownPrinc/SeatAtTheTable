@@ -566,3 +566,7 @@ main{max-width:1240px;margin:0 auto;padding:26px 24px 60px;}
 @media (max-height:500px) and (orientation:landscape){ .hud{position:relative;padding:6px 16px;} .hud-title{display:none;} .stat-value{font-size:15px;} .tab-btn{padding-top:8px;padding-bottom:8px;} main{padding-top:10px;} .tab-panel[data-tab="map"] > .section-eyebrow:first-child{display:none;} #scene3d-container{max-height:calc(100dvh - 56px);scroll-margin-top:48px;} }
 /* LEGAL: Big screens: the map was a fixed 760x440 even on a 3440px monitor. */
 @media (min-width:1600px) and (min-height:900px){ #scene3d-container{width:min(1180px,100%);max-height:min(680px,64vh);} }
+/* The drunk cheat: the whole map view sways and swims. */
+@keyframes drunk-sway { 0%{ transform: rotate(-1.4deg) skewX(1deg) scale(1.03); } 50%{ transform: rotate(1.6deg) skewX(-1.2deg) scale(1.05); } 100%{ transform: rotate(-1.4deg) skewX(1deg) scale(1.03); } }
+#scene3d-container.drunk canvas.webgl-canvas { animation: drunk-sway 3.2s ease-in-out infinite; filter: blur(0.8px) saturate(1.4) hue-rotate(12deg); }
+@media (prefers-reduced-motion: reduce) { #scene3d-container.drunk canvas.webgl-canvas { animation: none; } }

@@ -116,6 +116,8 @@ export interface PersonRig {
   legRight: ThreeNamespace.Group;
   armLeft: ThreeNamespace.Group;
   armRight: ThreeNamespace.Group;
+  // LEGAL: Everything above the neck, pivoting at the neck: scale it for the big-head cheat.
+  head: ThreeNamespace.Group;
   // LEGAL: How far into a run the body is (0 standing, 1 full sprint), eased between frames.
   effort: number;
 }
@@ -124,6 +126,7 @@ const HIP_Y = 11;
 const SHOULDER_Y = 24.2;
 const HEAD_Y = 32.2;
 const HEAD_R = 6;
+const NECK_Y = 28.5;
 
 export function buildPerson(THREE: typeof ThreeNamespace, parts: PersonParts, look: PersonLook): { root: ThreeNamespace.Group; rig: PersonRig } {
   const root = new THREE.Group();
@@ -248,7 +251,14 @@ export function buildPerson(THREE: typeof ThreeNamespace, parts: PersonParts, lo
     chain.rotation.x = Math.PI / 2 - 0.35;
   }
 
-  return { root, rig: { upper, legLeft:legs[0], legRight:legs[1], armLeft:arms[0], armRight:arms[1], effort:0 } };
+  const headPivot = new THREE.Group();
+  headPivot.name = 'head-pivot';
+  headPivot.position.y = NECK_Y;
+  const headParts = upper.children.filter(child => child.name === 'extra:glasses' || (child.name !== 'extra:chain' && child.position.y > NECK_Y));
+  headParts.forEach(function(child){ upper.remove(child); child.position.y -= NECK_Y; headPivot.add(child); });
+  upper.add(headPivot);
+
+  return { root, rig: { upper, legLeft:legs[0], legRight:legs[1], armLeft:arms[0], armRight:arms[1], head:headPivot, effort:0 } };
 }
 
 // LEGAL: Ground covered per step, walking and sprinting. Phase advances by distance, not time, so

@@ -34,6 +34,7 @@ import { createCheatListener } from './cheats';
 import { createCameraRig, SHADOW_HALF_SIZE, sunShadowFrame } from '../map/cameraRig';
 import { waterClock } from '../map/waterShader';
 import { auditScene, flagIssues } from '../map/sceneAudit';
+import { CHEAT_VEHICLES, buildDumpTruckModel, buildHelicopterModel, isFlyingVehicle } from '../map/cheatVehicles';
 import { buildAmenityModel as buildMapAmenityModel } from '../map/amenityRendering';
 import { createFillerLayoutProvider, seededRandom } from '../map/filler';
 import { applyMapWorldCoordinates, createMapBuildings, mapNpcs } from '../map/markers';
@@ -77,7 +78,7 @@ import {
 import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, buildLandmarks, buildOutskirtScenery, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
 import { createMapSceneMaterials, createSceneBuildTimer } from '../map/scenePerformance';
 import { buildIntersectionFurniture as buildMapIntersectionFurniture, nearestLamps, type LampHead } from '../map/streetFurniture';
-import { DISTRICT_OFFSETS, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
+import { DISTRICT_OFFSETS, OUTSKIRT_PLACE_LOTS, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
 import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/viewport';
 import { renderZoneType } from '../map/zoning';
@@ -585,7 +586,7 @@ import type * as ThreeNamespace from 'three';
     return hired ? 'crew +1' : "no open crew spot; $400 finder's fee instead";
   }
   function incomeFor(b: Business){ return b.level * b.baseIncome * efficiency(b) * tempMultActive(b); }
-  function getEquippedCar(){ return cars.find(c=>c.id===state.equippedCar) || null; }
+  function getEquippedCar(){ return cars.find(c=>c.id===state.equippedCar) || CHEAT_VEHICLES.find(c=>c.id===state.equippedCar) || null; }
   // LEGAL: Rent, with each brand's caveat applied. Waterfront stock appreciates the longer
   // LEGAL: you hold it (config/brands "premium and appreciating"); everything else is flat.
   function propertyHeldSeconds(id: string){
@@ -4667,6 +4668,48 @@ import type * as ThreeNamespace from 'three';
 
   const CHEAT_CASH = 1_000_000_000;
   const CHEAT_WEATHER_SECONDS = 90;
+  const CHEAT_FLIGHT_SECONDS = 60;
+  const CHEAT_DRUNK_SECONDS = 45;
+  const FLIGHT_ALTITUDE = 80;
+  let flyingUntil = 0;
+  let drunkUntil = 0;
+  let flightHeight = 0;
+  let wasFlying = false;
+  let bigHeads = false;
+  function isFlying(): boolean {
+    if(state.currentInterior) return false;
+    return state.playSeconds < flyingUntil || (state.inVehicle && isFlyingVehicle(state.equippedCar));
+  }
+  function isDrunk(): boolean { return state.playSeconds < drunkUntil; }
+  function updateCheatEffects(dt: number): void {
+    const flying = isFlying();
+    flightHeight += ((flying ? FLIGHT_ALTITUDE : 0) - flightHeight) * (1 - Math.exp(-3 * dt));
+    // LEGAL: Coming down over a roof or the lake sets you down on the nearest open ground.
+    if(wasFlying && !flying){
+      const free = nearestFreePoint(player.x, player.y, currentSolids, state.inVehicle, 600);
+      if(free){ player.x = free.x; player.y = free.y; }
+    }
+    wasFlying = flying;
+    const rotor = playerGroup.getObjectByName('rotor');
+    if(rotor) rotor.rotation.y += dt * 28;
+    byId('scene3d-container').classList.toggle('drunk', isDrunk());
+  }
+  // LEGAL: Waypoint first; with none set, a random countryside place, dropped at its gate.
+  function teleportCheat(): void {
+    if(state.currentInterior) exitBuilding();
+    const wp = currentWaypoint();
+    const lots = Object.values(OUTSKIRT_PLACE_LOTS);
+    const target = wp || (function(){ const lot = lots[Math.floor(Math.random() * lots.length)]; return { x:lot.x, y:lot.y + 130 }; })();
+    const free = nearestFreePoint(target.x, target.y, currentSolids, state.inVehicle, 400) || target;
+    player.x = free.x; player.y = free.y; player.vx = 0; player.vy = 0;
+  }
+  function giveCheatVehicle(id: string): void {
+    if(state.currentInterior) exitBuilding();
+    state.equippedCar = id;
+    state.inVehicle = true;
+    state.carParkedAt = null;
+    refreshPlayerModel(); updateParkedCarMesh();
+  }
   // LEGAL: Seconds to add to the clock so it lands on a given hour.
   function secondsUntilHour(hour: number): number {
     return ((((hour / 24) - mapDayFraction()) % 1) + 1) % 1 * MAP_DAY_SECONDS;
@@ -4684,6 +4727,12 @@ import type * as ThreeNamespace from 'three';
     { codes:['letitrain'], effect:'Rain for a while', apply:function(){ setCheatWeather('rain'); } },
     { codes:['letitsnow'], effect:'Snow for a while', apply:function(){ setCheatWeather('snow'); } },
     { codes:['clearskies'], effect:'Clear skies for a while', apply:function(){ setCheatWeather('clear'); } },
+    { codes:['beammeup'], effect:'Teleport to your waypoint (or somewhere out of town)', apply:teleportCheat },
+    { codes:['rocketman'], effect:'Fly over everything for a minute', apply:function(){ flyingUntil = state.playSeconds + CHEAT_FLIGHT_SECONDS; } },
+    { codes:['getdachoppa'], effect:'A helicopter, and you are already flying it', apply:function(){ giveCheatVehicle('cheat-helicopter'); } },
+    { codes:['bigdumper'], effect:'A dump truck. Why not', apply:function(){ giveCheatVehicle('cheat-dumptruck'); } },
+    { codes:['liquidcourage'], effect:'Drunk: wobbly legs, wavy vision', apply:function(){ drunkUntil = state.playSeconds + CHEAT_DRUNK_SECONDS; } },
+    { codes:['bigheadmode'], effect:'Everyone gets a giant head (type again to undo)', apply:function(){ bigHeads = !bigHeads; characterLibrary?.animator.setHeadScale(bigHeads ? 2.1 : 1); } },
   ];
   function showCheatList(): void {
     const rows = CHEATS.map(cheat => `<div class="row"><span><strong>${cheat.codes.join('</strong> or <strong>')}</strong></span><span>${cheat.effect}</span></div>`).join('');
@@ -4851,6 +4900,12 @@ import type * as ThreeNamespace from 'three';
     return 150;
   }
   function tryMove(nx: number, ny: number, solids: Solid[]){
+    // LEGAL: Flying (the rocketman cheat or the helicopter) clears every building and the water;
+    // LEGAL: only the edge of the world still stops you.
+    if(isFlying()){
+      const b = windhavenMapModel.landBounds;
+      return nx > b.minX - 300 && nx < b.maxX + 300 && ny > b.minY - 300 && ny < b.maxY + 300;
+    }
     // LEGAL: The crossing used to be checked only while driving, so on foot you walked
     // LEGAL: straight through a moving train. Four cars of rolling stock stop a pedestrian
     // LEGAL: rather more decisively than they stop a car; radius follows the actor.
@@ -5776,7 +5831,10 @@ import type * as ThreeNamespace from 'three';
   function refreshPlayerModel(){
     if(!sceneInitialized || !playerGroup) return;
     clearGroup(playerGroup);
-    if(state.inVehicle){ const car=getEquippedCar(); if(car) playerGroup.add(buildCarModel(car)); }
+    if(state.inVehicle){
+      const car=getEquippedCar();
+      if(car) playerGroup.add(car.id === 'cheat-dumptruck' ? buildDumpTruckModel(THREE) : car.id === 'cheat-helicopter' ? buildHelicopterModel(THREE) : buildCarModel(car));
+    }
     else playerGroup.add(buildPedestrianModel('#f0efe8', 'arjun'));
     // LEGAL: clearGroup strips the beam with the model, so it is re-attached every rebuild.
     headlightBeam = null;
@@ -6470,6 +6528,8 @@ import type * as ThreeNamespace from 'three';
       if(keys['arrowright']||keys['d']) dx += 1;
       const stick = touchStick.vector();
       if(stick.x || stick.y){ dx = stick.x; dy = stick.y; }
+      // LEGAL: The drunk cheat: your feet don't quite go where you point them.
+      if(isDrunk() && (dx || dy)){ dx += Math.sin(state.playSeconds * 1.9) * 0.55; dy += Math.cos(state.playSeconds * 1.3) * 0.45; }
     }
     // LEGAL: Target velocity from input, then ease the actual velocity toward it so
     // LEGAL: movement accelerates and coasts instead of snapping on/off. Cars are
@@ -6542,7 +6602,8 @@ import type * as ThreeNamespace from 'three';
       characterLibrary?.animator.tick(dt, state.playSeconds, { x:player.x, z:player.y });
       updateDealerArrivals(dt);
       updateTrain();
-      playerGroup.position.set(player.x, 0, player.y);
+      updateCheatEffects(dt);
+      playerGroup.position.set(player.x, flightHeight, player.y);
       playerGroup.rotation.y = -player.facing + Math.PI/2;
       aimCamera(dt);
       renderer.render(scene, camera3d);

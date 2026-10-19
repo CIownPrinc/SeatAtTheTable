@@ -220,7 +220,9 @@ old one.
 18. Get splatted on the ground when a car hits you, then get back up.
 19. Customise Arjun's clothes. The wardrobe is saved already; it needs a UI.
 20. **DONE** Cheat codes; type `cheatcode` for the list. `moneymoneymoney` / `cash4ever` (+$1B),
-    `cleanrecord`, `respectme`, `daylight`, `nightowl`, `letitrain`, `letitsnow`, `clearskies`.
+    `cleanrecord`, `respectme`, `daylight`, `nightowl`, `letitrain`, `letitsnow`, `clearskies`,
+    `beammeup` (teleport), `rocketman` (fly), `getdachoppa` (helicopter), `bigdumper` (dump
+    truck), `liquidcourage` (drunk) and `bigheadmode`.
 21. Remove the floating 3D icons over places. Keep only ones that matter to the design; the rest
     go on the minimap. (Still there as of the last report.)
 22. A simpler, easier-on-the-eyes, GTA-style minimap.
@@ -238,8 +240,8 @@ old one.
 30. **PART** Dirt trails in the countryside. The country lanes are in. Still open: smaller trails
     off them.
 31. Building models that look like what they are for, and don't look out of place.
-32. Remodel everything properly in Blender, step by step. Blocked: Blender isn't installed yet
-    (blender.org refused the automated download, so the player will install it).
+32. **PART** Remodel everything properly in Blender, step by step. Blender 5.2 is installed and
+    scripted (`art/blender/`); the first model, a sedan, is exported. Next: the full catalog.
 
 **E. Interiors**
 33. Interiors you walk around in like outside, in 3D. A front desk looks like a front desk, and
