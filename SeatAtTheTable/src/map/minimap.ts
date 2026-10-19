@@ -285,6 +285,11 @@ function drawStaticMinimapLayer(mctx: CanvasRenderingContext2D, options: Minimap
         const bd = Math.max(1.5, f.d*scale);
         mctx.fillStyle = MINIMAP_COLORS.building;
         mctx.fillRect(p.x-bw/2, p.y-bd/2, bw, bd);
+      } else if(f.kind==='construction'){
+        const p = proj(f.x+off, f.y);
+        if(!isOnMap(p, viewW, viewH)) return;
+        mctx.fillStyle = MINIMAP_COLORS.building;
+        mctx.fillRect(p.x-f.w*scale/2, p.y-f.d*scale/2, f.w*scale, f.d*scale);
       } else if(f.kind==='park'){
         const p = proj((f.x0+f.x1)/2+off,(f.y0+f.y1)/2);
         if(!isOnMap(p, viewW, viewH)) return;

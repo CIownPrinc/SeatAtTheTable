@@ -354,8 +354,8 @@ describe('map layout helpers', function () {
     ['devlin','westside','hub'].forEach(function(districtId){
       const off = DISTRICT_OFFSETS[districtId];
       provider.fillerFor(districtId).forEach(function(filler){
-        if(filler.kind === 'building'){
-          const ext = rotatedHalfExtents(filler.w, filler.d, filler.rot);
+        if(filler.kind === 'building' || filler.kind === 'construction'){
+          const ext = filler.kind === 'building' ? rotatedHalfExtents(filler.w, filler.d, filler.rot) : { hw:filler.w / 2, hd:filler.d / 2 };
           [
             { x:filler.x-ext.hw+off, y:filler.y-ext.hd },
             { x:filler.x+ext.hw+off, y:filler.y-ext.hd },
@@ -377,6 +377,13 @@ describe('map layout helpers', function () {
         });
       });
     });
+  });
+
+  it('turns a few empty plots into building sites', function () {
+    const provider = createFillerLayoutProvider([]);
+    const sites = ['devlin','westside','hub'].map(districtId => provider.fillerFor(districtId).filter(f => f.kind === 'construction').length);
+    expect(sites.reduce((a, b) => a + b, 0)).toBeGreaterThanOrEqual(2);
+    sites.forEach(count => expect(count).toBeLessThanOrEqual(2));
   });
 
   it('adds apartment buildings to residential filler blocks', function () {

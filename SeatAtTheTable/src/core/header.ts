@@ -5081,7 +5081,7 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: Only the resort: it was ~1,900 of ~5,000 scene objects (measured 2026-10-17; merging
   // LEGAL: it took idle fps from ~44 to ~56). Trees, outskirts, filler and landmarks were tried too
   // LEGAL: and saved nothing measurable, so they stay as authored.
-  const MERGEABLE_SCENERY_PREFIXES = ['resort:'];
+  const MERGEABLE_SCENERY_PREFIXES = ['resort:', 'filler:construction:', 'crane:'];
   let scene: ThreeNamespace.Scene, camera3d: ThreeNamespace.PerspectiveCamera, renderer: ThreeNamespace.WebGLRenderer, worldGroup: ThreeNamespace.Group, playerGroup: ThreeNamespace.Group, ambientLight: ThreeNamespace.AmbientLight, sunLight: ThreeNamespace.DirectionalLight, moonLight: ThreeNamespace.DirectionalLight, waypointBeacon: ThreeNamespace.Group | null = null, missionObjectiveMarker: ThreeNamespace.Group | null = null, parkedCarMesh: ThreeNamespace.Group | null = null, trainGroup: ThreeNamespace.Group | null = null;
   let missionObjectiveMarkerKey = '';
   let streetLamps: LampHead[] = [];

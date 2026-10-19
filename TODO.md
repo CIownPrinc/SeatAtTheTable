@@ -327,7 +327,10 @@ old one.
     area with a slide and a ball pit, and shoppers and kids walking round.
 37. A central park, with more greenery generally.
 38. A suburbs area.
-39. Construction sites.
+39. **DONE** Construction sites. A few plots in each district are building sites: a hoarding with a
+    gate, a steel frame on concrete slabs, a tower crane with its load over the street, spoil,
+    rebar, a site cabin and a portable toilet (`map/construction.ts`). They're picked by a hash of
+    the plot, so the rest of the city didn't move.
 40. **DONE** Snow that collects on the ground and turns it white, and a plow that comes through.
     While it snows the grass, roofs, trees and roads whiten over about 25 seconds and melt after
     (`map/snow.ts`). Once it has settled, a yellow plow truck with a blade and a beacon joins the

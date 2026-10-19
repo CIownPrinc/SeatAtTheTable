@@ -340,6 +340,10 @@ test.describe('game boot', () => {
       return { width: rect.width, height: rect.height };
     });
     await page.locator('#fullscreen-btn').click();
+    // LEGAL: Measured once the switch has landed; read straight after the click it can catch the
+    // LEGAL: container mid-layout, full width but not yet at the top.
+    await expect(page.locator('#scene3d-container')).toHaveClass(/fullscreen/);
+    await expect.poll(() => page.locator('#scene3d-container').evaluate((element: HTMLElement) => Math.round(element.getBoundingClientRect().top))).toBe(0);
 
     const box = await page.locator('#scene3d-container').evaluate((element: HTMLElement) => {
       const rect = element.getBoundingClientRect();

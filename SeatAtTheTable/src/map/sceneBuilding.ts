@@ -1,3 +1,4 @@
+import { buildConstructionSite, buildTowerCrane } from './construction';
 import { TREE_SCALE } from './scale';
 import type { DiagonalRoad, HorizontalRoad, Landmark, OutskirtRegion, VerticalRoad } from './world';
 import { OUTSKIRT_REGIONS } from './world';
@@ -476,6 +477,15 @@ export function buildFillerCity(options: FillerSceneOptions): void {
         // LEGAL: authored (pre-offset) coordinate it was allocated at.
         mesh.name = `filler:${distId}:${f.character}:${f.zone}@${Math.round(f.x)},${Math.round(f.y)}`;
         worldGroup.add(mesh);
+      } else if(f.kind==='construction'){
+        const site = buildConstructionSite(THREE, materials, f.w, f.d, f.seed);
+        site.position.set(f.x+off, 0, f.y);
+        site.name = `filler:construction:${distId}@${Math.round(f.x)},${Math.round(f.y)}`;
+        worldGroup.add(site);
+        const crane = buildTowerCrane(THREE, materials, f.w, f.d, f.seed);
+        crane.position.set(f.x+off, 0, f.y);
+        crane.name = `crane:${distId}@${Math.round(f.x)},${Math.round(f.y)}`;
+        worldGroup.add(crane);
       } else if(f.kind==='park'){
         const cx=(f.x0+f.x1)/2+off, cy=(f.y0+f.y1)/2, w=f.x1-f.x0, d=f.y1-f.y0;
         const grass = new THREE.Mesh(new THREE.PlaneGeometry(w,d), materials.standard('terrain:park-grass', {color:'#2c4a30', roughness:1}));

@@ -271,6 +271,8 @@ export type FillerItem =
   // LEGAL: independent of `zone`, which is only land use. The renderer picks its palette
   // LEGAL: from character so two residential blocks can look like different worlds.
   | { kind: 'building'; zone: MapZoneType; character: BlockCharacter; x: number; y: number; w: number; d: number; h: number; hue: number; rot: number; style?: 'apartment' }
+  // LEGAL: A building site on an empty plot (map/construction); `seed` picks how far it's got.
+  | { kind: 'construction'; x: number; y: number; w: number; d: number; seed: number }
   // LEGAL: 'edge' = cheap background block forming the city's rough outer skyline.
   | { kind: 'edge'; x: number; y: number; w: number; d: number; h: number; hue: number; rot: number };
 

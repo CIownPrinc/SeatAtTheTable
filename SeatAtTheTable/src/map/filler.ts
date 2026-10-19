@@ -13,6 +13,15 @@ const BUILDING_GAP = 14;
 const MIN_FILLER_BUILDING_W = 34;
 const MIN_FILLER_BUILDING_D = 30;
 const MIN_FILLER_BUILDING_H = 24;
+// LEGAL: Building sites: a few plots, picked by a hash of the plot rather than the random stream,
+// LEGAL: so adding them didn't move a single other building.
+const MAX_SITES_PER_DISTRICT = 2;
+const MIN_SITE_W = 60, MIN_SITE_D = 50;
+function siteHash(districtId: string, xi: number, yi: number, ci: number, ri: number): number {
+  let h = 2166136261;
+  for(const c of `${districtId}:${xi}:${yi}:${ci}:${ri}`) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+  return h >>> 0;
+}
 
 export interface FillerLayoutProvider {
   fillerFor(districtId: string): FillerItem[];
@@ -75,6 +84,15 @@ export function createFillerLayoutProvider(mapObjects: MapObject[]): FillerLayou
       if(!clearOfDiagonalRoads({ x:candidate.x + (DISTRICT_OFFSETS[districtId] || 0), y:candidate.y, hw:candidate.hw, hd:candidate.hd }, 18)) return false;
       return !placed.some(s=>rectsOverlap(candidate, s, BUILDING_GAP));
     };
+    let sites = 0;
+    const pushSite = function(x: number, y: number, w: number, d: number, seed: number): void {
+      if(sites >= MAX_SITES_PER_DISTRICT || w < MIN_SITE_W || d < MIN_SITE_D) return;
+      const solid = { x, y, hw:w / 2, hd:d / 2 };
+      if(!fitsSolid(solid)) return;
+      filler.push({ kind:'construction', x, y, w, d, seed });
+      placed.push(solid);
+      sites++;
+    };
     const pushBuilding = function(zone: MapZoneType, character: BlockCharacter, x: number, y: number, w: number, d: number, h: number, hue: number, rot: number, style?: 'apartment'): void {
       const ext = rotatedHalfExtents(w, d, rot);
       const solid = { x, y, hw:ext.hw, hd:ext.hd };
@@ -116,7 +134,16 @@ export function createFillerLayoutProvider(mapObjects: MapObject[]): FillerLayou
             const px = x0 + ci*cellW + (cellW-w)/2 + jit()*cellW*0.2;
             const py = y0 + ri*cellD + (cellD-d)/2 + jit()*cellD*0.2;
             const rot = (jit()*0.18 + (rand()<0.12 ? jit()*0.6 : 0)) * profile.jitterMult;
-            pushBuilding(zone, character, px+w/2, py+d/2, w, d, h, rand(), rot, apartment ? 'apartment' : undefined);
+            const hue = rand();
+            // LEGAL: Every random number for this plot is drawn first, so a site in place of a
+            // LEGAL: building leaves the rest of the city exactly where it was.
+            const seed = siteHash(districtId, xi, yi, ci, ri);
+            if(seed % 5 === 0 && sites < MAX_SITES_PER_DISTRICT){
+              const before = sites;
+              pushSite(x0 + (ci + 0.5) * cellW, y0 + (ri + 0.5) * cellD, cellW * 0.86, cellD * 0.86, seed);
+              if(sites > before) continue;
+            }
+            pushBuilding(zone, character, px+w/2, py+d/2, w, d, h, hue, rot, apartment ? 'apartment' : undefined);
           }
         }
       }
@@ -137,6 +164,8 @@ export function createFillerLayoutProvider(mapObjects: MapObject[]): FillerLayou
         const ext = rotatedHalfExtents(f.w, f.d, f.rot);
         list.push({x:f.x+off,y:f.y,hw:ext.hw+4,hd:ext.hd+4});
       });
+      // LEGAL: A site is fenced: you walk round it, not through it.
+      fillerFor(distId).forEach(function(f){ if(f.kind==='construction') list.push({ x:f.x+off, y:f.y, hw:f.w/2+2, hd:f.d/2+2 }); });
     });
     return list;
   }
