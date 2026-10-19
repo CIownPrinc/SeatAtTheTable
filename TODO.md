@@ -260,8 +260,10 @@ old one.
     the bays), building sites, parks, the suburb, the plow, the bikes and their rider. Still open:
     a full tour for anything else that's still boxes.
 27. **PART** The map was very polygonal. The coast and lake shore are now smoothed in the map data
-    itself (Chaikin, two passes), and a spliced-on needle of sea in the east coast is gone. Still
-    open: curves elsewhere (roads come with the new road graph).
+    itself (Chaikin, two passes), and a spliced-on needle of sea in the east coast is gone. The
+    diagonals, country lanes and trails are real curves, and the blended ground has no polygon
+    edges left. The city grid and the canals are straight on purpose. Still open: curved city
+    streets, which come with the new road graph (section 11, step 3).
 28. **DONE** Countryside ground was flat polygons with hard-edged shades. One blended terrain is
     painted from a zoning field (`world/render/terrain.ts`), and it's now the default; the "New map
     (beta)" setting switches back to the classic flat ground. Snow settles on it too.
@@ -284,7 +286,9 @@ old one.
     porch, a red barn with a gambrel roof and cupola, banded silos, ribbed metal sheds, tanks, and
     the suburb houses; each region's buildings merge into one group.
 32. **PART** Remodel everything properly in Blender, step by step. Blender 5.2 is installed and
-    scripted (`art/blender/`); the first model, a sedan, is exported. Next: the full catalog.
+    scripted (`art/blender/`). Done: all 21 vehicle classes (cars, trucks, tractor, helicopter, the
+    two motorbikes) and the 7 building models, which the named places and the filler now use.
+    Still open: people, street furniture and props, and the landmarks.
 
 33. **DONE** Proportions were off between people, cars, buildings and street furniture. One
     scale in `map/scale.ts` (10.5 units per metre): people 22 units, building heights x1.9,
@@ -377,8 +381,9 @@ is deleted. The new map stays in this game (Seat at the Table); it is not a Seat
 piece.
 
 Build order:
-1. The world audit (item 15) comes first, so correctness is tested from the first line.
-2. Ground: one terrain mesh, with zoning as a smooth field driving its colour and what's built.
+1. **DONE** The world audit (item 15) comes first, so correctness is tested from the first line.
+2. **DONE** Ground: one terrain mesh, with zoning as a smooth field driving its colour and what's
+   built. On by default since 2026-10-19 (item 28).
 3. A road graph with real curves, and building lots laid out along the roads.
 4. Scenery placed from zoning that keeps clear of roads.
 5. Models: Blender-made, instanced, with levels of detail.
