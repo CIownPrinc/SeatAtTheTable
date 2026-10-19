@@ -4,6 +4,7 @@ Each class gets its own silhouette, not a repaint: the beater is dented and rust
 is all hood, the supercar is a wedge. The body colour is always the material named "paint", which
 the game recolours per car. Run with `-- <output dir> <preview dir>`; either may be empty.
 """
+import math
 import os
 import sys
 
@@ -37,6 +38,24 @@ def mats():
     }
 
 
+def spoked_hub(name, radius, depth, location, mat, spokes=5):
+    """A hub with spokes across it, joined into one object pivoting at its centre, so the game can
+    spin it and you can see it turn. Wheels lie along Y."""
+    hub = kit.cylinder(name, radius * 0.32, depth, location, mat, vertices=14)
+    parts = []
+    for i in range(spokes):
+        spoke = kit.box(f"{name}-spoke-{i}", (radius * 1.85, depth * 0.8, radius * 0.16), location, mat)
+        spoke.rotation_euler = (0, i * math.pi / spokes, 0)
+        parts.append(spoke)
+    bpy.ops.object.select_all(action="DESELECT")
+    for part in parts:
+        part.select_set(True)
+    hub.select_set(True)
+    bpy.context.view_layer.objects.active = hub
+    bpy.ops.object.join()
+    return hub
+
+
 def wheels(m, xs, width, radius, track, hub=True, skip_hub=None):
     for x in xs:
         for side in (-1, 1):
@@ -44,7 +63,7 @@ def wheels(m, xs, width, radius, track, hub=True, skip_hub=None):
             loc = (x, side * track, radius)
             kit.cylinder(f"{name}-tyre", radius, width, loc, m["tyre"], vertices=24, bevel=radius * 0.18)
             if hub and (x, side) != skip_hub:
-                kit.cylinder(f"{name}-hub", radius * 0.58, width * 0.3, (x, side * (track + width * 0.38), radius), m["chrome"], vertices=16, bevel=0.15)
+                spoked_hub(f"{name}-hub", radius * 0.62, width * 0.3, (x, side * (track + width * 0.38), radius), m["chrome"])
 
 
 def lights(m, length, width, z, rear_z=None, led=False):
@@ -85,9 +104,8 @@ def tube(name, a, b, radius, mat, vertices=10):
 
 
 def bike_wheel(m, name, x, radius, width):
-    kit.cylinder(f"{name}-tyre", radius, width, (x, 0, radius), m["tyre"], vertices=24, bevel=radius * 0.22)
-    kit.cylinder(f"{name}-rim", radius * 0.72, width * 1.05, (x, 0, radius), m["chrome"], vertices=20)
-    kit.cylinder(f"{name}-hub", radius * 0.22, width * 1.4, (x, 0, radius), m["trim"], vertices=12)
+    kit.cylinder(f"wheel-{name}-tyre", radius, width, (x, 0, radius), m["tyre"], vertices=24, bevel=radius * 0.22)
+    spoked_hub(f"wheel-{name}-spokes", radius * 0.78, width * 1.05, (x, 0, radius), m["chrome"], spokes=8)
 
 
 def chopper(m):

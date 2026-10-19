@@ -117,3 +117,21 @@ export async function loadVehicleLibrary(THREE: typeof ThreeNamespace): Promise<
     },
   };
 }
+
+// LEGAL: Turns every wheel on a vehicle by the distance it just travelled. Wheels are separate parts
+// LEGAL: named 'wheel-...' (art/blender/vehicles.py), each pivoting on its own axle, which is the
+// LEGAL: part's local Y once exported; its radius is measured once from how tall it stands.
+export function spinWheels(THREE: typeof ThreeNamespace, vehicle: ThreeNamespace.Object3D, distance: number): void {
+  if(!distance) return;
+  vehicle.traverse(function(node){
+    if(!node.name.startsWith('wheel-')) return;
+    let radius = node.userData.wheelRadius as number | undefined;
+    if(!radius){
+      vehicle.updateWorldMatrix(true, true);
+      const box = new THREE.Box3().setFromObject(node);
+      radius = Math.max(0.5, (box.max.y - box.min.y) / 2);
+      node.userData.wheelRadius = radius;
+    }
+    node.rotateY(-distance / radius);
+  });
+}

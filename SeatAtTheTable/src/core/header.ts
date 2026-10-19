@@ -46,7 +46,7 @@ import { waterClock } from '../map/waterShader';
 import { auditScene, flagIssues } from '../map/sceneAudit';
 import { CHEAT_VEHICLES, buildJetpack, isFlyingVehicle } from '../map/cheatVehicles';
 import { circleHitsObstacle, isRunOverBy, vehicleObstacle, type Obstacle } from '../map/obstacles';
-import { loadVehicleLibrary, trafficFootprint, vehicleClassForCar, vehicleClassForTraffic, type VehicleLibrary } from '../map/vehicleModels';
+import { loadVehicleLibrary, spinWheels, trafficFootprint, vehicleClassForCar, vehicleClassForTraffic, type VehicleLibrary } from '../map/vehicleModels';
 import { buildingModelFor, loadBuildingLibrary, type BuildingLibrary } from '../map/buildingModels';
 import type { PlaceArchetype } from '../map/archetypes';
 import { buildAmenityModel as buildMapAmenityModel } from '../map/amenityRendering';
@@ -5572,6 +5572,9 @@ import type * as ThreeNamespace from 'three';
     if(vehicleLibrary){
       const model = vehicleLibrary.create(vehicleClassForTraffic(id), color, size.length, size.width);
       if(id.startsWith('snowplow')) addPlowBlade(model);
+      // LEGAL: Nobody watches a passing car's wheels, so traffic is merged back into one mesh per
+      // LEGAL: material; only the player's car and the race rivals keep spinning wheels.
+      if(mergeSceneryGeometries) mergeMeshesWithin(THREE, model, mergeSceneryGeometries);
       return model;
     }
     return buildCarModel({ id, name:id, icon:'', cost:0, speedMult:1, heistBonus:0, respectPerSec:0, color, len:id.includes('cab')?30:34, wid:id.includes('cruiser')?17:15 });
@@ -7046,7 +7049,9 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: You can't rank ahead of a checkpoint you haven't passed.
     const rankAlong = r.playerFinishedAt !== null ? r.course.length : Math.min(r.playerAlong, r.course.checkpoints[r.nextCheckpoint]?.along ?? r.course.length);
     r.rivals.forEach(function(rival){
+      const before = rival.along;
       if(elapsed >= 0) advanceRacer(rival, r.course, dt, rankAlong, elapsed);
+      spinWheels(THREE, rival.group, rival.along - before);
       const at = racePoint(r.course, rival.along, rival.lane);
       rival.velocity = dt > 0 ? { x:(at.x - rival.x) / dt, y:(at.y - rival.y) / dt } : { x:0, y:0 };
       rival.x = at.x; rival.y = at.y; rival.heading = at.heading;
@@ -7212,6 +7217,7 @@ import type * as ThreeNamespace from 'three';
       updateMovingObstacles(dt);
       checkRunOver();
       updateKnockdown(dt);
+      if(state.inVehicle) spinWheels(THREE, playerGroup, Math.hypot(player.vx, player.vy) * dt);
       playerGroup.position.set(player.x, flightHeight, player.y);
       playerGroup.rotation.y = -player.facing + Math.PI/2;
       aimCamera(dt);

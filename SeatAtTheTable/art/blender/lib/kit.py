@@ -104,8 +104,9 @@ def wheel(name, radius, width, location, tyre, hub):
     cylinder(f"{name}-hub", radius * 0.58, width * 0.3, hub_location, hub, vertices=16, bevel=0.15)
 
 
-# Parts the game finds by name and must stay separate: the rotor spins, the lenses light at night.
-KEEP_SEPARATE = ("rotor", "headlight", "lightbar-front")
+# Parts the game finds by name and must stay separate: the rotor and the wheels spin, the lenses
+# light at night.
+KEEP_SEPARATE = ("rotor", "headlight", "lightbar-front", "wheel-")
 
 
 def _join_by_material():

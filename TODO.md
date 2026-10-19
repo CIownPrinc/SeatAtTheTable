@@ -245,12 +245,14 @@ old one.
     working traffic lights, and cars stop on red and keep their distance from the car in front
     (`map/trafficRules.ts`). The lights are out of step across the city, so it never all stops at once.
 24. **DONE** Three police cruisers patrol the city on random loops between junctions.
-25. **PART** Cars that look like what they are. 19 Blender models are in the game: beater,
+25. **DONE** Cars that look like what they are. 19 Blender models are in the game: beater,
     wagon, muscle car, SUV, armoured SUV, pickup, van, EV, EV luxury, EV van, supercar, roadster,
     police car, taxi, box truck, tractor, garbage truck and helicopter (`art/blender/vehicles.py`,
     `map/vehicleModels.ts`). The motorbikes are Blender models too now: a chopper (raked forks, fat
     rear tyre, V-twin, ape-hangers) and a streetfighter (nose fairing, clip-ons, mirrors), with the
-    real, dressed Arjun seated on them (`map/bikeRider.ts`). Still open: spinning wheels.
+    real, dressed Arjun seated on them (`map/bikeRider.ts`). Wheels spin: each is a separate part
+    with spokes, turned by the distance travelled on your own vehicle and the race rivals
+    (`spinWheels`); traffic is merged back into one mesh per material, where nobody would notice.
 
 **D. How the world looks**
 26. **PART** Audit the whole map for primitive designs that could be better, not just the ground.
