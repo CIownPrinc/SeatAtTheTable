@@ -131,6 +131,8 @@ export interface PersonRig {
 }
 
 const HIP_Y = 11;
+// LEGAL: The hip pivot's height in model units, for seating someone (a rider on a bike).
+export const PERSON_HIP_Y = HIP_Y;
 const SHOULDER_Y = 24.2;
 const HEAD_Y = 32.2;
 const HEAD_R = 6;

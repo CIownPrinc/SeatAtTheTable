@@ -8,6 +8,7 @@ import os
 import sys
 
 import bpy
+from mathutils import Vector
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "lib"))
 import kit  # noqa: E402
@@ -72,6 +73,78 @@ def saloon(m, length=34.0, width=15.0, body_h=5.2, cabin=(16.5, 10.5, 4.8, -1.6)
     for name, x in (("bumper-front", length / 2 - 0.2), ("bumper-rear", -length / 2 + 0.2)):
         kit.box(name, (1.6, width - 0.6, 2.0), (x, 0, 3.2), m["trim"], bevel=0.6)
     return top
+
+
+def tube(name, a, b, radius, mat, vertices=10):
+    """A round tube from point a to point b: frame rails, forks, exhaust pipes."""
+    a, b = Vector(a), Vector(b)
+    obj = kit.cylinder(name, radius, (b - a).length, tuple((a + b) / 2), mat, axis="Z", vertices=vertices)
+    obj.rotation_mode = "QUATERNION"
+    obj.rotation_quaternion = (b - a).to_track_quat("Z", "Y")
+    return obj
+
+
+def bike_wheel(m, name, x, radius, width):
+    kit.cylinder(f"{name}-tyre", radius, width, (x, 0, radius), m["tyre"], vertices=24, bevel=radius * 0.22)
+    kit.cylinder(f"{name}-rim", radius * 0.72, width * 1.05, (x, 0, radius), m["chrome"], vertices=20)
+    kit.cylinder(f"{name}-hub", radius * 0.22, width * 1.4, (x, 0, radius), m["trim"], vertices=12)
+
+
+def chopper(m):
+    """Long and low: raked-out forks to a thin front wheel, a fat rear tyre, a teardrop tank, a
+    V-twin, twin pipes down the side and tall ape-hanger bars."""
+    bike_wheel(m, "rear", -6.0, 2.5, 1.7)
+    bike_wheel(m, "front", 7.2, 2.7, 0.8)
+    tube("backbone", (-5.0, 0, 5.2), (3.6, 0, 6.8), 0.45, m["chrome"])
+    tube("downtube", (3.6, 0, 6.8), (1.6, 0, 2.2), 0.45, m["chrome"])
+    tube("cradle", (1.6, 0, 2.0), (-5.6, 0, 2.6), 0.4, m["chrome"])
+    for side in (-1, 1):
+        tube(f"fork-{side}", (4.0, side * 0.9, 8.8), (7.2, side * 0.9, 2.7), 0.38, m["chrome"])
+        tube(f"riser-{side}", (4.2, side * 0.9, 8.6), (4.0, side * 1.6, 11.2), 0.25, m["chrome"])
+        kit.cylinder(f"peg-{side}", 0.25, 1.4, (3.4, side * 2.0, 2.8), m["chrome"])
+    tube("ape-bar", (4.0, -4.0, 11.4), (4.0, 4.0, 11.4), 0.25, m["chrome"])
+    for side in (-1, 1):
+        kit.cylinder(f"grip-{side}", 0.42, 1.4, (4.0, side * 3.4, 11.4), m["trim"])
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=1.6, segments=18, ring_count=12, location=(1.6, 0, 7.1))
+    tank = bpy.context.active_object
+    tank.name = "tank"
+    tank.scale = (1.75, 0.82, 0.72)
+    tank.data.materials.append(m["paint"])
+    bpy.ops.object.shade_smooth()
+    kit.tapered_box("seat", (4.2, 2.4), (3.6, 1.8), 0.9, (-2.4, 0, 5.4), m["seat"], bevel=0.35)
+    kit.tapered_box("fender-rear", (5.4, 2.0), (4.2, 1.8), 0.5, (-6.2, 0, 5.0), m["paint"], bevel=0.25)
+    for i, tilt in enumerate((-0.45, 0.45)):
+        cyl = kit.cylinder(f"cylinder-{i}", 0.85, 3.0, (0.2 + i * 1.1, 0, 4.2), m["chrome"], axis="Z", vertices=14, bevel=0.15)
+        cyl.rotation_euler = (0, tilt, 0)
+    kit.box("crankcase", (3.2, 1.8, 1.6), (0.6, 0, 2.6), m["trim"], bevel=0.3)
+    for z in (2.2, 3.1):
+        tube(f"pipe-{z}", (0.5, 1.4, z + 0.4), (-8.4, 1.4, z), 0.32, m["chrome"])
+    kit.box("headlight", (0.8, 1.6, 1.6), (7.9, 0, 7.9), m["head"], bevel=0.5)
+    kit.box("taillight", (0.5, 1.2, 0.6), (-8.6, 0, 5.3), m["tail"], bevel=0.2)
+
+
+def sportbike(m):
+    """A streetfighter: crouched, a sharp nose fairing with a screen, the tank and a short seat
+    sweeping up into the tail, clip-on bars and mirrors, and the pipe tucked under the seat."""
+    bike_wheel(m, "rear", -5.8, 2.4, 1.5)
+    bike_wheel(m, "front", 6.6, 2.4, 1.0)
+    kit.box("engine", (4.2, 2.2, 3.0), (0.4, 0, 3.8), m["trim"], bevel=0.4)
+    tube("swingarm", (-1.6, 0.9, 3.4), (-5.8, 0.9, 2.4), 0.35, m["trim"])
+    for side in (-1, 1):
+        tube(f"fork-{side}", (5.1, side * 0.8, 7.6), (6.6, side * 0.8, 2.4), 0.36, m["chrome"])
+        kit.cylinder(f"clip-on-{side}", 0.3, 1.8, (4.6, side * 1.5, 7.7), m["trim"])
+        tube(f"mirror-stalk-{side}", (4.8, side * 1.6, 8.4), (4.6, side * 3.4, 9.2), 0.12, m["trim"])
+        kit.box(f"mirror-{side}", (0.4, 1.2, 0.7), (4.6, side * 3.6, 9.3), m["trim"], bevel=0.15)
+    kit.tapered_box("fairing", (5.6, 2.6), (3.4, 1.8), 3.2, (4.6, 0, 4.6), m["paint"], top_offset=(-0.8, 0), bevel=0.5)
+    kit.tapered_box("screen", (1.8, 1.6), (1.0, 1.2), 1.6, (5.2, 0, 7.8), m["glass"], top_offset=(-0.6, 0), bevel=0.2)
+    kit.tapered_box("tank", (4.6, 2.6), (3.6, 2.0), 1.6, (1.4, 0, 5.8), m["paint"], bevel=0.5)
+    kit.tapered_box("seat", (3.6, 2.0), (3.2, 1.7), 0.6, (-2.2, 0, 6.2), m["seat"], bevel=0.25)
+    tail = kit.tapered_box("tail", (4.2, 1.8), (2.4, 1.0), 1.3, (-5.4, 0, 6.3), m["paint"], top_offset=(-0.9, 0), bevel=0.4)
+    tail.rotation_euler = (0, 0.18, 0)
+    tube("exhaust", (-1.0, 0.6, 4.4), (-6.8, 0.6, 6.0), 0.5, m["chrome"])
+    for side in (-1, 1):
+        kit.box(f"headlight-{side}", (0.6, 0.8, 0.6), (7.4, side * 0.5, 6.0), m["head"], bevel=0.2)
+    kit.box("taillight", (0.4, 1.0, 0.4), (-7.7, 0, 7.4), m["tail"], bevel=0.15)
 
 
 def build(cls, m):
@@ -271,11 +344,15 @@ def build(cls, m):
         hub.select_set(True)
         bpy.context.view_layer.objects.active = hub
         bpy.ops.object.join()
+    elif cls == "chopper":
+        chopper(m)
+    elif cls == "sportbike":
+        sportbike(m)
     else:
         raise ValueError(cls)
 
 
-CLASSES = ["sedan", "beater", "wagon", "muscle", "suv", "armored", "pickup", "van", "ev", "ev-luxury", "ev-van", "supercar", "roadster", "police", "taxi", "truck", "tractor", "garbage", "helicopter"]
+CLASSES = ["sedan", "beater", "wagon", "muscle", "suv", "armored", "pickup", "van", "ev", "ev-luxury", "ev-van", "supercar", "roadster", "police", "taxi", "truck", "tractor", "garbage", "helicopter", "chopper", "sportbike"]
 
 out_dir, preview_dir = kit.args()
 only = os.environ.get("VEHICLE")

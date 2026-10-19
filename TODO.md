@@ -246,7 +246,9 @@ old one.
 25. **PART** Cars that look like what they are. 19 Blender models are in the game: beater,
     wagon, muscle car, SUV, armoured SUV, pickup, van, EV, EV luxury, EV van, supercar, roadster,
     police car, taxi, box truck, tractor, garbage truck and helicopter (`art/blender/vehicles.py`,
-    `map/vehicleModels.ts`). Still open: the motorbikes, and spinning wheels.
+    `map/vehicleModels.ts`). The motorbikes are Blender models too now: a chopper (raked forks, fat
+    rear tyre, V-twin, ape-hangers) and a streetfighter (nose fairing, clip-ons, mirrors), with the
+    real, dressed Arjun seated on them (`map/bikeRider.ts`). Still open: spinning wheels.
 
 **D. How the world looks**
 26. Audit the whole map for primitive designs that could be better, not just the ground.

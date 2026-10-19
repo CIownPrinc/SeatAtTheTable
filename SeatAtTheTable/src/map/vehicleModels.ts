@@ -2,13 +2,13 @@ import type * as ThreeNamespace from 'three';
 
 // LEGAL: The Blender vehicle catalog (art/blender/vehicles.py). Every car used to be the same
 // LEGAL: procedural body in a different paint; each now has a model that looks like what it is.
-export const VEHICLE_CLASSES = ['sedan', 'beater', 'wagon', 'muscle', 'suv', 'armored', 'pickup', 'van', 'ev', 'ev-luxury', 'ev-van', 'supercar', 'roadster', 'police', 'taxi', 'truck', 'tractor', 'garbage', 'helicopter'] as const;
+export const VEHICLE_CLASSES = ['sedan', 'beater', 'wagon', 'muscle', 'suv', 'armored', 'pickup', 'van', 'ev', 'ev-luxury', 'ev-van', 'supercar', 'roadster', 'police', 'taxi', 'truck', 'tractor', 'garbage', 'helicopter', 'chopper', 'sportbike'] as const;
 export type VehicleClass = typeof VEHICLE_CLASSES[number];
 
 const CLASS_FOR_CAR: Record<string, VehicleClass> = {
   sedan:'beater', impala:'muscle', escalade:'suv', electron3:'ev', bentley:'ev-luxury', exotic:'supercar',
   beater_wagon:'wagon', panel_van:'van', mudster_pickup:'pickup', mudster_armored:'armored',
-  electron_van:'ev-van', diamond_roadster:'roadster',
+  electron_van:'ev-van', diamond_roadster:'roadster', chopper:'chopper', outlaw_racer:'sportbike',
   'cheat-dumptruck':'garbage', 'cheat-helicopter':'helicopter', 'race-loaner':'muscle',
 };
 
@@ -36,6 +36,7 @@ const TRAFFIC_FOOTPRINT: Record<VehicleClass, { length: number; width: number }>
   ev:{ length:31, width:15 }, 'ev-luxury':{ length:34, width:16 }, 'ev-van':{ length:33, width:17 }, supercar:{ length:31, width:16 },
   roadster:{ length:29, width:15 }, police:{ length:34, width:17 }, taxi:{ length:32, width:15 }, truck:{ length:50, width:18 },
   tractor:{ length:22, width:13 }, garbage:{ length:40, width:15 }, helicopter:{ length:40, width:40 },
+  chopper:{ length:18, width:8 }, sportbike:{ length:19, width:8 },
 };
 
 export function trafficFootprint(id: string): { length: number; width: number } {

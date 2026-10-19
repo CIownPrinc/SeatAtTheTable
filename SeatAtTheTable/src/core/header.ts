@@ -23,7 +23,8 @@ import { appreciationMult, breakdownChancePerSec, caveatEffectLabel, effectiveHe
 import type { MapAssetKey, MapAssetLibrary } from '../map/assets';
 import { loadMapAssetLibrary } from '../map/assets';
 import { createCharacterLibrary, type CharacterLibrary } from '../map/characters';
-import { DEFAULT_PLAYER_LOOK, WARDROBE, normalizeLook } from '../map/personModel';
+import { DEFAULT_PLAYER_LOOK, WARDROBE, createPersonParts, normalizeLook } from '../map/personModel';
+import { BIKE_SEATS, seatedRider, type BikeClass } from '../map/bikeRider';
 import { isItemOwned, itemKey, itemPrice, lookPrice, ownedWardrobe, type MallShop, type WardrobeSlot } from '../config/mallShops';
 import { MALL_ROOM, MALL_SPOTS } from '../map/mallInterior';
 import { buildMall, mallSolids } from '../map/mall';
@@ -5159,7 +5160,20 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: brand gets a real two-wheeler instead.
   function isBikeCar(car: Car){ return brandById(car.brand)?.category === 'bike'; }
 
+  // LEGAL: The Blender bikes (art/blender/vehicles.py) with the real, dressed Arjun on them; the
+  // LEGAL: procedural bike below is the fallback if the models fail to load.
+  let riderParts: ReturnType<typeof createPersonParts> | null = null;
   function buildBikeModel(car: Car, withRider: boolean){
+    const cls = vehicleClassForCar(car.id);
+    if(vehicleLibrary && cls && cls in BIKE_SEATS){
+      const outer = new THREE.Group();
+      outer.add(vehicleLibrary.create(cls, car.color, car.len, car.wid));
+      if(withRider){
+        riderParts ??= createPersonParts(THREE);
+        outer.add(seatedRider(THREE, riderParts, state.appearance, cls as BikeClass));
+      }
+      return outer;
+    }
     const g = new THREE.Group();
     const wheelR = 6.5;
     const wheelMat = new THREE.MeshStandardMaterial({color:'#141414', roughness:0.85});
