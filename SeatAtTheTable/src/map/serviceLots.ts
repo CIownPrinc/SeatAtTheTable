@@ -4,7 +4,7 @@ import { localBusinesses } from '../config/localBusinesses';
 import { districts } from '../config/districts';
 import { mapAmenities } from './amenities';
 import { allocateLots, districtLotSlots, spreadSlots } from './lots';
-import { districtIdAtPlayablePoint } from './mapModel';
+import { clearOfDiagonalRoads, districtIdAtPlayablePoint } from './mapModel';
 import { DISTRICT_OFFSETS, DISTRICT_W, OUTSKIRT_PLACE_LOTS, WORLD_H, roadNetwork, ventureMapLots, widenAuthoredX } from './world';
 
 // LEGAL: Where every service building actually ends up. Lives here rather than inline in
@@ -65,7 +65,8 @@ export function allocateServiceLots() {
           { x: slot.x + SERVICE_HALF_W, y: slot.y - SERVICE_HALF_D },
           { x: slot.x - SERVICE_HALF_W, y: slot.y + SERVICE_HALF_D },
           { x: slot.x + SERVICE_HALF_W, y: slot.y + SERVICE_HALF_D },
-        ].every(corner => districtIdAtPlayablePoint(corner, 0) === d.id);
+        ].every(corner => districtIdAtPlayablePoint(corner, 0) === d.id)
+          && clearOfDiagonalRoads({ x:slot.x, y:slot.y, hw:SERVICE_HALF_W, hd:SERVICE_HALF_D }, 10);
       });
       return [d.id, spreadSlots(onLand)];
     })),

@@ -1,4 +1,4 @@
-import { COUNTRY_ROADS } from './countryRoads';
+import { COUNTRY_ROADS, smoothPath } from './countryRoads';
 import type { Point } from '../config/types';
 import { CANAL_CHANNELS, DISTRICT_OFFSETS, DISTRICT_W, LAKEFRONT_BEACH, WINDHAVEN_LAKE, WINDHAVEN_LANDMASS, WORLD_H, WORLD_W, districtParkSlots, landmarks, roadNetwork, widenAuthoredX } from './world';
 import { boundsForPoints, isPointInWater, pointInPolygon, type Bounds } from './geometry';
@@ -105,11 +105,13 @@ const roadPaths: RoadPath[] = [
       name: road.name,
       roadClass: 'diagonal',
       width: road.w,
-      path: [
+      // LEGAL: A real curve through the bend point. It used to be two straight pieces meeting at an
+      // LEGAL: angle, which read as a road that should curve but doesn't.
+      path: smoothPath([
         { x: road.x1, y: road.y1 },
         { x: (road.x1 + road.x2) / 2 - dy / Math.hypot(dx, dy) * bend, y: (road.y1 + road.y2) / 2 + dx / Math.hypot(dx, dy) * bend },
         { x: road.x2, y: road.y2 },
-      ],
+      ], 24),
     };
   }),
   ...COUNTRY_ROADS,
@@ -399,4 +401,17 @@ export function roadDeadEnds(model: WindhavenMapModel = windhavenMapModel): Road
     });
   });
   return ends;
+}
+
+// LEGAL: Whether a footprint stands clear of the diagonal streets. The lot allocators only knew the
+// LEGAL: street grid, so buildings were placed straight across the diagonals. Footprints are
+// LEGAL: treated as a circle round the rectangle, which errs on the side of clear.
+export function clearOfDiagonalRoads(footprint: { x: number; y: number; hw: number; hd: number }, margin: number, model: WindhavenMapModel = windhavenMapModel): boolean {
+  const radius = Math.hypot(footprint.hw, footprint.hd);
+  return !model.roadPaths.filter(road => road.roadClass === 'diagonal').some(function(road){
+    return road.path.slice(0, -1).some(function(a, i){
+      const b = road.path[i + 1];
+      return distancePointToSegment(footprint.x, footprint.y, a.x, a.y, b.x, b.y) < radius + road.width / 2 + margin;
+    });
+  });
 }

@@ -15,7 +15,7 @@ function outskirtColor(kind: OutskirtRegion['kind']): string {
   if(kind === 'industrial') return mapTerrainTheme.outskirtIndustrial;
   return mapTerrainTheme.outskirtFarmland;
 }
-import { districtIdAtPlayablePoint, roadDeadEnds, roadLandSegments, windhavenMapModel } from './mapModel';
+import { districtIdAtPlayablePoint, roadDeadEnds, roadLandSegments, windhavenMapModel, type RoadPath } from './mapModel';
 import { boundsForPoints, isPointInWater } from './geometry';
 import { mapTerrainTheme, mapTransportTheme, terrainForDistrict } from './renderTheme';
 import { addInstancedMesh, createMapSceneMaterials, type MapSceneMaterialCache, type SceneInstance } from './scenePerformance';
@@ -113,25 +113,6 @@ function addWaterShape(options: BaseSceneOptions, points: Array<{ x: number; y: 
   mesh.renderOrder = 2;
   worldGroup.add(mesh);
   return mesh;
-}
-
-function addPathPlane(options: BaseSceneOptions, points: Array<{ x: number; y: number }>, width: number, color: string, height: number, roughness: number): void {
-  if(points.length < 2) return;
-  const { THREE, worldGroup } = options;
-  const material = materialsFor(options).standard(`path:${color}:${roughness}`, { color, roughness });
-  for(let i=0; i<points.length-1; i++){
-    const start = points[i];
-    const end = points[i+1];
-    const dx = end.x-start.x;
-    const dy = end.y-start.y;
-    const length = Math.hypot(dx, dy);
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(length, width), material);
-    mesh.rotation.x = -Math.PI/2;
-    mesh.rotation.z = -Math.atan2(dy, dx);
-    mesh.position.set((start.x+end.x)/2, height, (start.y+end.y)/2);
-    mesh.receiveShadow = true;
-    worldGroup.add(mesh);
-  }
 }
 
 function addPathLineDashes(points: Point[], spacing: number, inset: number, callback: (x: number, y: number, angle: number) => void): void {
@@ -237,6 +218,21 @@ export function buildCanalWater(options: BaseSceneOptions): void {
   });
 }
 
+// LEGAL: Joins a road's consecutive pieces (each piece ends where the next begins) into one path.
+function joinRoadRuns(segments: Array<{ road: RoadPath; path: Point[] }>): Array<{ road: RoadPath; path: Point[] }> {
+  const runs: Array<{ road: RoadPath; path: Point[] }> = [];
+  segments.forEach(function(segment){
+    const last = runs[runs.length - 1];
+    const tail = last?.path[last.path.length - 1];
+    if(last && last.road === segment.road && tail && Math.hypot(tail.x - segment.path[0].x, tail.y - segment.path[0].y) < 0.5){
+      last.path.push(...segment.path.slice(1));
+    } else {
+      runs.push({ road:segment.road, path:[...segment.path] });
+    }
+  });
+  return runs;
+}
+
 export function buildRoadNetwork(options: RoadSceneOptions): void {
   const { THREE, worldGroup, roadNetwork } = options;
   const materials = materialsFor(options);
@@ -245,7 +241,7 @@ export function buildRoadNetwork(options: RoadSceneOptions): void {
   const laneDashes: SceneInstance[] = [];
   const crosswalkLong: SceneInstance[] = [];
   const crosswalkWide: SceneInstance[] = [];
-  roadLandSegments().forEach(function(segment){
+  joinRoadRuns(roadLandSegments()).forEach(function(segment){
     const road = segment.road;
     if(road.roadClass === 'country'){
       // LEGAL: Dirt lanes: a worn verge either side and packed earth down the middle. No kerbs,
@@ -255,8 +251,12 @@ export function buildRoadNetwork(options: RoadSceneOptions): void {
       [verge, dirt].forEach(function(mesh){ mesh.receiveShadow = true; mesh.name = `road:${road.id}`; worldGroup.add(mesh); });
       return;
     }
-    addPathPlane(options, segment.path, road.width + (road.roadClass === 'arterial' ? 34 : 22), mapTransportTheme.sidewalk, 0.04, 0.92);
-    addPathPlane(options, segment.path, road.width, road.roadClass === 'arterial' ? mapTransportTheme.arterialSurface : mapTransportTheme.roadSurface, 0.06, 0.9);
+    // LEGAL: One ribbon per run of road, so a curved street is a smooth strip rather than a row of
+    // LEGAL: rectangles with wedge gaps at every bend.
+    const sidewalk = new THREE.Mesh(ribbonGeometry(THREE, segment.path, road.width + (road.roadClass === 'arterial' ? 34 : 22), 0.04), materials.standard(`path:${mapTransportTheme.sidewalk}:0.92`, { color:mapTransportTheme.sidewalk, roughness:0.92 }));
+    const surfaceColor = road.roadClass === 'arterial' ? mapTransportTheme.arterialSurface : mapTransportTheme.roadSurface;
+    const surface = new THREE.Mesh(ribbonGeometry(THREE, segment.path, road.width, 0.06), materials.standard(`path:${surfaceColor}:0.9`, { color:surfaceColor, roughness:0.9 }));
+    [sidewalk, surface].forEach(function(mesh){ mesh.receiveShadow = true; mesh.name = `road:${road.id}`; worldGroup.add(mesh); });
     addPathLineDashes(segment.path, 94, 40, function(x, y, angle){
       laneDashes.push({
         x,

@@ -194,8 +194,11 @@ old one.
 5. **DONE** Shadows were broken (striped, and missing outside the world's middle).
 6. **DONE** The GPS broke in the countryside: there were no roads there. Country lanes fix it.
 7. Roads end in the middle of the ocean (reported after the lane change). Find and fix them.
-8. A few buildings stand fully or partly in the streets.
-9. Some roads meant to curve are drawn as straight pieces: find them and use real curves.
+8. **DONE** A few buildings stood fully or partly in the streets. The lot allocators and filler
+    now keep clear of the diagonal streets, and two landmarks moved off the road; the world audit
+    finds none.
+9. **DONE** Roads meant to curve were drawn as straight pieces. The diagonals are real curves,
+    and every street is drawn as one continuous ribbon.
 10. **DONE** Cars, trains and trees weren't solid. Traffic and the train are now moving obstacles
     (`map/obstacles.ts`), and street trees, countryside trees, barns and silos are solid. The train
     was also drawn at a different position from the one that blocked you; both now use one.
@@ -273,6 +276,13 @@ old one.
     panel of small text are gone: the rim takes the colour of whoever holds the block you're on,
     and one line underneath names it. The City Map fills its window, its territory layer shows
     district names instead of a label on every block, and its legend folds away.
+
+44. Clearing a GPS waypoint isn't obvious. Make it clear how to remove one.
+45. Wardrobe: Arjun's skin must stay brown (he's Indian; it's part of the story), so no skin
+    option. "Top colour" is unclear. Hair and shoes need more options; hair, the chain and the
+    glasses look primitive. Accessory shops in the mall to buy more.
+46. Minigames look primitive: make them 3D, or even first person.
+47. Street racing like GTA: get a car, race real opponents round a course.
 
 **E. Interiors**
 34. Interiors you walk around in like outside, in 3D. Today most rooms are a few small icons that

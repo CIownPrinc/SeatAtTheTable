@@ -3,7 +3,7 @@ import { properties } from '../config/assets';
 import { brandById } from '../config/brands';
 import { districts } from '../config/districts';
 import { allocateLots, districtLotSlots, spreadSlots } from './lots';
-import { districtIdAtPlayablePoint } from './mapModel';
+import { clearOfDiagonalRoads, districtIdAtPlayablePoint } from './mapModel';
 import { allocateServiceLots, serviceLotObstacles } from './serviceLots';
 import { DISTRICT_OFFSETS, DISTRICT_W, WORLD_H, roadNetwork, widenAuthoredX } from './world';
 
@@ -53,7 +53,8 @@ export function allocatePropertyLots() {
           { x: slot.x + PROPERTY_HALF_W, y: slot.y - PROPERTY_HALF_D },
           { x: slot.x - PROPERTY_HALF_W, y: slot.y + PROPERTY_HALF_D },
           { x: slot.x + PROPERTY_HALF_W, y: slot.y + PROPERTY_HALF_D },
-        ].every(corner => districtIdAtPlayablePoint(corner, 0) === d.id);
+        ].every(corner => districtIdAtPlayablePoint(corner, 0) === d.id)
+          && clearOfDiagonalRoads({ x:slot.x, y:slot.y, hw:PROPERTY_HALF_W, hd:PROPERTY_HALF_D }, 10);
       });
       // LEGAL: Reversed so properties fill from the opposite end of the district to the
       // LEGAL: shops, spreading holdings across the map instead of clustering them.

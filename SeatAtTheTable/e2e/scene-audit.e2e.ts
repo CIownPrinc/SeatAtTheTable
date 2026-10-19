@@ -86,17 +86,9 @@ test.describe('scene audit — what the renderer actually drew', () => {
   // LEGAL: The world audit (src/map/sceneAudit.ts) on the live scene: buildings in any road
   // LEGAL: (grid, diagonals, lanes, turning circles) and hairline strokes. Dev builds run the same
   // LEGAL: check at startup and mark each problem with a red beacon.
-  // LEGAL: KNOWN_ISSUES is a ratchet. These six were placed before the diagonals were audited and
-  // LEGAL: are fixed by the new map engine (TODO.md section 11), which lays lots out along roads.
-  // LEGAL: Any NEW problem fails, and so does a known one that has been fixed but is still listed.
-  const KNOWN_ISSUES = [
-    'service:bankFirstWindhaven:First Windhaven — West Side Branch stands in Canal Bend Road',
-    'service:brand-lakeshore:Lakeshore Development stands in Lake Shore Cut',
-    'local:liquor:Corner Liquor stands in Canal Bend Road',
-    'amenity:petstore:pulaski-pets stands in Canal Bend Road',
-    'landmark:ciceroWorks stands in Cermak Road',
-    'landmark:thePotato stands in Wabash Avenue',
-  ];
+  // LEGAL: KNOWN_ISSUES is a ratchet: any new problem fails, and so does a known one that has been
+  // LEGAL: fixed but is still listed. It's empty: the six buildings once in roads are all clear.
+  const KNOWN_ISSUES: string[] = [];
   test('the world audit finds no new problems in what was drawn', async ({ page }) => {
     test.setTimeout(120000);
     await waitForScene(page);

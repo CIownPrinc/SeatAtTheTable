@@ -1,3 +1,4 @@
+import { windhavenMapModel } from './mapModel';
 import { describe, expect, it } from 'vitest';
 import { businesses } from '../config/ventures';
 import { amenityHasSolidFootprint, mapAmenities } from './amenities';
@@ -335,9 +336,10 @@ describe('map layout helpers', function () {
         expect(filler.d).toBeGreaterThanOrEqual(30);
         expect(filler.h).toBeGreaterThanOrEqual(24);
         const off = DISTRICT_OFFSETS[districtId];
-        roadNetwork.diagonal.forEach(function(road){
-          const distance = distancePointToSegment(filler.x+off, filler.y, road.x1, road.y1, road.x2, road.y2);
-          expect(distance).toBeGreaterThan(Math.max(filler.w,filler.d)/2 + road.w/2);
+        // LEGAL: Against the real curved diagonal, not the straight line between its ends.
+        windhavenMapModel.roadPaths.filter(road => road.roadClass === 'diagonal').forEach(function(road){
+          const distance = Math.min(...road.path.slice(0, -1).map((a, i) => distancePointToSegment(filler.x+off, filler.y, a.x, a.y, road.path[i + 1].x, road.path[i + 1].y)));
+          expect(distance).toBeGreaterThan(Math.max(filler.w,filler.d)/2 + road.width/2);
         });
       });
     });

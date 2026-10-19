@@ -1,11 +1,11 @@
 import { storeys } from './scale';
 import type { FillerItem, MapZoneType, Solid } from '../config/types';
 import type { MapObject } from './objects';
-import { buildableBands, distancePointToSegment, localXForDistrict, rectsOverlap, rotatedHalfExtents } from './layout';
+import { buildableBands, localXForDistrict, rectsOverlap, rotatedHalfExtents } from './layout';
 import { DISTRICT_OFFSETS, DISTRICT_W, WORLD_H, districtParkSlots, districtSeeds, landmarks, roadNetwork, widenAuthoredX } from './world';
 import { zoneForDistrictBlock } from './zoning';
 import { characterForDistrictBlock, characterProfile, type BlockCharacter } from './neighbourhoods';
-import { districtIdAtPlayablePoint } from './mapModel';
+import { clearOfDiagonalRoads, districtIdAtPlayablePoint } from './mapModel';
 
 const ROAD_VISUAL_CLEARANCE_X = 56;
 const ROAD_VISUAL_CLEARANCE_Y = 66;
@@ -71,12 +71,8 @@ export function createFillerLayoutProvider(mapObjects: MapObject[]): FillerLayou
       if(!solidInsideDistrictLand(candidate)) return false;
       if(localRoadXs.some(x=> Math.abs(candidate.x-x) < candidate.hw+ROAD_VISUAL_CLEARANCE_X)) return false;
       if(roadNetwork.horizontal.some(r=> Math.abs(candidate.y-r.y) < candidate.hd+ROAD_VISUAL_CLEARANCE_Y)) return false;
-      if(roadNetwork.diagonal.some(r=> {
-        const x1 = localXForDistrict(districtId, r.x1, DISTRICT_OFFSETS);
-        const x2 = localXForDistrict(districtId, r.x2, DISTRICT_OFFSETS);
-        if((x1 < -200 && x2 < -200) || (x1 > DISTRICT_W+200 && x2 > DISTRICT_W+200)) return false;
-        return distancePointToSegment(candidate.x, candidate.y, x1, r.y1, x2, r.y2) < Math.max(candidate.hw,candidate.hd)+r.w/2+18;
-      })) return false;
+      // LEGAL: Checked against the real (curved) diagonal, in world coordinates.
+      if(!clearOfDiagonalRoads({ x:candidate.x + (DISTRICT_OFFSETS[districtId] || 0), y:candidate.y, hw:candidate.hw, hd:candidate.hd }, 18)) return false;
       return !placed.some(s=>rectsOverlap(candidate, s, BUILDING_GAP));
     };
     const pushBuilding = function(zone: MapZoneType, character: BlockCharacter, x: number, y: number, w: number, d: number, h: number, hue: number, rot: number, style?: 'apartment'): void {
