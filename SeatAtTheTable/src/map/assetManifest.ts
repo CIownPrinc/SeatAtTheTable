@@ -1,4 +1,4 @@
-export type DownloadedMapAssetPack = 'kenney-modular-buildings' | 'kenney-car-kit' | 'kenney-blocky-characters';
+export type DownloadedMapAssetPack = 'kenney-modular-buildings' | 'kenney-car-kit';
 
 export type DownloadedMapAssetCategory = 'building' | 'vehicle' | 'character' | 'texture' | 'license' | 'building-detail';
 
@@ -18,13 +18,7 @@ export type MapAssetKey =
   | 'carSuv'
   | 'carLuxurySuv'
   | 'carDelivery'
-  | 'carVan'
-  | 'characterA'
-  | 'characterC'
-  | 'characterE'
-  | 'characterH'
-  | 'characterK'
-  | 'characterN';
+  | 'carVan';
 
 export interface DownloadedMapAsset {
   path: string;
@@ -39,7 +33,6 @@ export interface DownloadedMapAsset {
 export const MAP_ASSET_PUBLIC_BASE = '/assets/map/';
 export const BUILDING_ASSET_BASE = `${MAP_ASSET_PUBLIC_BASE}kenney-modular-buildings/`;
 export const CAR_ASSET_BASE = `${MAP_ASSET_PUBLIC_BASE}kenney-car-kit/`;
-export const CHARACTER_ASSET_BASE = `${MAP_ASSET_PUBLIC_BASE}kenney-blocky-characters/`;
 
 export const MAP_ASSET_PATHS: Record<MapAssetKey, string> = {
   houseA: `${BUILDING_ASSET_BASE}building-sample-house-a.glb`,
@@ -56,12 +49,6 @@ export const MAP_ASSET_PATHS: Record<MapAssetKey, string> = {
   carLuxurySuv: `${CAR_ASSET_BASE}suv-luxury.glb`,
   carDelivery: `${CAR_ASSET_BASE}delivery.glb`,
   carVan: `${CAR_ASSET_BASE}van.glb`,
-  characterA: `${CHARACTER_ASSET_BASE}character-a.glb`,
-  characterC: `${CHARACTER_ASSET_BASE}character-c.glb`,
-  characterE: `${CHARACTER_ASSET_BASE}character-e.glb`,
-  characterH: `${CHARACTER_ASSET_BASE}character-h.glb`,
-  characterK: `${CHARACTER_ASSET_BASE}character-k.glb`,
-  characterN: `${CHARACTER_ASSET_BASE}character-n.glb`,
 };
 
 export const EAGER_MAP_ASSET_KEYS: MapAssetKey[] = ['houseA', 'houseB', 'towerA', 'towerC', 'commercialAwning', 'commercialWide'];
@@ -85,30 +72,6 @@ export const DOWNLOADED_MAP_ASSETS: DownloadedMapAsset[] = [
   { path: MAP_ASSET_PATHS.carTaxi, pack:'kenney-car-kit', category:'vehicle', status:'reserved', key:'carTaxi', futureUse:['taxi traffic', 'district ambience'] },
   { path: MAP_ASSET_PATHS.carVan, pack:'kenney-car-kit', category:'vehicle', status:'reserved', key:'carVan', futureUse:['delivery routes', 'crew transport'] },
   { path: `${CAR_ASSET_BASE}License.txt`, pack:'kenney-car-kit', category:'license', status:'used', note:'License file retained with the downloaded vehicle pack.' },
-  { path: MAP_ASSET_PATHS.characterA, pack:'kenney-blocky-characters', category:'character', status:'reserved', key:'characterA', futureUse:['pedestrian variants', 'named NPC variants'] },
-  { path: MAP_ASSET_PATHS.characterC, pack:'kenney-blocky-characters', category:'character', status:'reserved', key:'characterC', futureUse:['pedestrian variants', 'named NPC variants'] },
-  { path: MAP_ASSET_PATHS.characterE, pack:'kenney-blocky-characters', category:'character', status:'reserved', key:'characterE', futureUse:['pedestrian variants', 'named NPC variants'] },
-  { path: MAP_ASSET_PATHS.characterH, pack:'kenney-blocky-characters', category:'character', status:'reserved', key:'characterH', futureUse:['pedestrian variants', 'named NPC variants'] },
-  { path: MAP_ASSET_PATHS.characterK, pack:'kenney-blocky-characters', category:'character', status:'reserved', key:'characterK', futureUse:['pedestrian variants', 'named NPC variants'] },
-  { path: MAP_ASSET_PATHS.characterN, pack:'kenney-blocky-characters', category:'character', status:'reserved', key:'characterN', futureUse:['pedestrian variants', 'named NPC variants'] },
-  { path: `${CHARACTER_ASSET_BASE}Textures/texture-a.png`, pack:'kenney-blocky-characters', category:'texture', status:'reserved', futureUse:['pedestrian texture variants'] },
-  { path: `${CHARACTER_ASSET_BASE}Textures/texture-b.png`, pack:'kenney-blocky-characters', category:'texture', status:'reserved', futureUse:['pedestrian texture variants'] },
-  { path: `${CHARACTER_ASSET_BASE}Textures/texture-c.png`, pack:'kenney-blocky-characters', category:'texture', status:'reserved', futureUse:['pedestrian texture variants'] },
-  { path: `${CHARACTER_ASSET_BASE}Textures/texture-d.png`, pack:'kenney-blocky-characters', category:'texture', status:'reserved', futureUse:['pedestrian texture variants'] },
-  { path: `${CHARACTER_ASSET_BASE}Textures/texture-e.png`, pack:'kenney-blocky-characters', category:'texture', status:'reserved', futureUse:['pedestrian texture variants'] },
-  { path: `${CHARACTER_ASSET_BASE}Textures/texture-f.png`, pack:'kenney-blocky-characters', category:'texture', status:'reserved', futureUse:['pedestrian texture variants'] },
-  { path: `${CHARACTER_ASSET_BASE}Textures/texture-g.png`, pack:'kenney-blocky-characters', category:'texture', status:'reserved', futureUse:['pedestrian texture variants'] },
-  { path: `${CHARACTER_ASSET_BASE}Textures/texture-h.png`, pack:'kenney-blocky-characters', category:'texture', status:'reserved', futureUse:['pedestrian texture variants'] },
-  { path: `${CHARACTER_ASSET_BASE}Textures/texture-i.png`, pack:'kenney-blocky-characters', category:'texture', status:'reserved', futureUse:['pedestrian texture variants'] },
-  { path: `${CHARACTER_ASSET_BASE}Textures/texture-j.png`, pack:'kenney-blocky-characters', category:'texture', status:'reserved', futureUse:['pedestrian texture variants'] },
-  { path: `${CHARACTER_ASSET_BASE}Textures/texture-k.png`, pack:'kenney-blocky-characters', category:'texture', status:'reserved', futureUse:['pedestrian texture variants'] },
-  { path: `${CHARACTER_ASSET_BASE}Textures/texture-l.png`, pack:'kenney-blocky-characters', category:'texture', status:'reserved', futureUse:['pedestrian texture variants'] },
-  { path: `${CHARACTER_ASSET_BASE}Textures/texture-m.png`, pack:'kenney-blocky-characters', category:'texture', status:'reserved', futureUse:['pedestrian texture variants'] },
-  { path: `${CHARACTER_ASSET_BASE}Textures/texture-n.png`, pack:'kenney-blocky-characters', category:'texture', status:'reserved', futureUse:['pedestrian texture variants'] },
-  { path: `${CHARACTER_ASSET_BASE}Textures/texture-o.png`, pack:'kenney-blocky-characters', category:'texture', status:'reserved', futureUse:['pedestrian texture variants'] },
-  { path: `${CHARACTER_ASSET_BASE}Textures/texture-p.png`, pack:'kenney-blocky-characters', category:'texture', status:'reserved', futureUse:['pedestrian texture variants'] },
-  { path: `${CHARACTER_ASSET_BASE}Textures/texture-q.png`, pack:'kenney-blocky-characters', category:'texture', status:'reserved', futureUse:['pedestrian texture variants'] },
-  { path: `${CHARACTER_ASSET_BASE}Textures/texture-r.png`, pack:'kenney-blocky-characters', category:'texture', status:'reserved', futureUse:['pedestrian texture variants'] },
-  { path: `${CHARACTER_ASSET_BASE}License.txt`, pack:'kenney-blocky-characters', category:'license', status:'used', note:'License file retained with the downloaded character pack.' },
-  { path: 'Textures/colormap.png', pack:'kenney-modular-buildings', category:'texture', status:'fallback', note:'Some Kenney GLB files ask for this relative texture. The loader redirects it to an inline fallback because the file is not in the downloaded pack.' },
+  { path: `${BUILDING_ASSET_BASE}Textures/colormap.png`, pack:'kenney-modular-buildings', category:'texture', status:'used', note:'Palette atlas every building GLB samples.' },
+  { path: `${CAR_ASSET_BASE}Textures/colormap.png`, pack:'kenney-car-kit', category:'texture', status:'used', note:'Palette atlas every vehicle GLB samples.' },
 ];

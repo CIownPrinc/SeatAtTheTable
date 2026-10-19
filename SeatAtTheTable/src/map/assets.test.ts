@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { fitToBox, resolveMapAssetUrl } from './assets';
+import { fitToBox, tintedClone } from './assets';
 
 function sourceModel(): THREE.Group {
   const group = new THREE.Group();
@@ -9,11 +9,24 @@ function sourceModel(): THREE.Group {
 }
 
 describe('map asset loading', function () {
-  it('replaces missing Kenney building colormap references with a safe fallback texture', function () {
-    const resolved = resolveMapAssetUrl('Textures/colormap.png');
+  it('keeps the texture when tinting a model, so windows and doors survive the paint', function () {
+    const texture = new THREE.Texture();
+    const source = new THREE.Group();
+    source.add(new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), new THREE.MeshStandardMaterial({ map: texture })));
+    const tinted = tintedClone(THREE, source, '#884422');
+    const material = (tinted.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial;
 
-    expect(resolved.startsWith('data:image/png;base64,')).toBe(true);
-    expect(resolveMapAssetUrl('/assets/map/kenney-modular-buildings/building-window-wide.glb')).toBe('/assets/map/kenney-modular-buildings/building-window-wide.glb');
+    expect(material.map).toBe(texture);
+    expect(material.color.getHexString()).not.toBe('ffffff');
+  });
+
+  it('tints a copy of the material, never the shared original', function () {
+    const original = new THREE.MeshStandardMaterial();
+    const source = new THREE.Group();
+    source.add(new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), original));
+    tintedClone(THREE, source, '#884422');
+
+    expect(original.color.getHexString()).toBe('ffffff');
   });
 
   // LEGAL: Callers add awnings, cornices, markers and signs to the returned group in WORLD

@@ -22,12 +22,16 @@ import { askingPrice, haggleOfferFor, haggleOffers, isDealerOnly, resolveHaggle,
 import { appreciationMult, breakdownChancePerSec, caveatEffectLabel, effectiveHeistBonus, launderingHeatMult, propertyRespectPerSec, repairCost, roughRaidChance, roughRaidLoss, vehicleHeatPerSec } from '../map/brandEffects';
 import type { MapAssetKey, MapAssetLibrary } from '../map/assets';
 import { loadMapAssetLibrary } from '../map/assets';
+import { createCharacterLibrary, type CharacterLibrary } from '../map/characters';
+import { DEFAULT_PLAYER_LOOK, normalizeLook } from '../map/personModel';
 import { renderRoamingActors } from '../map/actorRendering';
 import { createAmenityModal, mapAmenities } from '../map/amenities';
 import { fireRoadPayout, isFireRoadBest, minigameOpen, playMinigame, type MinigameResult } from '../map/minigames';
 import { offRoadSpeedMultiplier } from '../map/offRoad';
 import { mountTouchStick } from '../map/touchControls';
 import { createQualityGovernor } from '../map/adaptiveQuality';
+import { createCheatListener } from './cheats';
+import { createCameraRig, SHADOW_HALF_SIZE, sunShadowFrame } from '../map/cameraRig';
 import { buildAmenityModel as buildMapAmenityModel } from '../map/amenityRendering';
 import { createFillerLayoutProvider, seededRandom } from '../map/filler';
 import { applyMapWorldCoordinates, createMapBuildings, mapNpcs } from '../map/markers';
@@ -447,7 +451,7 @@ import type * as ThreeNamespace from 'three';
     muscleCount: 0, guns: 0, ratCount: 0, bribeOn: false,
     prestigeCount: 0, seenMilestones: new Set<string>(),
     started: false, lastTick: Date.now(), nextEventAt: firstEventDelay(),
-    playSeconds: 0, investorPenalty: 0,
+    playSeconds: 0, investorPenalty: 0, appearance: { ...DEFAULT_PLAYER_LOOK },
     procNpc: generateNPC(),
     bankAccounts: {}, selectedBank: DEFAULT_BANK_ID, nextHeistAt: 0,
     ownedCars: [], equippedCar: null, ownedProperties: [],
@@ -4135,6 +4139,7 @@ import type * as ThreeNamespace from 'three';
   let sceneInitialized = false;
   let mapScenePromise: Promise<void> | null = null;
   let mapAssets: MapAssetLibrary | null = null;
+  let characterLibrary: CharacterLibrary | null = null;
   document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.addEventListener('click', function(){ setTab(btn.getAttribute('data-tab')!); });
   });
@@ -4244,6 +4249,7 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: took the city from 22 to 32 fps. Remembered, so the next visit compiles once.
   const LOW_QUALITY_KEY = 'seat-quality-low';
   const qualityGovernor = createQualityGovernor({ minFps:40, warmupFrames:30, sampleSeconds:3 });
+  const cameraRig = createCameraRig();
   function lowQualitySaved(): boolean {
     try{ return window.localStorage.getItem(LOW_QUALITY_KEY) === '1'; }catch(e){ return false; }
   }
@@ -4283,6 +4289,7 @@ import type * as ThreeNamespace from 'three';
         THREE = await import('three');
         mergeSceneryGeometries = (await import('three/examples/jsm/utils/BufferGeometryUtils.js')).mergeGeometries;
         mapAssets = await loadMapAssetLibrary(THREE);
+        characterLibrary = createCharacterLibrary(THREE, function(){ return state.appearance; });
         if(!sceneInitialized){
           initScene();
           sceneInitialized = true;
@@ -4294,8 +4301,7 @@ import type * as ThreeNamespace from 'three';
           // LEGAL: compileAsync skips the shadow pass's shaders, so one real render (tiny while
           // LEGAL: the map tab is hidden) compiles the rest.
           await renderer.compileAsync(scene, camera3d);
-          camera3d.position.set(player.x, 260, player.y+72);
-          camera3d.lookAt(player.x, 0, player.y);
+          aimCamera(0);
           renderer.render(scene, camera3d);
         }
       })();
@@ -4657,8 +4663,17 @@ import type * as ThreeNamespace from 'three';
     }));
   }
 
+  const CHEAT_CASH = 1_000_000;
+  const cheats = createCheatListener(['moneymoneymoney', 'cash4ever']);
   window.addEventListener('keydown', function(e){
     const k = e.key.toLowerCase();
+    const typingInField = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+    if(!typingInField && cheats.feed(e.key)){
+      state.cash += CHEAT_CASH;
+      log(`<i aria-hidden="true" class="ph-duotone ph-money"></i> Cheat activated: ${formatMoney(CHEAT_CASH)} appears in your pocket.`);
+      refreshHUD();
+      scheduleSave();
+    }
     if(k==='escape' && deviceOpen()){ closeDevice(); return; }
     keys[k] = true;
     if(k==='e') tryInteract();
@@ -4891,41 +4906,8 @@ import type * as ThreeNamespace from 'three';
     sprite.scale.set(w * 4, h * 2, 1); sprite.position.y = y;
     parent.add(sprite);
   }
-  function appearanceForPerson(id: string, baseColor: number | string): { coat: string | number; shirt: string; skin: string; hair: string; pants: string; scaleY: number; scaleX: number } {
-    const variant = variantForId(id);
-    const skin = ['#d9b48f','#b98663','#8f5f43','#e0c0a0','#c79870'][Math.floor(variant * 5) % 5];
-    const hair = ['#24211f','#3a2618','#111217','#5a4637','#d0c0a0'][Math.floor(variant * 17) % 5];
-    const shirt = ['#232734','#35445a','#3f2f45','#2f4a3a','#5a3f2f','#4a3240'][Math.floor(variant * 23) % 6];
-    const pants = ['#1d2028','#202c35','#2e2b28','#273126','#2a2635'][Math.floor(variant * 29) % 5];
-    return { coat:baseColor || '#e8e6de', shirt, skin, hair, pants, scaleY:0.92 + variant * 0.18, scaleX:0.9 + ((variant * 7) % 1) * 0.16 };
-  }
   function buildPedestrianModel(color: number | string, identity = 'person'){
-    const look = appearanceForPerson(identity, color);
-    const g = new THREE.Group();
-    const coat = new THREE.Mesh(new THREE.CylinderGeometry(5.5*look.scaleX,7.5*look.scaleX,18*look.scaleY,8), new THREE.MeshStandardMaterial({color: look.coat, roughness:0.72}));
-    coat.position.y = 16; coat.castShadow=true; g.add(coat);
-    const shirt = new THREE.Mesh(new THREE.BoxGeometry(8*look.scaleX,9,4), new THREE.MeshStandardMaterial({color:look.shirt, roughness:0.8}));
-    shirt.position.set(0,18,3.8); shirt.castShadow=true; g.add(shirt);
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(2.4,2.6,3,8), new THREE.MeshStandardMaterial({color:look.skin}));
-    neck.position.y = 27; neck.castShadow=true; g.add(neck);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(6.2*look.scaleX,12,10), new THREE.MeshStandardMaterial({color:look.skin, roughness:0.65}));
-    head.position.y = 32; head.castShadow=true; g.add(head);
-    const hair = new THREE.Mesh(new THREE.SphereGeometry(6.4*look.scaleX,12,8,0,Math.PI*2,0,Math.PI*0.48), new THREE.MeshStandardMaterial({color:look.hair, roughness:0.9}));
-    hair.rotation.x = Math.PI; hair.position.y = 35.2; hair.castShadow=true; g.add(hair);
-    const nose = new THREE.Mesh(new THREE.ConeGeometry(1.8,4.5,6), new THREE.MeshStandardMaterial({color:look.skin}));
-    nose.rotation.x = Math.PI/2; nose.position.set(0,31.4,6.2); g.add(nose);
-    const armMat = new THREE.MeshStandardMaterial({color: look.coat, roughness:0.76});
-    [-1,1].forEach(function(side){
-      const arm = new THREE.Mesh(new THREE.CapsuleGeometry(1.8,13,4,6), armMat);
-      arm.position.set(side*7.1,17,0.5); arm.rotation.z = side*0.2; arm.castShadow=true; g.add(arm);
-      const hand = new THREE.Mesh(new THREE.SphereGeometry(2.1,8,6), new THREE.MeshStandardMaterial({color:look.skin}));
-      hand.position.set(side*7.7,9.5,0.9); hand.castShadow=true; g.add(hand);
-      const leg = new THREE.Mesh(new THREE.CapsuleGeometry(2.1,12,4,6), new THREE.MeshStandardMaterial({color:look.pants, roughness:0.82}));
-      leg.position.set(side*2.8,5.5,0); leg.castShadow=true; g.add(leg);
-      const shoe = new THREE.Mesh(new THREE.BoxGeometry(5,2,8), new THREE.MeshStandardMaterial({color:'#111217', roughness:0.8}));
-      shoe.position.set(side*2.8,1.1,2.2); shoe.castShadow=true; g.add(shoe);
-    });
-    return g;
+    return characterLibrary!.create(identity, String(color));
   }
   // LEGAL: Bikes were being built by buildCarModel, so a chopper rendered as a small
   // LEGAL: saloon complete with windscreen and four wheels. Anything sold by a `bike`
@@ -5001,7 +4983,8 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: moment ago: cream coat body and arms, skin head with hair, dark shoes. The
     // LEGAL: first attempt invented a black jacket and a helmet and used look.shirt (a dark
     // LEGAL: accent) for the torso, which read as a different, much darker character.
-    const look = appearanceForPerson('arjun', '#f0efe8');
+    const worn = state.appearance;
+    const look = { coat:worn.topColor, shirt:worn.shirtColor, skin:worn.skin, hair:worn.hairColor, pants:worn.pantsColor, scaleX:1, scaleY:1 };
     const coatMat = new THREE.MeshStandardMaterial({color: look.coat, roughness:0.74});
     const skinMat = new THREE.MeshStandardMaterial({color: look.skin, roughness:0.65});
     const pantsMat = new THREE.MeshStandardMaterial({color: look.pants, roughness:0.82});
@@ -5244,8 +5227,9 @@ import type * as ThreeNamespace from 'three';
     ambientLight.intensity = 0.28 + sun * 0.62 + dusk * 0.1;
     sunLight.intensity = 0.25 + sun * 1.15;
     sunLight.color.set(sun < 0.18 ? '#9fb4ff' : (dusk > 0.45 ? '#ffc37a' : '#fff2d0'));
-    sunLight.position.set(WORLD_W*0.5 + Math.cos(phase) * 900, 130 + sun * 520, WORLD_H*0.35 + Math.sin(phase) * 260);
-    sunLight.target.position.set(WORLD_W/2,0,WORLD_H/2);
+    const shadowFrame = sunShadowFrame({ x:player.x, z:player.y }, sun, SHADOW_HALF_SIZE * 2 / sunLight.shadow.mapSize.x);
+    sunLight.position.set(shadowFrame.position.x, shadowFrame.position.y, shadowFrame.position.z);
+    sunLight.target.position.set(shadowFrame.target.x, shadowFrame.target.y, shadowFrame.target.z);
     sunLight.target.updateMatrixWorld();
     moonLight.intensity = Math.max(0, night - 0.18) * 0.5;
     moonLight.position.set(WORLD_W*0.5 - Math.cos(phase) * 700, 430, WORLD_H*0.55 - Math.sin(phase) * 220);
@@ -5910,10 +5894,13 @@ import type * as ThreeNamespace from 'three';
     scene.add(ambientLight);
     sunLight = new THREE.DirectionalLight(0xfff2d0, 0.9);
     sunLight.castShadow = !lowQualitySaved();
-    sunLight.shadow.mapSize.set(1024,1024);
-    sunLight.shadow.camera.left=-500; sunLight.shadow.camera.right=500;
-    sunLight.shadow.camera.top=500; sunLight.shadow.camera.bottom=-500;
-    sunLight.shadow.camera.near=10; sunLight.shadow.camera.far=1200;
+    sunLight.shadow.mapSize.set(2048,2048);
+    sunLight.shadow.camera.left=-SHADOW_HALF_SIZE; sunLight.shadow.camera.right=SHADOW_HALF_SIZE;
+    sunLight.shadow.camera.top=SHADOW_HALF_SIZE; sunLight.shadow.camera.bottom=-SHADOW_HALF_SIZE;
+    sunLight.shadow.camera.near=100; sunLight.shadow.camera.far=1800;
+    // LEGAL: Without a bias every lit surface shadows itself in stripes ("shadow acne").
+    sunLight.shadow.bias = -0.0004;
+    sunLight.shadow.normalBias = 1.2;
     scene.add(sunLight); scene.add(sunLight.target);
     // LEGAL: The moon casts no shadow. A second shadow light re-renders every caster (~1,400
     // LEGAL: meshes) each frame, even by day at zero intensity, for shadows too faint to see.
@@ -5935,6 +5922,7 @@ import type * as ThreeNamespace from 'three';
     if((import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV){
       (window as unknown as { __seat?: unknown }).__seat = {
         THREE, scene, worldGroup, player, state, mapObjects, mapPlaces, renderer,
+        characters: characterLibrary,
         startMission: startMissionFromOffer,
         resolveMission: resolveMissionAtObjective,
         declineMission: declineMissionOffer,
@@ -6420,6 +6408,12 @@ import type * as ThreeNamespace from 'three';
     ictx.fillStyle='#d4a017'; ictx.fill(); ictx.restore();
   }
 
+  function aimCamera(dt: number): void {
+    const view = cameraRig.update({ x:player.x, y:player.y, vx:player.vx, vy:player.vy, inVehicle:state.inVehicle, dt });
+    camera3d.position.set(view.eye.x, view.eye.y, view.eye.z);
+    camera3d.lookAt(view.target.x, view.target.y, view.target.z);
+  }
+
   // LEGAL: ================= MAIN LOOP =================
   function mapHub(){
     if(!mapActive){ mapHubRunning = false; return; }
@@ -6509,12 +6503,12 @@ import type * as ThreeNamespace from 'three';
       updateWeather(dt);
       updateWaterMotion();
       updateRoamingActors(roamingActors, { dt, playSeconds:state.playSeconds, indoors:!!state.currentInterior, canMove:function(x,y){ return tryMove(x,y,currentSolids); }, rescue:rescuePoint });
+      characterLibrary?.animator.tick(dt, state.playSeconds, { x:player.x, z:player.y });
       updateDealerArrivals(dt);
       updateTrain();
       playerGroup.position.set(player.x, 0, player.y);
       playerGroup.rotation.y = -player.facing + Math.PI/2;
-      camera3d.position.set(player.x, 260, player.y+72);
-      camera3d.lookAt(player.x, 0, player.y);
+      aimCamera(dt);
       renderer.render(scene, camera3d);
       if(document.visibilityState === 'visible' && qualityGovernor.recordFrame(frameMs)) useLowQuality();
     }
@@ -6657,7 +6651,7 @@ import type * as ThreeNamespace from 'three';
       territoryTier: state.territoryTier, negotiateTier: state.negotiateTier,
       muscleCount: state.muscleCount, guns: state.guns, ratCount: state.ratCount, bribeOn: state.bribeOn,
       prestigeCount: state.prestigeCount, seenMilestones: Array.from(state.seenMilestones),
-      playSeconds: state.playSeconds, investorPenalty: state.investorPenalty,
+      playSeconds: state.playSeconds, investorPenalty: state.investorPenalty, appearance: state.appearance,
       started: state.started, procNpc: state.procNpc, lastTick: state.lastTick,
       quiet: document.body.classList.contains('quiet'),
       light: document.body.classList.contains('theme-light'),
@@ -6726,6 +6720,7 @@ import type * as ThreeNamespace from 'three';
         state.muscleCount=d.muscleCount; state.guns=Math.max(0, Number(d.guns)||0); state.ratCount=d.ratCount; state.bribeOn=d.bribeOn;
         state.prestigeCount=Math.max(0, Math.min(familyTiers.length, Number(d.prestigeCount)||0)); state.seenMilestones = new Set((d.seenMilestones||[]).map((x: any)=>String(x)));
         state.playSeconds=d.playSeconds||0; state.investorPenalty=Math.min(0.5, d.investorPenalty||0);
+        state.appearance = normalizeLook(d.appearance);
         state.started = d.started; if(d.procNpc) state.procNpc = d.procNpc;
         if(d.lastTick) state.lastTick = d.lastTick;
         (d.businesses||[]).forEach((sb: any)=>{ const b=businesses.find(x=>x.id===sb.id); if(b){ b.level=sb.level; b.crew=sb.crew; b.manager=sb.manager; b.researched=sb.researched; b.reinvestedIncome=Math.max(0, Number(sb.reinvestedIncome)||0); } });

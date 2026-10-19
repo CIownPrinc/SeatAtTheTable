@@ -175,6 +175,49 @@ every test. Locally, `.tmp-assets/` (ignored Kenney zips) can be deleted by hand
 - **Title screen:** the start screen became a night skyline with a neon sign.
 - Suite: 286 unit tests and 143 e2e tests, green.
 
+## 10. Map overhaul — from the 2026-10-18 play-through (ACTIVE)
+
+The player's own notes from playing, grouped and ordered: fix what's broken, then feel, then
+new places. V1 stays feature-frozen everywhere else; this list is the exception the player asked for.
+
+**Done so far:** an angled camera that follows smoothly and leads where you're heading
+(`map/cameraRig.ts`), sun shadows that follow the player with no stripes, building textures
+(Kenney `colormap.png` was never shipped), a new animated figure in the game's own style with
+a wardrobe in the save (`map/personModel.ts`, `map/characters.ts`), and cheat codes
+`moneymoneymoney` / `cash4ever` (+$1M).
+
+**A. Broken: fix first**
+1. Lines strobe (z-fighting between road, sidewalk, lane paint and canal lines).
+2. Bridge ends: canal banks run through the decks.
+3. Beach and canal lines show in the ocean; canal water runs past the coast.
+4. Waves look broken.
+5. The GPS breaks in the countryside: there's no road graph out there.
+6. Cars and trains aren't solid.
+7. A car breakdown gives no warning: add smoke, plus a "broken down" prompt on interact.
+8. Streetlights face the wrong way and stay on in daytime.
+
+**B. Feel**
+9. Getting hit by a car knocks you flat, and you get back up.
+10. A wardrobe UI to dress Arjun (the slots already exist).
+11. Remove floating 3D icons over places; keep only meaningful ones and put the rest on the
+    minimap.
+12. A simpler, GTA-style minimap.
+13. Smoother coastlines and curves; less polygonal.
+14. Countryside dirt trails, which the GPS can also route on.
+15. Building models that match what they are.
+
+**C. Interiors**
+16. Interiors you walk around in like outside, in 3D: a front desk looks like a front desk, and
+    every hotspot is a real thing (a person, a bulletin board) instead of an icon that opens a
+    text box.
+
+**D. New places**
+17. A mall with a parking garage. Inside feels like outdoors: food court, ice cream, perfume
+    stall owners calling out to you, an indoor playground.
+18. A central park.
+19. A suburbs area.
+20. Snow that settles on the ground, and a plow that clears the roads.
+
 ---
 
 # Moved to SeatAtTheTable 2

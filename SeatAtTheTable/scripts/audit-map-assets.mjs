@@ -10,7 +10,6 @@ const manifestSource = readFileSync(manifestPath, 'utf8');
 const baseUrls = {
   BUILDING_ASSET_BASE: '/assets/map/kenney-modular-buildings/',
   CAR_ASSET_BASE: '/assets/map/kenney-car-kit/',
-  CHARACTER_ASSET_BASE: '/assets/map/kenney-blocky-characters/',
 };
 
 function publicAssetFiles(dir) {

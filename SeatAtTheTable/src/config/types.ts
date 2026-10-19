@@ -1,3 +1,4 @@
+import type { PersonLook } from '../map/personModel';
 import type { BlockCharacter } from '../map/neighbourhoods';
 
 export type VentureCategory = 'legit' | 'street';
@@ -390,6 +391,8 @@ export interface GameState {
   nextEventAt: number;
   playSeconds: number;
   investorPenalty: number;
+  // LEGAL: What Arjun wears on the map (see map/personModel WARDROBE). Kept through prestige.
+  appearance: PersonLook;
   procNpc: ProceduralNPC;
   // LEGAL: Per-bank balances (see config/banks). Replaces the old single `bank` number;
   // LEGAL: saved games migrate the old balance into the default bank on load.

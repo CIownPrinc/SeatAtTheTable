@@ -41,7 +41,12 @@ describe('downloaded map asset manifest', function () {
     expect(undocumentedReservedAssets).toEqual([]);
   });
 
-  it('documents the known missing texture fallback', function () {
-    expect(DOWNLOADED_MAP_ASSETS.some(asset => asset.status === 'fallback' && asset.path === 'Textures/colormap.png')).toBe(true);
+  // LEGAL: Every Kenney GLB samples Textures/colormap.png next to itself. Without it the
+  // LEGAL: models rendered as flat tinted boxes, which is why the city looked untextured.
+  it('ships the colormap texture each Kenney model pack samples', function () {
+    const assetRoot = join(gameRoot(), 'public', 'assets', 'map');
+    ['kenney-modular-buildings', 'kenney-car-kit'].forEach(function(pack){
+      expect(existsSync(join(assetRoot, pack, 'Textures', 'colormap.png')), pack).toBe(true);
+    });
   });
 });
