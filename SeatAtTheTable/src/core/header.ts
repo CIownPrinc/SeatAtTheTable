@@ -4788,7 +4788,7 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: Only the court and the chess tables are skill games; shops wire their own
     // LEGAL: buy modals and never call playGame. Narrows amenity.kind to a MinigameKind.
     if(amenity.kind !== 'basketball' && amenity.kind !== 'parkgame') return;
-    void playMinigame(amenity.kind, amenity.name).then(function(res: MinigameResult){
+    void playMinigame(THREE, amenity.kind, amenity.name).then(function(res: MinigameResult){
       if(res.reward.cash) state.cash += res.reward.cash;
       if(res.reward.respect) state.respect += res.reward.respect;
       if(res.message) log(res.message);

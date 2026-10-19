@@ -9,6 +9,9 @@
 // LEGAL: chess board). Shops (pet store, newsstand) are plain buy/sell modals built in
 // LEGAL: map/amenities.ts — a memory match or a haggle bar would be a game bolted onto
 // LEGAL: something that isn't one.
+import type * as ThreeNamespace from 'three';
+import { createChessScene, createCourtScene, type ShotResult } from './minigameScenes';
+
 export type MinigameKind = 'basketball' | 'parkgame';
 
 export interface MinigameReward { cash: number; respect: number; }
@@ -65,7 +68,7 @@ function injectStyles(): void {
   styleInjected = true;
   const css = `
   .mg-overlay{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(6,7,10,0.72);backdrop-filter:blur(2px);font-family:var(--font-mono,'IBM Plex Mono',monospace);}
-  .mg-panel{width:min(440px,92vw);background:#171922;border:1px solid var(--gold,#d4a017);border-radius:10px;padding:18px 18px 16px;box-shadow:0 24px 60px rgba(0,0,0,0.55);}
+  .mg-panel{width:min(640px,94vw);background:#171922;border:1px solid var(--gold,#d4a017);border-radius:10px;padding:18px 18px 16px;box-shadow:0 24px 60px rgba(0,0,0,0.55);}
   .mg-eyebrow{font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--gold,#d4a017);opacity:0.85;}
   .mg-title{font-family:var(--font-display,inherit);font-size:19px;font-weight:600;color:#f0efe8;margin:2px 0 2px;}
   .mg-prompt{font-size:12px;color:#aab0c0;line-height:1.5;min-height:32px;}
@@ -77,8 +80,10 @@ function injectStyles(): void {
   .mg-btn:hover{background:rgba(212,160,23,0.24);}
   .mg-btn.secondary{border-color:rgba(255,255,255,0.18);background:transparent;color:#aab0c0;}
   .mg-hint{font-size:11px;color:#8a90a0;text-align:center;margin-top:2px;}
-  .mg-board{display:grid;grid-template-columns:repeat(8,1fr);width:200px;margin:0 auto 8px;border:2px solid #3a3f4a;border-radius:4px;overflow:hidden;}
-  .mg-sq{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:15px;line-height:1;}
+  .mg-view{position:relative;}
+  .mg-3d{width:100%;display:block;border-radius:6px;aspect-ratio:600/340;}
+  .mg-flash{position:absolute;left:0;right:0;top:38%;text-align:center;font:700 30px var(--font-display,sans-serif);letter-spacing:0.08em;text-shadow:0 2px 10px rgba(0,0,0,0.6);pointer-events:none;}
+  .mg-meter{margin-top:8px;height:34px;}
   `;
   const el = document.createElement('style');
   el.textContent = css;
@@ -91,6 +96,8 @@ interface Shell {
   setProgress: (left: string, right: string) => void;
   stage: HTMLElement;
   foot: HTMLElement;
+  // LEGAL: Runs when the game closes, to free its 3D view.
+  onClose: (fn: () => void) => void;
   close: () => void;
 }
 
@@ -108,6 +115,7 @@ function buildShell(eyebrow: string, title: string): Shell {
   </div>`;
   document.body.appendChild(overlay);
   activeOverlay = overlay;
+  const cleanups: Array<() => void> = [];
   return {
     overlay,
     setPrompt: (html) => { overlay.querySelector<HTMLElement>('.mg-prompt')!.innerHTML = html; },
@@ -117,70 +125,93 @@ function buildShell(eyebrow: string, title: string): Shell {
     },
     stage: overlay.querySelector<HTMLElement>('.mg-stage')!,
     foot: overlay.querySelector<HTMLElement>('.mg-foot')!,
-    close: () => { overlay.remove(); if(activeOverlay === overlay) activeOverlay = null; },
+    onClose: (fn) => { cleanups.push(fn); },
+    close: () => { cleanups.forEach(fn => fn()); overlay.remove(); if(activeOverlay === overlay) activeOverlay = null; },
   };
 }
 
 // LEGAL: ---------- games ----------
 
-function playBasketball(shell: Shell, done: (r: MinigameResult) => void): void {
+function view3d(shell: Shell): { canvas: HTMLCanvasElement; flash: HTMLElement } {
+  const wrap = document.createElement('div');
+  wrap.className = 'mg-view';
+  const canvas = document.createElement('canvas');
+  canvas.className = 'mg-3d'; canvas.width = 600; canvas.height = 340;
+  const flash = document.createElement('div');
+  flash.className = 'mg-flash';
+  wrap.append(canvas, flash);
+  shell.stage.appendChild(wrap);
+  return { canvas, flash };
+}
+
+// LEGAL: At the free-throw line of a real court. The timing bar sets the shot; the ball then flies
+// LEGAL: on its arc: through the net, off the rim, short, or off the backboard.
+function playBasketball(THREE: typeof ThreeNamespace, shell: Shell, done: (r: MinigameResult) => void): void {
   const SHOTS = 5;
-  let shot = 0, makes = 0, running = true, raf = 0;
+  let shot = 0, makes = 0, running = true, raf = 0, inFlight = false;
   let pos = 0, dir = 1, speed = 0.9;
   const half = 0.075, center = 0.5;
+  const { canvas: view, flash } = view3d(shell);
+  const court = createCourtScene(THREE, view);
+  shell.onClose(() => court.dispose());
   const canvas = document.createElement('canvas');
-  canvas.className = 'mg-canvas'; canvas.width = 400; canvas.height = 120;
+  canvas.className = 'mg-canvas mg-meter'; canvas.width = 600; canvas.height = 34;
   shell.stage.appendChild(canvas);
   const ctx = canvas.getContext('2d')!;
-  let flash = '';
-  let flashUntil = 0;
   shell.setPrompt('Tap <strong>Shoot</strong> (or press <strong>Space</strong>) when the marker hits the gold zone. Best of 5.');
 
-  function frame(t: number){
+  function frame(){
     if(!running) return;
-    pos += dir * speed * 0.016;
-    if(pos > 1){ pos = 1; dir = -1; } else if(pos < 0){ pos = 0; dir = 1; }
+    if(!inFlight){
+      pos += dir * speed * 0.016;
+      if(pos > 1){ pos = 1; dir = -1; } else if(pos < 0){ pos = 0; dir = 1; }
+    }
     const w = canvas.width, h = canvas.height;
-    ctx.clearRect(0,0,w,h);
     ctx.fillStyle = '#0e1016'; ctx.fillRect(0,0,w,h);
-    const barY = 66, barH = 20, pad = 20, barW = w - pad*2;
+    const barY = 8, barH = 18, pad = 12, barW = w - pad*2;
     ctx.fillStyle = '#22252e'; ctx.fillRect(pad, barY, barW, barH);
     ctx.fillStyle = 'rgba(212,160,23,0.30)'; ctx.fillRect(pad + (center-half)*barW, barY, half*2*barW, barH);
     ctx.fillStyle = 'rgba(212,160,23,0.55)'; ctx.fillRect(pad + (center-half*2.1)*barW, barY, 2, barH);
     ctx.fillStyle = 'rgba(212,160,23,0.55)'; ctx.fillRect(pad + (center+half*2.1)*barW, barY, 2, barH);
-    ctx.fillStyle = '#f0efe8'; ctx.fillRect(pad + pos*barW - 2, barY-6, 4, barH+12);
-    // LEGAL: hoop
-    ctx.strokeStyle = '#d4693a'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(w/2, 26, 14, 0, Math.PI*2); ctx.stroke();
-    if(flash && t < flashUntil){
-      ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillStyle = flash === 'SWISH' ? '#4a9a5a' : (flash === 'RIM' ? '#d4a017' : '#c0392b');
-      ctx.fillText(flash, w/2, 52);
-    }
+    ctx.fillStyle = '#f0efe8'; ctx.fillRect(pad + pos*barW - 2, barY-5, 4, barH+10);
     raf = requestAnimationFrame(frame);
   }
   raf = requestAnimationFrame(frame);
 
+  function showFlash(text: string, color: string){
+    flash.textContent = text; flash.style.color = color;
+    window.setTimeout(() => { if(flash.textContent === text) flash.textContent = ''; }, 700);
+  }
+
   function shoot(){
-    if(!running) return;
+    if(!running || inFlight) return;
     const res = shotOutcome(pos, center, half);
-    if(res === 'swish'){ makes++; flash = 'SWISH'; }
-    else if(res === 'rim'){ if(Math.random() < 0.5) makes++; flash = 'RIM'; }
-    else flash = 'MISS';
-    flashUntil = performance.now() + 500;
+    let flight: ShotResult;
+    if(res === 'swish') flight = 'swish';
+    else if(res === 'rim') flight = Math.random() < 0.5 ? 'in-off-rim' : 'rim-out';
+    else flight = pos < center ? 'short' : 'long';
+    const made = flight === 'swish' || flight === 'in-off-rim';
+    inFlight = true;
     shot++;
-    speed += 0.28; // LEGAL: each shot gets faster
-    shell.setProgress(`Shot ${Math.min(shot+1, SHOTS)} of ${SHOTS}`, `Made ${makes}`);
-    if(shot >= SHOTS){
-      running = false;
-      cancelAnimationFrame(raf);
-      const perfect = makes === SHOTS;
-      done({ kind:'basketball', success: makes >= 3, score: makes, max: SHOTS,
-        reward: basketballReward(makes),
-        message: perfect ? `You drain all five at the court. The block is talking.`
-          : (makes >= 3 ? `You hold your own on the court — ${makes} of ${SHOTS}.`
-          : `Cold day at the court — ${makes} of ${SHOTS}. Still, you showed face.`) });
-    }
+    court.shoot(flight, function(){
+      inFlight = false;
+      if(made) makes++;
+      showFlash(flight === 'swish' ? 'SWISH' : made ? 'IN OFF THE RIM' : flight === 'rim-out' ? 'RIMMED OUT' : 'MISS', made ? '#5ad18a' : (flight === 'rim-out' ? '#d4a017' : '#e85a5a'));
+      speed += 0.28; // LEGAL: each shot gets faster
+      shell.setProgress(`Shot ${Math.min(shot+1, SHOTS)} of ${SHOTS}`, `Made ${makes}`);
+      if(shot >= SHOTS && running){
+        running = false;
+        cancelAnimationFrame(raf);
+        const perfect = makes === SHOTS;
+        window.setTimeout(function(){
+          done({ kind:'basketball', success: makes >= 3, score: makes, max: SHOTS,
+            reward: basketballReward(makes),
+            message: perfect ? `You drain all five at the court. The block is talking.`
+              : (makes >= 3 ? `You hold your own on the court — ${makes} of ${SHOTS}.`
+              : `Cold day at the court — ${makes} of ${SHOTS}. Still, you showed face.`) });
+        }, 600);
+      }
+    });
   }
   shell.setProgress(`Shot 1 of ${SHOTS}`, `Made 0`);
   addButton(shell.foot, 'Shoot', shoot);
@@ -189,27 +220,17 @@ function playBasketball(shell: Shell, done: (r: MinigameResult) => void): void {
   onKey(shell.overlay, ' ', shoot);
 }
 
-function playChess(shell: Shell, done: (r: MinigameResult) => void): void {
+// LEGAL: A stone table in the park with a real board on it; you sit on the white side.
+function playChess(THREE: typeof ThreeNamespace, shell: Shell, done: (r: MinigameResult) => void): void {
   const puzzles = shuffle(CHESS_PUZZLES.slice()).slice(0, 3);
   let idx = 0, solved = 0;
-  const board = document.createElement('div'); board.className = 'mg-board';
-  shell.stage.appendChild(board);
-  const pieces: Record<string, string> = { r:'♜', n:'♞', b:'♝', q:'♛', k:'♚', p:'♟', R:'♖', N:'♘', B:'♗', Q:'♕', K:'♔', P:'♙' };
+  const { canvas } = view3d(shell);
+  const board = createChessScene(THREE, canvas);
+  shell.onClose(() => board.dispose());
 
   function render(){
     const p = puzzles[idx];
-    board.innerHTML = '';
-    const rows = p.fen.split('/');
-    rows.forEach((row, r) => {
-      for(let c = 0; c < 8; c++){
-        const ch = row[c] ?? '.';
-        const sq = document.createElement('div'); sq.className = 'mg-sq';
-        sq.style.background = (r + c) % 2 === 0 ? '#4a4a52' : '#2f2f37';
-        sq.textContent = pieces[ch] ?? '';
-        sq.style.color = ch === ch.toLowerCase() ? '#181a20' : '#f4f2ea';
-        board.appendChild(sq);
-      }
-    });
+    board.setPosition(p.fen);
     shell.setPrompt(p.prompt);
     shell.setProgress(`Puzzle ${idx+1} of ${puzzles.length}`, `Solved ${solved}`);
     shell.foot.innerHTML = '';
@@ -255,7 +276,7 @@ function shuffle<T>(arr: T[]): T[] {
   return arr;
 }
 
-const RUNNERS: Record<MinigameKind, (shell: Shell, done: (r: MinigameResult) => void) => void> = {
+const RUNNERS: Record<MinigameKind, (THREE: typeof ThreeNamespace, shell: Shell, done: (r: MinigameResult) => void) => void> = {
   basketball: playBasketball,
   parkgame: playChess,
 };
@@ -269,7 +290,7 @@ export function minigameOpen(): boolean { return activeOverlay !== null; }
 
 // LEGAL: Opens the minigame for `kind` and resolves once it ends. Reward is a suggestion;
 // LEGAL: the caller decides whether/how to apply it.
-export function playMinigame(kind: MinigameKind, title: string): Promise<MinigameResult> {
+export function playMinigame(THREE: typeof ThreeNamespace, kind: MinigameKind, title: string): Promise<MinigameResult> {
   return new Promise((resolve) => {
     if(activeOverlay){ resolve({ kind, success:false, score:0, max:0, reward:{cash:0,respect:0}, message:'' }); return; }
     const shell = buildShell(EYEBROWS[kind], title);
@@ -279,6 +300,6 @@ export function playMinigame(kind: MinigameKind, title: string): Promise<Minigam
       shell.close();
       resolve(r);
     };
-    RUNNERS[kind](shell, finish);
+    RUNNERS[kind](THREE, shell, finish);
   });
 }

@@ -286,7 +286,11 @@ old one.
     The mall now has the accessory shops: Crown & Brim (hats), Spectacle (eyewear), Gold Standard
     (chains, watches, earrings), Sole Society (shoes) and The Fade Room (haircuts). Each shop is a
     fitting room with prices; what you buy stays in your wardrobe at home (`config/mallShops.ts`).
-46. Minigames look primitive: make them 3D, or even first person.
+46. **DONE** Minigames look primitive: make them 3D, or even first person. The court is now first
+    person from the free-throw line: the timing bar sets the shot and the ball flies on its arc,
+    through the net, in off the rim, rimmed out, short or off the backboard. Park chess is a 3D
+    board on a stone table, with lathe-turned pieces (`map/minigameScenes.ts`). The street race
+    (47) is the third.
 47. **DONE** Street racing like GTA. At the Kestrel Woods trailhead you line up on a grid against
     three rival cars (muscle, supercar, roadster) for a 3-2-1-GO start, then race ten checkpoint
     rings west along the north-shore road with the GPS on the next gate. The HUD shows your place,
