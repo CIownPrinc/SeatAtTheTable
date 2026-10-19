@@ -279,9 +279,11 @@ old one.
 
 44. **DONE** Clearing a GPS waypoint wasn't obvious. A labelled "Clear GPS" button sits under the
     minimap whenever one is set, and clicking the waypoint again on the City Map clears it.
-45. Wardrobe: Arjun's skin must stay brown (he's Indian; it's part of the story), so no skin
-    option. "Top colour" is unclear. Hair and shoes need more options; hair, the chain and the
-    glasses look primitive. Accessory shops in the mall to buy more.
+45. **PART** Wardrobe: Arjun's skin is fixed brown (he's Indian; it's part of the story) and the
+    skin option is gone. The top colour is named after what you wear (coat, jacket, hoodie, suit).
+    Nine hairstyles with sideburns and fringes, six hats, shoes/sneakers/boots, more hair and shoe
+    colours, real glasses and sunglasses, a heavier chain with a pendant, a watch and an earring.
+    Still open: accessory shops in the mall.
 46. Minigames look primitive: make them 3D, or even first person.
 47. Street racing like GTA: get a car, race real opponents round a course.
 

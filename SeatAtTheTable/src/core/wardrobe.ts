@@ -1,5 +1,5 @@
 import type * as ThreeNamespace from 'three';
-import { CLOTH_COLORS, HAIR_COLORS, SKIN_TONES, WARDROBE, buildPerson, createPersonParts, type PersonLook } from '../map/personModel';
+import { CLOTH_COLORS, HAIR_COLORS, SHOE_COLORS, WARDROBE, buildPerson, createPersonParts, type PersonLook } from '../map/personModel';
 
 // LEGAL: The wardrobe in Arjun's flat above the garage. Step through each slot, pick colours, and
 // LEGAL: see the result on a turning preview before you save. The preview has its own small
@@ -12,14 +12,15 @@ export function cycleOption<S extends Slot>(slot: S, current: string, direction:
   return options[(index + direction + options.length) % options.length] as typeof WARDROBE[S][number];
 }
 
-const SLOT_LABELS: Record<Slot, string> = { top:'Top', hair:'Hair', hat:'Hat', extra:'Extra' };
-const COLOUR_ROWS: Array<{ key: 'skin' | 'hairColor' | 'topColor' | 'shirtColor' | 'pantsColor' | 'shoeColor'; label: string; palette: readonly string[] }> = [
-  { key:'skin', label:'Skin', palette:SKIN_TONES },
+const SLOT_LABELS: Record<Slot, string> = { top:'Top', hair:'Hair', hat:'Hat', extra:'Extra', shoes:'Shoes' };
+// LEGAL: The top colour is named after what you're wearing, so it's clear what it changes.
+const TOP_NAMES: Record<PersonLook['top'], string> = { longcoat:'Coat colour', jacket:'Jacket colour', hoodie:'Hoodie colour', suit:'Suit colour' };
+const COLOUR_ROWS: Array<{ key: 'hairColor' | 'topColor' | 'shirtColor' | 'pantsColor' | 'shoeColor'; label: string; palette: readonly string[] }> = [
   { key:'hairColor', label:'Hair colour', palette:HAIR_COLORS },
   { key:'topColor', label:'Top colour', palette:CLOTH_COLORS },
-  { key:'shirtColor', label:'Shirt', palette:CLOTH_COLORS },
+  { key:'shirtColor', label:'Shirt colour', palette:CLOTH_COLORS },
   { key:'pantsColor', label:'Trousers', palette:CLOTH_COLORS },
-  { key:'shoeColor', label:'Shoes', palette:['#111217', '#2a1d14', '#3a3f4b', '#f0efe8', '#5a3f2f'] },
+  { key:'shoeColor', label:'Shoe colour', palette:SHOE_COLORS },
 ];
 
 function words(value: string): string {
@@ -51,7 +52,7 @@ export function openWardrobe(THREE: typeof ThreeNamespace, start: PersonLook, on
         <span class="wardrobe-value" data-value="${slot}">${words(look[slot])}</span>
         <button type="button" data-slot="${slot}" data-dir="1" aria-label="Next ${SLOT_LABELS[slot]}">▶</button>
       </div>`).join('')
-      + COLOUR_ROWS.map(row => `<div class="wardrobe-row wardrobe-swatches"><span class="wardrobe-label">${row.label}</span>${row.palette.map(color =>
+      + COLOUR_ROWS.map(row => `<div class="wardrobe-row wardrobe-swatches"><span class="wardrobe-label">${row.key === 'topColor' ? TOP_NAMES[look.top] : row.label}</span>${row.palette.map(color =>
         `<button type="button" class="wardrobe-swatch${look[row.key] === color ? ' active' : ''}" data-colour="${row.key}" data-hex="${color}" style="background:${color}" aria-label="${row.label} ${color}"></button>`).join('')}</div>`).join('');
   }
   renderControls();

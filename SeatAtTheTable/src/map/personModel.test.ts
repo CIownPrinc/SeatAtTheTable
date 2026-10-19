@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { animatePerson, bakePerson, buildPerson, createPersonParts, DEFAULT_PLAYER_LOOK, lookForStranger, normalizeLook, WARDROBE } from './personModel';
+import { ARJUN_SKIN, animatePerson, bakePerson, buildPerson, createPersonParts, DEFAULT_PLAYER_LOOK, lookForStranger, normalizeLook, WARDROBE } from './personModel';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 function heightOf(object: THREE.Object3D): { min: number; max: number } {
@@ -129,5 +129,38 @@ describe('bakePerson', function () {
     let phase = 0;
     for(let i = 0; i < 12; i++) phase = animatePerson(baked.rig, phase, 30, 1 / 60, 0);
     expect(Math.abs(baked.rig.legLeft.rotation.x)).toBeGreaterThan(0.05);
+  });
+});
+
+describe('Arjun', function () {
+  it('always has his brown skin: it is part of who he is, so the wardrobe cannot change it', function () {
+    expect(normalizeLook({ ...DEFAULT_PLAYER_LOOK, skin: '#f1d0b0' } as unknown as Record<string, unknown>).skin).toBe(ARJUN_SKIN);
+  });
+});
+
+describe('wardrobe range', function () {
+  const parts = createPersonParts(THREE);
+
+  it('offers a real range of hair, hats, shoes and accessories', function () {
+    expect(WARDROBE.hair.length).toBeGreaterThanOrEqual(9);
+    expect(WARDROBE.hat.length).toBeGreaterThanOrEqual(6);
+    expect(WARDROBE.extra.length).toBeGreaterThanOrEqual(6);
+    expect(WARDROBE.shoes.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('builds every option without breaking the figure', function () {
+    (Object.keys(WARDROBE) as Array<keyof typeof WARDROBE>).forEach(function(slot){
+      (WARDROBE[slot] as readonly string[]).forEach(function(option){
+        const { root } = buildPerson(THREE, parts, { ...DEFAULT_PLAYER_LOOK, [slot]: option });
+        const box = new THREE.Box3().setFromObject(root);
+        expect(box.max.y, `${slot}=${option}`).toBeLessThan(48);
+        expect(box.min.y, `${slot}=${option}`).toBeGreaterThan(-1);
+      });
+    });
+  });
+
+  it('puts a watch on the wrist, where it swings with the arm', function () {
+    const person = buildPerson(THREE, parts, { ...DEFAULT_PLAYER_LOOK, extra: 'watch' });
+    expect(person.rig.armLeft.getObjectByName('extra:watch')).toBeDefined();
   });
 });

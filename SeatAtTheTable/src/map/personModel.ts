@@ -6,9 +6,10 @@ import type * as ThreeNamespace from 'three';
 // LEGAL: a swappable wardrobe slot so the player can dress Arjun, and strangers vary the same way.
 export const WARDROBE = {
   top: ['longcoat', 'jacket', 'hoodie', 'suit'],
-  hair: ['short', 'slick', 'buzz', 'long', 'bald'],
-  hat: ['none', 'flatcap', 'fedora', 'beanie'],
-  extra: ['none', 'glasses', 'chain'],
+  hair: ['short', 'slick', 'buzz', 'long', 'curly', 'quiff', 'sidepart', 'ponytail', 'bald'],
+  hat: ['none', 'flatcap', 'fedora', 'beanie', 'cap', 'bucket'],
+  extra: ['none', 'glasses', 'sunglasses', 'chain', 'watch', 'earring'],
+  shoes: ['shoes', 'sneakers', 'boots'],
 } as const;
 
 export interface PersonLook {
@@ -16,6 +17,7 @@ export interface PersonLook {
   hair: typeof WARDROBE.hair[number];
   hat: typeof WARDROBE.hat[number];
   extra: typeof WARDROBE.extra[number];
+  shoes: typeof WARDROBE.shoes[number];
   skin: string;
   hairColor: string;
   topColor: string;
@@ -25,12 +27,17 @@ export interface PersonLook {
 }
 
 export const SKIN_TONES = ['#f1d0b0', '#e0b48f', '#c99168', '#a8714c', '#7f5236', '#5c3a26'];
-export const HAIR_COLORS = ['#141210', '#3a2618', '#6b4426', '#a8763e', '#c9c2b4'];
+export const HAIR_COLORS = ['#141210', '#2a1c14', '#3a2618', '#5a3420', '#6b4426', '#7a2f1f', '#a8763e', '#d8c08a', '#c9c2b4', '#e8e4dc'];
+export const SHOE_COLORS = ['#111217', '#2a1d14', '#5a3f2f', '#3a3f4b', '#7a2630', '#2f4a6a', '#f0efe8', '#d4a017'];
+
+// LEGAL: Arjun is Indian, and his brown skin is part of his story, so it is fixed: the wardrobe has
+// LEGAL: no skin option, and any saved look gets it back.
+export const ARJUN_SKIN = '#a8714c';
 export const CLOTH_COLORS = ['#1d2028', '#2b2f3a', '#3a3f4b', '#f0efe8', '#7a2630', '#3f5a3a', '#2f4a6a', '#5a3f2f', '#d4a017', '#6b6f78'];
 
 export const DEFAULT_PLAYER_LOOK: PersonLook = {
-  top:'longcoat', hair:'slick', hat:'none', extra:'none',
-  skin:'#a8714c', hairColor:'#141210',
+  top:'longcoat', hair:'slick', hat:'none', extra:'none', shoes:'shoes',
+  skin:ARJUN_SKIN, hairColor:'#141210',
   topColor:'#2b2f3a', shirtColor:'#7a2630', pantsColor:'#1d2028', shoeColor:'#111217',
 };
 
@@ -45,7 +52,7 @@ export function normalizeLook(raw: Record<string, unknown> | null | undefined): 
     const value = raw[slot];
     if(typeof value === 'string' && (WARDROBE[slot] as readonly string[]).includes(value)) (look as unknown as Record<string, string>)[slot] = value;
   });
-  (['skin', 'hairColor', 'topColor', 'shirtColor', 'pantsColor', 'shoeColor'] as const).forEach(function(slot){
+  (['hairColor', 'topColor', 'shirtColor', 'pantsColor', 'shoeColor'] as const).forEach(function(slot){
     const value = raw[slot];
     if(typeof value === 'string' && HEX.test(value)) look[slot] = value;
   });
@@ -70,14 +77,15 @@ export function lookForStranger(identity: string, coat: string): PersonLook {
     top: pick(WARDROBE.top, seed, 1),
     hair: pick(WARDROBE.hair, seed, 2),
     // LEGAL: Most people go bareheaded; a hat on everyone reads as a costume party.
-    hat: pick(['none', 'none', 'none', 'flatcap', 'fedora', 'beanie'] as const, seed, 3),
-    extra: pick(['none', 'none', 'none', 'none', 'glasses', 'chain'] as const, seed, 4),
+    hat: pick(['none', 'none', 'none', 'none', 'flatcap', 'fedora', 'beanie', 'cap', 'bucket'] as const, seed, 3),
+    extra: pick(['none', 'none', 'none', 'none', 'none', 'glasses', 'sunglasses', 'chain', 'watch', 'earring'] as const, seed, 4),
+    shoes: pick(WARDROBE.shoes, seed, 11),
     skin: pick(SKIN_TONES, seed, 5),
     hairColor: pick(HAIR_COLORS, seed, 6),
     topColor: HEX.test(coat) ? coat : pick(CLOTH_COLORS, seed, 7),
     shirtColor: pick(CLOTH_COLORS, seed, 8),
     pantsColor: pick(['#1d2028', '#202c35', '#2e2b28', '#273126', '#3a3f4b', '#4a4f5a'], seed, 9),
-    shoeColor: pick(['#111217', '#2a1d14', '#3a3f4b'], seed, 10),
+    shoeColor: pick(SHOE_COLORS, seed, 10),
   };
 }
 
@@ -150,7 +158,14 @@ export function buildPerson(THREE: typeof ThreeNamespace, parts: PersonParts, lo
     pivot.position.set(side * 2.8, HIP_Y, 0);
     root.add(pivot);
     mesh('leg', 'leg', () => new THREE.CapsuleGeometry(2.15, 7.4, 4, 8), cloth(look.pantsColor), pivot, 0, -5.4, 0);
-    mesh('shoe', 'shoe', () => new THREE.BoxGeometry(4.6, 2.2, 7.6), cloth(look.shoeColor), pivot, 0, -10.1, 1.5);
+    if(look.shoes === 'boots'){
+      mesh('shoe', 'shoe:boot', () => new THREE.BoxGeometry(4.8, 4.6, 7.4), cloth(look.shoeColor), pivot, 0, -8.9, 1.2);
+    } else if(look.shoes === 'sneakers'){
+      mesh('shoe', 'shoe:sneaker', () => new THREE.BoxGeometry(4.7, 2.2, 7.8), cloth(look.shoeColor), pivot, 0, -9.8, 1.5);
+      mesh('sole', 'shoe:sole', () => new THREE.BoxGeometry(4.9, 0.9, 8.1), parts.material('#f0efe8'), pivot, 0, -11.15, 1.55, false);
+    } else {
+      mesh('shoe', 'shoe', () => new THREE.BoxGeometry(4.6, 2.2, 7.6), parts.material(look.shoeColor, 'shiny'), pivot, 0, -10.1, 1.5);
+    }
     return pivot;
   });
 
@@ -185,6 +200,13 @@ export function buildPerson(THREE: typeof ThreeNamespace, parts: PersonParts, lo
     upper.add(pivot);
     mesh('arm', 'arm', () => new THREE.CapsuleGeometry(1.85, 10, 4, 8), topMat, pivot, 0, -6.2, 0);
     mesh('hand', 'hand', () => new THREE.SphereGeometry(2.05, 10, 8), skin, pivot, 0, -13.1, 0.3);
+    if(look.extra === 'watch' && side < 0){
+      const watch = new THREE.Group();
+      watch.name = 'extra:watch';
+      pivot.add(watch);
+      mesh('watch-band', 'watch:band', () => new THREE.CylinderGeometry(2.0, 2.0, 1.4, 14), parts.material('#2a2620'), watch, 0, -11.1, 0, false);
+      mesh('watch-face', 'watch:face', () => new THREE.CylinderGeometry(1.0, 1.0, 0.5, 14), parts.material('#d8dce2', 'shiny'), watch, 0, -11.1, 1.95, false).rotation.x = Math.PI / 2;
+    }
     return pivot;
   });
 
@@ -211,11 +233,38 @@ export function buildPerson(THREE: typeof ThreeNamespace, parts: PersonParts, lo
     hair.position.y = HEAD_Y;
     upper.add(hair);
     const capTheta = look.hair === 'buzz' ? 0.42 : 0.5;
-    const cap = mesh('hair-cap', `hair:${look.hair}`, () => new THREE.SphereGeometry(HEAD_R + (look.hair === 'buzz' ? 0.2 : 0.55), 18, 10, 0, Math.PI * 2, 0, Math.PI * capTheta), hairMat, hair, 0, 0.35, 0);
+    const capKey = look.hair === 'buzz' ? 'buzz' : 'full';
+    const cap = mesh('hair-cap', `hair:cap-${capKey}`, () => new THREE.SphereGeometry(HEAD_R + (look.hair === 'buzz' ? 0.2 : 0.55), 18, 10, 0, Math.PI * 2, 0, Math.PI * capTheta), hairMat, hair, 0, 0.35, 0);
     cap.rotation.x = -0.32;
     if(look.hair === 'slick') cap.scale.set(1, 0.92, 1.06);
+    // LEGAL: Sideburns, so the hair meets the ears instead of sitting on top like a cap.
+    if(look.hair !== 'buzz'){
+      [-1, 1].forEach(side => mesh('sideburn', 'hair:sideburn', () => new THREE.BoxGeometry(0.9, 2.6, 1.6), hairMat, hair, side * 5.75, -1.4, 0.9, false));
+    }
     if(look.hair === 'long'){
       mesh('hair-back', 'hair:long-back', () => new THREE.BoxGeometry(10.4, 9, 3), hairMat, hair, 0, -3.6, -4.3);
+    } else if(look.hair === 'curly'){
+      // LEGAL: Curls: a cluster of small rounds over the crown.
+      for(let i = 0; i < 10; i++){
+        const a = i / 10 * Math.PI * 2;
+        mesh('curl', 'hair:curl', () => new THREE.SphereGeometry(2.1, 8, 6), hairMat, hair, Math.cos(a) * 4.3, 3.2 + (i % 2) * 0.8, Math.sin(a) * 4.3 - 0.6);
+      }
+      mesh('curl', 'hair:curl', () => new THREE.SphereGeometry(2.1, 8, 6), hairMat, hair, 0, 5.4, -0.4);
+    } else if(look.hair === 'quiff'){
+      const quiff = mesh('quiff', 'hair:quiff', () => new THREE.SphereGeometry(3.2, 12, 8), hairMat, hair, 0, 5.2, 3.0);
+      quiff.scale.set(1.25, 0.75, 1.05);
+    } else if(look.hair === 'sidepart'){
+      const swept = mesh('part', 'hair:part', () => new THREE.SphereGeometry(3.4, 12, 8), hairMat, hair, 2.0, 4.9, 2.2);
+      swept.scale.set(1.3, 0.55, 1.1);
+    } else if(look.hair === 'ponytail'){
+      mesh('tie', 'hair:tie', () => new THREE.SphereGeometry(1.4, 8, 6), hairMat, hair, 0, 0.6, -6.1);
+      const tail = mesh('tail', 'hair:tail', () => new THREE.CapsuleGeometry(1.4, 5.5, 4, 8), hairMat, hair, 0, -3.2, -6.9);
+      tail.rotation.x = 0.25;
+    }
+    // LEGAL: A fringe over the forehead for the shorter cuts.
+    if(look.hair === 'short' || look.hair === 'sidepart'){
+      const fringe = mesh('fringe', 'hair:fringe', () => new THREE.BoxGeometry(7.4, 1.4, 1.6), hairMat, hair, 0, 3.6, 4.7, false);
+      fringe.rotation.x = -0.5;
     }
   }
 
@@ -231,30 +280,47 @@ export function buildPerson(THREE: typeof ThreeNamespace, parts: PersonParts, lo
     } else if(look.hat === 'flatcap'){
       mesh('hat-crown', 'hat:flatcap', () => new THREE.CylinderGeometry(6.2, 6.5, 2.2, 14), cloth(look.topColor), hat, 0, 0.6, 0);
       mesh('hat-brim', 'hat:flatcap-brim', () => new THREE.BoxGeometry(7, 0.6, 3.6), cloth(look.topColor), hat, 0, -0.1, 6.2);
+    } else if(look.hat === 'cap'){
+      mesh('hat-crown', 'hat:cap', () => new THREE.SphereGeometry(6.5, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), cloth(look.shirtColor), hat, 0, -1.6, -0.2);
+      const bill = mesh('hat-brim', 'hat:cap-bill', () => new THREE.CylinderGeometry(4.6, 4.6, 0.5, 16, 1, false, -Math.PI / 2, Math.PI), cloth(look.shirtColor), hat, 0, -1.5, 5.0);
+      bill.rotation.x = 0.12;
+    } else if(look.hat === 'bucket'){
+      mesh('hat-crown', 'hat:bucket', () => new THREE.CylinderGeometry(5.2, 6.4, 4.4, 16), cloth(look.topColor), hat, 0, 0.9, 0);
+      mesh('hat-brim', 'hat:bucket-brim', () => new THREE.CylinderGeometry(8.0, 8.4, 0.6, 18), cloth(look.topColor), hat, 0, -1.2, 0);
     } else {
       mesh('hat-crown', 'hat:beanie', () => new THREE.SphereGeometry(6.55, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), cloth(look.shirtColor), hat, 0, -1.4, -0.2);
       mesh('hat-band', 'hat:beanie-band', () => new THREE.CylinderGeometry(6.65, 6.65, 1.8, 16), cloth(look.shirtColor), hat, 0, -1.2, -0.2);
     }
   }
 
-  if(look.extra === 'glasses'){
+  if(look.extra === 'glasses' || look.extra === 'sunglasses'){
+    const shades = look.extra === 'sunglasses';
     const glasses = new THREE.Group();
-    glasses.name = 'extra:glasses';
+    glasses.name = `extra:${look.extra}`;
     upper.add(glasses);
-    const frame = parts.material('#141414', 'shiny');
+    const frame = parts.material(shades ? '#141414' : '#2a2620', 'shiny');
+    const lens = shades ? parts.material('#0b0d12', 'shiny') : parts.material('#9fc3d6', 'eye');
     [-1, 1].forEach(function(side){
-      mesh('lens', 'glasses:lens', () => new THREE.TorusGeometry(1.55, 0.32, 6, 14), frame, glasses, side * 2.3, HEAD_Y + 0.6, 6.25, false);
+      mesh('frame', 'glasses:frame', () => new THREE.BoxGeometry(3.6, 2.6, 0.5), frame, glasses, side * 2.35, HEAD_Y + 0.6, 6.15, false);
+      mesh('lens', 'glasses:lens', () => new THREE.BoxGeometry(3.0, 2.0, 0.55), lens, glasses, side * 2.35, HEAD_Y + 0.6, 6.25, false);
+      // LEGAL: The arms run back along the side of the head to the ears.
+      mesh('temple', 'glasses:temple', () => new THREE.BoxGeometry(0.35, 0.4, 5.6), frame, glasses, side * 4.95, HEAD_Y + 0.9, 3.5, false);
     });
-    mesh('bridge', 'glasses:bridge', () => new THREE.BoxGeometry(1.4, 0.35, 0.35), frame, glasses, 0, HEAD_Y + 0.8, 6.3, false);
+    mesh('bridge', 'glasses:bridge', () => new THREE.BoxGeometry(1.2, 0.45, 0.45), frame, glasses, 0, HEAD_Y + 0.95, 6.3, false);
   } else if(look.extra === 'chain'){
-    const chain = mesh('extra:chain', 'chain', () => new THREE.TorusGeometry(3.4, 0.45, 6, 18), parts.material('#d4a017', 'shiny'), upper, 0, 25.2, 1.1, false);
+    const gold = parts.material('#d4a017', 'shiny');
+    const chain = mesh('extra:chain', 'chain', () => new THREE.TorusGeometry(3.5, 0.62, 8, 28), gold, upper, 0, 25.2, 1.1, false);
     chain.rotation.x = Math.PI / 2 - 0.35;
+    chain.scale.set(1, 1, 0.8);
+    mesh('pendant', 'chain:pendant', () => new THREE.CylinderGeometry(1.0, 1.0, 0.45, 12), gold, upper, 0, 22.7, 4.6, false).rotation.x = Math.PI / 2;
+  } else if(look.extra === 'earring'){
+    mesh('extra:earring', 'earring', () => new THREE.TorusGeometry(0.7, 0.22, 6, 12), parts.material('#d4a017', 'shiny'), upper, -6.1, HEAD_Y - 1.9, 0, false);
   }
 
   const headPivot = new THREE.Group();
   headPivot.name = 'head-pivot';
   headPivot.position.y = NECK_Y;
-  const headParts = upper.children.filter(child => child.name === 'extra:glasses' || (child.name !== 'extra:chain' && child.position.y > NECK_Y));
+  const headParts = upper.children.filter(child => child.name === 'extra:glasses' || child.name === 'extra:sunglasses' || (child.name !== 'extra:chain' && child.name !== 'pendant' && child.position.y > NECK_Y));
   headParts.forEach(function(child){ upper.remove(child); child.position.y -= NECK_Y; headPivot.add(child); });
   upper.add(headPivot);
 
