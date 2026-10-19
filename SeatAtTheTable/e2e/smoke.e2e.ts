@@ -171,7 +171,7 @@ test.describe('game boot', () => {
   test('loads with the full-screen start page', async ({ page }) => {
     await page.goto('/');
 
-    await expect(page).toHaveTitle('Seat at the Table — V5.0');
+    await expect(page).toHaveTitle('Seat at the Table');
     await expect(page.locator('#hud-cash')).toHaveText('$47');
     await expect(page.locator('#start-screen')).not.toHaveClass(/hidden/);
     await expect(page.locator('#modal-overlay')).toHaveClass(/hidden/);

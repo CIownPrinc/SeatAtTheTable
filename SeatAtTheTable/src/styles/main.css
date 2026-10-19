@@ -130,7 +130,6 @@ body.quiet .card-flavor, body.quiet .pillar-desc, body.quiet .modal-body p.flavo
 .skyline-stars .star.twinkle{animation:star-twinkle 4.5s ease-in-out infinite;}
 @keyframes window-flicker{0%,62%{opacity:1;}63%,82%{opacity:.08;}83%,100%{opacity:1;}}
 @keyframes star-twinkle{0%,100%{opacity:.15;}50%{opacity:.7;}}
-.start-version{display:block;margin-top:10px;font-family:var(--font-mono);font-size:clamp(12px,1.2vw,14px);letter-spacing:.3em;color:var(--text-faint);text-shadow:none;animation:none;}
 .start-copy h1{color:#fff3cf;text-shadow:0 0 4px rgba(255,214,102,.9),0 0 14px rgba(242,186,24,.75),0 0 38px rgba(242,186,24,.45),0 0 80px rgba(242,140,24,.25);animation:neon-on 1.8s linear 1 both;}
 @keyframes neon-on{0%{opacity:.15;text-shadow:none;}8%{opacity:1;}10%{opacity:.25;text-shadow:none;}16%{opacity:1;}19%{opacity:.4;text-shadow:none;}26%,100%{opacity:1;}}
 @media (prefers-reduced-motion:reduce){ .skyline-layer rect.window.flicker,.skyline-stars .star.twinkle,.start-copy h1{animation:none;} }

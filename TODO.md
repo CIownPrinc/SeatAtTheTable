@@ -35,10 +35,11 @@ agent (Codex + Claude Code) at the **same** branch. The old two-branch setup
 (`main` + `fix/map-playability`, Codex PRs landing on one and Claude on the other)
 caused duplicate-feature merges (e.g. the "two heat bars" HUD bug).
 
-**Lanes.** Codex owns missions and onboarding (`core/missions.ts`, `config/missions.ts`,
-`config/npcs.ts`, `core/onboarding.ts` and the mission code inside `header.ts`). Claude Code
-owns the map, phone, shops and everything else under `src/map/*` and `src/config/*`. Each
-task below names its lane; the player can reassign any of them.
+**Lanes.** Codex wrote most of the missions and onboarding (`core/missions.ts`,
+`config/missions.ts`, `config/npcs.ts`, `core/onboarding.ts` and the mission code inside
+`header.ts`) and knows them best. Since 2026-10-18 Claude Code may edit those files too,
+but only for missions it understands; a mission it doesn't know stays with Codex. Claude Code
+owns the map, phone, shops and everything else under `src/map/*` and `src/config/*`.
 
 ## Definition of done for V1
 
@@ -279,6 +280,12 @@ generator is scoped to the three city districts; the outskirts use the simpler s
 ---
 
 # Conventions worth keeping in view
+
+### The game's name
+The game is **Seat at the Table**, with no version number, the way a video game is just its
+name. Sequels get a number or a subtitle ("Seat at the Table 2"). "V1" in these docs means
+the first game, and the V1.0-V5.0 entries in `CHANGELOG.md` are internal build history, so
+never show them to the player.
 
 ### Parody geography
 `src/config/parodyGeography.ts` holds the in-universe city references: San Plastica = Bay
