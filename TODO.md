@@ -294,12 +294,17 @@ old one.
 48. **DONE** Pulling a dealer made them vanish; now they walk off the corner down the street.
 
 **E. Interiors**
-34. Interiors you walk around in like outside, in 3D. Today most rooms are a few small icons that
+34. **PART** Interiors you walk around in like outside, in 3D. Today most rooms are a few small icons that
     open a text box or restate the obvious, and some buildings have secondary areas with nothing
     in them. Instead: a front desk looks like a front desk, and every hotspot is something real
     (a person to talk to, a bulletin board you can read, an office for an office), seen in first
     person or at least in 3D. "Nothing fancy, just an upgrade from a text box." The mall (36)
     takes this furthest.
+    Done: every room is now 3D (`map/interiorLayout.ts`, `map/interiorRoom3d.ts`). A counter has a
+    clerk behind it, boards have notices pinned up, the garage has a wardrobe, a safe and your car,
+    the casino has slot machines and a card table with a dealer. Furniture blocks you, each hotspot
+    has a ring you stand on and a name card, and the minimap hides indoors. Still open: first
+    person, and rooms bigger than one hall (the mall).
 
 **F. New places**
 35. **DONE** A home of your own: Arjun's flat above the garage, with the wardrobe and a vault

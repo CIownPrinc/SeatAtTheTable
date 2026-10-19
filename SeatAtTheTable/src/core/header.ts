@@ -45,7 +45,7 @@ import type { PlaceArchetype } from '../map/archetypes';
 import { buildAmenityModel as buildMapAmenityModel } from '../map/amenityRendering';
 import { createFillerLayoutProvider, seededRandom } from '../map/filler';
 import { applyMapWorldCoordinates, createMapBuildings, mapNpcs } from '../map/markers';
-import { actorRadius, canMoveTo, isWaterBlocked, nearestFreePoint, penetrationDepth } from '../map/movement';
+import { actorRadius, canMoveTo, collidesSolid, isWaterBlocked, nearestFreePoint, penetrationDepth } from '../map/movement';
 import { drawMinimap as drawMapMinimap, MINIMAP_SCALE } from '../map/minimap';
 import type { MapObject } from '../map/objects';
 import { solidsFromObjects } from '../map/objects';
@@ -90,7 +90,7 @@ import { DISTRICT_OFFSETS, OUTSKIRT_PLACE_LOTS, VIEW_H, VIEW_W, WORLD_H, WORLD_W
 import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
 import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/viewport';
 import { renderZoneType } from '../map/zoning';
-import { drawInteriorRoom } from '../map/interiorScene';
+import { INTERIOR_SCALE, buildInteriorRoom3d, spotKey, type InteriorView } from '../map/interiorRoom3d';
 import { activeMissionCount, advanceMissionStage, canOfferRepeatableEvent, canOfferUniqueEvent, completeMission, declineMission, delayedMissionReady, missionCompleted, missionSaveDefaults, recordEventOffer, scheduleDelayedMission, startMission } from './missions';
 import { freezeStaticScenery } from '../map/staticScenery';
 import { mergeMeshesWithin, type MergeGeometries } from '../map/mergeScenery';
@@ -4471,8 +4471,8 @@ import type * as ThreeNamespace from 'three';
     return nearestFreePoint(x, y, currentSolids, false) ?? { x, y };
   }
 
-  // LEGAL: ---- interiors: a small generic room per building, with 1-2 physical hotspots ----
-  const ROOM_W = 480, ROOM_H = 280, ROOM_OX = (VIEW_W-ROOM_W)/2, ROOM_OY = (VIEW_H-ROOM_H)/2 - 10;
+  // LEGAL: ---- interiors: a room per building, with its hotspots (drawn by renderInteriorView) ----
+  const ROOM_W = 480, ROOM_H = 280;
   const DOOR_LOCAL = { x: ROOM_W/2, y: ROOM_H-6 };
 
   type HotSpot = { id: string; x: number; y: number; label: string; icon: string; action: () => void };
@@ -6116,6 +6116,7 @@ import type * as ThreeNamespace from 'three';
         declineMission: declineMissionOffer,
         enterBuilding,
         hotspots: function(){ return hotspotsFor(state.currentInterior); },
+        interiorRoom: function(){ return interiorView?.root ?? null; },
         roadNetwork, districtOffsets: DISTRICT_OFFSETS,
         roamingActors,
         // LEGAL: The world's own walkability rule, so the audit asks the game where an actor
@@ -6550,59 +6551,62 @@ import type * as ThreeNamespace from 'three';
     scheduleSave();
   });
 
-  // LEGAL: ================= INTERIOR (lightweight 2D scene) =================
-  const interiorCanvas = byId<HTMLCanvasElement>('interior-canvas');
-  const ictx = interiorCanvas.getContext('2d')!;
-  function syncInteriorCanvasSize(): void {
-    const rect = interiorCanvas.getBoundingClientRect();
-    const cssW = Math.max(1, Math.round(rect.width || VIEW_W));
-    const cssH = Math.max(1, Math.round(rect.height || VIEW_H));
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const targetW = Math.round(cssW * dpr);
-    const targetH = Math.round(cssH * dpr);
-    if(interiorCanvas.width !== targetW || interiorCanvas.height !== targetH){
-      interiorCanvas.width = targetW;
-      interiorCanvas.height = targetH;
+  // LEGAL: ================= INTERIOR (a 3D room you walk around) =================
+  // LEGAL: The room is built when you walk in and whenever its hotspots change (a mission contact
+  // LEGAL: turning up), and thrown away when you leave. The player's figure moves into it.
+  let interiorView: InteriorView | null = null;
+  let interiorViewKey = '';
+  let interiorScene3d: ThreeNamespace.Scene | null = null;
+  let interiorCamera: ThreeNamespace.PerspectiveCamera | null = null;
+  function interiorSolids(): Solid[] { return interiorView?.solids ?? []; }
+  function leaveInteriorView(): void {
+    if(interiorView){ interiorScene3d?.remove(interiorView.root); interiorView.dispose(); interiorView = null; interiorViewKey = ''; }
+    if(playerGroup && playerGroup.parent !== scene) scene.add(playerGroup);
+    byId('scene3d-container').classList.remove('indoors');
+  }
+  // LEGAL: Your own car stands in your garage; a showroom or paint bay shows one in the room's colour.
+  function interiorCarModel(spec: { color: string; use: 'garage' | 'showroom' | 'bay' }): ThreeNamespace.Object3D | null {
+    if(spec.use === 'garage'){ const car = getEquippedCar(); return car && !isFlyingVehicle(car.id) ? buildCarModel(car, false) : null; }
+    return vehicleLibrary ? vehicleLibrary.create(spec.use === 'showroom' ? 'supercar' : 'sedan', spec.color, 29, 15) : null;
+  }
+  function renderInteriorView(dt: number): void {
+    const interior = state.currentInterior;
+    if(!interior || !characterLibrary) return;
+    const spots = hotspotsFor(interior);
+    const key = `${interior.kind}|${interior.refId}|${spots.map(h => `${h.id}@${h.x},${h.y}`).join(';')}`;
+    if(!interiorScene3d){
+      interiorScene3d = new THREE.Scene();
+      interiorScene3d.background = new THREE.Color('#0d0e13');
+      interiorCamera = new THREE.PerspectiveCamera(50, camera3d.aspect, 1, 3000);
     }
-    ictx.setTransform(targetW / VIEW_W, 0, 0, targetH / VIEW_H, 0, 0);
-  }
-  function iRoundRect(x: number, y: number, w: number, h: number, r: number){
-    ictx.beginPath(); ictx.moveTo(x+r,y);
-    ictx.arcTo(x+w,y,x+w,y+h,r); ictx.arcTo(x+w,y+h,x,y+h,r);
-    ictx.arcTo(x,y+h,x,y,r); ictx.arcTo(x,y,x+w,y,r); ictx.closePath();
-  }
-  function iLabelChip(text: string, x: number, y: number){
-    ictx.font='9px IBM Plex Mono, monospace';
-    const w = ictx.measureText(text).width+8;
-    ictx.fillStyle='rgba(10,11,16,0.6)'; iRoundRect(x-w/2,y-8,w,14,4); ictx.fill();
-    ictx.fillStyle='#c8cad8'; ictx.textAlign='center'; ictx.textBaseline='middle'; ictx.fillText(text,x,y-1);
-  }
-  function drawInteriorScene(){
-    syncInteriorCanvasSize();
-    ictx.clearRect(0,0,VIEW_W,VIEW_H);
-    ictx.fillStyle='#101116'; ictx.fillRect(0,0,VIEW_W,VIEW_H);
-    const ox=ROOM_OX, oy=ROOM_OY;
-    // LEGAL: Per-building-type floor + furniture (see map/interiorScene). Falls back to
-    // LEGAL: a generic front for unknown kinds. Drawn under the walls/door/hotspots/player.
-    drawInteriorRoom(ictx, state.currentInterior ? state.currentInterior.kind : 'venture', { ox, oy, w:ROOM_W, h:ROOM_H });
-    ictx.strokeStyle='#454a5c'; ictx.lineWidth=6; ictx.strokeRect(ox,oy,ROOM_W,ROOM_H);
-    ictx.fillStyle='#101116'; ictx.fillRect(ox+DOOR_LOCAL.x-26, oy+ROOM_H-4, 52, 10);
-    ictx.fillStyle='rgba(212,160,23,0.7)'; ictx.font='9px IBM Plex Mono, monospace'; ictx.textAlign='center'; ictx.textBaseline='middle';
-    ictx.fillText('EXIT', ox+DOOR_LOCAL.x, oy+ROOM_H+14);
-    hotspotsFor(state.currentInterior).forEach(function(h){
-      const sx=ox+h.x, sy=oy+h.y;
-      iRoundRect(sx-28,sy-18,56,36,5); ictx.fillStyle='rgba(212,160,23,0.14)'; ictx.fill();
-      ictx.strokeStyle='#d4a017'; ictx.lineWidth=1.4; ictx.stroke();
-      ictx.font='16px sans-serif'; ictx.textAlign='center'; ictx.textBaseline='middle'; ictx.fillStyle='#f0efe8';
-      ictx.fillText(h.icon, sx, sy-2);
-      iLabelChip(h.label, sx, sy+26);
-    });
-    const px=ox+player.x, py=oy+player.y;
-    ictx.save(); ictx.translate(px,py); ictx.rotate(player.facing);
-    ictx.beginPath(); ictx.arc(0,0,9,0,Math.PI*2); ictx.fillStyle='#f0efe8'; ictx.fill();
-    ictx.strokeStyle='#d4a017'; ictx.lineWidth=2; ictx.stroke();
-    ictx.beginPath(); ictx.moveTo(6,0); ictx.lineTo(12,-4.5); ictx.lineTo(12,4.5); ictx.closePath();
-    ictx.fillStyle='#d4a017'; ictx.fill(); ictx.restore();
+    if(key !== interiorViewKey){
+      if(interiorView){ interiorScene3d.remove(interiorView.root); interiorView.dispose(); }
+      const library = characterLibrary;
+      interiorView = buildInteriorRoom3d(THREE, {
+        kind:interior.kind, refId:interior.refId, room:{ w:ROOM_W, h:ROOM_H, door:DOOR_LOCAL }, door:DOOR_LOCAL, spots,
+        makePerson:(identity, coat) => library.create(identity, coat),
+        makeCar:interiorCarModel,
+        merge:mergeSceneryGeometries ?? undefined,
+      });
+      interiorViewKey = key;
+      interiorScene3d.add(interiorView.root);
+    }
+    if(playerGroup.parent !== interiorScene3d){ interiorScene3d.add(playerGroup); byId('scene3d-container').classList.add('indoors'); }
+    const s = INTERIOR_SCALE;
+    playerGroup.position.set(player.x * s, 0, player.y * s);
+    playerGroup.rotation.y = -player.facing + Math.PI/2;
+    const near = nearestMarker();
+    const index = near?.type === 'hotspot' ? spots.findIndex(h => h.id === near.ref.id && h.x === near.ref.x && h.y === near.ref.y) : -1;
+    interiorView?.setHighlight(near?.type === 'door' ? 'door' : index >= 0 ? spotKey(index) : null, state.playSeconds);
+    characterLibrary.animator.tick(dt, state.playSeconds);
+    // LEGAL: A raised camera in front of the room, drifting with you so the far corners stay in view.
+    const camera = interiorCamera!;
+    if(camera.aspect !== camera3d.aspect){ camera.aspect = camera3d.aspect; camera.updateProjectionMatrix(); }
+    const lookX = (ROOM_W / 2 + (player.x - ROOM_W / 2) * 0.55) * s;
+    const lookZ = (ROOM_H * 0.42 + (player.y - ROOM_H * 0.42) * 0.4) * s;
+    camera.position.set(lookX, 150, lookZ + 150);
+    camera.lookAt(lookX, 6, lookZ);
+    renderer.render(interiorScene3d, camera);
   }
 
   // LEGAL: ---- Moving solids: traffic and the train ----
@@ -6865,8 +6869,14 @@ import type * as ThreeNamespace from 'three';
       player.facing += Math.max(-maxTurn, Math.min(maxTurn, af));
       const stepX = player.vx*dt, stepY = player.vy*dt;
       if(state.currentInterior){
-        player.x = Math.max(20, Math.min(ROOM_W-20, player.x+stepX));
-        player.y = Math.max(20, Math.min(ROOM_H-14, player.y+stepY));
+        const tryX = Math.max(20, Math.min(ROOM_W-20, player.x+stepX));
+        const tryY = Math.max(20, Math.min(ROOM_H-14, player.y+stepY));
+        const solids = interiorSolids();
+        const clear = (x: number, y: number) => !collidesSolid(x, y, solids, actorRadius(false));
+        if(clear(tryX, tryY)){ player.x = tryX; player.y = tryY; }
+        else if(clear(tryX, player.y)){ player.x = tryX; player.vy = 0; }
+        else if(clear(player.x, tryY)){ player.y = tryY; player.vx = 0; }
+        else { player.vx = 0; player.vy = 0; }
       } else {
         const tryX = player.x+stepX, tryY = player.y+stepY;
         if(playerCanMove(tryX,tryY)){ player.x=tryX; player.y=tryY; }
@@ -6899,12 +6909,9 @@ import type * as ThreeNamespace from 'three';
     }
 
     if(state.currentInterior){
-      renderer.domElement.style.display = 'none';
-      interiorCanvas.style.display = 'block';
-      drawInteriorScene();
+      renderInteriorView(dt);
     } else {
-      interiorCanvas.style.display = 'none';
-      renderer.domElement.style.display = 'block';
+      if(interiorView || playerGroup.parent !== scene) leaveInteriorView();
       updateDayNightLighting();
       updateWeather(dt);
       updateWaterMotion();
