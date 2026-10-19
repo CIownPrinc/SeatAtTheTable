@@ -4,6 +4,7 @@ import { characterDetail, characterProfile } from './neighbourhoods';
 import { createOutskirtSceneryLayout } from './outskirtScenery';
 import { ribbonGeometry } from './ribbon';
 import { applyWaterWaves } from './waterShader';
+import { buildTerrainMesh } from '../world/build/terrain';
 
 // LEGAL: One colour per outskirt belt kind, read from the shared terrain theme so the 3D
 // LEGAL: world and any future minimap treatment cannot drift apart.
@@ -32,6 +33,8 @@ export interface BaseSceneOptions {
   worldWidth: number;
   worldHeight: number;
   materials?: MapSceneMaterialCache;
+  // LEGAL: "New map (beta)": swap in pieces of the rebuilt world (src/world) as they're ready.
+  newWorld?: boolean;
 }
 
 export interface RoadSceneOptions extends BaseSceneOptions {
@@ -152,35 +155,39 @@ export function buildBaseGround(options: BaseSceneOptions): void {
   const oceanD = (land.maxY - land.minY) + 1400;
   const waterBase = new THREE.Mesh(new THREE.PlaneGeometry(oceanW, oceanD), applyWaterWaves(materials.standard('terrain:open-water', {color:mapTerrainTheme.openWater, emissive:mapTerrainTheme.waterEmissive, emissiveIntensity:0.26, roughness:0.18, metalness:0.18})));
   waterBase.rotation.x=-Math.PI/2; waterBase.position.set((land.minX+land.maxX)/2, -0.04, (land.minY+land.maxY)/2); waterBase.receiveShadow=true; waterBase.renderOrder = 0; worldGroup.add(waterBase);
-  addGroundShape(options, windhavenMapModel.landmass, mapTerrainTheme.baseLand, 0, 1);
-  // LEGAL: Outskirt belts sit between the base land and the districts, so the countryside
-  // LEGAL: reads as farmland / forest / suburb / industrial edge rather than one flat field,
-  // LEGAL: and the districts still draw on top of it.
-  OUTSKIRT_REGIONS.forEach(function(region){
-    const material = materials.standard(`terrain:outskirt:${region.id}`, {
-      color: outskirtColor(region.kind),
-      roughness: 1,
-      side: THREE.DoubleSide,
+  if(options.newWorld){
+    worldGroup.add(buildTerrainMesh(THREE));
+  } else {
+    addGroundShape(options, windhavenMapModel.landmass, mapTerrainTheme.baseLand, 0, 1);
+    // LEGAL: Outskirt belts sit between the base land and the districts, so the countryside
+    // LEGAL: reads as farmland / forest / suburb / industrial edge rather than one flat field,
+    // LEGAL: and the districts still draw on top of it.
+    OUTSKIRT_REGIONS.forEach(function(region){
+      const material = materials.standard(`terrain:outskirt:${region.id}`, {
+        color: outskirtColor(region.kind),
+        roughness: 1,
+        side: THREE.DoubleSide,
+      });
+      const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPoints(THREE, region.area)), material);
+      mesh.rotation.x = Math.PI/2;
+      mesh.position.y = 0.02;
+      mesh.receiveShadow = true;
+      worldGroup.add(mesh);
     });
-    const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPoints(THREE, region.area)), material);
-    mesh.rotation.x = Math.PI/2;
-    mesh.position.y = 0.02;
-    mesh.receiveShadow = true;
-    worldGroup.add(mesh);
-  });
-  windhavenMapModel.districts.forEach(function(district){
-    const terrain = terrainForDistrict(district.id);
-    const material = materials.standard(`terrain:district:${district.id}`, {
-      color: terrain.land,
-      roughness: 1,
-      side: THREE.DoubleSide,
+    windhavenMapModel.districts.forEach(function(district){
+      const terrain = terrainForDistrict(district.id);
+      const material = materials.standard(`terrain:district:${district.id}`, {
+        color: terrain.land,
+        roughness: 1,
+        side: THREE.DoubleSide,
+      });
+      const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPoints(THREE, district.landArea)), material);
+      mesh.rotation.x = Math.PI/2;
+      mesh.position.y = 0.03;
+      mesh.receiveShadow = true;
+      worldGroup.add(mesh);
     });
-    const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPoints(THREE, district.landArea)), material);
-    mesh.rotation.x = Math.PI/2;
-    mesh.position.y = 0.03;
-    mesh.receiveShadow = true;
-    worldGroup.add(mesh);
-  });
+  }
   // LEGAL: No hairline coastline, surf or outline strokes: 1-pixel lines alias and flicker at
   // LEGAL: any distance, and the outlines drew across the canal mouths and out over the water.
 }

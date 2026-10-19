@@ -5667,7 +5667,7 @@ import type * as ThreeNamespace from 'three';
 
     const timer = createSceneBuildTimer();
     const materials = createMapSceneMaterials(THREE);
-    const baseScene = { THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, materials };
+    const baseScene = { THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, materials, newWorld:newMapBeta() };
     timer.measure('terrain', function(): void {
       tagWorld('terrain:ground', function(){ buildBaseGround(baseScene); });
       tagWorld('terrain:canal', function(){ buildCanalWater(baseScene); });
@@ -5734,6 +5734,13 @@ import type * as ThreeNamespace from 'three';
     }
 
     updateDayNightLighting();
+  }
+
+  // LEGAL: The "New map (beta)" setting, kept in this browser. The city is built once, so changing
+  // LEGAL: it saves and reloads.
+  const NEW_MAP_KEY = 'seat-new-map';
+  function newMapBeta(): boolean {
+    try{ return window.localStorage.getItem(NEW_MAP_KEY) === '1'; }catch(e){ return false; }
   }
 
   function isLocalDevBuild(): boolean {
@@ -6668,6 +6675,11 @@ import type * as ThreeNamespace from 'three';
     document.body.classList.toggle('theme-light', t.checked);
     byId<HTMLInputElement>('delhi-theme-toggle').checked = false;
     scheduleSave();
+  });
+  byId<HTMLInputElement>('new-map-toggle').checked = newMapBeta();
+  byId('new-map-toggle').addEventListener('change', function(e){
+    try{ window.localStorage.setItem(NEW_MAP_KEY, (e.target as HTMLInputElement).checked ? '1' : '0'); }catch(err){}
+    void saveGame(false).then(function(){ window.location.reload(); });
   });
   byId('delhi-theme-toggle').addEventListener('change', function(e){
     const t = e.target as HTMLInputElement;
