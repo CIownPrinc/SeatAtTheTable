@@ -8,7 +8,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "e2e": "playwright test",
-    "audit:map-assets": "node scripts/audit-map-assets.mjs"
+    "audit:map-assets": "node scripts/audit-map-assets.mjs",
+    "art": "node scripts/build-art.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
