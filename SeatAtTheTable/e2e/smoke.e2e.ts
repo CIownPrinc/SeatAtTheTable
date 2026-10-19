@@ -440,6 +440,11 @@ test.describe('game boot', () => {
     await page.mouse.click(target.x, target.y);
     await expect(page.locator('#minimap-clear')).toHaveClass(/show/);
     await expect(page.locator('#citymap-hint')).toContainText('waypoint');
+
+    // LEGAL: Clicking the waypoint again clears it, and so does the labelled button.
+    await page.mouse.click(target.x, target.y);
+    await expect(page.locator('#minimap-clear')).not.toHaveClass(/show/);
+    await expect(page.locator('#citymap-hint')).toContainText('cleared');
   });
 
   test('expanded minimap hover shows exact place and category', async ({ page }) => {

@@ -277,7 +277,8 @@ old one.
     and one line underneath names it. The City Map fills its window, its territory layer shows
     district names instead of a label on every block, and its legend folds away.
 
-44. Clearing a GPS waypoint isn't obvious. Make it clear how to remove one.
+44. **DONE** Clearing a GPS waypoint wasn't obvious. A labelled "Clear GPS" button sits under the
+    minimap whenever one is set, and clicking the waypoint again on the City Map clears it.
 45. Wardrobe: Arjun's skin must stay brown (he's Indian; it's part of the story), so no skin
     option. "Top colour" is unclear. Hair and shoes need more options; hair, the chain and the
     glasses look primitive. Accessory shops in the mall to buy more.

@@ -6170,12 +6170,13 @@ import type * as ThreeNamespace from 'three';
       openCityMap();
     }
   });
-  byId('minimap-clear').addEventListener('click', function(){
+  function clearWaypoint(): void {
     setGlobalWaypoint(null);
     rebuildWaypointBeacon();
-    this.classList.remove('show');
+    byId('minimap-clear').classList.remove('show');
     scheduleSave();
-  });
+  }
+  byId('minimap-clear').addEventListener('click', clearWaypoint);
 
   function drawMinimap(){
     drawMapMinimap({
@@ -6510,13 +6511,21 @@ import type * as ThreeNamespace from 'three';
   });
   cityMapCanvas.addEventListener('mouseleave', function(){
     cityMapHoverPlace = null;
-    cityMapHint.textContent = 'Click land to drop a waypoint - hover places to inspect them';
+    cityMapHint.textContent = 'Click land to drop a waypoint · click it again to clear it · hover places to inspect them';
     renderCityMapSearch();
     drawCityMap();
   });
   cityMapCanvas.addEventListener('click', function(e){
     if(state.currentInterior) return;
     const point = cityMapWorldPoint(e);
+    // LEGAL: Clicking your waypoint again clears it, the same as GTA's map.
+    const existing = currentWaypoint();
+    if(existing && Math.hypot(existing.x - point.x, existing.y - point.y) < 90){
+      clearWaypoint();
+      cityMapHint.textContent = 'Waypoint cleared';
+      drawCityMap();
+      return;
+    }
     const context = mapPointContext(point, mapPlaces);
     const dist = context.districtId;
     // LEGAL: Water is still rejected; outskirt land is not. Anywhere you can drive to, you
