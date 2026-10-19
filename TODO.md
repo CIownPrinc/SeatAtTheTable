@@ -325,11 +325,11 @@ old one.
     three-deck parking garage (`map/mall.ts`). Inside (`map/mallInterior.ts`) are five shops, a
     fountain, a perfume seller who comes out to spray you, an ice cream cart, a food court, a play
     area with a slide and a ball pit, and shoppers and kids walking round.
-37. **PART** A central park, with more greenery generally. Central Park now spans the city's south
+37. **DONE** A central park, with more greenery generally. Central Park now spans the city's south
     edge where Cicero Avenue, Pulaski Road and Canal Yard Drive end, either side of Ridgewood Lane:
     about 90 trees, walks round and across it, a pond with a fountain, flower beds, a bandstand,
-    benches and lamps (`map/centralPark.ts`). Trunks and the pond are solid. Still open: the small
-    filler parks are still flat grass with cone trees.
+    benches and lamps (`map/centralPark.ts`). Trunks and the pond are solid. Any small block park
+    the filler lays out now gets crossing walks and round-crowned trees too, not flat grass and cones.
 38. A suburbs area.
 39. **DONE** Construction sites. A few plots in each district are building sites: a hoarding with a
     gate, a steel frame on concrete slabs, a tower crane with its load over the street, spoil,

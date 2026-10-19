@@ -490,16 +490,24 @@ export function buildFillerCity(options: FillerSceneOptions): void {
         const cx=(f.x0+f.x1)/2+off, cy=(f.y0+f.y1)/2, w=f.x1-f.x0, d=f.y1-f.y0;
         const grass = new THREE.Mesh(new THREE.PlaneGeometry(w,d), materials.standard('terrain:park-grass', {color:'#2c4a30', roughness:1}));
         grass.rotation.x=-Math.PI/2; grass.position.set(cx,0.08,cy); grass.receiveShadow=true; worldGroup.add(grass);
+        // LEGAL: Two walks crossing the park, and round-crowned trees (the street trees' shape) kept off them.
+        const pathMat = materials.standard('park:path', {color:'#c8bb98', roughness:0.95});
+        [[w - 30, 10], [10, d - 30]].forEach(function([pw, pd]){
+          const walk = new THREE.Mesh(new THREE.PlaneGeometry(pw, pd), pathMat);
+          walk.rotation.x=-Math.PI/2; walk.position.set(cx,0.12,cy); walk.receiveShadow=true; worldGroup.add(walk);
+        });
         const rand = helpers.seededRandom(Math.floor(cx*7+cy*13));
         const trunkInstances: SceneInstance[] = [];
         const leafInstances: SceneInstance[] = [];
-        for(let i=0;i<8;i++){
+        for(let i=0;i<24 && trunkInstances.length<14;i++){
           const tx=f.x0+off+20+rand()*(w-40), ty=f.y0+20+rand()*(d-40);
-          trunkInstances.push({ x:tx, y:5, z:ty });
-          leafInstances.push({ x:tx, y:18, z:ty });
+          if(Math.abs(tx-cx) < 16 || Math.abs(ty-cy) < 16) continue;
+          if(trunkInstances.some(t => Math.hypot(t.x-tx, t.z-ty) < 26)) continue;
+          trunkInstances.push({ x:tx, y:7.5*TREE_SCALE, z:ty });
+          leafInstances.push({ x:tx, y:22*TREE_SCALE, z:ty, rotationY:i });
         }
-        addInstancedMesh(THREE, worldGroup, new THREE.CylinderGeometry(2,2.5,10,6), materials.standard('prop:park-tree-trunk', {color:'#4a3624'}), trunkInstances, { cast:true });
-        addInstancedMesh(THREE, worldGroup, new THREE.ConeGeometry(9,20,7), materials.standard('prop:park-tree-leaves', {color:'#2f5c38'}), leafInstances, { cast:true });
+        addInstancedMesh(THREE, worldGroup, new THREE.CylinderGeometry(2.4,3,15,7).scale(TREE_SCALE,TREE_SCALE,TREE_SCALE), materials.standard('prop:tree-trunk', {color:'#4a3624', roughness:0.9}), trunkInstances, { cast:true });
+        addInstancedMesh(THREE, worldGroup, new THREE.SphereGeometry(12,12,9).scale(TREE_SCALE,TREE_SCALE*0.9,TREE_SCALE), materials.standard('prop:tree-crown-park', {color:'#2f6a3d', roughness:0.95}), leafInstances, { cast:true });
         if(f.name==='MILLENNIUM PARK'){
           const potato = new THREE.Mesh(new THREE.SphereGeometry(20,24,18), materials.standard('landmark:potato', {color:'#c9c9d4', metalness:1, roughness:0.08}));
           potato.scale.set(1.6,0.85,1); potato.position.set(cx,22,cy); potato.castShadow=true; potato.receiveShadow=true; worldGroup.add(potato);
