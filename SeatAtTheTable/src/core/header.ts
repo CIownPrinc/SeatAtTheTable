@@ -28,6 +28,7 @@ import { isItemOwned, itemKey, itemPrice, lookPrice, ownedWardrobe, type MallSho
 import { MALL_ROOM, MALL_SPOTS } from '../map/mallInterior';
 import { buildMall, mallSolids } from '../map/mall';
 import { buildCentralPark, centralParkSolids } from '../map/centralPark';
+import { buildSuburb, suburbSolids } from '../map/suburb';
 import { renderRoamingActors } from '../map/actorRendering';
 import { createAmenityModal, mapAmenities } from '../map/amenities';
 import { isFireRoadBest, minigameOpen, playMinigame, type MinigameResult } from '../map/minigames';
@@ -4488,7 +4489,7 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: Trees, barns and silos used to be walk-through. Trunks are small boxes; countryside
     // LEGAL: buildings take most of their drawn footprint.
     streetTreeSpots.forEach(spot => list.push({ x:spot.x, y:spot.y, hw:5, hd:5 }));
-    list.push(...mallSolids(), ...centralParkSolids());
+    list.push(...mallSolids(), ...centralParkSolids(), ...suburbSolids());
     const garage = serviceBuildings.find(s => s.id === 'playerGarage');
     if(garage){
       const shape = serviceBuildingSilhouette(garage);
@@ -5082,7 +5083,7 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: Only the resort: it was ~1,900 of ~5,000 scene objects (measured 2026-10-17; merging
   // LEGAL: it took idle fps from ~44 to ~56). Trees, outskirts, filler and landmarks were tried too
   // LEGAL: and saved nothing measurable, so they stay as authored.
-  const MERGEABLE_SCENERY_PREFIXES = ['resort:', 'filler:construction:', 'crane:'];
+  const MERGEABLE_SCENERY_PREFIXES = ['resort:', 'filler:construction:', 'crane:', 'suburb:'];
   let scene: ThreeNamespace.Scene, camera3d: ThreeNamespace.PerspectiveCamera, renderer: ThreeNamespace.WebGLRenderer, worldGroup: ThreeNamespace.Group, playerGroup: ThreeNamespace.Group, ambientLight: ThreeNamespace.AmbientLight, sunLight: ThreeNamespace.DirectionalLight, moonLight: ThreeNamespace.DirectionalLight, waypointBeacon: ThreeNamespace.Group | null = null, missionObjectiveMarker: ThreeNamespace.Group | null = null, parkedCarMesh: ThreeNamespace.Group | null = null, trainGroup: ThreeNamespace.Group | null = null;
   let missionObjectiveMarkerKey = '';
   let streetLamps: LampHead[] = [];
@@ -5854,6 +5855,7 @@ import type * as ThreeNamespace from 'three';
         buildLandmarks({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, landmarks, helpers:{ box, addSign } });
         worldGroup.add(buildMall(THREE, mergeSceneryGeometries ?? undefined));
         worldGroup.add(buildCentralPark(THREE, materials, addSign));
+        worldGroup.add(buildSuburb(THREE, materials));
       });
       tagWorld('rail-and-river', function(){ buildRailAndRiver(baseScene); });
     });

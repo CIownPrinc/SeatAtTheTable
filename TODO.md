@@ -330,7 +330,10 @@ old one.
     about 90 trees, walks round and across it, a pond with a fountain, flower beds, a bandstand,
     benches and lamps (`map/centralPark.ts`). Trunks and the pond are solid. Any small block park
     the filler lays out now gets crossing walks and round-crowned trees too, not flat grass and cones.
-38. A suburbs area.
+38. **DONE** A suburbs area. Lakeridge Lane, south of where Lakefront Drive leaves the city, is now
+    a paved suburban street with a dozen family houses down both sides: pitched roofs, porches,
+    garages, driveways, lawns, picket fences, mailboxes and front-yard trees (`map/suburb.ts`).
+    The street is one merged group, so it costs about 30 draw calls.
 39. **DONE** Construction sites. A few plots in each district are building sites: a hoarding with a
     gate, a steel frame on concrete slabs, a tower crane with its load over the street, spoil,
     rebar, a site cabin and a portable toilet (`map/construction.ts`). They're picked by a hash of

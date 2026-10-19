@@ -5,6 +5,7 @@ import { circleInsidePolygon, boundsForPoints, isPointInWater } from './geometry
 import { OUTSKIRT_REGIONS, type OutskirtRegion } from './world';
 import { mallKeepClear } from './mall';
 import { centralParkKeepClear } from './centralPark';
+import { suburbKeepClear } from './suburb';
 
 export type OutskirtSceneryKind = 'farmhouse' | 'barn' | 'silo' | 'tree' | 'suburbHouse' | 'shed' | 'tank';
 
@@ -56,12 +57,14 @@ export function radiusForKind(kind: OutskirtSceneryKind): number {
 function samplesInRegion(region: OutskirtRegion, count: number, radius: number, random: () => number): Point[] {
   const bounds = boundsForPoints(region.area);
   const points: Point[] = [];
+  // LEGAL: The mall, Central Park and the suburb's lots are built on; nothing wild grows there.
+  const keepClear = [...mallKeepClear(), ...centralParkKeepClear(), ...suburbKeepClear()];
   for(let attempt = 0; points.length < count && attempt < count * 80; attempt++){
     const point = { x:bounds.minX + random() * (bounds.maxX - bounds.minX), y:bounds.minY + random() * (bounds.maxY - bounds.minY) };
     if(!circleInsidePolygon(point, radius, region.area)) continue;
     if(isPointInWater(point, radius)) continue;
     if(nearCountryRoad(point, radius)) continue;
-    if([...mallKeepClear(), ...centralParkKeepClear()].some(s => Math.abs(point.x - s.x) < s.hw + radius && Math.abs(point.y - s.y) < s.hd + radius)) continue;
+    if(keepClear.some(s => Math.abs(point.x - s.x) < s.hw + radius && Math.abs(point.y - s.y) < s.hd + radius)) continue;
     if(points.some(function(existing){ return Math.hypot(existing.x - point.x, existing.y - point.y) < radius * 3; })) continue;
     points.push(point);
   }

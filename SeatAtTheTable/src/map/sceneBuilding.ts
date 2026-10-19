@@ -234,6 +234,10 @@ function joinRoadRuns(segments: Array<{ road: RoadPath; path: Point[] }>): Array
   return runs;
 }
 
+// LEGAL: Country lanes that run through somewhere built up are paved like a street: Lakeridge Lane
+// LEGAL: is the suburb's main street (map/suburb). They stay country lanes for the GPS and traffic.
+const PAVED_LANES = new Set(['road-country-lakeridge']);
+
 export function buildRoadNetwork(options: RoadSceneOptions): void {
   const { THREE, worldGroup, roadNetwork } = options;
   const materials = materialsFor(options);
@@ -244,7 +248,7 @@ export function buildRoadNetwork(options: RoadSceneOptions): void {
   const crosswalkWide: SceneInstance[] = [];
   joinRoadRuns(roadLandSegments()).forEach(function(segment){
     const road = segment.road;
-    if(road.roadClass === 'country'){
+    if(road.roadClass === 'country' && !PAVED_LANES.has(road.id)){
       // LEGAL: Dirt lanes: a worn verge either side and packed earth down the middle. No kerbs,
       // LEGAL: no lane paint. One ribbon each, so the curves have no seams.
       const verge = new THREE.Mesh(ribbonGeometry(THREE, segment.path, road.width + 18, 0.045), materials.standard('transport:lane-verge', { color:'#6f6a42', roughness:1 }));
