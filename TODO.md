@@ -265,9 +265,12 @@ old one.
     module and size everything from it.
 
 **E. Interiors**
-34. Interiors you walk around in like outside, in 3D. A front desk looks like a front desk, and
-    every hotspot is something real (a person to talk to, a bulletin board), seen in first
-    person or at least in 3D, instead of an icon that opens a text box or restates the obvious.
+34. Interiors you walk around in like outside, in 3D. Today most rooms are a few small icons that
+    open a text box or restate the obvious, and some buildings have secondary areas with nothing
+    in them. Instead: a front desk looks like a front desk, and every hotspot is something real
+    (a person to talk to, a bulletin board you can read, an office for an office), seen in first
+    person or at least in 3D. "Nothing fancy, just an upgrade from a text box." The mall (36)
+    takes this furthest.
 
 **F. New places**
 35. A home of your own: a vault to stash cash and a wardrobe to change clothes (item 19). Arjun has
