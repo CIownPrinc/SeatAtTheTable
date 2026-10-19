@@ -1,3 +1,5 @@
+import { COUNTRY_ROADS } from './countryRoads';
+import { distancePointToSegment } from './layout';
 import type { Point } from '../config/types';
 import { circleInsidePolygon, boundsForPoints, isPointInWater } from './geometry';
 import { OUTSKIRT_REGIONS, type OutskirtRegion } from './world';
@@ -32,7 +34,18 @@ function countForKind(kind: OutskirtRegion['kind']): Record<OutskirtSceneryKind,
   return { farmhouse:0, barn:0, silo:0, tree:6, suburbHouse:0, shed:10, tank:4 };
 }
 
-function radiusForKind(kind: OutskirtSceneryKind): number {
+// LEGAL: Keeps trees, barns and houses off the dirt lanes, verge included.
+function nearCountryRoad(point: Point, radius: number): boolean {
+  return COUNTRY_ROADS.some(function(road){
+    const clearance = road.width / 2 + 9 + radius;
+    return road.path.slice(0, -1).some(function(a, i){
+      const b = road.path[i + 1];
+      return distancePointToSegment(point.x, point.y, a.x, a.y, b.x, b.y) < clearance;
+    });
+  });
+}
+
+export function radiusForKind(kind: OutskirtSceneryKind): number {
   if(kind === 'tree') return 10;
   if(kind === 'silo' || kind === 'tank') return 12;
   return 22;
@@ -45,6 +58,7 @@ function samplesInRegion(region: OutskirtRegion, count: number, radius: number, 
     const point = { x:bounds.minX + random() * (bounds.maxX - bounds.minX), y:bounds.minY + random() * (bounds.maxY - bounds.minY) };
     if(!circleInsidePolygon(point, radius, region.area)) continue;
     if(isPointInWater(point, radius)) continue;
+    if(nearCountryRoad(point, radius)) continue;
     if(points.some(function(existing){ return Math.hypot(existing.x - point.x, existing.y - point.y) < radius * 3; })) continue;
     points.push(point);
   }

@@ -321,28 +321,34 @@ export const CANAL_CHANNELS: CanalChannel[] = [
 // LEGAL: than a working waterfront: sand, palms, loungers and umbrellas (see buildLakeshore).
 // LEGAL: Runs from the Hub headland west along the whole city shore, following the same
 // LEGAL: coastline points so the sand can never drift off the water's edge.
-export const LAKEFRONT_BEACH: Point[] = widenPoints([
-  { x: 1290, y: 100 },
-  { x: 1705, y: 90 },
-  { x: 2210, y: 74 },
-  { x: 2600, y: 68 },
-  { x: 2980, y: 72 },
-  { x: 3500, y: 94 },
-  { x: 3840, y: 106 },
-  { x: 4310, y: 166 },
-  { x: 4770, y: 78 },
-  { x: 5260, y: 142 },
-  { x: 5300, y: 196 },
-  { x: 4770, y: 132 },
-  { x: 4310, y: 220 },
-  { x: 3840, y: 160 },
-  { x: 3500, y: 148 },
-  { x: 2980, y: 126 },
-  { x: 2600, y: 122 },
-  { x: 2210, y: 128 },
-  { x: 1705, y: 144 },
-  { x: 1290, y: 154 },
-])
+// LEGAL: Derived from the lake's own south shore, from the city's west edge to its east edge.
+// LEGAL: It used to be its own hand-drawn outline, which stopped well short of both ends, so the
+// LEGAL: sand ended abruptly. The waterline sits just into the water so no sliver of grass shows.
+const BEACH_DEPTH = 42;
+
+function cityShoreline(): Point[] {
+  const eastTip = WINDHAVEN_LAKE.reduce((best, p, i) => (p.x > WINDHAVEN_LAKE[best].x ? i : best), 0);
+  const shore = WINDHAVEN_LAKE.slice(0, eastTip + 1);
+  const out: Point[] = [];
+  for(let i = 0; i < shore.length - 1; i++){
+    const a = shore[i], b = shore[i + 1];
+    const clip = (x: number) => ({ x, y: a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x) });
+    if(a.x < 0 && b.x > 0) out.push(clip(0));
+    if(a.x >= 0 && a.x <= WORLD_W) out.push(a);
+    if(a.x < WORLD_W && b.x > WORLD_W) out.push(clip(WORLD_W));
+  }
+  const last = shore[shore.length - 1];
+  if(last.x >= 0 && last.x <= WORLD_W) out.push(last);
+  return out;
+}
+
+const CITY_SHORE = cityShoreline();
+// LEGAL: First half is the waterline west to east, the second the inland edge coming back;
+// LEGAL: buildBeachResort relies on that order.
+export const LAKEFRONT_BEACH: Point[] = [
+  ...CITY_SHORE.map(p => ({ x: p.x, y: p.y - 6 })),
+  ...[...CITY_SHORE].reverse().map(p => ({ x: p.x, y: p.y + BEACH_DEPTH })),
+];
 
 export const DISTRICT_OFFSETS: Record<string, number> = {
   devlin: widenAuthoredX(0),

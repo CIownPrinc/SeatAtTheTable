@@ -23,7 +23,6 @@ export interface SceneBuildTimer {
 export class MapSceneMaterialCache {
   private readonly standardMaterials = new Map<string, ThreeNamespace.MeshStandardMaterial>();
   private readonly basicMaterials = new Map<string, ThreeNamespace.MeshBasicMaterial>();
-  private readonly lineMaterials = new Map<string, ThreeNamespace.LineBasicMaterial>();
 
   constructor(private readonly THREE: typeof ThreeNamespace) {}
 
@@ -43,21 +42,13 @@ export class MapSceneMaterialCache {
     return material;
   }
 
-  line(key: string, params: ThreeNamespace.LineBasicMaterialParameters): ThreeNamespace.LineBasicMaterial {
-    const existing = this.lineMaterials.get(key);
-    if(existing) return existing;
-    const material = new this.THREE.LineBasicMaterial(params);
-    this.lineMaterials.set(key, material);
-    return material;
-  }
+
 
   dispose(): void {
     this.standardMaterials.forEach(material => material.dispose());
     this.basicMaterials.forEach(material => material.dispose());
-    this.lineMaterials.forEach(material => material.dispose());
     this.standardMaterials.clear();
     this.basicMaterials.clear();
-    this.lineMaterials.clear();
   }
 }
 

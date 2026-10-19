@@ -33,6 +33,7 @@ import { createQualityGovernor } from '../map/adaptiveQuality';
 import { createCheatListener } from './cheats';
 import { createCameraRig, SHADOW_HALF_SIZE, sunShadowFrame } from '../map/cameraRig';
 import { waterClock } from '../map/waterShader';
+import { auditScene, flagIssues } from '../map/sceneAudit';
 import { buildAmenityModel as buildMapAmenityModel } from '../map/amenityRendering';
 import { createFillerLayoutProvider, seededRandom } from '../map/filler';
 import { applyMapWorldCoordinates, createMapBuildings, mapNpcs } from '../map/markers';
@@ -5652,6 +5653,13 @@ import type * as ThreeNamespace from 'three';
     });
     if(isLocalDevBuild()){
       console.info('[map-build]', timer.entries().map(entry => `${entry.name}:${entry.ms.toFixed(1)}ms`).join(' '), `total:${timer.totalMs().toFixed(1)}ms`);
+      // LEGAL: The world audit, on what was just drawn. Every problem is logged and marked on
+      // LEGAL: the map with a red beacon, so a mistake is visible the moment it's made.
+      const issues = auditScene(THREE, worldGroup);
+      if(issues.length){
+        console.warn(`[world-audit] ${issues.length} problem(s):`, issues.map(issue => issue.message));
+        flagIssues(THREE, worldGroup, issues);
+      }
     }
 
     updateDayNightLighting();
@@ -5950,6 +5958,7 @@ import type * as ThreeNamespace from 'three';
       (window as unknown as { __seat?: unknown }).__seat = {
         THREE, scene, worldGroup, player, state, mapObjects, mapPlaces, renderer,
         characters: characterLibrary,
+        audit: function(){ return auditScene(THREE, worldGroup); },
         startMission: startMissionFromOffer,
         resolveMission: resolveMissionAtObjective,
         declineMission: declineMissionOffer,

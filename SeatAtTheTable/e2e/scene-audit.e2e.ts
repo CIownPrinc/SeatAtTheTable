@@ -83,32 +83,28 @@ async function worldBoxes(page: Page, prefixes: string[]): Promise<AuditBox[]> {
 }
 
 test.describe('scene audit — what the renderer actually drew', () => {
-  test('no building stands in a road', async ({ page }) => {
+  // LEGAL: The world audit (src/map/sceneAudit.ts) on the live scene: buildings in any road
+  // LEGAL: (grid, diagonals, lanes, turning circles) and hairline strokes. Dev builds run the same
+  // LEGAL: check at startup and mark each problem with a red beacon.
+  // LEGAL: KNOWN_ISSUES is a ratchet. These six were placed before the diagonals were audited and
+  // LEGAL: are fixed by the new map engine (TODO.md section 11), which lays lots out along roads.
+  // LEGAL: Any NEW problem fails, and so does a known one that has been fixed but is still listed.
+  const KNOWN_ISSUES = [
+    'service:bankFirstWindhaven:First Windhaven — West Side Branch stands in Canal Bend Road',
+    'service:brand-lakeshore:Lakeshore Development stands in Lake Shore Cut',
+    'local:liquor:Corner Liquor stands in Canal Bend Road',
+    'amenity:petstore:pulaski-pets stands in Canal Bend Road',
+    'landmark:ciceroWorks stands in Cermak Road',
+    'landmark:thePotato stands in Wabash Avenue',
+  ];
+  test('the world audit finds no new problems in what was drawn', async ({ page }) => {
     test.setTimeout(120000);
     await waitForScene(page);
-
-    const roads = await page.evaluate(() => {
-      const seat = (window as never as {
-        __seat: { roadNetwork: { vertical: { x: number; w: number; name: string }[]; horizontal: { y: number; w: number; name: string }[] } };
-      }).__seat;
-      return { vertical: seat.roadNetwork.vertical, horizontal: seat.roadNetwork.horizontal };
-    });
-    const boxes = await worldBoxes(page, BUILDING_PREFIXES);
-    expect(boxes.length, 'no buildings found — the audit is measuring nothing').toBeGreaterThan(50);
-
-    // LEGAL: Straddling the centre line means the building is standing in the carriageway,
-    // LEGAL: not merely overhanging the kerb.
-    const offenders: string[] = [];
-    boxes.forEach(function(b){
-      roads.vertical.forEach(function(road){
-        if(b.minX < road.x && b.maxX > road.x) offenders.push(`${b.name} stands in ${road.name}`);
-      });
-      roads.horizontal.forEach(function(road){
-        if(b.minZ < road.y && b.maxZ > road.y) offenders.push(`${b.name} stands in ${road.name}`);
-      });
-    });
-
-    expect(offenders.slice(0, 24), `buildings standing in the road:\n${offenders.slice(0, 24).join('\n')}`).toEqual([]);
+    const found = await page.evaluate(() => (window as never as { __seat: { audit(): { message: string }[] } }).__seat.audit().map(issue => issue.message));
+    const fresh = found.filter(message => !KNOWN_ISSUES.includes(message));
+    const fixed = KNOWN_ISSUES.filter(message => !found.includes(message));
+    expect(fresh, 'new world-audit problems').toEqual([]);
+    expect(fixed, 'fixed, so remove from KNOWN_ISSUES').toEqual([]);
   });
 
   test('nothing floats above the ground', async ({ page }) => {

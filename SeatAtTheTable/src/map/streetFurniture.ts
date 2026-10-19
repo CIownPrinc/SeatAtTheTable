@@ -55,11 +55,15 @@ export function buildStopSign(options: StreetFurnitureOptions, x: number, z: num
   signShape.closePath();
   const sign = new THREE.Mesh(new THREE.ExtrudeGeometry(signShape, { depth:0.5, bevelEnabled:false }), new THREE.MeshStandardMaterial({color:'#ad2f2f', roughness:0.5}));
   sign.position.set(0,20,-0.25); sign.castShadow=true; group.add(sign);
-  const border = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(Array.from({ length:8 }, function(_v,i){
+  // LEGAL: The white rim is a slightly larger octagon behind the face, not a 1-pixel line loop.
+  const rimShape = new THREE.Shape();
+  for(let i=0; i<8; i++){
     const a = Math.PI/8 + i*Math.PI/4;
-    return new THREE.Vector3(Math.cos(a)*4.6, Math.sin(a)*4.6, 0.31);
-  })), new THREE.LineBasicMaterial({color:'#fff8f0'}));
-  border.position.y=20; group.add(border);
+    if(i===0) rimShape.moveTo(Math.cos(a)*(radius+0.55), Math.sin(a)*(radius+0.55)); else rimShape.lineTo(Math.cos(a)*(radius+0.55), Math.sin(a)*(radius+0.55));
+  }
+  rimShape.closePath();
+  const rim = new THREE.Mesh(new THREE.ShapeGeometry(rimShape), new THREE.MeshStandardMaterial({color:'#fff8f0', roughness:0.6}));
+  rim.position.set(0,20,-0.3); group.add(rim);
   const face = document.createElement('canvas');
   face.width = 256; face.height = 256;
   const fctx = face.getContext('2d')!;

@@ -199,14 +199,17 @@ old one.
 11. A car breakdown gives no warning (it threw the player out). Add smoke from the car and a
     "broken down" message when you try to use it.
 12. Streetlights face the wrong way and stay on in daytime.
-13. The beach stops abruptly for no reason.
+13. **DONE** The beach stopped abruptly. It's now derived from the lake shore end to end.
 14. **PART** Roads lead nowhere. Short stubs are now T-junctions and real dead ends have a turning
     circle and sign. Still open: check every remaining one.
 
 **B. A checker that catches map mistakes**
-15. A system that knows when buildings are on roads, roads are over water, beaches are cut off,
-    or there are stray lines. It flags each one while the game runs in dev and fails the tests,
-    so mistakes can't come back.
+15. **DONE** The world audit (`map/worldAudit.ts`, `map/sceneAudit.ts`) catches roads over water,
+    buildings in any road, scenery in lanes, beach gaps and hairline strokes. Unit tests run it on
+    the map data; dev builds run it on the drawn scene, log each problem and mark it with a red
+    beacon; `e2e/scene-audit.e2e.ts` is a ratchet over it. Its first run found and fixed: 15
+    trees, houses and a silo in the new lanes, both beach ends, and 27 stop-sign hairlines.
+    Still flagged, and fixed by the new engine: six buildings in roads (items 8 and 9).
 
 **C. Feel**
 16. **DONE** The camera was primitive. It now follows smoothly, leads where you're heading and
