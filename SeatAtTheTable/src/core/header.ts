@@ -3051,6 +3051,7 @@ import type * as ThreeNamespace from 'three';
   function fireDealer(corner: Corner){
     if(!corner.dealer) return;
     corner.dealer = false;
+    walkDealerAway(corner);
     log(`<i aria-hidden="true" class="ph-duotone ph-briefcase"></i> You pull the dealer off ${corner.name}.`);
     renderAll();
   }
@@ -5820,26 +5821,45 @@ import type * as ThreeNamespace from 'three';
     trainGroup.position.z = snapshot.point.y;
   }
 
-  const dealerArrivals: Array<{ group: ThreeNamespace.Group; corner: Corner; sx: number; sy: number; t: number }> = [];
+  // LEGAL: Dealers walking onto or off a corner. Each walk goes from (sx, sy) to (tx, ty); a dealer
+  // LEGAL: who's been pulled is removed when they reach the street.
+  const dealerArrivals: Array<{ group: ThreeNamespace.Object3D; corner: Corner; sx: number; sy: number; tx: number; ty: number; t: number; seconds: number; leaving: boolean }> = [];
   function spawnDealerArrival(corner: Corner){
     if(!sceneInitialized || !worldGroup) return;
     const sx = corner.x + (Math.random()<0.5 ? -44 : 44);
     const sy = corner.y + 52;
     const g = buildPedestrianModel('#d4a017', 'dealer-'+corner.id);
+    g.name = 'dealer:'+corner.id;
     g.position.set(sx, 0, sy);
     worldGroup.add(g);
-    dealerArrivals.push({ group:g, corner, sx, sy, t:0 });
+    dealerArrivals.push({ group:g, corner, sx, sy, tx:corner.x + 12, ty:corner.y + 9, t:0, seconds:1.5, leaving:false });
+  }
+  // LEGAL: Pulling a dealer used to make them vanish on the next rebuild; now they pack up and walk
+  // LEGAL: off down the street. A dealer drawn as part of the corner is lifted into the world first,
+  // LEGAL: keeping exactly where they stand.
+  function walkDealerAway(corner: Corner){
+    if(!sceneInitialized || !worldGroup) return;
+    const figure = worldGroup.getObjectByName('dealer:'+corner.id);
+    if(!figure) return;
+    for(let i = dealerArrivals.length - 1; i >= 0; i--) if(dealerArrivals[i].group === figure) dealerArrivals.splice(i, 1);
+    worldGroup.attach(figure);
+    figure.name = 'dealer:leaving';
+    const side = Math.random() < 0.5 ? -1 : 1;
+    dealerArrivals.push({ group:figure, corner, sx:figure.position.x, sy:figure.position.z, tx:corner.x + side * 150, ty:corner.y + 60, t:0, seconds:3, leaving:true });
   }
   function updateDealerArrivals(dt: number){
     for(let i=dealerArrivals.length-1; i>=0; i--){
       const a = dealerArrivals[i];
-      a.t = Math.min(1, a.t + dt/1.5);
-      const tx = a.corner.x + 12, ty = a.corner.y + 9;
-      const x = a.sx + (tx - a.sx) * a.t;
-      const y = a.sy + (ty - a.sy) * a.t;
+      a.t = Math.min(1, a.t + dt/a.seconds);
+      const x = a.sx + (a.tx - a.sx) * a.t;
+      const y = a.sy + (a.ty - a.sy) * a.t;
       a.group.position.set(x, 0, y);
-      a.group.rotation.y = -Math.atan2(ty - a.sy, tx - a.sx) + Math.PI/2;
-      if(a.t >= 1) dealerArrivals.splice(i, 1);
+      a.group.rotation.y = -Math.atan2(a.ty - a.sy, a.tx - a.sx) + Math.PI/2;
+      if(a.t >= 1){
+        dealerArrivals.splice(i, 1);
+        // LEGAL: Removed, not disposed: people share geometry and materials with everyone else.
+        if(a.leaving) worldGroup.remove(a.group);
+      }
     }
   }
 
@@ -6106,6 +6126,7 @@ import type * as ThreeNamespace from 'three';
         characters: characterLibrary,
         audit: function(){ return auditScene(THREE, worldGroup); },
         breakDownCar: function(){ const car = getEquippedCar(); if(car) breakDownCar(car); },
+        corners, assignDealer, fireDealer,
         startMission: startMissionFromOffer,
         resolveMission: resolveMissionAtObjective,
         declineMission: declineMissionOffer,

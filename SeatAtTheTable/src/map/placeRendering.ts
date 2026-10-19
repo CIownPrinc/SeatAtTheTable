@@ -283,6 +283,7 @@ function renderCorners(options: MapPlaceRenderOptions): void {
     helpers.addSign(pole, corner.name, 30, 8, 22, '#f0efe8');
     if(staffed){
       const dealer = helpers.buildPedestrianModel('#d4a017', `dealer-${corner.id}`);
+      dealer.name = `dealer:${corner.id}`;
       dealer.position.set(12, 0, 9);
       dealer.rotation.y = Math.PI;
       group.add(dealer);

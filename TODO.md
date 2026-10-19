@@ -287,6 +287,8 @@ old one.
 46. Minigames look primitive: make them 3D, or even first person.
 47. Street racing like GTA: get a car, race real opponents round a course.
 
+48. **DONE** Pulling a dealer made them vanish; now they walk off the corner down the street.
+
 **E. Interiors**
 34. Interiors you walk around in like outside, in 3D. Today most rooms are a few small icons that
     open a text box or restate the obvious, and some buildings have secondary areas with nothing
