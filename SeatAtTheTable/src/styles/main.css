@@ -582,3 +582,22 @@ main{max-width:1240px;margin:0 auto;padding:26px 24px 60px;}
 /* The City Map legend folds away: you open it when you need it, not every time. */
 .citymap-legend-wrap summary { cursor:pointer; font-family:var(--font-display); font-weight:700; font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-faint); }
 .citymap-legend-wrap[open] summary { margin-bottom:8px; }
+
+/* The wardrobe in Arjun's flat: a turning preview beside the slot and colour pickers. */
+.wardrobe-overlay { position:fixed; inset:0; z-index:10060; display:flex; align-items:center; justify-content:center; background:rgba(4,6,10,0.8); padding:16px; }
+.wardrobe-panel { background:var(--bg-panel); border:1px solid var(--line-bright); border-radius:10px; width:min(680px, 100%); max-height:92dvh; overflow:auto; box-shadow:0 20px 60px rgba(0,0,0,0.6); }
+.wardrobe-head { padding:12px 18px; border-bottom:1px solid var(--line); font-family:var(--font-display); font-weight:700; color:var(--gold); }
+.wardrobe-head span { margin-left:8px; font-family:var(--font-body); font-weight:400; font-size:12px; color:var(--text-faint); }
+.wardrobe-body { display:flex; gap:16px; padding:16px 18px; flex-wrap:wrap; }
+.wardrobe-preview { width:240px; height:300px; max-width:100%; background:radial-gradient(circle at 50% 40%, #2a3140, #10131a); border-radius:8px; }
+.wardrobe-controls { flex:1; min-width:240px; display:flex; flex-direction:column; gap:8px; }
+.wardrobe-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.wardrobe-label { width:86px; font-size:12px; color:var(--text-dim); }
+.wardrobe-value { min-width:76px; text-align:center; color:var(--text); font-size:13px; }
+.wardrobe-row button { border:1px solid var(--line); background:rgba(255,255,255,0.04); color:var(--text); border-radius:6px; padding:4px 9px; cursor:pointer; }
+.wardrobe-row button:hover { border-color:var(--gold); }
+.wardrobe-swatch { width:22px; height:22px; padding:0 !important; border-radius:50% !important; }
+.wardrobe-swatch.active { outline:2px solid var(--gold); outline-offset:2px; }
+.wardrobe-foot { display:flex; justify-content:flex-end; gap:10px; padding:12px 18px; border-top:1px solid var(--line); }
+.wardrobe-foot button { border:1px solid var(--line); background:none; color:var(--text-dim); border-radius:6px; padding:8px 14px; cursor:pointer; font-family:var(--font-display); }
+.wardrobe-foot .wardrobe-save { border-color:var(--gold); color:var(--gold); }

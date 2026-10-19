@@ -222,7 +222,8 @@ old one.
     game's own style. The Kenney blocky characters were tried and dropped as too Roblox-like.
 18. **DONE** Get splatted when a car hits you: you're knocked flat and squashed beside the road for
     about two seconds, then you get back up.
-19. Customise Arjun's clothes. The wardrobe is saved already; it needs a UI.
+19. **DONE** Customise Arjun's clothes: a wardrobe in his flat above the garage, with a turning
+    3D preview, arrows for each slot and colour swatches (`core/wardrobe.ts`).
 20. **DONE** Cheat codes; type `cheatcode` for the list. `moneymoneymoney` / `cash4ever` (+$1B),
     `cleanrecord`, `respectme`, `daylight`, `nightowl`, `letitrain`, `letitsnow`, `clearskies`,
     `beammeup` (teleport), `rocketman` (fly with a jetpack, 2.6x speed), `getdachoppa`
@@ -282,8 +283,9 @@ old one.
     takes this furthest.
 
 **F. New places**
-35. A home of your own: a vault to stash cash and a wardrobe to change clothes (item 19). Arjun has
-    no home today; the garage and owned properties are the only places that are his.
+35. **DONE** A home of your own: Arjun's flat above the garage, with the wardrobe and a vault
+    (`core/vault.ts`). Vault cash isn't in your pocket, so pay-offs that take a share can't
+    touch it. A bigger home could come later with property.
 36. A big mall with a parking garage. Inside should feel like walking around outside: an indoor
     playground, stall owners trying to get you to try their perfume, ice cream vendors, a food
     court.

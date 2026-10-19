@@ -31,6 +31,8 @@ import { offRoadSpeedMultiplier } from '../map/offRoad';
 import { mountTouchStick } from '../map/touchControls';
 import { createQualityGovernor } from '../map/adaptiveQuality';
 import { createCheatListener } from './cheats';
+import { depositToVault, withdrawFromVault } from './vault';
+import { openWardrobe } from './wardrobe';
 import { createCameraRig, SHADOW_HALF_SIZE, sunShadowFrame } from '../map/cameraRig';
 import { waterClock } from '../map/waterShader';
 import { auditScene, flagIssues } from '../map/sceneAudit';
@@ -459,7 +461,7 @@ import type * as ThreeNamespace from 'three';
     muscleCount: 0, guns: 0, ratCount: 0, bribeOn: false,
     prestigeCount: 0, seenMilestones: new Set<string>(),
     started: false, lastTick: Date.now(), nextEventAt: firstEventDelay(),
-    playSeconds: 0, investorPenalty: 0, appearance: { ...DEFAULT_PLAYER_LOOK },
+    playSeconds: 0, investorPenalty: 0, appearance: { ...DEFAULT_PLAYER_LOOK }, vaultCash: 0,
     procNpc: generateNPC(),
     bankAccounts: {}, selectedBank: DEFAULT_BANK_ID, nextHeistAt: 0,
     ownedCars: [], equippedCar: null, ownedProperties: [],
@@ -1890,6 +1892,36 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: The fleet board. Every car you own, which one you are driving, and a way to
   // LEGAL: switch — the in-person counterpart to the phone's DRIVE button, and the answer
   // LEGAL: to "where are my cars kept".
+  // LEGAL: ---- Arjun's flat, above the garage ----
+  function openWardrobeSpot(): void {
+    openWardrobe(THREE, state.appearance, function(look){
+      state.appearance = look;
+      refreshPlayerModel();
+      log('<i aria-hidden="true" class="ph-duotone ph-t-shirt"></i> You change, and catch yourself in the mirror on the way out.');
+      scheduleSave();
+    });
+  }
+  const VAULT_STEP = 1000;
+  function openVault(): void {
+    const move = function(next: { cash: number; vault: number }){
+      state.cash = next.cash; state.vaultCash = next.vault;
+      refreshHUD(); scheduleSave(); openVault();
+    };
+    const holdings = function(){ return { cash:state.cash, vault:state.vaultCash }; };
+    showModal({
+      eyebrow:'Your flat', title:'The Vault',
+      body:`<p class="flavor">Bolted to the floor under the bed. What's in here isn't in your pocket, so a shakedown or a pay-off can't touch it.</p>`
+        + briefRow('In the vault', formatMoney(state.vaultCash)) + briefRow('On you', formatMoney(state.cash)),
+      buttons:[
+        { label:'Deposit everything', disabled:state.cash < 1, onClick:function(){ move(depositToVault(holdings(), state.cash)); } },
+        { label:`Deposit ${formatMoney(VAULT_STEP)}`, disabled:state.cash < 1, onClick:function(){ move(depositToVault(holdings(), VAULT_STEP)); } },
+        { label:`Take ${formatMoney(VAULT_STEP)}`, disabled:state.vaultCash < 1, onClick:function(){ move(withdrawFromVault(holdings(), VAULT_STEP)); } },
+        { label:'Take everything', disabled:state.vaultCash < 1, onClick:function(){ move(withdrawFromVault(holdings(), state.vaultCash)); } },
+        { label:'Leave', secondary:true },
+      ],
+    });
+  }
+
   function openGarageFleet(){
     const owned = state.ownedCars.map(id => cars.find(c => c.id === id)).filter((c): c is Car => !!c);
     if(!owned.length){
@@ -4137,6 +4169,7 @@ import type * as ThreeNamespace from 'three';
         {label:"Make the transfer", onClick:function(){
           state.cash = 47; state.heat = 0; state.muscleCount = 0; state.guns = 0; state.ratCount = 0;
           state.bankAccounts = {};
+          state.vaultCash = 0;
           Object.values(state.portfolio).forEach(function(position){ position.shares = 0; position.avgCost = 0; });
           state.investigation = 0; state.layingLow = false; state.crackdownUntil = 0; state.nextCrackdownAt = state.playSeconds + 360;
           businesses.forEach(b=>{ b.level=0; b.crew=0; b.reinvestedIncome=0; });
@@ -4522,6 +4555,9 @@ import type * as ThreeNamespace from 'three';
       // LEGAL: Your own garage: the fleet lives here. Pick which car to drive, and repair
       // LEGAL: anything that broke down. Nothing is for sale — that is what dealerships are.
       spots.push({ id:'fleet', x:ROOM_W/2, y:80, label:'Your Fleet', icon:'🔑', action:openGarageFleet });
+      // LEGAL: Arjun lives in the flat upstairs: his clothes and his vault are up there.
+      spots.push({ id:'wardrobe', x:ROOM_W*0.36, y:205, label:'Wardrobe', icon:'👔', action:openWardrobeSpot });
+      spots.push({ id:'vault', x:ROOM_W*0.62, y:205, label:'Vault', icon:'🔒', action:openVault });
       spots.push({ id:'bench', x:AMBIENT_X, y:AMBIENT_Y, label:'Work Bench', icon:'🔧', action:function(){
         const parked = state.carParkedAt;
         const left = secondsUntilGarageReturn(parked, state.playSeconds);
@@ -6634,7 +6670,7 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: player token doesn't drift under it; the loop keeps running to hold the scene.
     // LEGAL: The expanded City Map is a full-screen overlay you read, not play through —
     // LEGAL: moving underneath it meant you walked blind and came back somewhere else.
-    if(!minigameOpen() && !deviceOpen() && !cityMapOpen && !isKnockedDown()){
+    if(!minigameOpen() && !deviceOpen() && !cityMapOpen && !isKnockedDown() && !document.getElementById('wardrobe-overlay')){
       if(keys['arrowup']||keys['w']) dy -= 1;
       if(keys['arrowdown']||keys['s']) dy += 1;
       if(keys['arrowleft']||keys['a']) dx -= 1;
@@ -6870,7 +6906,7 @@ import type * as ThreeNamespace from 'three';
       territoryTier: state.territoryTier, negotiateTier: state.negotiateTier,
       muscleCount: state.muscleCount, guns: state.guns, ratCount: state.ratCount, bribeOn: state.bribeOn,
       prestigeCount: state.prestigeCount, seenMilestones: Array.from(state.seenMilestones),
-      playSeconds: state.playSeconds, investorPenalty: state.investorPenalty, appearance: state.appearance,
+      playSeconds: state.playSeconds, investorPenalty: state.investorPenalty, appearance: state.appearance, vaultCash: state.vaultCash,
       started: state.started, procNpc: state.procNpc, lastTick: state.lastTick,
       quiet: document.body.classList.contains('quiet'),
       light: document.body.classList.contains('theme-light'),
@@ -6940,6 +6976,7 @@ import type * as ThreeNamespace from 'three';
         state.prestigeCount=Math.max(0, Math.min(familyTiers.length, Number(d.prestigeCount)||0)); state.seenMilestones = new Set((d.seenMilestones||[]).map((x: any)=>String(x)));
         state.playSeconds=d.playSeconds||0; state.investorPenalty=Math.min(0.5, d.investorPenalty||0);
         state.appearance = normalizeLook(d.appearance);
+        state.vaultCash = Math.max(0, Number(d.vaultCash) || 0);
         state.started = d.started; if(d.procNpc) state.procNpc = d.procNpc;
         if(d.lastTick) state.lastTick = d.lastTick;
         (d.businesses||[]).forEach((sb: any)=>{ const b=businesses.find(x=>x.id===sb.id); if(b){ b.level=sb.level; b.crew=sb.crew; b.manager=sb.manager; b.researched=sb.researched; b.reinvestedIncome=Math.max(0, Number(sb.reinvestedIncome)||0); } });

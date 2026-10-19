@@ -393,6 +393,8 @@ export interface GameState {
   investorPenalty: number;
   // LEGAL: What Arjun wears on the map (see map/personModel WARDROBE). Kept through prestige.
   appearance: PersonLook;
+  // LEGAL: Cash locked in the vault in Arjun's flat; out of reach of anything that takes a share of your pocket.
+  vaultCash: number;
   procNpc: ProceduralNPC;
   // LEGAL: Per-bank balances (see config/banks). Replaces the old single `bank` number;
   // LEGAL: saved games migrate the old balance into the default bank on load.

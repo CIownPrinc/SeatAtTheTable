@@ -44,6 +44,8 @@ async function pressHotspot(page: Page, visit: Visit, index: number): Promise<{ 
     const seat = (window as unknown as { __seat: SweepHook }).__seat;
     Object.assign(seat.state, { cash:50000, respect:500, influence:200, nextEventAt:Number.MAX_SAFE_INTEGER });
     document.getElementById('modal-overlay')!.classList.add('hidden');
+    // LEGAL: Close a wardrobe left open by the previous press the way a player would.
+    document.querySelector<HTMLButtonElement>('#wardrobe-overlay .wardrobe-cancel')?.click();
     seat.enterBuilding(args.visit.kind, args.visit.refId, args.visit.name);
     const spots = seat.hotspots();
     const spot = spots[args.index];
@@ -53,6 +55,7 @@ async function pressHotspot(page: Page, visit: Visit, index: number): Promise<{ 
         document.getElementById('modal-overlay')!.classList.contains('hidden') ? '' : 'modal',
         document.getElementById('device-overlay')!.classList.contains('hidden') ? '' : 'device',
         document.querySelector('.mg-overlay') ? 'minigame' : '',
+        document.getElementById('wardrobe-overlay') ? 'wardrobe' : '',
       ].join('');
     };
     const stateKey = function(): string { return JSON.stringify(seat.state, function(_k, v){ return v instanceof Set ? [...v] : v; }); };
