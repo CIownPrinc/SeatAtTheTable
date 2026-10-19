@@ -97,6 +97,8 @@ import { buildIntersectionFurniture as buildMapIntersectionFurniture, nearestLam
 import { signalState } from '../map/trafficRules';
 import { plowOut, snowSurfaceFor, snowWhiteness, stepPlowed, stepSnowCover } from '../map/snow';
 import { terrainSnow } from '../world/render/terrain';
+import { frontageClearance, generateLots, lotSolid, type Lot } from '../world/data/lots';
+import { buildCityLots } from '../world/render/lots';
 import { DISTRICT_OFFSETS, OUTSKIRT_PLACE_LOTS, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
 import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/viewport';
@@ -4476,12 +4478,68 @@ import type * as ThreeNamespace from 'three';
     return `${road.road.name}, ${region}`;
   }
   const fillerLayout = createFillerLayoutProvider(mapObjects);
+  // LEGAL: The new map lays the city out in lots along its streets (world/data/lots) in place of the
+  // LEGAL: old filler's buildings and building sites; its parks and parking lots stay.
+  function sceneFillerFor(districtId: string){
+    const items = fillerLayout.fillerFor(districtId);
+    return newMapBeta() ? items.filter(f => f.kind !== 'building' && f.kind !== 'construction') : items;
+  }
+  // LEGAL: What the minimap and the City Map draw: the lots too, as plain footprints.
   function fillerFor(districtId: string){
-    return fillerLayout.fillerFor(districtId);
+    if(!newMapBeta()) return fillerLayout.fillerFor(districtId);
+    const off = DISTRICT_OFFSETS[districtId] ?? 0;
+    const lots = cityLots().filter(lot => lot.district === districtId).map(function(lot){
+      const solid = lotSolid(lot);
+      return { kind:'building' as const, zone:'residential' as const, character:lot.character, x:lot.x - off, y:lot.y, w:solid.hw * 2, d:solid.hd * 2, h:lot.h, hue:0, rot:0 };
+    });
+    return [...sceneFillerFor(districtId), ...lots];
+  }
+  // LEGAL: Everything already standing that the lots must keep clear of: the named places and their
+  // LEGAL: annexes, landmarks, and every spot something stands on (dealers' corners, amenities, people).
+  let cityLotsCache: Lot[] | null = null;
+  function cityLots(): Lot[] {
+    if(!newMapBeta()) return [];
+    if(cityLotsCache) return cityLotsCache;
+    // LEGAL: Open places (the garage's bay, yards, alleys) have no collision bounds, so they're
+    // LEGAL: kept clear by the footprint they're drawn at.
+    const places: Solid[] = mapObjects.flatMap(function(object): Solid[] {
+      if(object.bounds) return [object.bounds];
+      if(object.kind === 'service'){ const shape = serviceBuildingSilhouette(object.ref as ServiceBuilding); return [{ x:object.x, y:object.y, hw:shape.w / 2, hd:shape.d / 2 }]; }
+      return [];
+    });
+    const taken: Solid[] = [...places, ...places.map(frontageClearance), ...placeExtraSolids()];
+    mapObjects.filter(object => !object.bounds).forEach(object => taken.push({ x:object.x, y:object.y, hw:28, hd:28 }));
+    // LEGAL: The garage's bay opens south: its apron, from the mouth to the street, stays open to drive in.
+    const garage = serviceBuildings.find(s => s.id === 'playerGarage');
+    if(garage){
+      const shape = serviceBuildingSilhouette(garage);
+      const street = roadNetwork.horizontal.find(h => h.y > garage.y) ?? roadNetwork.horizontal[roadNetwork.horizontal.length - 1];
+      taken.push({ x:garage.x, y:(garage.y + street.y) / 2, hw:shape.w / 2 + 10, hd:Math.abs(street.y - garage.y) / 2 });
+    }
+    landmarks.forEach(lm => taken.push({ x:lm.x, y:lm.y, hw:72, hd:72 }));
+    Object.values(spawnPoints).forEach(p => taken.push({ x:p.x, y:p.y, hw:40, hd:40 }));
+    cityLotsCache = generateLots(taken);
+    return cityLotsCache;
+  }
+  function placeExtraSolids(): Solid[] {
+    const list: Solid[] = [];
+    mapObjects.filter(object => object.kind === 'service').forEach(function(object){
+      const building = object.ref as ServiceBuilding;
+      const shape = serviceBuildingSilhouette(building);
+      list.push(...archetypeExtraSolids(serviceArchetype(building), object.x, object.y, shape.w, shape.d));
+    });
+    const garage = serviceBuildings.find(s => s.id === 'playerGarage');
+    if(garage){
+      const shape = serviceBuildingSilhouette(garage);
+      const office = garageOfficeCenter({ x:garage.x, y:garage.y }, shape.w, shape.d);
+      list.push({ x:office.x, y:office.y, hw:GARAGE_OFFICE.w / 2, hd:GARAGE_OFFICE.d / 2 });
+    }
+    return list;
   }
   function buildAllSolids(){
     const list: Solid[] = solidsFromObjects(mapObjects);
-    list.push(...fillerLayout.fillerSolids());
+    if(newMapBeta()) list.push(...cityLots().filter(lot => !lot.site).map(lotSolid), ...cityLots().filter(lot => lot.site).map(lot => { const s = lotSolid(lot); return { ...s, hw:s.hw + 2, hd:s.hd + 2 }; }));
+    else list.push(...fillerLayout.fillerSolids());
     // LEGAL: An alley is the gap BETWEEN two buildings: the gap is walkable and the buildings
     // LEGAL: forming it are not. A single bounds box cannot say "blocked, open, blocked", so
     // LEGAL: the flanks are added here, sized from the same constant the shell is drawn with.
@@ -5877,7 +5935,13 @@ import type * as ThreeNamespace from 'three';
 
     timer.measure('fill-and-landmarks', function(): void {
       tagWorld('filler', function(){
-        buildFillerCity({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, districtOffsets:DISTRICT_OFFSETS, fillerFor, helpers:{ box, addSign, buildDetailedBuilding, buildPlaceModel, buildParkedCar, renderZoneType, seededRandom } });
+        if(newMapBeta()) buildCityLots(THREE, cityLots(), buildingLibrary, materials, function(lot){
+          const mesh = buildDetailedBuilding(lot.w, lot.h, lot.d, lot.color, 'residential', 0);
+          mesh.position.set(lot.x, lot.h / 2, lot.y); mesh.rotation.y = lot.rot;
+          mesh.name = `filler:lot@${Math.round(lot.x)},${Math.round(lot.y)}`;
+          return mesh;
+        }).forEach(part => worldGroup.add(part));
+        buildFillerCity({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, districtOffsets:DISTRICT_OFFSETS, fillerFor:sceneFillerFor, helpers:{ box, addSign, buildDetailedBuilding, buildPlaceModel, buildParkedCar, renderZoneType, seededRandom } });
       });
       tagWorld('landmark', function(){
         buildLandmarks({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, landmarks, helpers:{ box, addSign }, buildPlaceModel });
@@ -6282,6 +6346,7 @@ import type * as ThreeNamespace from 'three';
         interiorRoom: function(){ return interiorView?.root ?? null; },
         roadNetwork, districtOffsets: DISTRICT_OFFSETS,
         snow: function(){ return { cover:snowCover, plowed:snowPlowed }; },
+        lots: function(){ return cityLots(); },
         roamingActors,
         // LEGAL: The world's own walkability rule, so the audit asks the game where an actor
         // LEGAL: may stand instead of re-deriving collision and grading its own homework.

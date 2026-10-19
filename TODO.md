@@ -324,6 +324,8 @@ old one.
     No car? They lend you one and take it back. Getting out of the car forfeits the race.
 
 48. **DONE** Pulling a dealer made them vanish; now they walk off the corner down the street.
+49. Keep going on the map rebuild (section 11 steps 3-6), the Blender work (people, street
+    furniture, props, landmarks) and the rest of this list.
 
 **E. Interiors**
 34. **DONE** Interiors you walk around in like outside, in 3D. Today most rooms are a few small icons that
@@ -384,7 +386,12 @@ Build order:
 1. **DONE** The world audit (item 15) comes first, so correctness is tested from the first line.
 2. **DONE** Ground: one terrain mesh, with zoning as a smooth field driving its colour and what's
    built. On by default since 2026-10-19 (item 28).
-3. A road graph with real curves, and building lots laid out along the roads.
+3. **PART** A road graph with real curves, and building lots laid out along the roads. Lots are
+   done (`world/data/lots.ts`, `world/render/lots.ts`): every side of every block that faces a
+   street is cut into lots set back behind the pavement and street trees, each building facing its
+   street, its type, height and colour from the block's character, a few left as building sites.
+   They keep clear of every place, its frontage and the garage's apron, and draw as instanced
+   Blender models (about 25 draw calls a district). Still open: curved city streets.
 4. Scenery placed from zoning that keeps clear of roads.
 5. Models: Blender-made, instanced, with levels of detail.
 6. The new places from section 10F, built on the new engine rather than the old one.
