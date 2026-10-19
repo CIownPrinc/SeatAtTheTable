@@ -62,7 +62,6 @@ export interface MapPlaceRenderHelpers {
   addVentureDetail: (building: MapBuilding, base: ThreeNamespace.Group) => void;
   addServiceDetail: (building: ServiceBuilding, base: ThreeNamespace.Group) => void;
   addLocalBusinessDetail: (business: LocalBusiness, base: ThreeNamespace.Group) => void;
-  addCategoryMarker: (base: ThreeNamespace.Group, icon: MapObject['minimapIcon'], color: string, y: number) => void;
   addSign: (parent: ThreeNamespace.Object3D, text: string, w: number, h: number, y: number, color: string) => void;
   variantForId: (id: string) => number;
 }
@@ -97,8 +96,6 @@ function renderVentureBuildings(options: MapPlaceRenderOptions): void {
     const mesh = built.mesh;
     // LEGAL: Facade detailing only makes sense on something with a facade.
     if(built.hasBuilding) helpers.addVentureDetail(building, mesh);
-    const markerY = built.hasBuilding ? silhouette.h / 2 + 12 : silhouette.h + 14;
-    helpers.addCategoryMarker(mesh, object.minimapIcon, building.biz.category === 'legit' ? '#8fd0e0' : '#f0a0ae', markerY);
     mesh.position.set(object.x, built.y, object.y);
     mesh.name = `venture:${building.id}:${building.biz.name}`;
     worldGroup.add(mesh);
@@ -115,7 +112,6 @@ function renderServiceBuildings(options: MapPlaceRenderOptions): void {
     const built = buildPlaceShell(options, archetype, silhouette, helpers.variantForId(building.id));
     const mesh = built.mesh;
     if(built.hasBuilding) helpers.addServiceDetail(building, mesh);
-    helpers.addCategoryMarker(mesh, object.minimapIcon, '#ffe6a0', built.hasBuilding ? silhouette.h - 3 : silhouette.h + 14);
     mesh.position.set(object.x, built.y, object.y);
     mesh.name = `service:${building.id}:${building.name}`;
     worldGroup.add(mesh);
@@ -133,7 +129,6 @@ function renderPropertyBuildings(options: MapPlaceRenderOptions): void {
     const silhouette = propertySilhouette(place);
     const built = buildPlaceShell(options, propertyArchetype(place), silhouette, helpers.variantForId(place.id));
     const mesh = built.mesh;
-    helpers.addCategoryMarker(mesh, object.minimapIcon, '#5fbf8f', built.hasBuilding ? silhouette.h - 2 : silhouette.h + 14);
     mesh.position.set(object.x, built.y, object.y);
     mesh.name = `property:${place.id}:${place.name}`;
     worldGroup.add(mesh);
@@ -163,7 +158,6 @@ function renderLocalBusinesses(options: MapPlaceRenderOptions): void {
     const built = buildPlaceShell(options, localArchetype(business), silhouette, helpers.variantForId(business.id));
     const mesh = built.mesh;
     if(built.hasBuilding) helpers.addLocalBusinessDetail(business, mesh);
-    helpers.addCategoryMarker(mesh, object.minimapIcon, business.extorted ? '#ffd77a' : '#b8aee0', silhouette.h + 4);
     mesh.position.set(object.x, built.y, object.y);
     mesh.name = `local:${business.id}:${business.name}`;
     worldGroup.add(mesh);

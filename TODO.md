@@ -197,9 +197,10 @@ old one.
 8. A few buildings stand fully or partly in the streets.
 9. Some roads meant to curve are drawn as straight pieces: find them and use real curves.
 10. Cars and trains aren't solid. Neither are some trees and buildings.
-11. A car breakdown gives no warning (it threw the player out). Add smoke from the car and a
-    "broken down" message when you try to use it.
-12. Streetlights face the wrong way and stay on in daytime.
+11. **DONE** A car breakdown gave no warning (it threw the player out). The map now shows a
+    "broken down" message when it happens and when you try to get back in, and the car smokes.
+12. **DONE** Streetlights faced the wrong way and stayed on in daytime. Each arm now reaches over
+    its junction, and all bulbs share one material the day/night cycle dims to off by day.
 13. **DONE** The beach stopped abruptly. It's now derived from the lake shore end to end.
 14. **PART** Roads lead nowhere. Short stubs are now T-junctions and real dead ends have a turning
     circle and sign. Still open: check every remaining one.
@@ -224,8 +225,8 @@ old one.
     `beammeup` (teleport), `rocketman` (fly with a jetpack, 2.6x speed), `getdachoppa`
     (helicopter), `bigdumper` (garbage truck), `liquidcourage` (drunk) and `bigheadmode`.
     Getting into any vehicle cancels rocketman.
-21. Remove the floating 3D icons over places. Keep only ones that matter to the design; the rest
-    go on the minimap. (Still there as of the last report.)
+21. **DONE** The floating 3D icons over places are gone; the minimap already shows them. Mission
+    objectives and the waypoint beacon keep their markers.
 22. A simpler, easier-on-the-eyes, GTA-style minimap.
 23. Traffic is too random to look real: lanes, junctions, believable routes.
 24. Police cars that patrol at random.

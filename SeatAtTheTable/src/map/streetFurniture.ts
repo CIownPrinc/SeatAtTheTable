@@ -24,19 +24,30 @@ function box(THREE: typeof ThreeNamespace, w: number, h: number, d: number, colo
   return mesh;
 }
 
-export function buildStreetLight(options: StreetFurnitureOptions, x: number, z: number): void {
+// LEGAL: One bulb material for every street lamp, so the day/night cycle can switch them all off
+// LEGAL: in daylight with a single change (each lamp used to glow at full strength at noon).
+let bulbMaterial: import('three').MeshStandardMaterial | null = null;
+export function streetLampBulbs(THREE: typeof import('three')): import('three').MeshStandardMaterial {
+  if(!bulbMaterial) bulbMaterial = new THREE.MeshStandardMaterial({ color:'#ffe6a0', emissive:'#ffd27a', emissiveIntensity:1.4 });
+  return bulbMaterial;
+}
+
+// LEGAL: `toward` is the point the arm reaches out over, normally the middle of the junction.
+export function buildStreetLight(options: StreetFurnitureOptions, x: number, z: number, toward: { x: number; z: number }): void {
   const { THREE, worldGroup, streetLamps } = options;
   const group = new THREE.Group();
   const pole = new THREE.Mesh(new THREE.CylinderGeometry(1.3,1.8,34,8), new THREE.MeshStandardMaterial({color:'#3b3e47', roughness:0.55, metalness:0.4}));
   pole.position.set(0,17,0); pole.castShadow=true; group.add(pole);
   const arm = box(THREE, 14,1.8,1.8,'#3b3e47');
   arm.position.set(6,33,0); group.add(arm);
-  const bulbMat = new THREE.MeshStandardMaterial({color:'#ffe6a0', emissive:'#ffd27a', emissiveIntensity:1.4});
-  const bulb = new THREE.Mesh(new THREE.SphereGeometry(3.2,10,8), bulbMat);
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(3.2,10,8), streetLampBulbs(THREE));
   bulb.position.set(13,32,0); group.add(bulb);
+  // LEGAL: The arm is built along +X; turn it to point at `toward` so the lamp hangs over the road.
+  const angle = Math.atan2(toward.z - z, toward.x - x);
+  group.rotation.y = -angle;
   group.position.set(x,0,z);
   worldGroup.add(group);
-  streetLamps.push({ x: x + 13, y: 32, z });
+  streetLamps.push({ x: x + Math.cos(angle) * 13, y: 32, z: z + Math.sin(angle) * 13 });
 }
 
 export function buildStopSign(options: StreetFurnitureOptions, x: number, z: number, rot: number): void {
@@ -90,8 +101,8 @@ export function buildTrafficLight(options: StreetFurnitureOptions, x: number, z:
 }
 
 export function buildIntersectionFurniture(options: StreetFurnitureOptions, x: number, z: number, index: number): void {
-  buildStreetLight(options, x - 46, z - 46);
-  buildStreetLight(options, x + 46, z + 46);
+  buildStreetLight(options, x - 46, z - 46, { x, z });
+  buildStreetLight(options, x + 46, z + 46, { x, z });
   buildStopSign(options, x - 42, z + 42, Math.PI / 4);
   if(index % 2 === 0) buildTrafficLight(options, x + 42, z - 42, -Math.PI / 4);
 }

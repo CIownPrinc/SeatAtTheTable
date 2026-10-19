@@ -78,7 +78,7 @@ import {
 } from '../map/casino';
 import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, buildLandmarks, buildOutskirtScenery, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
 import { createMapSceneMaterials, createSceneBuildTimer } from '../map/scenePerformance';
-import { buildIntersectionFurniture as buildMapIntersectionFurniture, nearestLamps, type LampHead } from '../map/streetFurniture';
+import { buildIntersectionFurniture as buildMapIntersectionFurniture, nearestLamps, streetLampBulbs, type LampHead } from '../map/streetFurniture';
 import { DISTRICT_OFFSETS, OUTSKIRT_PLACE_LOTS, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
 import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/viewport';
@@ -2254,6 +2254,8 @@ import type * as ThreeNamespace from 'three';
     state.brokenCars.push(car.id);
     if(state.inVehicle) exitVehicle();
     log(`<i aria-hidden="true" class="ph-duotone ph-warning"></i> The ${car.name} dies in the street — steam, then nothing. Get it repaired at ${brandById(car.brand)?.name ?? 'the lot'}.`);
+    // LEGAL: The log lives on another tab; while driving, the only sign used to be getting thrown out.
+    showMapToast(`Your ${car.name} has broken down. Get it repaired at ${brandById(car.brand)?.name ?? 'the lot'}.`);
     pushCityNews(`A ${car.name} sits abandoned with its hood up. No problem, apparently.`, false);
     updateParkedCarMesh(); refreshPlayerModel(); renderAll();
   }
@@ -4615,7 +4617,9 @@ import type * as ThreeNamespace from 'three';
     if(!car) return;
     // LEGAL: A broken-down used car will not start until it is repaired at its lot.
     if(state.brokenCars.includes(car.id)){
-      log(`<i aria-hidden="true" class="ph-duotone ph-wrench"></i> The ${car.name} turns over and dies. It needs repairing at ${brandById(car.brand)?.name ?? 'the lot'}.`);
+      const message = `The ${car.name} is broken down. Get it repaired at ${brandById(car.brand)?.name ?? 'the lot'}.`;
+      log(`<i aria-hidden="true" class="ph-duotone ph-wrench"></i> ${message}`);
+      showMapToast(message);
       return;
     }
     state.inVehicle = true;
@@ -5339,6 +5343,8 @@ import type * as ThreeNamespace from 'three';
     sunLight.target.position.set(shadowFrame.target.x, shadowFrame.target.y, shadowFrame.target.z);
     sunLight.target.updateMatrixWorld();
     moonLight.intensity = Math.max(0, night - 0.18) * 0.5;
+    // LEGAL: Street lamps: off by day, warming up through dusk, full at night.
+    streetLampBulbs(THREE).emissiveIntensity = Math.max(0, night - 0.4) / 0.6 * 1.6;
     moonLight.position.set(WORLD_W*0.5 - Math.cos(phase) * 700, 430, WORLD_H*0.55 - Math.sin(phase) * 220);
     moonLight.target.position.set(WORLD_W/2,0,WORLD_H/2);
     moonLight.target.updateMatrixWorld();
@@ -5471,58 +5477,6 @@ import type * as ThreeNamespace from 'three';
     }
   }
 
-  function addCategoryMarker(base: ThreeNamespace.Group, icon: MapObject['minimapIcon'], color: string, y: number): void {
-    if(!icon) return;
-    const marker = new THREE.Group();
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.2,18,6), new THREE.MeshStandardMaterial({color:'#1b1d24', roughness:0.72, metalness:0.2}));
-    pole.position.y = y + 9;
-    marker.add(pole);
-    const halo = new THREE.Mesh(new THREE.RingGeometry(8,10,18), new THREE.MeshBasicMaterial({color, transparent:true, opacity:0.42, side:THREE.DoubleSide}));
-    halo.rotation.x = Math.PI / 2;
-    halo.position.y = y + 21;
-    marker.add(halo);
-    if(icon === 'bank' || icon === 'cityhall'){
-      const roof = box(22,4,8,color);
-      roof.position.y = y + 28;
-      marker.add(roof);
-      [-7,0,7].forEach(function(x){
-        const column = box(3,10,3,color);
-        column.position.set(x,y + 22,0);
-        marker.add(column);
-      });
-    } else if(icon === 'garage'){
-      const bay = box(22,14,5,color);
-      bay.position.y = y + 24;
-      marker.add(bay);
-      const door = box(12,8,2,'#111217');
-      door.position.set(0,y + 21,3);
-      marker.add(door);
-    } else if(icon === 'realty' || icon === 'shop'){
-      const shop = box(21,12,6,color);
-      shop.position.y = y + 24;
-      marker.add(shop);
-      const awning = box(24,3,8,'#d9d2b8');
-      awning.position.y = y + 31;
-      marker.add(awning);
-    } else if(icon === 'bar'){
-      const cup = new THREE.Mesh(new THREE.ConeGeometry(8,12,16), new THREE.MeshStandardMaterial({color, roughness:0.35, metalness:0.15}));
-      cup.rotation.x = Math.PI;
-      cup.position.y = y + 25;
-      marker.add(cup);
-      const stem = box(3,9,3,color);
-      stem.position.y = y + 17;
-      marker.add(stem);
-    } else if(icon === 'heist' || icon === 'illegal'){
-      const target = new THREE.Mesh(new THREE.TorusGeometry(8,2,8,18), new THREE.MeshStandardMaterial({color, roughness:0.42, metalness:0.25}));
-      target.position.y = y + 24;
-      marker.add(target);
-    } else {
-      const markerDot = new THREE.Mesh(new THREE.SphereGeometry(7,14,10), new THREE.MeshStandardMaterial({color, emissive:color, emissiveIntensity:0.22, roughness:0.55}));
-      markerDot.position.y = y + 24;
-      marker.add(markerDot);
-    }
-    base.add(marker);
-  }
 
 
   // LEGAL: ---- procedural building with windows, door, and zone-specific roof ----
@@ -5681,7 +5635,7 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: Venture buildings — all districts
     timer.measure('places', function(): void {
       tagWorld('place', function(){
-        renderMapPlaces({ THREE, worldGroup, mapObjects, helpers:{ buildingColorFor, ventureFootprint, buildDetailedBuilding, buildAmenityModel, buildPedestrianModel, addVentureDetail, addServiceDetail, addLocalBusinessDetail, addCategoryMarker, addSign, variantForId } });
+        renderMapPlaces({ THREE, worldGroup, mapObjects, helpers:{ buildingColorFor, ventureFootprint, buildDetailedBuilding, buildAmenityModel, buildPedestrianModel, addVentureDetail, addServiceDetail, addLocalBusinessDetail, addSign, variantForId } });
       });
     });
 
@@ -5875,9 +5829,46 @@ import type * as ThreeNamespace from 'three';
       parkedCarMesh = buildCarModel(car, false);
       parkedCarMesh.position.set(pos.x,0,pos.y);
       parkedCarMesh.name = 'vehicle:parked';
+      if(state.brokenCars.includes(car.id)) parkedCarMesh.add(buildSmokePlume());
     worldGroup.add(parkedCarMesh);
     }
   }
+  // LEGAL: Grey puffs rising off a broken-down car's bonnet, looping. Animated in updateSmokePlumes.
+  const SMOKE_PUFFS = 7;
+  function buildSmokePlume(): ThreeNamespace.Group {
+    const plume = new THREE.Group();
+    plume.name = 'smoke-plume';
+    for(let i = 0; i < SMOKE_PUFFS; i++){
+      const puff = new THREE.Mesh(new THREE.SphereGeometry(5, 10, 8), new THREE.MeshStandardMaterial({ color:'#9a9da3', transparent:true, opacity:0.5, depthWrite:false, roughness:1 }));
+      puff.userData.phase = i / SMOKE_PUFFS;
+      plume.add(puff);
+    }
+    plume.position.set(0, 14, 14);
+    return plume;
+  }
+  function updateSmokePlumes(): void {
+    const plume = parkedCarMesh?.getObjectByName('smoke-plume');
+    if(!plume) return;
+    plume.children.forEach(function(puff, i){
+      const t = (state.playSeconds * 0.45 + (puff.userData.phase as number)) % 1;
+      puff.position.set(Math.sin(i * 2.1 + t * 3) * 4 * t, t * 46, Math.cos(i * 1.7) * 3 * t);
+      puff.scale.setScalar(0.5 + t * 1.6);
+      ((puff as ThreeNamespace.Mesh).material as ThreeNamespace.MeshStandardMaterial).opacity = 0.55 * (1 - t);
+    });
+  }
+
+  // LEGAL: A short message over the map itself, for things the player must notice while driving.
+  let mapToastTimer = 0;
+  function showMapToast(text: string): void {
+    const container = byId('scene3d-container');
+    let toast = container.querySelector<HTMLDivElement>('.map-toast');
+    if(!toast){ toast = document.createElement('div'); toast.className = 'map-toast'; toast.setAttribute('role', 'status'); container.appendChild(toast); }
+    toast.textContent = text;
+    toast.classList.add('show');
+    window.clearTimeout(mapToastTimer);
+    mapToastTimer = window.setTimeout(function(){ toast!.classList.remove('show'); }, 4500);
+  }
+
   function sampleRouteGuide(points: Point[], step: number): Point[] {
     const dots: Point[] = [];
     points.slice(1).forEach(function(point, index){
@@ -6037,6 +6028,7 @@ import type * as ThreeNamespace from 'three';
         THREE, scene, worldGroup, player, state, mapObjects, mapPlaces, renderer,
         characters: characterLibrary,
         audit: function(){ return auditScene(THREE, worldGroup); },
+        breakDownCar: function(){ const car = getEquippedCar(); if(car) breakDownCar(car); },
         startMission: startMissionFromOffer,
         resolveMission: resolveMissionAtObjective,
         declineMission: declineMissionOffer,
@@ -6623,6 +6615,7 @@ import type * as ThreeNamespace from 'three';
       updateDealerArrivals(dt);
       updateTrain();
       updateCheatEffects(dt);
+      updateSmokePlumes();
       playerGroup.position.set(player.x, flightHeight, player.y);
       playerGroup.rotation.y = -player.facing + Math.PI/2;
       aimCamera(dt);
