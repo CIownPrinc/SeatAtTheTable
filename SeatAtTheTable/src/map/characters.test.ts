@@ -28,8 +28,8 @@ describe('character animator', function () {
     const stander = lib.create('ped-2', '#334455');
     world.add(walker, stander);
     for(let i = 0; i < 30; i++){ walker.position.x += 0.6; lib.animator.tick(1 / 60, i / 60); }
-    // LEGAL: A person's root holds the upper body first, then the left and right hip pivots.
-    const legOf = (person: THREE.Object3D) => Math.abs(person.children[1].rotation.x);
+    // LEGAL: The scaled body holds the upper body first, then the left and right hip pivots.
+    const legOf = (person: THREE.Object3D) => Math.abs(person.getObjectByName('person-body')!.children[1].rotation.x);
     expect(legOf(walker)).toBeGreaterThan(legOf(stander));
   });
 

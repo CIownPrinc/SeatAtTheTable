@@ -4737,7 +4737,7 @@ import type * as ThreeNamespace from 'three';
     if(rotor) rotor.rotation.y += dt * 28;
     const wantJetpack = flying && !state.inVehicle;
     let jetpack = playerGroup.getObjectByName('jetpack');
-    if(wantJetpack && !jetpack){ jetpack = buildJetpack(THREE); playerGroup.children[0]?.add(jetpack); }
+    if(wantJetpack && !jetpack){ jetpack = buildJetpack(THREE); (playerGroup.getObjectByName('person-body') ?? playerGroup.children[0])?.add(jetpack); }
     if(!wantJetpack && jetpack) jetpack.parent?.remove(jetpack);
     if(wantJetpack && jetpack) jetpack.traverse(function(node){ if(node.name === 'jetpack-flame') node.scale.y = 0.75 + Math.random() * 0.6; });
     byId('scene3d-container').classList.toggle('drunk', isDrunk());

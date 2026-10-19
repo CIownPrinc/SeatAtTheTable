@@ -1,5 +1,6 @@
 import type { Business, Corner, LocalBusiness, MapAmenity, ServiceBuilding } from '../config/types';
 import type * as ThreeNamespace from 'three';
+import { storeys } from './scale';
 import { GARAGE_OFFICE, garageOfficeCenter } from './driveIn';
 import type { MapBuilding } from './markers';
 import type { MapObject } from './objects';
@@ -93,7 +94,7 @@ function renderVentureBuildings(options: MapPlaceRenderOptions): void {
     const building = object.ref as MapBuilding;
     const info = helpers.buildingColorFor(building.biz);
     const footprint = helpers.ventureFootprint(building);
-    const height = Math.max(info.h, footprint.h);
+    const height = storeys(Math.max(info.h, footprint.h));
     const color = building.zone === 'corporate' ? '#46516d' : (building.zone === 'entertainment' ? '#5a345e' : info.color);
     const archetype = ventureArchetype(building);
     const silhouette = withArchetype(archetype, { w:footprint.w, h:height, d:footprint.d, color, zoneType:footprint.zoneType });
@@ -170,10 +171,10 @@ export function propertySilhouette(place: PropertyPlace): BuildingSilhouette {
 
 function basePropertySilhouette(place: PropertyPlace): BuildingSilhouette {
   const income = place.property.incomePerSec;
-  if(income >= 700) return { w:56, h:96, d:48, color:'#4a5a6d', zoneType:'skyscraper' };
-  if(income >= 150) return { w:54, h:62, d:46, color:'#54566a', zoneType:'residential' };
-  if(income >= 30) return { w:60, h:32, d:44, color:'#6a5a48', zoneType:'commercial' };
-  return { w:46, h:30, d:38, color:'#5d4a46', zoneType:'residential' };
+  if(income >= 700) return { w:56, h:storeys(96), d:48, color:'#4a5a6d', zoneType:'skyscraper' };
+  if(income >= 150) return { w:54, h:storeys(62), d:46, color:'#54566a', zoneType:'residential' };
+  if(income >= 30) return { w:60, h:storeys(32), d:44, color:'#6a5a48', zoneType:'commercial' };
+  return { w:46, h:storeys(30), d:38, color:'#5d4a46', zoneType:'residential' };
 }
 
 function renderLocalBusinesses(options: MapPlaceRenderOptions): void {
@@ -196,8 +197,8 @@ export function serviceBuildingSilhouette(building: ServiceBuilding): BuildingSi
 }
 
 function baseServiceSilhouette(building: ServiceBuilding): BuildingSilhouette {
-  if(building.kind === 'bankHome') return { w:70, h:42, d:56, color:'#7a5f1a', zoneType:'service' };
-  if(building.kind === 'garage') return { w:84, h:28, d:62, color:'#3e6b78', zoneType:'industrial' };
+  if(building.kind === 'bankHome') return { w:70, h:storeys(42), d:56, color:'#7a5f1a', zoneType:'service' };
+  if(building.kind === 'garage') return { w:84, h:storeys(28), d:62, color:'#3e6b78', zoneType:'industrial' };
   // LEGAL: Your garage: a plain low workshop, deliberately unlike the glass dealerships, and
   // LEGAL: sized so a CAR FITS INSIDE IT — you drive in rather than pressing a button at the
   // LEGAL: kerb. 84x70 is inside the lot allocator's own 80x72 footprint on depth and only 2
@@ -207,7 +208,7 @@ function baseServiceSilhouette(building: ServiceBuilding): BuildingSilhouette {
   // LEGAL: centres 72 from a road centre and the roads are 74 wide: at 70 deep the back of
   // LEGAL: the garage would land exactly on the kerb line.
   // LEGAL: Wide enough to park two cars side by side; the office annex sits beside it.
-  if(building.kind === 'playerGarage') return { w:140, h:28, d:76, color:'#7d6a54', zoneType:'industrial' };
+  if(building.kind === 'playerGarage') return { w:140, h:storeys(28), d:76, color:'#7d6a54', zoneType:'industrial' };
   // LEGAL: Stage 5 — branded shops finally get their own footprints instead of falling
   // LEGAL: through to the generic service silhouette. This was written and reverted during
   // LEGAL: Phase 4 because the bigger footprints walled off the shoreline near spawn and
@@ -215,15 +216,15 @@ function baseServiceSilhouette(building: ServiceBuilding): BuildingSilhouette {
   // LEGAL: with the stage-1c outskirts, and buildings are now placed by the lot allocator
   // LEGAL: with proper setback rather than hand-picked coordinates on the waterfront.
   // LEGAL: A dealership reads as a wide, low glass showroom; a brokerage as a narrow office.
-  if(building.kind === 'dealership') return { w:92, h:26, d:64, color:'#3e6b78', zoneType:'commercial' };
-  if(building.kind === 'brokerage') return { w:58, h:46, d:48, color:'#456f78', zoneType:'commercial' };
+  if(building.kind === 'dealership') return { w:92, h:storeys(26), d:64, color:'#3e6b78', zoneType:'commercial' };
+  if(building.kind === 'brokerage') return { w:58, h:storeys(46), d:48, color:'#456f78', zoneType:'commercial' };
   // LEGAL: Branded shops were falling through to the generic default silhouette, which made
   // LEGAL: them smaller and blander than the generic buildings they replaced. Give
   // LEGAL: dealerships a wide showroom footprint and brokerages an office one.
-  if(building.kind === 'realty') return { w:62, h:32, d:48, color:'#456f78', zoneType:'commercial' };
-  if(building.kind === 'cityhall') return { w:88, h:48, d:64, color:'#74623c', zoneType:'service' };
-  if(building.kind === 'heist') return { w:72, h:34, d:58, color:'#5a2a33', zoneType:'industrial' };
-  return { w:72, h:38, d:58, color:'#3e6b78', zoneType:'service' };
+  if(building.kind === 'realty') return { w:62, h:storeys(32), d:48, color:'#456f78', zoneType:'commercial' };
+  if(building.kind === 'cityhall') return { w:88, h:storeys(48), d:64, color:'#74623c', zoneType:'service' };
+  if(building.kind === 'heist') return { w:72, h:storeys(34), d:58, color:'#5a2a33', zoneType:'industrial' };
+  return { w:72, h:storeys(38), d:58, color:'#3e6b78', zoneType:'service' };
 }
 
 export function localBusinessSilhouette(business: LocalBusiness): BuildingSilhouette {
@@ -233,11 +234,11 @@ export function localBusinessSilhouette(business: LocalBusiness): BuildingSilhou
 function baseLocalBusinessSilhouette(business: LocalBusiness): BuildingSilhouette {
   const color = business.extorted ? '#8a6a1a' : '#4a4360';
   // LEGAL: Enterable places were reading as smaller than the scenery around them.
-  if(business.id === 'bar' || business.id === 'marlowe') return { w:62, h:30, d:52, color:'#4c335a', zoneType:'commercial' };
-  if(business.id === 'chopshop') return { w:64, h:25, d:48, color:'#3e464a', zoneType:'industrial' };
-  if(business.id === 'jewelers') return { w:58, h:34, d:48, color:'#5b5268', zoneType:'shop' };
-  if(business.id === 'liquor') return { w:60, h:28, d:50, color, zoneType:'shop' };
-  return { w:56, h:26, d:46, color, zoneType:'shop' };
+  if(business.id === 'bar' || business.id === 'marlowe') return { w:62, h:storeys(30), d:52, color:'#4c335a', zoneType:'commercial' };
+  if(business.id === 'chopshop') return { w:64, h:storeys(25), d:48, color:'#3e464a', zoneType:'industrial' };
+  if(business.id === 'jewelers') return { w:58, h:storeys(34), d:48, color:'#5b5268', zoneType:'shop' };
+  if(business.id === 'liquor') return { w:60, h:storeys(28), d:50, color, zoneType:'shop' };
+  return { w:56, h:storeys(26), d:46, color, zoneType:'shop' };
 }
 
 function renderAmenities(options: MapPlaceRenderOptions): void {

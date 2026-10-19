@@ -1,3 +1,4 @@
+import { storeys } from './scale';
 import type { FillerItem, MapZoneType, Solid } from '../config/types';
 import type { MapObject } from './objects';
 import { buildableBands, distancePointToSegment, localXForDistrict, rectsOverlap, rotatedHalfExtents } from './layout';
@@ -115,7 +116,7 @@ export function createFillerLayoutProvider(mapObjects: MapObject[]): FillerLayou
             const w = Math.max(MIN_FILLER_BUILDING_W, cellW*(apartment ? 0.72+rand()*0.18 : 0.58+rand()*0.28)*profile.footprintMult);
             const d = Math.max(MIN_FILLER_BUILDING_D, cellD*(apartment ? 0.68+rand()*0.2 : 0.58+rand()*0.28)*profile.footprintMult);
             const baseH = apartment ? 42 + rand()*48 : (districtId==='hub' && yi < 2 ? 70 + rand()*rand()*210 : MIN_FILLER_BUILDING_H + rand()*rand()*82);
-            const h = Math.max(MIN_FILLER_BUILDING_H, baseH * profile.heightMult);
+            const h = storeys(Math.max(MIN_FILLER_BUILDING_H, baseH * profile.heightMult));
             const px = x0 + ci*cellW + (cellW-w)/2 + jit()*cellW*0.2;
             const py = y0 + ri*cellD + (cellD-d)/2 + jit()*cellD*0.2;
             const rot = (jit()*0.18 + (rand()<0.12 ? jit()*0.6 : 0)) * profile.jitterMult;

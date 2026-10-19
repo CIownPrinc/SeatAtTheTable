@@ -1,3 +1,4 @@
+import { PERSON_HEIGHT } from './scale';
 import type * as ThreeNamespace from 'three';
 import type { RoamingActor } from './roaming';
 import { actorDisplayName } from './roaming';
@@ -32,6 +33,6 @@ export function renderRoamingActors(options: MapActorRenderOptions): void {
     pedestrian.rotation.y = -actor.facing + Math.PI / 2;
     worldGroup.add(pedestrian);
     actor.group = pedestrian;
-    helpers.addSign(pedestrian, actorDisplayName(actor), 28, 7, 38, '#f0efe8');
+    helpers.addSign(pedestrian, actorDisplayName(actor), 28, 7, PERSON_HEIGHT + 6, '#f0efe8');
   });
 }

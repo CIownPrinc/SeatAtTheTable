@@ -24,7 +24,8 @@ export interface CameraRig {
 // LEGAL: 58 degrees down: building fronts and faces read, and the north-up view still lines up
 // LEGAL: with the minimap and with screen-relative movement keys.
 const PITCH = 58 * Math.PI / 180;
-const WALK_DISTANCE = 300;
+// LEGAL: Closer on foot now people are drawn life-size; buildings are taller, so not much closer.
+const WALK_DISTANCE = 270;
 const DRIVE_DISTANCE = 380;
 const SPEED_PULLBACK = 0.32;
 const MAX_PULLBACK = 170;

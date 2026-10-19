@@ -1,5 +1,6 @@
 import type * as ThreeNamespace from 'three';
 import { animatePerson, buildPerson, createPersonParts, lookForStranger, type PersonLook, type PersonRig } from './personModel';
+import { PERSON_SCALE } from './scale';
 
 // LEGAL: Everyone on the map, and the loop that animates them. Callers only move a person's root;
 // LEGAL: each figure works out its own ground speed from how far it moved since last frame, so
@@ -78,9 +79,15 @@ export function createCharacterLibrary(THREE: typeof ThreeNamespace, playerLook:
     create(identity, coat){
       const look = identity === 'arjun' ? playerLook() : lookForStranger(identity, coat);
       const person = buildPerson(THREE, parts, look);
-      person.root.name = `character:${identity}`;
-      animator.add(person.root, person.rig);
-      return person.root;
+      // LEGAL: The body is drawn at PERSON_SCALE inside an unscaled wrapper, so name signs and
+      // LEGAL: anything else callers attach keep their own size.
+      person.root.name = 'person-body';
+      person.root.scale.setScalar(PERSON_SCALE);
+      const wrapper = new THREE.Group();
+      wrapper.name = `character:${identity}`;
+      wrapper.add(person.root);
+      animator.add(wrapper, person.rig);
+      return wrapper;
     },
   };
 }

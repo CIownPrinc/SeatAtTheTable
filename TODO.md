@@ -259,10 +259,19 @@ old one.
 32. **PART** Remodel everything properly in Blender, step by step. Blender 5.2 is installed and
     scripted (`art/blender/`); the first model, a sedan, is exported. Next: the full catalog.
 
-33. Proportions are off between people, cars and buildings. Measured against the roads (74 units for
+33. **PART** Proportions were off between people, cars and buildings. Measured against the roads (74 units for
     two lanes, about 7 m): a person should be about 19 units tall and is 38, a storey should be
     about 31 and is 16, and cars are roughly right. Set one world scale (units per metre) in one
     module and size everything from it.
+    Done: one scale in `map/scale.ts` (10.5 units per metre); people are 22 units, building
+    heights x1.9. Still open: check every model against it, and the bikes.
+
+41. More police cars than normal ones (three to four). Cut police to one or two and add more
+    civilian traffic.
+42. A living city: unnamed pedestrians on the pavements who aren't part of any mission, so the
+    streets feel lived in.
+43. The territory toggle and the minimap as a whole are ugly, convoluted and overwhelming. Redesign
+    them into something much cooler (with item 22, the GTA-style minimap).
 
 **E. Interiors**
 34. Interiors you walk around in like outside, in 3D. Today most rooms are a few small icons that
