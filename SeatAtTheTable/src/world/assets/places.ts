@@ -10,11 +10,23 @@ export const PLACE_MODELS = [
   'mall', 'mall-garage',
   'airfield', 'docks', 'railyard', 'drive-in', 'lodge', 'motel',
 ] as const;
-export type PlaceModelName = typeof PLACE_MODELS[number];
+// LEGAL: Room furniture and the minigames' set pieces (art/blender/furniture.py).
+export const FURNITURE_MODELS = [
+  'counter', 'notice-board', 'safe', 'vault-door', 'plan-table', 'wardrobe', 'workbench', 'slot-machine', 'card-table',
+  'war-table', 'office-desk', 'lockers', 'potted-plant', 'tyre-stack', 'column', 'shop-shelf', 'tool-chest', 'filing-cabinet',
+  'fountain', 'perfume-kiosk', 'ice-cream-cart', 'food-counter', 'food-table', 'climbing-frame', 'ball-pit', 'mall-bench', 'planter',
+  'hoop', 'chess-table',
+] as const;
+export type FurnitureName = typeof FURNITURE_MODELS[number];
+export type PlaceModelName = typeof PLACE_MODELS[number] | FurnitureName;
 
 export async function loadPlaceModels(THREE: typeof ThreeNamespace): Promise<Map<PlaceModelName, PartModel>> {
-  const loaded = await Promise.all(PLACE_MODELS.map(name => loadPartModel(THREE, `/assets/world/places/${name}.glb`)));
+  const wanted: Array<[PlaceModelName, string]> = [
+    ...PLACE_MODELS.map((name): [PlaceModelName, string] => [name, `/assets/world/places/${name}.glb`]),
+    ...FURNITURE_MODELS.map((name): [PlaceModelName, string] => [name, `/assets/world/furniture/${name}.glb`]),
+  ];
+  const loaded = await Promise.all(wanted.map(([, url]) => loadPartModel(THREE, url)));
   const models = new Map<PlaceModelName, PartModel>();
-  loaded.forEach(function(model, i){ if(model) models.set(PLACE_MODELS[i], model); });
+  loaded.forEach(function(model, i){ if(model) models.set(wanted[i][0], model); });
   return models;
 }

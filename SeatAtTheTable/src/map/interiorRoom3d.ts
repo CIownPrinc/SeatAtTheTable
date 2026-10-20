@@ -2,6 +2,7 @@ import type * as ThreeNamespace from 'three';
 import type { Solid } from '../config/types';
 import { DOOR_WIDTH, FRONT_WALL_HEIGHT, WALL_HEIGHT, interiorLayout, type FloorPattern, type InteriorCar, type InteriorPiece, type InteriorSpot, type RoomSize } from './interiorLayout';
 import { mergeMeshesWithin, type MergeGeometries } from './mergeScenery';
+import { addPlaceModel, localMaterials, placeModel } from './placeModels';
 
 // LEGAL: A room you walk around in, in 3D. Room units (what the player moves in) are scaled down by
 // LEGAL: INTERIOR_SCALE so a 480-unit room is a shop-sized 27 m across a 22-unit person, not a hall.
@@ -158,6 +159,19 @@ export function buildInteriorRoom3d(THREE: typeof ThreeNamespace, build: Interio
   const furniture = new THREE.Group();
   furniture.name = 'interior:furniture';
   layout.pieces.forEach(piece => furniture.add(pieceMesh(THREE, piece, materialFor(piece))));
+  // LEGAL: The Blender furniture (art/blender/furniture.py), each piece in room units like the rest,
+  // LEGAL: or its plain shapes when the model hasn't loaded.
+  const fixtureMaterials = localMaterials(THREE);
+  layout.fixtures.forEach(function(item){
+    const model = placeModel(item.model);
+    if(!model){ item.fallback.forEach(piece => furniture.add(pieceMesh(THREE, piece, materialFor(piece)))); return; }
+    const g = new THREE.Group();
+    addPlaceModel(THREE, g, model, fixtureMaterials, `interior:${item.model}`, item.recolour);
+    g.position.set(item.x * s, item.y * s, item.z * s);
+    g.rotation.y = item.turn;
+    g.scale.set(item.scale[0] * s, item.scale[1] * s, item.scale[2] * s);
+    furniture.add(g);
+  });
   if(build.merge) mergeMeshesWithin(THREE, furniture, build.merge);
   root.add(furniture);
 

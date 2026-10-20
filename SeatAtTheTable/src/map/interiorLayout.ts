@@ -1,9 +1,9 @@
 import type { Solid } from '../config/types';
 
-import { PERSON_FACING_DOOR, WALL_HEIGHT, box, cyl, solidOf, type InteriorCar, type InteriorPerson, type InteriorPiece, type InteriorSpot, type InteriorWalker, type Prop } from './interiorPieces';
+import { PERSON_FACING_DOOR, WALL_HEIGHT, box, cyl, fixture, solidOf, type InteriorCar, type InteriorFixture, type InteriorPerson, type InteriorPiece, type InteriorSpot, type InteriorWalker, type Prop } from './interiorPieces';
 import { mallDecor, mallSpotProp } from './mallInterior';
 
-export type { InteriorCar, InteriorPerson, InteriorPiece, InteriorSpot, InteriorWalker } from './interiorPieces';
+export type { InteriorCar, InteriorFixture, InteriorPerson, InteriorPiece, InteriorSpot, InteriorWalker } from './interiorPieces';
 
 // LEGAL: What stands in each room: furniture, people and cars, keyed by the kind of room and its
 // LEGAL: hotspots. The room used to be a top-down 2D sketch with an emoji per hotspot; now every
@@ -20,6 +20,7 @@ export interface InteriorLayout {
   people: InteriorPerson[];
   cars: InteriorCar[];
   walkers: InteriorWalker[];
+  fixtures: InteriorFixture[];
   // LEGAL: In the same room units the player moves in.
   solids: Solid[];
 }
@@ -53,8 +54,9 @@ export function lookFor(kind: string): Look { return LOOKS[kind] ?? DEFAULT_LOOK
 // LEGAL: Everything a hotspot is: the thing you walk up to, and who stands behind it. A hotspot's
 // LEGAL: point is where you stand, so its prop sits just behind it, toward the back wall.
 
-function counter(x: number, z: number, w: number, look: Look, top = '#e0d6bf'): InteriorPiece[] {
-  return [box(x, z, w, 22, 24, look.wood), box(x, z, w + 4, 26, 3, top, 24)];
+// LEGAL: The Blender counter is 96 wide; a narrower or wider one is stretched to fit.
+function counter(x: number, z: number, w: number, look: Look, top = '#e0d6bf'): InteriorFixture {
+  return fixture('counter', x, z, [box(x, z, w, 22, 24, look.wood), box(x, z, w + 4, 26, 3, top, 24)], { scale:[w / 96, 1, 1], recolour:{ wood:look.wood, top } });
 }
 function staffBehind(x: number, z: number, identity: string, coat: string): InteriorPerson {
   return { x, z, facing:PERSON_FACING_DOOR, identity, coat };
@@ -63,7 +65,8 @@ function staffBehind(x: number, z: number, identity: string, coat: string): Inte
 function deskProp(spot: InteriorSpot, look: Look, refId: string, width = 96, extras: InteriorPiece[] = []): Prop {
   const z = spot.y - 26;
   return {
-    pieces:[...counter(spot.x, z, width, look), ...extras],
+    pieces:extras,
+    fixtures:[counter(spot.x, z, width, look)],
     people:[staffBehind(spot.x, z - 26, `${refId}:${spot.id}`, look.accent)],
     solids:[solidOf(spot.x, z, width + 4, 26)],
   };
@@ -77,32 +80,38 @@ function boardProp(spot: InteriorSpot, look: Look): Prop {
     box(spot.x, z, 64, 4, 40, '#8a6a42', 26),
   ];
   papers.forEach(function(color, i){ pieces.push(box(spot.x - 22 + (i % 3) * 22, z + 3, 14, 1, 12, color, 32 + Math.floor(i / 3) * 16)); });
-  return { pieces, people:[], solids:[solidOf(spot.x, z, 70, 8)] };
+  return { pieces:[], fixtures:[fixture('notice-board', spot.x, z, pieces, { recolour:{ wood:look.wood } })], people:[], solids:[solidOf(spot.x, z, 70, 8)] };
 }
 
 function safeProp(spot: InteriorSpot): Prop {
   const z = spot.y - 22;
   return {
-    pieces:[box(spot.x, z, 30, 26, 34, '#3a4048'), box(spot.x, z + 13.5, 22, 1, 24, '#4c535c', 5), cyl(spot.x + 5, z + 15, 3, 2, '#c9b26b', 18)],
+    pieces:[],
+    fixtures:[fixture('safe', spot.x, z, [box(spot.x, z, 30, 26, 34, '#3a4048'), box(spot.x, z + 13.5, 22, 1, 24, '#4c535c', 5), cyl(spot.x + 5, z + 15, 3, 2, '#c9b26b', 18)])],
     people:[], solids:[solidOf(spot.x, z, 30, 26)],
   };
 }
 
 function vaultDoorProp(spot: InteriorSpot, look: Look): Prop {
-  const pieces: InteriorPiece[] = [
+  const door: InteriorPiece[] = [
     { shape:'cyl', axis:'z', x:spot.x, z:3, w:76, d:6, h:76, y:2, color:'#4a525c' },
     { shape:'cyl', axis:'z', x:spot.x, z:6, w:56, d:4, h:56, y:12, color:'#5c656f' },
     { shape:'cyl', axis:'z', x:spot.x, z:9, w:12, d:4, h:12, y:34, color:look.accent },
   ];
   // LEGAL: The planning table in front of it, with the blueprint on top.
-  pieces.push(box(spot.x, spot.y - 24, 70, 30, 28, '#3a3028'), box(spot.x, spot.y - 24, 60, 22, 1, '#3d6a9a', 28));
-  return { pieces, people:[], solids:[solidOf(spot.x, spot.y - 24, 70, 30), solidOf(spot.x, 4, 80, 10)] };
+  const table = [box(spot.x, spot.y - 24, 70, 30, 28, '#3a3028'), box(spot.x, spot.y - 24, 60, 22, 1, '#3d6a9a', 28)];
+  return {
+    pieces:[],
+    fixtures:[fixture('vault-door', spot.x, 0, door, { recolour:{ accent:look.accent } }), fixture('plan-table', spot.x, spot.y - 24, table)],
+    people:[], solids:[solidOf(spot.x, spot.y - 24, 70, 30), solidOf(spot.x, 4, 80, 10)],
+  };
 }
 
 function wardrobeProp(spot: InteriorSpot, look: Look): Prop {
   const z = spot.y - 22;
   return {
-    pieces:[box(spot.x, z, 50, 20, 72, look.wood), box(spot.x - 0.5, z + 10.5, 1, 1, 64, '#2a1d12', 4), cyl(spot.x - 5, z + 11, 1.5, 2, '#c9b26b', 36), cyl(spot.x + 5, z + 11, 1.5, 2, '#c9b26b', 36)],
+    pieces:[],
+    fixtures:[fixture('wardrobe', spot.x, z, [box(spot.x, z, 50, 20, 72, look.wood), box(spot.x - 0.5, z + 10.5, 1, 1, 64, '#2a1d12', 4), cyl(spot.x - 5, z + 11, 1.5, 2, '#c9b26b', 36), cyl(spot.x + 5, z + 11, 1.5, 2, '#c9b26b', 36)], { recolour:{ wood:look.wood } })],
     people:[], solids:[solidOf(spot.x, z, 50, 20)],
   };
 }
@@ -110,7 +119,8 @@ function wardrobeProp(spot: InteriorSpot, look: Look): Prop {
 function benchProp(spot: InteriorSpot, look: Look): Prop {
   const z = spot.y - 24;
   return {
-    pieces:[box(spot.x, z, 70, 24, 30, '#5c4a36'), box(spot.x, z, 74, 26, 3, '#8a7458', 30), box(spot.x - 20, z, 12, 8, 6, '#c0392b', 33), box(spot.x + 14, z - 2, 18, 6, 3, '#9aa0a8', 33), box(spot.x, z - 14, 70, 2, 40, '#4a3a2a', 34)],
+    pieces:[],
+    fixtures:[fixture('workbench', spot.x, z, [box(spot.x, z, 70, 24, 30, '#5c4a36'), box(spot.x, z, 74, 26, 3, '#8a7458', 30), box(spot.x - 20, z, 12, 8, 6, '#c0392b', 33), box(spot.x + 14, z - 2, 18, 6, 3, '#9aa0a8', 33), box(spot.x, z - 14, 70, 2, 40, '#4a3a2a', 34)])],
     people:[], solids:[solidOf(spot.x, z, 74, 26)],
   };
 }
@@ -126,18 +136,19 @@ function showroomProp(spot: InteriorSpot, look: Look): Prop {
 
 function slotsProp(spot: InteriorSpot): Prop {
   const z = spot.y - 26;
-  const pieces: InteriorPiece[] = [];
-  [-30, 0, 30].forEach(function(dx, i){
-    pieces.push(box(spot.x + dx, z, 24, 20, 46, '#7a1f2a'), box(spot.x + dx, z + 10.5, 16, 1, 14, '#000000', 22, ['#ffd23a', '#5ad1ff', '#ff6b9a'][i]), box(spot.x + dx, z, 26, 22, 4, '#c9a227', 46));
+  const fixtures = [-30, 0, 30].map(function(dx, i){
+    const glow = ['#ffd23a', '#5ad1ff', '#ff6b9a'][i];
+    return fixture('slot-machine', spot.x + dx, z, [box(spot.x + dx, z, 24, 20, 46, '#7a1f2a'), box(spot.x + dx, z + 10.5, 16, 1, 14, '#000000', 22, glow), box(spot.x + dx, z, 26, 22, 4, '#c9a227', 46)], { recolour:{ screen:glow } });
   });
-  return { pieces, people:[], solids:[solidOf(spot.x, z, 88, 22)] };
+  return { pieces:[], fixtures, people:[], solids:[solidOf(spot.x, z, 88, 22)] };
 }
 
 function cardTableProp(spot: InteriorSpot, refId: string, look: Look): Prop {
   const z = spot.y - 40;
   const pieces = [cyl(spot.x, z, 24, 4, '#1f6a3a', 24), cyl(spot.x, z, 26, 3, '#5a3a22', 22), cyl(spot.x, z, 6, 22, '#2a1d12')];
   return {
-    pieces,
+    pieces:[],
+    fixtures:[fixture('card-table', spot.x, z, pieces)],
     people:[staffBehind(spot.x, z - 30, `${refId}:dealer`, look.accent)],
     solids:[solidOf(spot.x, z, 52, 52)],
   };
@@ -146,9 +157,9 @@ function cardTableProp(spot: InteriorSpot, refId: string, look: Look): Prop {
 function barProp(spot: InteriorSpot, refId: string, look: Look): Prop {
   const z = spot.y - 26;
   const bottles = ['#5a8a3a', '#c98a2b', '#8a2a2a', '#d6d0c0', '#3a5a8a'];
-  const pieces = [...counter(spot.x, z, 80, look, '#2a1a12')];
+  const pieces: InteriorPiece[] = [];
   bottles.forEach((color, i) => pieces.push(cyl(spot.x - 24 + i * 12, z - 4, 2.5, 10, color, 27)));
-  return { pieces, people:[staffBehind(spot.x, z - 26, `${refId}:bartender`, '#f0efe8')], solids:[solidOf(spot.x, z, 84, 26)] };
+  return { pieces, fixtures:[counter(spot.x, z, 80, look, '#2a1a12')], people:[staffBehind(spot.x, z - 26, `${refId}:bartender`, '#f0efe8')], solids:[solidOf(spot.x, z, 84, 26)] };
 }
 
 function paintBayProp(spot: InteriorSpot, look: Look): Prop {
@@ -179,7 +190,7 @@ function flagProp(spot: InteriorSpot): Prop {
 function warTableProp(spot: InteriorSpot, look: Look): Prop {
   const z = spot.y - 30;
   const pieces = [box(spot.x, z, 110, 44, 28, look.wood), box(spot.x, z, 100, 36, 1, '#c8b88a', 28), box(spot.x - 20, z - 4, 6, 6, 4, '#c0392b', 29), box(spot.x + 18, z + 6, 6, 6, 4, '#2f6b9a', 29)];
-  return { pieces, people:[], solids:[solidOf(spot.x, z, 110, 44)] };
+  return { pieces:[], fixtures:[fixture('war-table', spot.x, z, pieces, { recolour:{ wood:look.wood } })], people:[], solids:[solidOf(spot.x, z, 110, 44)] };
 }
 
 function contactProp(spot: InteriorSpot, refId: string): Prop {
@@ -199,7 +210,8 @@ function personProp(spot: InteriorSpot, refId: string, look: Look): Prop {
 function officeDeskProp(spot: InteriorSpot, look: Look): Prop {
   const z = spot.y - 24;
   return {
-    pieces:[box(spot.x, z, 64, 28, 28, look.wood), box(spot.x - 10, z - 6, 18, 4, 14, '#20242a', 28), box(spot.x - 10, z - 3.5, 15, 1, 10, '#000000', 30, '#5ad1ff'), box(spot.x + 40, z - 4, 18, 22, 44, '#5a5e66')],
+    pieces:[],
+    fixtures:[fixture('office-desk', spot.x, z, [box(spot.x, z, 64, 28, 28, look.wood), box(spot.x - 10, z - 6, 18, 4, 14, '#20242a', 28), box(spot.x - 10, z - 3.5, 15, 1, 10, '#000000', 30, '#5ad1ff'), box(spot.x + 40, z - 4, 18, 22, 44, '#5a5e66')], { recolour:{ wood:look.wood } })],
     people:[], solids:[solidOf(spot.x + 5, z, 82, 28)],
   };
 }
@@ -208,13 +220,13 @@ function lockerProp(spot: InteriorSpot): Prop {
   const z = spot.y - 22;
   const pieces: InteriorPiece[] = [];
   [-26, 0, 26].forEach(dx => pieces.push(box(spot.x + dx, z, 24, 20, 44, '#3e4a3a'), box(spot.x + dx, z + 10.5, 1, 1, 38, '#262e24', 4)));
-  return { pieces, people:[], solids:[solidOf(spot.x, z, 78, 20)] };
+  return { pieces:[], fixtures:[fixture('lockers', spot.x, z, pieces)], people:[], solids:[solidOf(spot.x, z, 78, 20)] };
 }
 
 function keyCabinetProp(spot: InteriorSpot, look: Look): Prop {
   const pieces = [box(spot.x, 3, 56, 4, 36, look.wood, 30)];
   for(let i = 0; i < 6; i++) pieces.push(box(spot.x - 20 + i * 8, 6, 3, 2, 6, '#c9b26b', 44));
-  return { pieces:[...pieces, ...counter(spot.x, spot.y - 26, 70, look)], people:[], solids:[solidOf(spot.x, spot.y - 26, 74, 26)] };
+  return { pieces, fixtures:[counter(spot.x, spot.y - 26, 70, look)], people:[], solids:[solidOf(spot.x, spot.y - 26, 74, 26)] };
 }
 
 function pedestalProp(spot: InteriorSpot, look: Look): Prop {
@@ -253,14 +265,14 @@ function propFor(spot: InteriorSpot, kind: string, refId: string, look: Look): P
   }
 }
 
-function plant(x: number, z: number): InteriorPiece[] {
-  return [cyl(x, z, 8, 14, '#6b4a2c'), { shape:'sphere', x, z, w:22, d:22, h:26, y:12, color:'#3c7a44' }];
+function plant(x: number, z: number): InteriorFixture {
+  return fixture('potted-plant', x, z, [cyl(x, z, 8, 14, '#6b4a2c'), { shape:'sphere', x, z, w:22, d:22, h:26, y:12, color:'#3c7a44' }]);
 }
-function tyres(x: number, z: number): InteriorPiece[] {
-  return [0, 1, 2].flatMap(i => [cyl(x, z, 14, 6.4, '#1b1e23', i * 7), cyl(x, z, 7, 6.6, '#8a8f98', i * 7)]);
+function tyres(x: number, z: number): InteriorFixture {
+  return fixture('tyre-stack', x, z, [0, 1, 2].flatMap(i => [cyl(x, z, 14, 6.4, '#1b1e23', i * 7), cyl(x, z, 7, 6.6, '#8a8f98', i * 7)]));
 }
-function column(x: number, z: number, color: string): InteriorPiece[] {
-  return [cyl(x, z, 12, WALL_HEIGHT, color), cyl(x, z, 15, 5, color)];
+function column(x: number, z: number, color: string): InteriorFixture {
+  return fixture('column', x, z, [cyl(x, z, 12, WALL_HEIGHT, color), cyl(x, z, 15, 5, color)], { recolour:{ stone:color, flute:color } });
 }
 
 // LEGAL: The furniture that gives each kind of room its character, kept to the walls and the
@@ -271,31 +283,36 @@ function decorFor(kind: string, room: RoomSize, look: Look): Prop {
   const solids: Solid[] = [];
   const people: InteriorPerson[] = [];
   const cars: InteriorCar[] = [];
+  const fixtures: InteriorFixture[] = [];
   const add = (piece: InteriorPiece, solid = true) => { pieces.push(piece); if(solid && piece.y < 20) solids.push(solidOf(piece.x, piece.z, piece.w, piece.d)); };
+  // LEGAL: A fixture is solid where its fallback's floor-standing pieces are.
+  const place = (item: InteriorFixture) => { fixtures.push(item); item.fallback.filter(p => p.y < 20).forEach(p => solids.push(solidOf(p.x, p.z, p.w, p.d))); };
   switch(kind){
     case 'mall': return mallDecor();
     case 'local': {
       // LEGAL: Open shelving down both walls: a back panel, three shelves, goods on each.
       for(const side of [-1, 1]){
         const sx = side < 0 ? 12 : w - 12;
-        pieces.push(box(sx + side * 7, 150, 3, 140, 56, look.wood));
-        solids.push(solidOf(sx, 150, 18, 140));
+        const shelf: InteriorPiece[] = [box(sx + side * 7, 150, 3, 140, 56, look.wood)];
         for(let level = 0; level < 3; level++){
-          pieces.push(box(sx, 150, 16, 140, 2, look.wood, 4 + level * 17));
-          for(let i = 0; i < 7; i++) pieces.push(box(sx, 90 + i * 20, 10, 13, 9, [look.accent, '#7c9a3a', '#c0392b', '#3a6a9a', '#e8dcc0'][(i + level * 2) % 5], 6 + level * 17));
+          shelf.push(box(sx, 150, 16, 140, 2, look.wood, 4 + level * 17));
+          for(let i = 0; i < 7; i++) shelf.push(box(sx, 90 + i * 20, 10, 13, 9, [look.accent, '#7c9a3a', '#c0392b', '#3a6a9a', '#e8dcc0'][(i + level * 2) % 5], 6 + level * 17));
         }
+        // LEGAL: The model faces +x, along the left wall; the right wall's is turned round.
+        fixtures.push(fixture('shop-shelf', sx, 150, shelf, { turn:side < 0 ? 0 : Math.PI, recolour:{ wood:look.wood, accent:look.accent } }));
+        solids.push(solidOf(sx, 150, 18, 140));
       }
       add(box(w / 2, 2, 60, 2, 22, '#1b241d', 44), false);
-      plant(w - 30, h - 30).forEach(p => add(p));
+      place(plant(w - 30, h - 30));
       break;
     }
     case 'bankHome':
-      [30, w - 30].forEach(x => column(x, h / 2, '#e2ddd0').forEach(p => add(p)));
+      [30, w - 30].forEach(x => place(column(x, h / 2, '#e2ddd0')));
       for(const rx of [w / 2 - 40, w / 2 + 40]){
         add(cyl(rx, h - 70, 3, 22, look.accent)); add(cyl(rx, h - 110, 3, 22, look.accent));
         pieces.push(box(rx, h - 90, 2, 40, 2, '#8a1f2a', 18));
       }
-      plant(30, h - 30).forEach(p => add(p));
+      place(plant(30, h - 30));
       break;
     case 'heist':
       for(let x = 30; x < w - 20; x += 26) pieces.push(box(x, h - 34, 12, 14, 0.6, look.accent));
@@ -303,12 +320,12 @@ function decorFor(kind: string, room: RoomSize, look: Look): Prop {
       break;
     case 'playerGarage':
       cars.push({ x:70, z:160, heading:Math.PI / 2, color:'#3e6b8a', use:'garage' }); solids.push(solidOf(70, 160, 44, 80));
-      for(let i = 0; i < 4; i++) add(box(w - 120 + i * 26, 12, 24, 20, 40, '#a82a22'));
-      tyres(w - 30, h - 34).forEach(p => add(p));
+      for(let i = 0; i < 4; i++) place(fixture('tool-chest', w - 120 + i * 26, 12, [box(w - 120 + i * 26, 12, 24, 20, 40, '#a82a22')]));
+      place(tyres(w - 30, h - 34));
       break;
     case 'dealership':
       cars.push({ x:70, z:160, heading:Math.PI * 0.6, color:'#c0392b', use:'showroom' }); solids.push(solidOf(70, 160, 60, 84));
-      tyres(w - 30, h - 34).forEach(p => add(p));
+      place(tyres(w - 30, h - 34));
       pieces.push(box(w / 2, 1, 180, 1, 16, '#000000', 54, look.accent));
       break;
     case 'respray':
@@ -317,25 +334,26 @@ function decorFor(kind: string, room: RoomSize, look: Look): Prop {
       break;
     case 'brokerage':
       pieces.push(box(w / 2, h - 70, 150, 80, 0.6, '#5a7c6b'));
-      for(let i = 0; i < 3; i++) add(box(20, 100 + i * 30, 26, 26, 40, '#4a4856'));
+      // LEGAL: Filing cabinets along the left wall, drawers facing into the room (+x).
+      for(let i = 0; i < 3; i++) place(fixture('filing-cabinet', 20, 100 + i * 30, [box(20, 100 + i * 30, 26, 26, 40, '#4a4856')], { turn:Math.PI / 2 }));
       for(let i = 0; i < 3; i++) pieces.push(box(w - 120 + i * 40, 2, 30, 2, 22, '#20242a', 40), box(w - 120 + i * 40, 3.2, 24, 1, 16, '#9ec3d6', 43));
-      plant(w - 30, h - 30).forEach(p => add(p));
+      place(plant(w - 30, h - 30));
       break;
     case 'cityhall':
-      [30, w - 30].forEach(x => column(x, h / 2, '#e2ddd0').forEach(p => add(p)));
+      [30, w - 30].forEach(x => place(column(x, h / 2, '#e2ddd0')));
       pieces.push(cyl(w / 2, h - 70, 28, 0.6, '#c9b26b'), cyl(w / 2, h - 70, 20, 0.8, '#b8a060'));
       add(cyl(w - 40, 40, 2, 72, '#8a8f9c'));
       pieces.push(box(w - 28, 40, 24, 1, 16, '#2a4a8a', 52), box(w - 28, 40.6, 24, 1, 5, '#c0392b', 52));
       break;
     case 'casino':
-      [30, w - 30].forEach(x => column(x, h / 2, '#c9a227').forEach(p => add(p)));
+      [30, w - 30].forEach(x => place(column(x, h / 2, '#c9a227')));
       for(let x = 40; x < w; x += 50) pieces.push(box(x, 1, 30, 1, 4, '#000000', WALL_HEIGHT - 20, '#ffcf5a'));
       break;
     case 'missionOffice':
-      add(box(22, 60, 26, 26, 44, '#5a5e66'));
+      place(fixture('filing-cabinet', 22, 60, [box(22, 60, 26, 26, 44, '#5a5e66')], { turn:Math.PI / 2, scale:[1, 1.1, 1], recolour:{ 'cabinet-steel':'#5a5e66' } }));
       add(box(w - 22, 60, 20, 20, 40, '#d6e4ec'));
-      plant(w - 30, h - 30).forEach(p => add(p));
-      plant(30, h - 30).forEach(p => add(p));
+      place(plant(w - 30, h - 30));
+      place(plant(30, h - 30));
       break;
     default:
       for(const [bx, bz] of [[24, h - 50], [46, h - 30], [w - 26, h - 48], [w - 50, h - 30]] as const) add(box(bx, bz, 24, 20, 22, '#6b4a2c'));
@@ -351,7 +369,7 @@ function decorFor(kind: string, room: RoomSize, look: Look): Prop {
     }
     for(const fx of [w * 0.1, w * 0.9]) pieces.push(box(fx, 1, 34, 2, 26, look.trimColor, 40), box(fx, 2.2, 28, 1, 20, kind === 'cityhall' || kind === 'bankHome' ? '#6a5a3a' : '#5a7c8a', 43));
   }
-  return { pieces, people, solids, cars };
+  return { pieces, people, solids, cars, fixtures };
 }
 
 function wallPieces(room: RoomSize, look: Look): InteriorPiece[] {
@@ -382,6 +400,7 @@ export function interiorLayout(kind: string, refId: string, room: RoomSize, spot
     people:[...decor.people, ...props.flatMap(p => p.people)],
     cars:[...(decor.cars ?? []), ...props.flatMap(p => p.cars ?? [])],
     walkers:[...(decor.walkers ?? []), ...props.flatMap(p => p.walkers ?? [])],
+    fixtures:[...(decor.fixtures ?? []), ...props.flatMap(p => p.fixtures ?? [])],
     solids:[...decor.solids, ...props.flatMap(p => p.solids)],
   };
 }

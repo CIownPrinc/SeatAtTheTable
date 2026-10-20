@@ -24,8 +24,9 @@ export function localMaterials(THREE: typeof ThreeNamespace): MaterialSource {
 }
 
 // LEGAL: Adds one mesh per part of `model` to `group`. Each part keeps the paint it was given in
-// LEGAL: Blender unless `recolour` names it. Materials are keyed `<prefix>:<part>`, plus the colour
-// LEGAL: when it's recoloured, and parts named 'roof...' end ':roof' so settling snow finds them.
+// LEGAL: Blender unless `recolour` names it; recolouring a lit part (a screen, a menu) changes its
+// LEGAL: glow. Materials are keyed `<prefix>:<part>`, plus the colour when it's recoloured, and parts
+// LEGAL: named 'roof...' end ':roof' so settling snow finds them.
 export function addPlaceModel(
   THREE: typeof ThreeNamespace,
   group: ThreeNamespace.Object3D,
@@ -47,8 +48,6 @@ export function addPlaceModel(
 }
 
 function paintParams(paint: PartPaint, colour?: string): ThreeNamespace.MeshStandardMaterialParameters {
-  return {
-    color:colour ?? paint.color, roughness:paint.roughness, metalness:paint.metalness,
-    ...(paint.emissive !== undefined ? { emissive:paint.emissive, emissiveIntensity:paint.emissiveIntensity ?? 1 } : {}),
-  };
+  if(paint.emissive !== undefined) return { color:paint.color, roughness:paint.roughness, metalness:paint.metalness, emissive:colour ?? paint.emissive, emissiveIntensity:paint.emissiveIntensity ?? 1 };
+  return { color:colour ?? paint.color, roughness:paint.roughness, metalness:paint.metalness };
 }

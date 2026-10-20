@@ -1,4 +1,5 @@
 import type * as ThreeNamespace from 'three';
+import { addPlaceModel, localMaterials, placeModel } from './placeModels';
 
 // LEGAL: The minigames' 3D views. Each owns a small renderer on its own canvas while the game is
 // LEGAL: open, the same way the wardrobe preview does, so the map's renderer and scene are never
@@ -37,6 +38,16 @@ function canvasTexture(THREE: Three, size: number, paint: (ctx: CanvasRenderingC
   return texture;
 }
 
+// LEGAL: A Blender set piece (art/blender/furniture.py) added to a scene, if it has loaded.
+function addSetPiece(THREE: Three, scene: ThreeNamespace.Scene, name: 'hoop' | 'chess-table'): boolean {
+  const model = placeModel(name);
+  if(!model) return false;
+  const g = new THREE.Group();
+  addPlaceModel(THREE, g, model, localMaterials(THREE), `minigame:${name}`);
+  scene.add(g);
+  return true;
+}
+
 function addLights(THREE: Three, scene: ThreeNamespace.Scene): void {
   scene.add(new THREE.HemisphereLight(0xfff6e8, 0x40503a, 1.8));
   const sun = new THREE.DirectionalLight(0xfff0d8, 1.8);
@@ -56,6 +67,25 @@ export interface CourtScene {
 
 const RIM = { y:30.5, z:0, r:2.3 };
 const HANDS: [number, number, number] = [0.8, 15.5, 44];
+
+function addSimpleHoop(THREE: Three, scene: ThreeNamespace.Scene): void {
+  const metal = new THREE.MeshStandardMaterial({ color:'#3a3d44', roughness:0.5, metalness:0.5 });
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 36, 12), metal);
+  pole.position.set(0, 18, -14);
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, 12), metal);
+  arm.position.set(0, 34, -8);
+  const board = new THREE.Mesh(new THREE.BoxGeometry(18, 10.5, 0.6), new THREE.MeshStandardMaterial({ color:'#f4f4f0', roughness:0.4 }));
+  board.position.set(0, 34, -2);
+  const square = new THREE.Mesh(new THREE.PlaneGeometry(6, 4.5), new THREE.MeshBasicMaterial({ color:'#d4693a' }));
+  square.position.set(0, 33, -1.65);
+  const inner = new THREE.Mesh(new THREE.PlaneGeometry(5, 3.5), new THREE.MeshBasicMaterial({ color:'#f4f4f0' }));
+  inner.position.set(0, 33.2, -1.6);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(RIM.r, 0.22, 8, 32), new THREE.MeshStandardMaterial({ color:'#d4693a', roughness:0.4, metalness:0.4 }));
+  rim.rotation.x = Math.PI / 2; rim.position.set(0, RIM.y, RIM.z);
+  const net = new THREE.Mesh(new THREE.CylinderGeometry(RIM.r, 1.4, 4.4, 12, 3, true), new THREE.MeshBasicMaterial({ color:'#f0efe8', wireframe:true, transparent:true, opacity:0.8 }));
+  net.position.set(0, RIM.y - 2.2, RIM.z);
+  scene.add(pole, arm, board, square, inner, rim, net);
+}
 
 export function createCourtScene(THREE: Three, canvas: HTMLCanvasElement): CourtScene {
   const view = createView(THREE, canvas, '#9cc4e4', 52);
@@ -82,23 +112,9 @@ export function createCourtScene(THREE: Three, canvas: HTMLCanvasElement): Court
   line.rotation.x = -Math.PI / 2; line.position.set(0, 0.08, 46);
   scene.add(line);
 
-  // LEGAL: Pole, backboard with its target square, the rim and the net.
-  const metal = new THREE.MeshStandardMaterial({ color:'#3a3d44', roughness:0.5, metalness:0.5 });
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 36, 12), metal);
-  pole.position.set(0, 18, -14);
-  const arm = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, 12), metal);
-  arm.position.set(0, 34, -8);
-  const board = new THREE.Mesh(new THREE.BoxGeometry(18, 10.5, 0.6), new THREE.MeshStandardMaterial({ color:'#f4f4f0', roughness:0.4 }));
-  board.position.set(0, 34, -2);
-  const square = new THREE.Mesh(new THREE.PlaneGeometry(6, 4.5), new THREE.MeshBasicMaterial({ color:'#d4693a' }));
-  square.position.set(0, 33, -1.65);
-  const inner = new THREE.Mesh(new THREE.PlaneGeometry(5, 3.5), new THREE.MeshBasicMaterial({ color:'#f4f4f0' }));
-  inner.position.set(0, 33.2, -1.6);
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(RIM.r, 0.22, 8, 32), new THREE.MeshStandardMaterial({ color:'#d4693a', roughness:0.4, metalness:0.4 }));
-  rim.rotation.x = Math.PI / 2; rim.position.set(0, RIM.y, RIM.z);
-  const net = new THREE.Mesh(new THREE.CylinderGeometry(RIM.r, 1.4, 4.4, 12, 3, true), new THREE.MeshBasicMaterial({ color:'#f0efe8', wireframe:true, transparent:true, opacity:0.8 }));
-  net.position.set(0, RIM.y - 2.2, RIM.z);
-  scene.add(pole, arm, board, square, inner, rim, net);
+  // LEGAL: Pole, backboard with its target square, the rim and the net: the Blender hoop once it's
+  // LEGAL: loaded, plain shapes otherwise. Both put the rim where the ball's flight aims (RIM).
+  if(!addSetPiece(THREE, scene, 'hoop')) addSimpleHoop(THREE, scene);
 
   // LEGAL: Chain-link fence round the court, with the city behind it.
   const fenceTexture = canvasTexture(THREE, 128, function(ctx, size){
@@ -224,14 +240,7 @@ function pieceMesh(THREE: Three, type: string, material: ThreeNamespace.Material
   return g;
 }
 
-export function createChessScene(THREE: Three, canvas: HTMLCanvasElement): ChessScene {
-  const view = createView(THREE, canvas, '#a8c8a0', 40);
-  const { scene, camera } = view;
-  addLights(THREE, scene);
-  const grass = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color:'#4f7a3e', roughness:1 }));
-  grass.rotation.x = -Math.PI / 2; grass.position.y = -30;
-  scene.add(grass);
-  // LEGAL: The stone park table with the board inlaid in it.
+function addSimpleChessTable(THREE: Three, scene: ThreeNamespace.Scene): void {
   const stone = new THREE.MeshStandardMaterial({ color:'#9a958a', roughness:0.9 });
   const top = new THREE.Mesh(new THREE.BoxGeometry(64, 3, 64), stone);
   top.position.y = -1.5;
@@ -245,6 +254,17 @@ export function createChessScene(THREE: Three, canvas: HTMLCanvasElement): Chess
     square.position.set((c - 3.5) * SQUARE, 0.2, (r - 3.5) * SQUARE);
     scene.add(square);
   }
+}
+
+export function createChessScene(THREE: Three, canvas: HTMLCanvasElement): ChessScene {
+  const view = createView(THREE, canvas, '#a8c8a0', 40);
+  const { scene, camera } = view;
+  addLights(THREE, scene);
+  const grass = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color:'#4f7a3e', roughness:1 }));
+  grass.rotation.x = -Math.PI / 2; grass.position.y = -30;
+  scene.add(grass);
+  // LEGAL: The stone park table with the board inlaid in it: the Blender one, or plain shapes.
+  if(!addSetPiece(THREE, scene, 'chess-table')) addSimpleChessTable(THREE, scene);
   const white = new THREE.MeshStandardMaterial({ color:'#efe6d2', roughness:0.45 });
   const black = new THREE.MeshStandardMaterial({ color:'#2a2a30', roughness:0.4 });
   const pieces = new THREE.Group();

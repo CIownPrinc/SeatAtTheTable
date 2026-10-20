@@ -345,12 +345,16 @@ old one.
     furniture, landmarks, people's parts and spinning wheels in Blender, the countryside places,
     the frame-rate fixes and the switch-over. Curved city streets were dropped: the user said the
     straight grid is fine (2026-10-19).
-50. Move the rest of the code-built models into Blender too, even the ones that already look fine
+50. **DONE** Move the rest of the code-built models into Blender too, even the ones that already look fine
     (user, 2026-10-20). Done so far: the suburb house, the farmhouse, barn, silo, shed and tank, the
     site cabin, toilet and a tower crane built from mast and jib bays, the mall and its garage, and the
     airfield, docks, railyard, drive-in, lodge and motel (`art/blender/places.py`, loaded by
     `world/assets/places.ts`, drawn by `map/placeModels.ts`; each keeps its old shapes as the
-    fallback). Left: interior furniture, the mall's inside and the minigame scenes.
+    fallback). Then the rooms: 29 pieces of furniture in `art/blender/furniture.py` (counters, boards,
+    safes, the vault door, slot machines, the card table, desks, lockers, shelving, plants, columns,
+    tool chests), the mall's fountain, kiosks, food court, climbing frame and ball pit, and the
+    basketball hoop and stone chess table. Layouts name them as fixtures (`InteriorFixture` in
+    `map/interiorPieces.ts`), each with its old shapes as the fallback.
 55. Write a quick file of everything that's changed since the last play-test (user, 2026-10-20).
     **DONE**: `PLAYTEST-CHANGES.md`.
 51. **DONE** The cars are too small (user, 2026-10-20: "the cars are so tiny bro"). They were drawn at life

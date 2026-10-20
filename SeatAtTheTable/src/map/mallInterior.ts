@@ -1,6 +1,6 @@
 import type { Solid } from '../config/types';
 import { MALL_SHOPS, type MallShop } from '../config/mallShops';
-import { PERSON_FACING_DOOR, WALL_HEIGHT, ball, box, cyl, solidOf, solidUnder, type InteriorPiece, type InteriorSpot, type InteriorWalker, type Prop } from './interiorPieces';
+import { PERSON_FACING_DOOR, WALL_HEIGHT, ball, box, cyl, fixture, solidOf, solidUnder, type InteriorFixture, type InteriorPiece, type InteriorSpot, type InteriorWalker, type Prop } from './interiorPieces';
 
 // LEGAL: Inside Lakeridge Mall: shopfronts along the back, a fountain in the middle with a perfume
 // LEGAL: kiosk and an ice cream cart either side of it, a food court on the left, an indoor
@@ -86,7 +86,8 @@ export function mallSpotProp(spot: InteriorSpot, refId: string): Prop | null {
 function fountain(): Prop {
   const { x, z, r } = FOUNTAIN;
   return {
-    pieces:[cyl(x, z, r, 10, '#cfc9bb'), cyl(x, z, r - 6, 10.6, '#3a8ab0', 0, '#1a4a6a'), cyl(x, z, 7, 34, '#cfc9bb'), cyl(x, z, 20, 4, '#cfc9bb', 30), cyl(x, z, 16, 4.4, '#5ab0d8', 30, '#2a6a8a')],
+    pieces:[],
+    fixtures:[fixture('fountain', x, z, [cyl(x, z, r, 10, '#cfc9bb'), cyl(x, z, r - 6, 10.6, '#3a8ab0', 0, '#1a4a6a'), cyl(x, z, 7, 34, '#cfc9bb'), cyl(x, z, 20, 4, '#cfc9bb', 30), cyl(x, z, 16, 4.4, '#5ab0d8', 30, '#2a6a8a')])],
     people:[], solids:[solidOf(x, z, r * 2, r * 2)],
   };
 }
@@ -100,7 +101,7 @@ function perfumeKiosk(): Prop {
     pieces.push(cyl(x + Math.cos(a) * 20, z + Math.sin(a) * 20, 2.6, 8, ['#e8b4c8', '#b4d8e8', '#f0d890', '#c8e0b4'][i % 4], 27));
   }
   pieces.push(cyl(x, z, 3, 40, '#c98aa8', 27), box(x, z, 40, 3, 16, '#c98aa8', 60));
-  return { pieces, solids:[solidOf(x, z, 64, 64)], people:[{ x, z:410, facing:PERSON_FACING_DOOR, identity:'mall:perfume', coat:'#c98aa8' }] };
+  return { pieces:[], fixtures:[fixture('perfume-kiosk', x, z, pieces)], solids:[solidOf(x, z, 64, 64)], people:[{ x, z:410, facing:PERSON_FACING_DOOR, identity:'mall:perfume', coat:'#c98aa8' }] };
 }
 
 function iceCreamCart(): Prop {
@@ -111,26 +112,26 @@ function iceCreamCart(): Prop {
     cyl(x, z, 1.6, 50, '#d6d0c0', 28), { shape:'sphere' as const, x, z, w:66, d:66, h:14, y:72, color:'#e85a8a' },
     ball(x - 12, z - 4, 4, '#f0d0e0', 28), ball(x, z - 4, 4, '#f0e0a0', 28), ball(x + 12, z - 4, 4, '#8a5a3a', 28),
   ];
-  return { pieces, solids:[solidOf(x, z, 56, 28)], people:[{ x, z:z - 26, facing:PERSON_FACING_DOOR, identity:'mall:icecream', coat:'#5ab0d8' }] };
+  return { pieces:[], fixtures:[fixture('ice-cream-cart', x, z, pieces)], solids:[solidOf(x, z, 56, 28)], people:[{ x, z:z - 26, facing:PERSON_FACING_DOOR, identity:'mall:icecream', coat:'#5ab0d8' }] };
 }
 
 function foodCourt(): Prop {
-  const pieces: InteriorPiece[] = [];
+  const fixtures: InteriorFixture[] = [];
   const solids: Solid[] = [];
   const people: Prop['people'] = [];
   // LEGAL: Two food counters on the left wall with lit menus, and tables to sit at.
   for(const [z, color, menu] of [[240, '#c0392b', '#f0c060'], [400, '#2f6b4a', '#f0e0b0']] as const){
-    pieces.push(box(30, z, 26, 100, 24, color), box(30, z, 30, 104, 3, '#f0ebe0', 24), box(1.5, z, 2, 80, 22, '#000000', 40, menu));
+    fixtures.push(fixture('food-counter', 30, z, [box(30, z, 26, 100, 24, color), box(30, z, 30, 104, 3, '#f0ebe0', 24), box(1.5, z, 2, 80, 22, '#000000', 40, menu)], { recolour:{ counter:color, menu } }));
     solids.push(solidOf(30, z, 30, 104));
     people.push({ x:12, z, facing:0, identity:`mall:cook:${z}`, coat:'#f0efe8' });
   }
   for(const x of [140, 220]) for(const z of [250, 350, 450]){
-    const top = cyl(x, z, 16, 2, '#f0ebe0', 20);
-    pieces.push(top, cyl(x, z, 2.5, 20, '#5a5e66'));
+    const table = [cyl(x, z, 16, 2, '#f0ebe0', 20), cyl(x, z, 2.5, 20, '#5a5e66')];
+    for(const [dx, dz] of [[-24, 0], [24, 0], [0, -24], [0, 24]] as const) table.push(box(x + dx, z + dz, 10, 10, 12, '#c0392b'));
+    fixtures.push(fixture('food-table', x, z, table));
     solids.push(solidOf(x, z, 32, 32));
-    for(const [dx, dz] of [[-24, 0], [24, 0], [0, -24], [0, 24]] as const) pieces.push(box(x + dx, z + dz, 10, 10, 12, '#c0392b'));
   }
-  return { pieces, solids, people };
+  return { pieces:[], fixtures, solids, people };
 }
 
 function playground(): Prop {
@@ -145,35 +146,36 @@ function playground(): Prop {
   fence((x0 + x1) / 2, z0, x1 - x0, 4);
   fence((x0 + x1) / 2, z1, x1 - x0, 4);
   // LEGAL: Climbing frame with a slide off it, and a ball pit.
-  for(const [dx, dz] of [[0, 0], [50, 0], [0, 50], [50, 50]] as const) pieces.push(box(860 + dx, 270 + dz, 4, 4, 40, '#c0392b'));
-  pieces.push(box(885, 295, 56, 56, 4, '#2f6bb0', 36), box(885, 295, 60, 60, 2, '#f0c040', 52));
-  pieces.push(box(940, 295, 50, 16, 3, '#f0c040', 18));
+  const frame: InteriorPiece[] = [];
+  for(const [dx, dz] of [[0, 0], [50, 0], [0, 50], [50, 50]] as const) frame.push(box(860 + dx, 270 + dz, 4, 4, 40, '#c0392b'));
+  frame.push(box(885, 295, 56, 56, 4, '#2f6bb0', 36), box(885, 295, 60, 60, 2, '#f0c040', 52), box(940, 295, 50, 16, 3, '#f0c040', 18));
   solids.push(solidOf(885, 295, 60, 60));
-  pieces.push(box(900, 470, 90, 4, 12, '#2f6bb0'), box(900, 510, 90, 4, 12, '#2f6bb0'), box(855, 490, 4, 44, 12, '#2f6bb0'), box(945, 490, 4, 44, 12, '#2f6bb0'));
+  const pit = [box(900, 470, 90, 4, 12, '#2f6bb0'), box(900, 510, 90, 4, 12, '#2f6bb0'), box(855, 490, 4, 44, 12, '#2f6bb0'), box(945, 490, 4, 44, 12, '#2f6bb0')];
   solids.push(solidOf(900, 490, 94, 44));
   const colours = ['#e85a5a', '#f0c040', '#5ab0d8', '#5ad18a', '#c98aa8'];
-  for(let i = 0; i < 36; i++) pieces.push(ball(862 + (i % 9) * 9.5, 476 + Math.floor(i / 9) * 9, 4, colours[i % 5], 2 + (i % 3)));
-  return { pieces, solids, people:[] };
+  for(let i = 0; i < 36; i++) pit.push(ball(862 + (i % 9) * 9.5, 476 + Math.floor(i / 9) * 9, 4, colours[i % 5], 2 + (i % 3)));
+  return { pieces, fixtures:[fixture('climbing-frame', 885, 295, frame), fixture('ball-pit', 900, 490, pit)], solids, people:[] };
 }
 
 function seating(): Prop {
-  const pieces: InteriorPiece[] = [];
+  const fixtures: InteriorFixture[] = [];
   const solids: Solid[] = [];
   // LEGAL: Benches facing the fountain, planters by the door and columns holding up the roof.
   for(const [x, z, w, d] of [[500, 432, 60, 12], [500, 288, 60, 12]] as const){
     const bench = box(x, z, w, d, 9, '#6a4a32');
-    pieces.push(bench, box(x, z, w, 3, 3, '#3a3f4b', 9));
+    fixtures.push(fixture('mall-bench', x, z, [bench, box(x, z, w, 3, 3, '#3a3f4b', 9)]));
     solids.push(solidUnder(bench));
   }
   for(const x of [380, 620]){
-    pieces.push(box(x, 580, 40, 40, 14, '#8a7a62'), ball(x, 580, 18, '#3c7a44', 14));
+    fixtures.push(fixture('planter', x, 580, [box(x, 580, 40, 40, 14, '#8a7a62'), ball(x, 580, 18, '#3c7a44', 14)]));
     solids.push(solidOf(x, 580, 40, 40));
   }
+  // LEGAL: The room's column model is 12 across; these are 10.
   for(const [x, z] of [[260, 200], [740, 200], [260, 560], [740, 560]] as const){
-    pieces.push(cyl(x, z, 10, WALL_HEIGHT, '#efeae0'), cyl(x, z, 13, 5, '#c9a227'));
+    fixtures.push(fixture('column', x, z, [cyl(x, z, 10, WALL_HEIGHT, '#efeae0'), cyl(x, z, 13, 5, '#c9a227')], { scale:[10 / 12, 1, 10 / 12], recolour:{ stone:'#efeae0', flute:'#e2ddd0' } }));
     solids.push(solidOf(x, z, 20, 20));
   }
-  return { pieces, solids, people:[] };
+  return { pieces:[], fixtures, solids, people:[] };
 }
 
 function shoppers(): InteriorWalker[] {
@@ -198,6 +200,7 @@ export function mallDecor(): Prop {
     pieces:parts.flatMap(p => p.pieces),
     solids:parts.flatMap(p => p.solids),
     people:parts.flatMap(p => p.people),
+    fixtures:parts.flatMap(p => p.fixtures ?? []),
     walkers:shoppers(),
   };
 }

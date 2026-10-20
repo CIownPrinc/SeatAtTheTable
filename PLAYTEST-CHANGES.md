@@ -17,6 +17,9 @@ The newest items, from today (2026-10-20), are first.
   now (it was rendering black).
 - **Walking plants its feet.** Steps now match how far the legs reach, the hips dip as the legs
   spread so the front foot stays on the ground, and running springs off each foot. No more gliding.
+- **Blender furniture in every room:** counters, notice boards, safes, the vault door, slot machines,
+  the card table, desks, lockers, shelving, plants and columns, plus the mall's fountain, kiosks,
+  food court, climbing frame and ball pit, and the basketball hoop and chess table.
 - **More Blender models:** the suburb houses (each in its own colours), the farmhouse, barn, silo,
   shed and tank, the building-site cabin, toilet and a lattice tower crane, the mall and its parking
   garage, and the airfield, docks, railyard, drive-in, lodge and motel.
@@ -76,7 +79,3 @@ The newest items, from today (2026-10-20), are first.
 - Saves: Reset, Start New Game and import actually replace the save now.
 - 460 unit tests pass, and so do the browser tests for driving, the map, interiors and the mall.
 
-## Still to come
-
-- Interior furniture, the inside of the mall and the minigame scenes are still built in code. They
-  move to Blender next.
