@@ -2,6 +2,8 @@ import { TREE_SCALE } from './scale';
 import type { DiagonalRoad, HorizontalRoad, Landmark, VerticalRoad } from './world';
 import { createOutskirtSceneryLayout } from './outskirtScenery';
 import { buildCountryBuilding } from './countryBuildings';
+import { instancedTrees, treeShape, type TreePlacement } from './treeModels';
+import { OUTSKIRT_REGIONS } from './world';
 import type { PlaceArchetype } from './archetypes';
 import { ribbonGeometry } from './ribbon';
 import { TRAILS, TRAIL_WIDTH } from './trails';
@@ -329,6 +331,18 @@ function buildStreetTree(options: BaseSceneOptions, x: number, z: number, size: 
   trunk.position.set(0,7.5*size,0); trunk.castShadow=true; group.add(trunk);
   const crownKey = size > 1.08 ? 'prop:tree-crown-large' : 'prop:tree-crown-small';
   const crownMat = materials.standard(crownKey, {color:size > 1.08 ? '#2f6a3d' : '#365c34', roughness:0.95});
+  // LEGAL: The Blender broadleaf when it's loaded (map/treeModels), sized and turned per tree.
+  const shape = treeShape('broadleaf');
+  if(shape){
+    const bark = new THREE.Mesh(shape.bark, materials.standard('prop:tree-trunk', {color:'#4a3624', roughness:0.9}));
+    const leaves = new THREE.Mesh(shape.leaves, crownMat);
+    [bark, leaves].forEach(function(mesh){ mesh.castShadow = true; mesh.receiveShadow = true; group.add(mesh); });
+    group.scale.setScalar(size);
+    group.rotation.y = (x * 7 + z * 13) % (Math.PI * 2);
+    group.position.set(x,0,z);
+    worldGroup.add(group);
+    return;
+  }
   const crown = new THREE.Mesh(new THREE.SphereGeometry(12*size,12,9), crownMat);
   crown.scale.set(1.05,0.9,1); crown.position.set(0,22*size,0); crown.castShadow=true; group.add(crown);
   const lower = new THREE.Mesh(new THREE.SphereGeometry(8*size,10,8), crownMat);
@@ -375,8 +389,12 @@ export function buildOutskirtScenery(options: BaseSceneOptions): void {
   const trunks: SceneInstance[] = [];
   const regions = new Map<string, ThreeNamespace.Group>();
   let variant = 0;
+  // LEGAL: Pines in the forests, broadleaves on the farms and in the suburbs, when the models are in.
+  const pines: TreePlacement[] = [], broadleaves: TreePlacement[] = [];
+  const regionKind = new Map(OUTSKIRT_REGIONS.map(region => [region.id, region.kind]));
   createOutskirtSceneryLayout().forEach(function(item){
     if(item.kind === 'tree'){
+      (regionKind.get(item.regionId) === 'forest' ? pines : broadleaves).push({ x:item.x, z:item.y, size:0.85 + ((item.x * 13 + item.y * 7) % 30) / 100, rot:item.rotation });
       trunks.push({ x:item.x, y:6, z:item.y, rotationY:item.rotation });
       trees.push({ x:item.x, y:20, z:item.y, rotationY:item.rotation });
       return;
@@ -395,8 +413,18 @@ export function buildOutskirtScenery(options: BaseSceneOptions): void {
     }
     region.add(building);
   });
-  addInstancedMesh(THREE, worldGroup, new THREE.CylinderGeometry(2, 2.5, 12, 6), materials.standard('outskirt:tree-trunk', { color:'#5c4930', roughness:1 }), trunks, { cast:true });
-  addInstancedMesh(THREE, worldGroup, new THREE.ConeGeometry(12, 27, 7), materials.standard('outskirt:tree-canopy', { color:'#325f38', roughness:0.94 }), trees, { cast:true });
+  const pine = treeShape('pine'), broadleaf = treeShape('broadleaf');
+  const trunkMat = materials.standard('outskirt:tree-trunk', { color:'#5c4930', roughness:1 });
+  const canopyMat = materials.standard('outskirt:tree-canopy', { color:'#325f38', roughness:0.94 });
+  if(pine && broadleaf){
+    [...instancedTrees(THREE, pine, trunkMat, canopyMat, pines), ...instancedTrees(THREE, broadleaf, trunkMat, materials.standard('prop:tree-crown-farm', { color:'#3a6e3a', roughness:0.95 }), broadleaves)].forEach(function(mesh){
+      mesh.name = 'outskirt:trees';
+      worldGroup.add(mesh);
+    });
+    return;
+  }
+  addInstancedMesh(THREE, worldGroup, new THREE.CylinderGeometry(2, 2.5, 12, 6), trunkMat, trunks, { cast:true });
+  addInstancedMesh(THREE, worldGroup, new THREE.ConeGeometry(12, 27, 7), canopyMat, trees, { cast:true });
 }
 
 export function buildLandmarks(options: LandmarkSceneOptions): void {

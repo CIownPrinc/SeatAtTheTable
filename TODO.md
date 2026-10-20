@@ -300,6 +300,8 @@ old one.
     cuffs, hands with thumbs, trouser legs, shoes, sneakers, boots and the fedora's pinched crown
     are sculpted in Blender (`art/blender/people.py`) at the same sizes and pivots as the code's
     shapes, so the silhouette and the walk are unchanged.
+    Trees too: a broadleaf (streets, parks, yards, farms) and a tiered pine (forests), in
+    `art/blender/trees.py`, drawn instanced with the game's own materials.
 
 33. **DONE** Proportions were off between people, cars, buildings and street furniture. One
     scale in `map/scale.ts` (10.5 units per metre): people 22 units, building heights x1.9,
@@ -400,13 +402,13 @@ Build order:
 1. **DONE** The world audit (item 15) comes first, so correctness is tested from the first line.
 2. **DONE** Ground: one terrain mesh, with zoning as a smooth field driving its colour and what's
    built. On by default since 2026-10-19 (item 28).
-3. **PART** A road graph with real curves, and building lots laid out along the roads. Lots are
+3. **DONE** A road graph with real curves, and building lots laid out along the roads. Lots are
    done (`world/data/lots.ts`, `world/render/lots.ts`): every side of every block that faces a
    street is cut into lots set back behind the pavement and street trees, each building facing its
    street, its type, height and colour from the block's character, a few left as building sites.
    They keep clear of every place, its frontage and the garage's apron, and draw as instanced
-   Blender models (about 25 draw calls a district). Still open: curved city streets.
-4. **PART** Scenery placed from zoning that keeps clear of roads. Street furniture is in: benches,
+   Blender models (about 25 draw calls a district). Curved city streets were dropped (user, 2026-10-19).
+4. **DONE** Scenery placed from zoning that keeps clear of roads. Street furniture is in: benches,
    bins, hydrants, planters, postboxes and bus shelters modelled in Blender (`art/blender/props.py`)
    and set out in front of the lots by block character (`world/data/streetProps.ts`), instanced.
 5. **DONE** Models: Blender-made and instanced (lots and props). Levels of detail weren't needed:

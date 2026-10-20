@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 const gameRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const blender = process.env.BLENDER || 'C:/Program Files/Blender Foundation/Blender 5.2/blender.exe';
-const families = [['vehicles.py', 'vehicles'], ['buildings.py', 'buildings'], ['props.py', 'props'], ['landmarks.py', 'landmarks'], ['people.py', 'people']];
+const families = [['vehicles.py', 'vehicles'], ['buildings.py', 'buildings'], ['props.py', 'props'], ['landmarks.py', 'landmarks'], ['people.py', 'people'], ['trees.py', 'trees']];
 
 for (const [script, folder] of families) {
   const out = join(gameRoot, 'public', 'assets', 'world', folder);

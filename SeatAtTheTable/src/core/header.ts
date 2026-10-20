@@ -104,6 +104,8 @@ import { generateStreetProps, streetPropSolids, type StreetProp } from '../world
 import { loadPropLibrary, type PropLibrary } from '../world/assets/props';
 import { LANDMARK_MODELS, loadModelCatalog, type ModelCatalog } from '../world/assets/catalog';
 import { loadPersonGeometries } from '../world/assets/people';
+import { loadTreeShapes } from '../world/assets/trees';
+import { useTreeShapes } from '../map/treeModels';
 import { DISTRICT_OFFSETS, OUTSKIRT_PLACE_LOTS, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
 import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/viewport';
@@ -4394,8 +4396,10 @@ import type * as ThreeNamespace from 'three';
         THREE = await import('three');
         mergeSceneryGeometries = (await import('three/examples/jsm/utils/BufferGeometryUtils.js')).mergeGeometries;
         let personParts: Awaited<ReturnType<typeof loadPersonGeometries>> = null;
-        [mapAssets, vehicleLibrary, buildingLibrary, propLibrary, landmarkCatalog, personParts] = await Promise.all([loadMapAssetLibrary(THREE), loadVehicleLibrary(THREE), loadBuildingLibrary(THREE), loadPropLibrary(THREE), loadModelCatalog(THREE, '/assets/world/landmarks/', LANDMARK_MODELS), loadPersonGeometries(THREE)]);
+        let trees: Awaited<ReturnType<typeof loadTreeShapes>> = {};
+        [mapAssets, vehicleLibrary, buildingLibrary, propLibrary, landmarkCatalog, personParts, trees] = await Promise.all([loadMapAssetLibrary(THREE), loadVehicleLibrary(THREE), loadBuildingLibrary(THREE), loadPropLibrary(THREE), loadModelCatalog(THREE, '/assets/world/landmarks/', LANDMARK_MODELS), loadPersonGeometries(THREE), loadTreeShapes(THREE)]);
         useSculptedPersonParts(personParts);
+        useTreeShapes(trees);
         characterLibrary = createCharacterLibrary(THREE, function(){ return state.appearance; }, mergeSceneryGeometries ?? undefined);
         if(!sceneInitialized){
           initScene();

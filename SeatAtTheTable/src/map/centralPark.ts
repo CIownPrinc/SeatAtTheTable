@@ -3,6 +3,7 @@ import type { Point, Solid } from '../config/types';
 import type { MapSceneMaterialCache } from './scenePerformance';
 import { addInstancedMesh, type SceneInstance } from './scenePerformance';
 import { TREE_SCALE } from './scale';
+import { instancedTrees, treeShape } from './treeModels';
 
 // LEGAL: Central Park, where Cicero Avenue, Pulaski Road and Canal Yard Drive end on the city's
 // LEGAL: south edge. Ridgewood Lane runs down the middle of it, so it's two halves: the west one
@@ -151,8 +152,15 @@ export function buildCentralPark(THREE: typeof ThreeNamespace, materials: MapSce
     trunks.push({ x:tree.x, y:7.5 * tree.size, z:tree.y });
     crowns.push({ x:tree.x, y:22 * tree.size, z:tree.y, rotationY:i });
   });
-  addInstancedMesh(THREE, park, new THREE.CylinderGeometry(2.4, 3, 15, 7), materials.standard('prop:tree-trunk', { color:'#4a3624', roughness:0.9 }), trunks, { cast:true });
-  addInstancedMesh(THREE, park, new THREE.SphereGeometry(13, 12, 9), materials.standard('prop:tree-crown-park', { color:'#2f6a3d', roughness:0.95 }), crowns, { cast:true });
+  const trunk = materials.standard('prop:tree-trunk', { color:'#4a3624', roughness:0.9 });
+  const crown = materials.standard('prop:tree-crown-park', { color:'#2f6a3d', roughness:0.95 });
+  const broadleaf = treeShape('broadleaf');
+  if(broadleaf){
+    instancedTrees(THREE, broadleaf, trunk, crown, parkTrees().map((tree, i) => ({ x:tree.x, z:tree.y, size:tree.size, rot:i * 1.7 }))).forEach(mesh => park.add(mesh));
+  } else {
+    addInstancedMesh(THREE, park, new THREE.CylinderGeometry(2.4, 3, 15, 7), trunk, trunks, { cast:true });
+    addInstancedMesh(THREE, park, new THREE.SphereGeometry(13, 12, 9), crown, crowns, { cast:true });
+  }
 
   // LEGAL: Benches along the walks, and lamps at the corners of each half.
   const wood = materials.standard('park:bench', { color:'#6a4a32', roughness:0.8 });
