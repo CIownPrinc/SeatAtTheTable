@@ -265,11 +265,11 @@ old one.
     (wharf, bollards, container stacks, gantry crane), the railyard (tracks, freight wagons, signal
     hut), the drive-in (big screen, parking rows, projection booth, snack bar), the lodge (a log
     cabin), the motel (a row of rooms and its pylon sign) and the casino's lit marquee.
-27. **PART** The map was very polygonal. The coast and lake shore are now smoothed in the map data
+27. **DONE** The map was very polygonal. The coast and lake shore are now smoothed in the map data
     itself (Chaikin, two passes), and a spliced-on needle of sea in the east coast is gone. The
     diagonals, country lanes and trails are real curves, and the blended ground has no polygon
-    edges left. The city grid and the canals are straight on purpose. Still open: curved city
-    streets, which come with the new road graph (section 11, step 3).
+    edges left. The city grid and the canals stay straight: the user decided curved city streets
+    aren't needed (2026-10-19).
 28. **DONE** Countryside ground was flat polygons with hard-edged shades. One blended terrain is
     painted from a zoning field (`world/render/terrain.ts`), and it's now the default; the "New map
     (beta)" setting switches back to the classic flat ground. Snow settles on it too.
@@ -335,10 +335,11 @@ old one.
     No car? They lend you one and take it back. Getting out of the car forfeits the race.
 
 48. **DONE** Pulling a dealer made them vanish; now they walk off the corner down the street.
-49. **PART** Keep going on the map rebuild (section 11 steps 3-6), the Blender work (people, street
+49. **DONE** Keep going on the map rebuild (section 11 steps 3-6), the Blender work (people, street
     furniture, props, landmarks) and the rest of this list. Done: lots along the streets, street
     furniture, landmarks, people's parts and spinning wheels in Blender, the countryside places,
-    the frame-rate fixes and the switch-over. Still open: curved city streets (item 27).
+    the frame-rate fixes and the switch-over. Curved city streets were dropped: the user said the
+    straight grid is fine (2026-10-19).
 
 **E. Interiors**
 34. **DONE** Interiors you walk around in like outside, in 3D. Today most rooms are a few small icons that
