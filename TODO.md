@@ -13,6 +13,7 @@ repo. If a task below starts turning into a new feature, it belongs there instea
 | **`TODO.md`** (this file) | The V1 finish list | Active |
 | **`SEATATTHETABLE2.md`** (root) | Remake brief: why, design canon, lessons, the moved-out feature backlog | Handoff — copy into the V2 repo |
 | **`CHANGELOG.md`** (root) | Version history V1.0-V5.0, tied to commit hashes | Reference |
+| **`PLAYTEST-CHANGES.md`** (root) | Plain-English list of what changed since the 2026-10-18 play-through | Reference; refresh before the next play-through |
 | [`docs/mission-overhaul-plan.md`](SeatAtTheTable/docs/mission-overhaul-plan.md) | Mission state, event history, world memory, per-mission checklist | Reference; open V1 items are mirrored below |
 | [`docs/onboarding-plan.md`](SeatAtTheTable/docs/onboarding-plan.md) | Progressive onboarding product rule, mission/feature classification | Reference — built |
 | [`docs/world-expansion-plan.md`](SeatAtTheTable/docs/world-expansion-plan.md) | Bigger districts, outskirts, lot allocator, zoning, garage, real estate | Complete |
@@ -350,6 +351,8 @@ old one.
     airfield, docks, railyard, drive-in, lodge and motel (`art/blender/places.py`, loaded by
     `world/assets/places.ts`, drawn by `map/placeModels.ts`; each keeps its old shapes as the
     fallback). Left: interior furniture, the mall's inside and the minigame scenes.
+55. Write a quick file of everything that's changed since the last play-test (user, 2026-10-20).
+    **DONE**: `PLAYTEST-CHANGES.md`.
 51. **DONE** The cars are too small (user, 2026-10-20: "the cars are so tiny bro"). They were drawn at life
     size next to people drawn 1.2x life, under a high camera. Worse, traffic was a bug: merging each
     car into one mesh transformed its quantized Blender geometry in place, which clamped every car to
