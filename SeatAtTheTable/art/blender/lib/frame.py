@@ -20,10 +20,8 @@ def box(name, w, h, d, x, y, z, mat, bevel=0.0, turn=0.0, tilt=0.0, roll=0.0):
     """A box of three-size (w, h, d) centred at three (x, y, z), turned about three's axes: `turn`
     about y, `tilt` about x (positive drops its +z end) and `roll` about z (positive lifts its +x
     end). Three's x is Blender's x and three's z is Blender's -y, hence the signs."""
-    # kit.box bakes its location into the mesh, so build it at the origin, turn it, then move it.
-    obj = kit.box(name, (w, d, h), (0, 0, 0), mat, bevel=bevel)
+    obj = kit.box(name, (w, d, h), at(x, y, z), mat, bevel=bevel)
     obj.rotation_euler = (tilt, -roll, turn)
-    obj.location = at(x, y, z)
     return obj
 
 

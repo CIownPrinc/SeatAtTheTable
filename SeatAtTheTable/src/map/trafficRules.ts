@@ -1,4 +1,5 @@
 import type { Point } from '../config/types';
+import { VEHICLE_SCALE } from './scale';
 
 // LEGAL: The rules of the road for traffic: stop at a red light, and don't drive into the car in
 // LEGAL: front. Each returns how much of its normal speed a car may use right now (0 to 1), so the
@@ -10,12 +11,14 @@ export const SIGNAL_GREEN_SECONDS = 7;
 export const SIGNAL_ALL_RED_SECONDS = 1.2;
 const CYCLE = (SIGNAL_GREEN_SECONDS + SIGNAL_ALL_RED_SECONDS) * 2;
 
-// LEGAL: The stop line is the edge of the junction box: half a 74-wide road, plus a little.
-const STOP_LINE = 46;
+// LEGAL: Where a car's centre stops: its front bumper (half a sedan) just short of the junction box,
+// LEGAL: which is half a 74-wide road.
+const HALF_CAR = 32 * VEHICLE_SCALE / 2;
+const STOP_LINE = 37 + HALF_CAR + 3;
 // LEGAL: How far before the line a car starts braking.
 const BRAKING = 48;
-// LEGAL: Bumper to bumper is about 46 units (two half-lengths); cars keep a little more than that.
-const MIN_GAP = 52;
+// LEGAL: Centre to centre, bumper to bumper is two half-lengths; cars keep a little more than that.
+const MIN_GAP = HALF_CAR * 2 + 6;
 const FOLLOW = 46;
 
 export type Axis = 'ns' | 'ew';

@@ -61,7 +61,10 @@ def box(name, size, location, mat, bevel=0.0, segments=2):
     obj = bpy.context.active_object
     obj.name = name
     obj.scale = size
-    bpy.ops.object.transform_apply(scale=True)
+    # Only the scale: the operator applies location and rotation too unless told not to, which left
+    # each box's pivot at the world origin, so a box turned afterwards swung round it (scattering a
+    # wheel's spokes, a coat's lapels).
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     return _finish(obj, mat, bevel, segments)
 
 

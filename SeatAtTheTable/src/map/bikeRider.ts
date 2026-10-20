@@ -1,12 +1,10 @@
 import type * as ThreeNamespace from 'three';
 import { PERSON_HIP_Y, buildPerson, type PersonLook, type createPersonParts } from './personModel';
-import { PERSON_SCALE } from './scale';
+import { BIKE_SCALE, PERSON_SCALE } from './scale';
 
 // LEGAL: Arjun on a bike: the same figure the wardrobe dresses, sat on the seat with his legs
 // LEGAL: forward to the pegs and his hands on the bars. A bike has no cabin, so you see who's riding.
-// LEGAL: Seats are in the bike model's own units (art/blender/vehicles.py), drawn at the 1.6 city
-// LEGAL: scale like every vehicle; `x` is along the bike, + forward.
-const CITY_SCALE = 1.6;
+// LEGAL: Seats are in the bike model's own units (art/blender/vehicles.py), drawn at BIKE_SCALE; `x` is along the bike, + forward.
 export const BIKE_SEATS = {
   // LEGAL: Sat back and upright on a chopper, arms up to the ape-hangers.
   chopper:{ x:-2.4, top:6.3, lean:0.05, arms:-2.0, legs:-1.5 },
@@ -28,7 +26,7 @@ export function seatedRider(THREE: typeof ThreeNamespace, parts: ReturnType<type
   const rider = new THREE.Group();
   rider.name = 'bike:rider';
   rider.add(person.root);
-  rider.position.set(0, seat.top * CITY_SCALE - PERSON_HIP_Y * PERSON_SCALE, seat.x * CITY_SCALE);
+  rider.position.set(0, seat.top * BIKE_SCALE - PERSON_HIP_Y * PERSON_SCALE, seat.x * BIKE_SCALE);
   rider.traverse(node => { node.castShadow = true; });
   return rider;
 }

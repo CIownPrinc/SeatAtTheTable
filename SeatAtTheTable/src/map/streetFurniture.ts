@@ -39,6 +39,9 @@ function box(THREE: typeof ThreeNamespace, w: number, h: number, d: number, colo
 // LEGAL: The Blender lamp post and signal frame (art/blender/streetlights.py), by part name, once
 // LEGAL: loaded; until then (or if they fail) the posts are built from simple shapes below.
 export interface StreetModels { lampPost?: { iron: ThreeNamespace.BufferGeometry; glass: ThreeNamespace.BufferGeometry }; signalFrame?: ThreeNamespace.BufferGeometry }
+// LEGAL: Lamps are a little smaller than the signals: at full furniture scale they loomed (user, 2026-10-20).
+const LAMP_SCALE = STREET_FURNITURE_SCALE * 0.8;
+
 let streetModels: StreetModels = {};
 export function useStreetModels(models: StreetModels): void { streetModels = models; }
 
@@ -59,20 +62,20 @@ export function buildStreetLight(options: StreetFurnitureOptions, x: number, z: 
     post.castShadow = true;
     group.add(post, new THREE.Mesh(streetModels.lampPost.glass, streetLampBulbs(THREE)));
   } else {
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(1.3,1.8,34,8), finish(THREE, '#3b3e47', 0.55, 0.4));
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.9,34,8), finish(THREE, '#3b3e47', 0.55, 0.4));
     pole.position.set(0,17,0); pole.castShadow=true; group.add(pole);
-    const arm = box(THREE, 14,1.8,1.8,'#3b3e47');
+    const arm = box(THREE, 14,0.8,0.8,'#3b3e47');
     arm.position.set(6,33,0); group.add(arm);
-    const bulb = new THREE.Mesh(new THREE.SphereGeometry(3.2,10,8), streetLampBulbs(THREE));
+    const bulb = new THREE.Mesh(new THREE.BoxGeometry(5,0.6,2), streetLampBulbs(THREE));
     bulb.position.set(13,32,0); group.add(bulb);
   }
   // LEGAL: The arm is built along +X; turn it to point at `toward` so the lamp hangs over the road.
   const angle = Math.atan2(toward.z - z, toward.x - x);
   group.rotation.y = -angle;
   group.position.set(x,0,z);
-  group.scale.setScalar(STREET_FURNITURE_SCALE);
+  group.scale.setScalar(LAMP_SCALE);
   worldGroup.add(group);
-  streetLamps.push({ x: x + Math.cos(angle) * 13 * STREET_FURNITURE_SCALE, y: 32 * STREET_FURNITURE_SCALE, z: z + Math.sin(angle) * 13 * STREET_FURNITURE_SCALE });
+  streetLamps.push({ x: x + Math.cos(angle) * 13 * LAMP_SCALE, y: 32 * LAMP_SCALE, z: z + Math.sin(angle) * 13 * LAMP_SCALE });
 }
 
 // LEGAL: A signal pole on the junction's north-east corner with two heads: one on an arm over the

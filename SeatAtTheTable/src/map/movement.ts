@@ -2,7 +2,8 @@ import type { Solid } from '../config/types';
 import { isPointInWater, isPointOnWindhavenLand } from './geometry';
 
 export function actorRadius(inVehicle: boolean): number {
-  return inVehicle ? 24 : 8;
+  // LEGAL: A car is drawn VEHICLE_SCALE big (map/scale); a circle a little under half its length.
+  return inVehicle ? 28 : 8;
 }
 
 export function collidesSolid(x: number, y: number, solids: Solid[], padding: number): boolean {

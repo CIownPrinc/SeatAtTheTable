@@ -26,23 +26,20 @@ def tube(name, a, b, r, mat, vertices=10):
 
 def lamp_post(m):
     iron, glass = m["iron"], m["glass"]
-    kit.cylinder("plinth", 2.6, 2.4, (0, 0, 1.2), iron, axis="Z", vertices=12, bevel=0.3)
-    kit.cylinder("collar", 2.0, 1.2, (0, 0, 3.0), iron, axis="Z", vertices=12)
-    bpy.ops.mesh.primitive_cone_add(radius1=1.6, radius2=1.0, depth=30, vertices=12, location=(0, 0, 18))
+    # A slim modern post: a low base, a tapering pole and a fine arm (the user found the old cast-iron
+    # column, at twice this girth, cumbersome).
+    kit.cylinder("plinth", 1.4, 1.4, (0, 0, 0.7), iron, axis="Z", vertices=12, bevel=0.2)
+    bpy.ops.mesh.primitive_cone_add(radius1=0.85, radius2=0.5, depth=32, vertices=10, location=(0, 0, 17.4))
     bpy.context.active_object.data.materials.append(iron)
-    kit.cylinder("cap", 1.4, 1.0, (0, 0, 33.5), iron, axis="Z", vertices=12)
+    kit.cylinder("cap", 0.6, 0.6, (0, 0, 33.5), iron, axis="Z", vertices=10)
     # The arm curves up and out over the road, along +X, to the lantern.
     points = [(math.sin(t) * 12, 0, 31 + (1 - math.cos(t)) * 2.4 + t * 0.6) for t in [i / 6 * math.pi / 2 for i in range(7)]]
     for i in range(len(points) - 1):
-        tube(f"arm-{i}", points[i], points[i + 1], 0.55, iron)
-    tube("arm-brace", (0, 0, 27), (6, 0, 31.6), 0.35, iron)
+        tube(f"arm-{i}", points[i], points[i + 1], 0.32, iron)
     end = points[-1]
-    bpy.ops.mesh.primitive_cone_add(radius1=3.4, radius2=1.0, depth=2.6, vertices=12, location=(end[0] + 1, 0, end[2] - 0.6))
-    bpy.context.active_object.data.materials.append(iron)
-    bpy.ops.mesh.primitive_uv_sphere_add(radius=2.6, segments=14, ring_count=8, location=(end[0] + 1, 0, end[2] - 2.6))
-    bulb = bpy.context.active_object
-    bulb.scale = (1, 1, 0.75)
-    bulb.data.materials.append(glass)
+    # A flat LED head rather than a lantern: a shallow housing with the glass on its underside.
+    kit.box("head", (6.0, 2.6, 0.9), (end[0] + 1.6, 0, end[2] - 0.2), iron, bevel=0.3)
+    kit.box("lens", (5.0, 2.0, 0.3), (end[0] + 1.6, 0, end[2] - 0.75), glass, bevel=0.1)
 
 
 def signal_frame(m):

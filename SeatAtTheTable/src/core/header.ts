@@ -109,6 +109,7 @@ import { useTreeShapes } from '../map/treeModels';
 import { loadStreetModels } from '../world/assets/street';
 import { loadPlaceModels } from '../world/assets/places';
 import { usePlaceModels } from '../map/placeModels';
+import { VEHICLE_SCALE } from '../map/scale';
 import { DISTRICT_OFFSETS, OUTSKIRT_PLACE_LOTS, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
 import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/viewport';
@@ -5544,7 +5545,7 @@ import type * as ThreeNamespace from 'three';
     g.rotation.y = -Math.PI/2;
     const outer = new THREE.Group();
     outer.add(g);
-    outer.scale.setScalar(1.6);
+    outer.scale.setScalar(VEHICLE_SCALE);
     return outer;
   }
   function buildPlaceModel(archetype: PlaceArchetype, color: string, w: number, h: number, d: number): ThreeNamespace.Group | null {
@@ -6894,10 +6895,10 @@ import type * as ThreeNamespace from 'three';
       lastTrafficPosition.set(actor.id, { x:actor.x, y:actor.y });
       // LEGAL: The same footprint the traffic model is drawn at (see buildTrafficCarModel).
       const size = trafficFootprint(actor.id);
-      const length = size.length * 1.6, width = size.width * 1.6;
+      const length = size.length * VEHICLE_SCALE, width = size.width * VEHICLE_SCALE;
       movingObstacles.push({ obstacle:vehicleObstacle(actor.x, actor.y, actor.facing, length, width), velocity });
     });
-    race?.rivals.forEach(function(rival){ movingObstacles.push({ obstacle:vehicleObstacle(rival.x, rival.y, rival.heading, 29 * 1.6, 15 * 1.6), velocity:rival.velocity }); });
+    race?.rivals.forEach(function(rival){ movingObstacles.push({ obstacle:vehicleObstacle(rival.x, rival.y, rival.heading, 29 * VEHICLE_SCALE, 15 * VEHICLE_SCALE), velocity:rival.velocity }); });
     const train = activeTrainSnapshot(Date.now(), windhavenMapModel.railLines[0]);
     if(train) movingObstacles.push({ obstacle:{ x:train.point.x, y:train.point.y, halfLength:TRAIN_HALF_LENGTH, halfWidth:TRAIN_HALF_WIDTH, angle:Math.PI / 2 }, velocity:{ x:0, y:0 } });
   }

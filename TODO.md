@@ -350,6 +350,23 @@ old one.
     airfield, docks, railyard, drive-in, lodge and motel (`art/blender/places.py`, loaded by
     `world/assets/places.ts`, drawn by `map/placeModels.ts`; each keeps its old shapes as the
     fallback). Left: interior furniture, the mall's inside and the minigame scenes.
+51. **DONE** The cars are too small (user, 2026-10-20: "the cars are so tiny bro"). They were drawn at life
+    size next to people drawn 1.2x life, under a high camera. Worse, traffic was a bug: merging each
+    car into one mesh transformed its quantized Blender geometry in place, which clamped every car to
+    a speck 4 units long. Fixed (`map/mergeScenery.ts` copies to floats first, with a test), and cars
+    now draw at `VEHICLE_SCALE` 2.0, bigger than life like a driving game; collision, the gap cars keep
+    and where they stop at lights follow it. Bikes stay 1.6 so the rider fits. The Blender kit was also
+    baking every box's position into its mesh, so a turned box swung round the world origin: wheel
+    spokes were scattered. Fixed in `art/blender/lib/kit.py` and every model rebuilt.
+52. **DONE** The streetlights are a little cumbersome and large (user, 2026-10-20). Now a slim pole with a flat LED head,
+    drawn 20% smaller.
+53. **DONE** The City Hall annex has an unnecessary rectangle on it (user, 2026-10-20). It was facade detail
+    placed for the old box buildings (steps floating across the columns, a second dome); it's no longer
+    added to Blender models, which also cleared the stray neon bars and awnings on other places. The
+    civic dome had rendered black (fully metallic with nothing to reflect) and is gilt now.
+54. **DONE** Walking looks too much like gliding (user, 2026-10-20). The user loves the interiors. The stride was two to three
+    times what the legs reached, so feet skated. Steps now match the legs' reach, the hips drop as the
+    legs spread so the leading foot stays down, and a run springs off each foot (`map/personModel.ts`).
 
 **E. Interiors**
 34. **DONE** Interiors you walk around in like outside, in 3D. Today most rooms are a few small icons that

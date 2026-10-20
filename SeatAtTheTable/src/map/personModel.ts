@@ -336,32 +336,51 @@ export function buildPerson(THREE: typeof ThreeNamespace, parts: PersonParts, lo
   return { root, rig: { upper, legLeft:legs[0], legRight:legs[1], armLeft:arms[0], armRight:arms[1], head:headPivot, effort:0 } };
 }
 
-// LEGAL: Ground covered per step, walking and sprinting. Phase advances by distance, not time, so
-// LEGAL: feet stay planted at any speed instead of skating.
-const WALK_STEP = 15;
-const RUN_STEP = 38;
-const RUN_SPEED = 140;
+// LEGAL: The walk cycle works in the model's own units (the caller divides out the figure's scale),
+// LEGAL: so the stride matches the legs. A leg is LEG long from hip to sole, and a step is as long as
+// LEGAL: the feet can actually reach apart at that swing: the old fixed steps were two to three times
+// LEGAL: what the legs covered, so everyone skated over the ground (user: "too much like gliding").
+// LEGAL: Running reaches further than the legs because both feet leave the ground between steps.
+const LEG = 11;
+const WALK_SWING = 0.6, RUN_SWING = 0.95;
+const RUN_FLIGHT = 2;
+const RUN_SPEED = 240;
+
+function stepLength(swing: number, effort: number): number {
+  return 2 * LEG * Math.sin(swing) * (1.25 + (RUN_FLIGHT - 1.25) * effort);
+}
 
 // LEGAL: One frame of procedural walk cycle. Returns the new stride phase for the caller to keep.
+// LEGAL: `speed` is in model units per second.
 export function animatePerson(rig: PersonRig, phase: number, speed: number, dt: number, time: number): number {
   const targetEffort = Math.min(1, speed / RUN_SPEED);
   rig.effort += (targetEffort - rig.effort) * (1 - Math.exp(-8 * dt));
-  const moving = speed > 4;
-  const step = WALK_STEP + (RUN_STEP - WALK_STEP) * rig.effort;
-  const nextPhase = moving ? phase + (speed * dt / step) * Math.PI : phase;
+  const moving = speed > 6;
+  const swingTarget = WALK_SWING + (RUN_SWING - WALK_SWING) * rig.effort;
+  // LEGAL: Phase advances by distance, not time: half a cycle per step.
+  const nextPhase = moving ? phase + (speed * dt / stepLength(swingTarget, rig.effort)) * Math.PI : phase;
   // LEGAL: Swing fades out as the body slows, so stopping eases the limbs home.
-  const swing = moving ? 0.42 + 0.5 * rig.effort : 0;
+  const swing = moving ? swingTarget : 0;
   const ease = 1 - Math.exp(-12 * dt);
   const legAngle = Math.sin(nextPhase) * swing;
   rig.legLeft.rotation.x += (legAngle - rig.legLeft.rotation.x) * ease;
   rig.legRight.rotation.x += (-legAngle - rig.legRight.rotation.x) * ease;
-  rig.armLeft.rotation.x += (-legAngle * 0.9 - rig.armLeft.rotation.x) * ease;
-  rig.armRight.rotation.x += (legAngle * 0.9 - rig.armRight.rotation.x) * ease;
-  // LEGAL: Bob twice per stride, lean forward into a run, breathe when standing still.
-  const bob = moving ? Math.abs(Math.cos(nextPhase)) * (0.5 + 1.1 * rig.effort) : Math.sin(time * 2.2) * 0.18;
-  rig.upper.position.y += (bob - rig.upper.position.y) * ease;
+  rig.armLeft.rotation.x += (-legAngle * (0.8 + 0.4 * rig.effort) - rig.armLeft.rotation.x) * ease;
+  rig.armRight.rotation.x += (legAngle * (0.8 + 0.4 * rig.effort) - rig.armRight.rotation.x) * ease;
+  // LEGAL: A swung leg is shorter top to bottom, so the hips drop as the legs spread and the leading
+  // LEGAL: foot stays on the ground. A run then springs up off each foot into the air between steps.
+  const spread = Math.abs(rig.legLeft.rotation.x);
+  const drop = moving ? -LEG * (1 - Math.cos(spread)) * (1 - 0.6 * rig.effort) : 0;
+  const spring = moving ? Math.abs(Math.sin(nextPhase)) * 1.8 * rig.effort : 0;
+  const breathe = moving ? 0 : Math.sin(time * 2.2) * 0.18;
+  const lift = drop + spring;
+  rig.legLeft.position.y = HIP_Y + lift;
+  rig.legRight.position.y = HIP_Y + lift;
+  rig.upper.position.y += (lift + breathe - rig.upper.position.y) * ease;
+  // LEGAL: Lean forward into a run, and twist the shoulders a little against the hips.
   const lean = 0.03 + 0.17 * rig.effort * (moving ? 1 : 0);
   rig.upper.rotation.x += (lean - rig.upper.rotation.x) * ease;
+  rig.upper.rotation.y += ((moving ? Math.sin(nextPhase) * 0.08 : 0) - rig.upper.rotation.y) * ease;
   return nextPhase % (Math.PI * 2);
 }
 

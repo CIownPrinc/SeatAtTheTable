@@ -49,13 +49,13 @@ function buildPlaceShell(
   archetype: PlaceArchetype | null,
   silhouette: BuildingSilhouette,
   variant: number,
-): { mesh: ThreeNamespace.Group; y: number; hasBuilding: boolean } {
+): { mesh: ThreeNamespace.Group; y: number; hasBuilding: boolean; modelled: boolean } {
   const shell = archetype ? buildArchetypeShell(options.THREE, archetype, silhouette.w, silhouette.d, silhouette.h, silhouette.color) : null;
-  if(shell) return { mesh: shell, y: 0, hasBuilding: false };
+  if(shell) return { mesh: shell, y: 0, hasBuilding: false, modelled: false };
   const model = archetype ? options.helpers.buildPlaceModel(archetype, String(silhouette.color), silhouette.w, silhouette.h, silhouette.d) : null;
-  if(model) return { mesh: model, y: silhouette.h / 2, hasBuilding: true };
+  if(model) return { mesh: model, y: silhouette.h / 2, hasBuilding: true, modelled: true };
   const mesh = options.helpers.buildDetailedBuilding(silhouette.w, silhouette.h, silhouette.d, silhouette.color, silhouette.zoneType, variant);
-  return { mesh, y: silhouette.h / 2, hasBuilding: true };
+  return { mesh, y: silhouette.h / 2, hasBuilding: true, modelled: false };
 }
 
 export interface MapPlaceRenderHelpers {
@@ -101,8 +101,10 @@ function renderVentureBuildings(options: MapPlaceRenderOptions): void {
     const silhouette = withArchetype(archetype, { w:footprint.w, h:height, d:footprint.d, color, zoneType:footprint.zoneType });
     const built = buildPlaceShell(options, archetype, silhouette, helpers.variantForId(building.id));
     const mesh = built.mesh;
-    // LEGAL: Facade detailing only makes sense on something with a facade.
-    if(built.hasBuilding) helpers.addVentureDetail(building, mesh);
+    // LEGAL: Facade detailing only makes sense on the plain box it was placed for: a Blender model
+    // LEGAL: has its own, and the boxes landed in the wrong places on it (City Hall's steps floated
+    // LEGAL: across its columns).
+    if(built.hasBuilding && !built.modelled) helpers.addVentureDetail(building, mesh);
     mesh.position.set(object.x, built.y, object.y);
     mesh.name = `venture:${building.id}:${building.biz.name}`;
     worldGroup.add(mesh);
@@ -118,9 +120,9 @@ function renderServiceBuildings(options: MapPlaceRenderOptions): void {
     const silhouette = serviceBuildingSilhouette(building);
     // LEGAL: One-of-a-kind places (map/placeSpecials) are built as themselves, standing on the ground.
     const special = specialPlace(building.id);
-    const built = special ? { mesh:special.build(options.THREE), y:0, hasBuilding:false } : buildPlaceShell(options, archetype, silhouette, helpers.variantForId(building.id));
+    const built = special ? { mesh:special.build(options.THREE), y:0, hasBuilding:false, modelled:false } : buildPlaceShell(options, archetype, silhouette, helpers.variantForId(building.id));
     const mesh = built.mesh;
-    if(built.hasBuilding) helpers.addServiceDetail(building, mesh);
+    if(built.hasBuilding && !built.modelled) helpers.addServiceDetail(building, mesh);
     if(building.id === 'casinoLakeridge' && built.hasBuilding) addCasinoFront(options.THREE, mesh, silhouette.w, silhouette.h, silhouette.d);
     mesh.position.set(object.x, built.y, object.y);
     mesh.name = `service:${building.id}:${building.name}`;
@@ -189,7 +191,7 @@ function renderLocalBusinesses(options: MapPlaceRenderOptions): void {
     const silhouette = localBusinessSilhouette(business);
     const built = buildPlaceShell(options, localArchetype(business), silhouette, helpers.variantForId(business.id));
     const mesh = built.mesh;
-    if(built.hasBuilding) helpers.addLocalBusinessDetail(business, mesh);
+    if(built.hasBuilding && !built.modelled) helpers.addLocalBusinessDetail(business, mesh);
     mesh.position.set(object.x, built.y, object.y);
     mesh.name = `local:${business.id}:${business.name}`;
     worldGroup.add(mesh);

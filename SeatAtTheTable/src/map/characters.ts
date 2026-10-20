@@ -32,6 +32,7 @@ interface Entry {
 export function createCharacterAnimator(THREE: typeof ThreeNamespace): CharacterAnimator {
   const entries: Entry[] = [];
   const world = new THREE.Vector3();
+  const scale = new THREE.Vector3();
   let headScale = 1;
   return {
     add(root, rig){
@@ -57,7 +58,9 @@ export function createCharacterAnimator(THREE: typeof ThreeNamespace): Character
         // LEGAL: Smoothed, so one frame of collision stall doesn't flicker the legs to standing.
         entry.speed += (Math.min(moved, 600) - entry.speed) * (1 - Math.exp(-14 * dt));
         if(focus && Math.hypot(world.x - focus.x, world.z - focus.z) > ANIMATE_RADIUS) continue;
-        entry.phase = animatePerson(entry.rig, entry.phase, entry.speed, dt, time + i * 0.37);
+        // LEGAL: The walk cycle works in the figure's own units, so a child's short legs step quicker.
+        entry.root.getWorldScale(scale);
+        entry.phase = animatePerson(entry.rig, entry.phase, entry.speed / (scale.x || 1), dt, time + i * 0.37);
       }
     },
     count(){ return entries.length; },

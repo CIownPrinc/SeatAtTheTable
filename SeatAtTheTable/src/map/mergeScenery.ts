@@ -39,6 +39,20 @@ function normaliseForMerge(geometries: BufferGeometry[]): BufferGeometry[] {
   });
 }
 
+// LEGAL: Blender exports are quantized: positions and normals stored as small integers clamped to
+// LEGAL: +-1. Transforming those in place clamps every vertex, which crushed each merged traffic car to
+// LEGAL: a speck four units long. So every attribute is copied to plain floats before it's moved.
+function asFloats(THREE: ThreeModule, geometry: BufferGeometry): BufferGeometry {
+  Object.keys(geometry.attributes).forEach(function(name){
+    const source = geometry.getAttribute(name);
+    if(source.array instanceof Float32Array && !source.normalized && !(source as { isInterleavedBufferAttribute?: boolean }).isInterleavedBufferAttribute) return;
+    const size = source.itemSize, values = new Float32Array(source.count * size);
+    for(let i = 0; i < source.count; i++) for(let k = 0; k < size; k++) values[i * size + k] = source.getComponent(i, k);
+    geometry.setAttribute(name, new THREE.BufferAttribute(values, size));
+  });
+  return geometry;
+}
+
 // LEGAL: Draw calls, not triangles, are what this city is bound by: a palm was ~43 separate
 // LEGAL: meshes. Merging within ONE group keeps each palm its own object, so the scene audit
 // LEGAL: still checks every palm's footprint against the water individually.
@@ -52,7 +66,7 @@ export function mergeMeshesWithin(THREE: ThreeModule, group: Object3D, merge: Me
     const material = mesh.material as Material;
     const batch = batches.get(material) ?? { geometries:[], castShadow:false, receiveShadow:false };
     const local = new THREE.Matrix4().multiplyMatrices(toGroupSpace, mesh.matrixWorld);
-    batch.geometries.push(mesh.geometry.clone().applyMatrix4(local));
+    batch.geometries.push(asFloats(THREE, mesh.geometry.clone()).applyMatrix4(local));
     batch.castShadow = batch.castShadow || mesh.castShadow;
     batch.receiveShadow = batch.receiveShadow || mesh.receiveShadow;
     batches.set(material, batch);

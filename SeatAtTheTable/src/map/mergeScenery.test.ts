@@ -33,6 +33,32 @@ function worldBox(object: THREE.Object3D): THREE.Box3 {
 }
 
 describe('merging a scenery group into one mesh per material', function () {
+  it('keeps quantized Blender geometry its real size (traffic cars were crushed to specks)', function () {
+    // LEGAL: How a quantized export arrives: positions as normalised int16, scaled up by the node.
+    const quantized = (half: number) => {
+      const box = new THREE.BoxGeometry(2, 2, 2);
+      const source = box.getAttribute('position');
+      const ints = new Int16Array(source.count * 3);
+      for(let i = 0; i < ints.length; i++) ints[i] = Math.round((source.array[i] as number) * 32767);
+      box.setAttribute('position', new THREE.BufferAttribute(ints, 3, true));
+      box.deleteAttribute('normal'); box.deleteAttribute('uv');
+      const mesh = new THREE.Mesh(box, material);
+      mesh.scale.setScalar(half);
+      return mesh;
+    };
+    const material = new THREE.MeshStandardMaterial();
+    const car = new THREE.Group();
+    car.scale.setScalar(2);
+    const body = quantized(16), roof = quantized(6);
+    roof.position.y = 10;
+    car.add(body, roof);
+    const before = worldBox(car).getSize(new THREE.Vector3());
+    expect(mergeMeshesWithin(THREE, car, mergeGeometries)).toBe(true);
+    const after = worldBox(car).getSize(new THREE.Vector3());
+    expect(after.x).toBeCloseTo(before.x, 0);
+    expect(after.x).toBeGreaterThan(60);
+  });
+
   it('turns many meshes into one per material without moving anything', function () {
     const group = palm();
     const before = worldBox(group);

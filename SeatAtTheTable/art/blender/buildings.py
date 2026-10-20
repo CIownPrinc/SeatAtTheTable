@@ -113,7 +113,9 @@ def build(name, m):
         dome = bpy.context.active_object
         dome.name = "dome"
         dome.scale = (1, 1, 0.85)
-        dome.data.materials.append(m["metal"])
+        # Its own gilt: fully metallic paint reflects nothing in the game, which has no sky to reflect,
+        # and rendered black.
+        dome.data.materials.append(kit.material("dome", "#c9a227", roughness=0.35, metallic=0.3))
         bpy.ops.object.shade_smooth()
     elif name == "works":
         # Works and freight: sawtooth roof, a tall chimney, roller doors and a loading dock.

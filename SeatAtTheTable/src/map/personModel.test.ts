@@ -76,6 +76,24 @@ describe('animatePerson', function () {
     expect(runner.rig.upper.rotation.x).toBeGreaterThan(walker.rig.upper.rotation.x + 0.05);
   });
 
+  it('keeps the leading foot on the ground and steps as far as the legs reach, so walkers do not skate', function () {
+    const person = buildPerson(THREE, parts, DEFAULT_PLAYER_LOOK);
+    let phase = 0, travelled = 0, steps = 0, last = Math.sign(Math.sin(phase));
+    for(let i = 0; i < 240; i++){
+      phase = animatePerson(person.rig, phase, 30, 1 / 60, 0);
+      travelled += 30 / 60;
+      const side = Math.sign(Math.sin(phase));
+      if(side !== last && side !== 0){ steps++; last = side; }
+      if(i > 60){
+        // LEGAL: The lower sole of the two legs, from the hip pivot down a leg of 11.
+        const sole = Math.min(...[person.rig.legLeft, person.rig.legRight].map(leg => leg.position.y - 11 * Math.cos(leg.rotation.x)));
+        expect(Math.abs(sole)).toBeLessThan(0.8);
+      }
+    }
+    const reach = 2 * 11 * Math.sin(0.6);
+    expect(travelled / steps).toBeLessThan(reach * 1.4);
+  });
+
   it('settles back to standing when stopped', function () {
     const person = buildPerson(THREE, parts, DEFAULT_PLAYER_LOOK);
     let phase = 0;

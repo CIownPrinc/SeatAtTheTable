@@ -1,4 +1,5 @@
 import type * as ThreeNamespace from 'three';
+import { BIKE_SCALE, VEHICLE_SCALE } from './scale';
 
 // LEGAL: The Blender vehicle catalog (art/blender/vehicles.py). Every car used to be the same
 // LEGAL: procedural body in a different paint; each now has a model that looks like what it is.
@@ -28,7 +29,7 @@ export function vehicleClassForTraffic(id: string): VehicleClass {
   return 'sedan';
 }
 
-// LEGAL: Footprint (catalog units, before the 1.6x city scale) for each traffic class, so a box
+// LEGAL: Footprint (catalog units, before VEHICLE_SCALE) for each traffic class, so a box
 // LEGAL: truck isn't squashed to a sedan's length. Drawing and collision both read this.
 const TRAFFIC_FOOTPRINT: Record<VehicleClass, { length: number; width: number }> = {
   sedan:{ length:32, width:15 }, beater:{ length:28, width:14 }, wagon:{ length:32, width:15 }, muscle:{ length:34, width:16 },
@@ -56,8 +57,6 @@ export interface VehicleLibrary {
 }
 
 const VEHICLE_BASE = '/assets/world/vehicles/';
-// LEGAL: The same city scale buildCarModel applies, so new models match the old ones' size.
-const CITY_SCALE = 1.6;
 
 export async function loadVehicleLibrary(THREE: typeof ThreeNamespace): Promise<VehicleLibrary | null> {
   const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
@@ -111,7 +110,7 @@ export async function loadVehicleLibrary(THREE: typeof ThreeNamespace): Promise<
       turned.add(clone);
       const wrapper = new THREE.Group();
       wrapper.name = `vehicle:${cls}`;
-      wrapper.scale.setScalar(CITY_SCALE);
+      wrapper.scale.setScalar(cls === 'chopper' || cls === 'sportbike' ? BIKE_SCALE : VEHICLE_SCALE);
       wrapper.add(turned);
       return wrapper;
     },
