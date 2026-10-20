@@ -6,7 +6,7 @@ const WALKER_COUNT = 36;
 import type { GangRecruit, Point } from '../config/types';
 import type { MapObject } from './objects';
 import type { MapNpc } from './markers';
-import { seededRandom } from './filler';
+import { seededRandom } from './random';
 import type * as ThreeNamespace from 'three';
 
 export type RoamingActorKind = 'pedestrian' | 'car';

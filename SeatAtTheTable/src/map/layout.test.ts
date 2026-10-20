@@ -1,15 +1,13 @@
-import { windhavenMapModel } from './mapModel';
 import { describe, expect, it } from 'vitest';
 import { businesses } from '../config/ventures';
 import { amenityHasSolidFootprint, mapAmenities } from './amenities';
-import { createFillerLayoutProvider } from './filler';
-import { buildableBands, distancePointToSegment, localXForDistrict, rectsOverlap, rotatedHalfExtents } from './layout';
+import { buildableBands, localXForDistrict, rectsOverlap, rotatedHalfExtents } from './layout';
 import { districtIdAtPlayablePoint } from './mapModel';
 import { isPointOnPlayableLand } from './queries';
 import { applyMapWorldCoordinates, createMapBuildings } from './markers';
 import { actorRadius, canMoveTo, isWaterBlocked } from './movement';
 import { buildMapObjects, ventureFootprint } from './objectFactory';
-import { DISTRICT_OFFSETS, OUTSKIRT_PLACE_LOTS, districtParkSlots, namedBuildingLots, roadNetwork, ventureDistricts, ventureLots, ventureMapLots, widenAuthoredX } from './world';
+import { OUTSKIRT_PLACE_LOTS, districtParkSlots, namedBuildingLots, roadNetwork, ventureDistricts, ventureLots, ventureMapLots, widenAuthoredX } from './world';
 import { zoneForDistrictBlock } from './zoning';
 import { allocateServiceLots } from './serviceLots';
 import { serviceBuildings } from '../config/serviceBuildings';
@@ -321,81 +319,6 @@ describe('map layout helpers', function () {
     expect(canMoveTo(widenAuthoredX(-3000), 600, [], false)).toBe(false);
     expect(canMoveTo(245, 200, solids, true)).toBe(true);
     expect(canMoveTo(243, 200, solids, true)).toBe(false);
-  });
-
-  it('keeps filler buildings large enough and off diagonal roads', function () {
-    const markers = createMapBuildings(businesses);
-    const provider = createFillerLayoutProvider(markers.map(function(marker){
-      return { kind:'building' as const, id:marker.id, district:marker.district, x:marker.x, y:marker.y, bounds:{x:marker.x,y:marker.y,hw:40,hd:34}, interactRadius:46, minimapColor:'#fff', minimapSize:3, ref:marker };
-    }));
-
-    ['devlin','westside','hub'].forEach(function(districtId){
-      provider.fillerFor(districtId).forEach(function(filler){
-        if(filler.kind !== 'building') return;
-        expect(filler.w).toBeGreaterThanOrEqual(34);
-        expect(filler.d).toBeGreaterThanOrEqual(30);
-        expect(filler.h).toBeGreaterThanOrEqual(24);
-        const off = DISTRICT_OFFSETS[districtId];
-        // LEGAL: Against the real curved diagonal, not the straight line between its ends.
-        windhavenMapModel.roadPaths.filter(road => road.roadClass === 'diagonal').forEach(function(road){
-          const distance = Math.min(...road.path.slice(0, -1).map((a, i) => distancePointToSegment(filler.x+off, filler.y, a.x, a.y, road.path[i + 1].x, road.path[i + 1].y)));
-          expect(distance).toBeGreaterThan(Math.max(filler.w,filler.d)/2 + road.width/2);
-        });
-      });
-    });
-  });
-
-  it('keeps filler buildings, lots, and parks inside their district land polygons', function () {
-    const markers = createMapBuildings(businesses);
-    const provider = createFillerLayoutProvider(markers.map(function(marker){
-      return { kind:'building' as const, id:marker.id, district:marker.district, x:marker.x, y:marker.y, bounds:{x:marker.x,y:marker.y,hw:40,hd:34}, interactRadius:46, minimapColor:'#fff', minimapSize:3, ref:marker };
-    }));
-
-    ['devlin','westside','hub'].forEach(function(districtId){
-      const off = DISTRICT_OFFSETS[districtId];
-      provider.fillerFor(districtId).forEach(function(filler){
-        if(filler.kind === 'building' || filler.kind === 'construction'){
-          const ext = filler.kind === 'building' ? rotatedHalfExtents(filler.w, filler.d, filler.rot) : { hw:filler.w / 2, hd:filler.d / 2 };
-          [
-            { x:filler.x-ext.hw+off, y:filler.y-ext.hd },
-            { x:filler.x+ext.hw+off, y:filler.y-ext.hd },
-            { x:filler.x-ext.hw+off, y:filler.y+ext.hd },
-            { x:filler.x+ext.hw+off, y:filler.y+ext.hd },
-          ].forEach(function(point){
-            expect(districtIdAtPlayablePoint(point, 0), `${filler.kind} should stay on ${districtId} land`).toBe(districtId);
-          });
-          return;
-        }
-        if(filler.kind === 'edge') return;
-        [
-          { x:filler.x0+off, y:filler.y0 },
-          { x:filler.x1+off, y:filler.y0 },
-          { x:filler.x0+off, y:filler.y1 },
-          { x:filler.x1+off, y:filler.y1 },
-        ].forEach(function(point){
-          expect(districtIdAtPlayablePoint(point, 0), `${filler.kind} should stay on ${districtId} land`).toBe(districtId);
-        });
-      });
-    });
-  });
-
-  it('turns a few empty plots into building sites', function () {
-    const provider = createFillerLayoutProvider([]);
-    const sites = ['devlin','westside','hub'].map(districtId => provider.fillerFor(districtId).filter(f => f.kind === 'construction').length);
-    expect(sites.reduce((a, b) => a + b, 0)).toBeGreaterThanOrEqual(2);
-    sites.forEach(count => expect(count).toBeLessThanOrEqual(2));
-  });
-
-  it('adds apartment buildings to residential filler blocks', function () {
-    const provider = createFillerLayoutProvider([]);
-    const apartments = ['devlin','westside','hub'].flatMap(districtId=>provider.fillerFor(districtId)).filter(f=>f.kind==='building' && f.style==='apartment');
-
-    expect(apartments.length).toBeGreaterThan(0);
-    apartments.forEach(function(apartment){
-      if(apartment.kind !== 'building') return;
-      expect(apartment.zone).toBe('residential');
-      expect(apartment.h).toBeGreaterThanOrEqual(42);
-    });
   });
 
   it('keeps open-space amenities walkable while storefront amenities have collision', function () {

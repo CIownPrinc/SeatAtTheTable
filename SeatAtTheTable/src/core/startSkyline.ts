@@ -1,4 +1,4 @@
-import { seededRandom } from '../map/filler';
+import { seededRandom } from '../map/random';
 
 // LEGAL: The title screen's night skyline, drawn as one SVG in this coordinate space and
 // LEGAL: scaled to the screen. Seeded, so Windhaven looks the same on every visit.

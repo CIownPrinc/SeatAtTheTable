@@ -76,45 +76,6 @@ export function characterProfile(character: BlockCharacter): CharacterProfile {
   return PROFILES[character];
 }
 
-// LEGAL: ---- Facade detailing (stage 4) ----
-// LEGAL: Palette alone still left every building the same box. These are the details that
-// LEGAL: make a block legible at a glance: boarded windows and fire escapes on run-down
-// LEGAL: blocks, cornices and balconies where there is money, awnings and signage on a
-// LEGAL: retail strip, roof plant downtown, vents and tanks on the works.
-export interface CharacterDetail {
-  /** Boarded-up openings and patched frontages. */
-  boarded: boolean;
-  /** Zig-zag fire escape down the front. */
-  fireEscape: boolean;
-  /** Projecting balconies. */
-  balcony: boolean;
-  /** Decorative cornice along the roofline. */
-  cornice: boolean;
-  /** Shopfront awning plus a signage band. */
-  shopfront: boolean;
-  /** Rooftop plant / aircon housings. */
-  roofPlant: boolean;
-  /** Neon sign band. */
-  neon: boolean;
-  /** Roof vents and a water tank. */
-  vents: boolean;
-  /** Accent colour for whichever trim this character uses. */
-  trim: string;
-}
-
-const DETAILS: Record<BlockCharacter, CharacterDetail> = {
-  affluent: { boarded:false, fireEscape:false, balcony:true, cornice:true, shopfront:false, roofPlant:false, neon:false, vents:false, trim:'#c9bfa4' },
-  working: { boarded:false, fireEscape:true, balcony:false, cornice:false, shopfront:false, roofPlant:false, neon:false, vents:false, trim:'#8a7f6b' },
-  rough: { boarded:true, fireEscape:true, balcony:false, cornice:false, shopfront:false, roofPlant:false, neon:false, vents:false, trim:'#5a5148' },
-  shopping: { boarded:false, fireEscape:false, balcony:false, cornice:false, shopfront:true, roofPlant:false, neon:false, vents:false, trim:'#b8452f' },
-  corporate: { boarded:false, fireEscape:false, balcony:false, cornice:true, shopfront:false, roofPlant:true, neon:false, vents:false, trim:'#8fa8bd' },
-  entertainment: { boarded:false, fireEscape:false, balcony:false, cornice:false, shopfront:true, roofPlant:false, neon:true, vents:false, trim:'#d44d96' },
-  industrial: { boarded:false, fireEscape:false, balcony:false, cornice:false, shopfront:false, roofPlant:false, neon:false, vents:true, trim:'#7a6a4a' },
-};
-
-export function characterDetail(character: BlockCharacter): CharacterDetail {
-  return DETAILS[character];
-}
 
 // LEGAL: Character over the 4x4 block grid of each district. Kept in one readable table
 // LEGAL: rather than spread through the renderer, so the city's social geography can be

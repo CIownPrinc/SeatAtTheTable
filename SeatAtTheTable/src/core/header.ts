@@ -50,7 +50,7 @@ import { loadVehicleLibrary, spinWheels, trafficFootprint, vehicleClassForCar, v
 import { buildingModelFor, loadBuildingLibrary, type BuildingLibrary } from '../map/buildingModels';
 import type { PlaceArchetype } from '../map/archetypes';
 import { buildAmenityModel as buildMapAmenityModel } from '../map/amenityRendering';
-import { createFillerLayoutProvider, seededRandom } from '../map/filler';
+import { seededRandom } from '../map/random';
 import { applyMapWorldCoordinates, createMapBuildings, mapNpcs } from '../map/markers';
 import { actorRadius, canMoveTo, collidesSolid, isWaterBlocked, nearestFreePoint, penetrationDepth } from '../map/movement';
 import { drawMinimap as drawMapMinimap, MINIMAP_SCALE } from '../map/minimap';
@@ -91,7 +91,7 @@ import {
   type Card,
   type RouletteBet,
 } from '../map/casino';
-import { buildBaseGround, buildCanalBridges, buildCanalWater, buildFillerCity, buildLandmarks, buildOutskirtScenery, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
+import { buildBaseGround, buildCanalBridges, buildCanalWater, buildLandmarks, buildOutskirtScenery, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
 import { createMapSceneMaterials, createSceneBuildTimer } from '../map/scenePerformance';
 import { buildIntersectionFurniture as buildMapIntersectionFurniture, nearestLamps, showSignal, streetLampBulbs, type LampHead, type SignalHeads } from '../map/streetFurniture';
 import { signalState } from '../map/trafficRules';
@@ -106,7 +106,6 @@ import { loadPersonGeometries } from '../world/assets/people';
 import { DISTRICT_OFFSETS, OUTSKIRT_PLACE_LOTS, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
 import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/viewport';
-import { renderZoneType } from '../map/zoning';
 import { INTERIOR_SCALE, buildInteriorRoom3d, spotKey, type InteriorView } from '../map/interiorRoom3d';
 import { activeMissionCount, advanceMissionStage, canOfferRepeatableEvent, canOfferUniqueEvent, completeMission, declineMission, delayedMissionReady, missionCompleted, missionSaveDefaults, recordEventOffer, scheduleDelayedMission, startMission } from './missions';
 import { freezeStaticScenery } from '../map/staticScenery';
@@ -4485,34 +4484,16 @@ import type * as ThreeNamespace from 'three';
       ?? 'Windhaven';
     return `${road.road.name}, ${region}`;
   }
-  const fillerLayout = createFillerLayoutProvider(mapObjects);
-  // LEGAL: The new map lays the city out in lots along its streets (world/data/lots) in place of the
-  // LEGAL: old filler's buildings and building sites; its parks and parking lots stay.
-  function sceneFillerFor(districtId: string){
-    const items = fillerLayout.fillerFor(districtId);
-    return newMapBeta() ? items.filter(f => f.kind !== 'building' && f.kind !== 'construction') : items;
-  }
-  // LEGAL: What the minimap and the City Map draw: the lots too, as plain footprints. Asked for every
-  // LEGAL: frame, so each district's list is made once.
-  const minimapFiller = new Map<string, ReturnType<typeof fillerLayout.fillerFor>>();
-  function fillerFor(districtId: string){
-    if(!newMapBeta()) return fillerLayout.fillerFor(districtId);
-    const known = minimapFiller.get(districtId);
-    if(known) return known;
-    const off = DISTRICT_OFFSETS[districtId] ?? 0;
-    const lots = cityLots().filter(lot => lot.district === districtId).map(function(lot){
-      const solid = lotSolid(lot);
-      return { kind:'building' as const, zone:'residential' as const, character:lot.character, x:lot.x - off, y:lot.y, w:solid.hw * 2, d:solid.hd * 2, h:lot.h, hue:0, rot:0 };
-    });
-    const items = [...sceneFillerFor(districtId), ...lots];
-    minimapFiller.set(districtId, items);
-    return items;
+  // LEGAL: The minimap and City Map draw every lot's footprint.
+  let lotFootprints: Solid[] | null = null;
+  function cityLotFootprints(): Solid[] {
+    lotFootprints ??= cityLots().map(lotSolid);
+    return lotFootprints;
   }
   // LEGAL: Everything already standing that the lots must keep clear of: the named places and their
   // LEGAL: annexes, landmarks, and every spot something stands on (dealers' corners, amenities, people).
   let cityLotsCache: Lot[] | null = null;
   function cityLots(): Lot[] {
-    if(!newMapBeta()) return [];
     if(cityLotsCache) return cityLotsCache;
     // LEGAL: Open places (the garage's bay, yards, alleys) have no collision bounds, so they're
     // LEGAL: kept clear by the footprint they're drawn at.
@@ -4538,7 +4519,6 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: Benches, bins, hydrants and shelters in front of the lots (world/data/streetProps).
   let cityPropsCache: StreetProp[] | null = null;
   function cityProps(): StreetProp[] {
-    if(!newMapBeta()) return [];
     cityPropsCache ??= generateStreetProps(cityLots(), streetTreeSpots, solidsFromObjects(mapObjects));
     return cityPropsCache;
   }
@@ -4559,8 +4539,7 @@ import type * as ThreeNamespace from 'three';
   }
   function buildAllSolids(){
     const list: Solid[] = solidsFromObjects(mapObjects);
-    if(newMapBeta()) list.push(...streetPropSolids(cityProps()), ...cityLots().filter(lot => !lot.site).map(lotSolid), ...cityLots().filter(lot => lot.site).map(lot => { const s = lotSolid(lot); return { ...s, hw:s.hw + 2, hd:s.hd + 2 }; }));
-    else list.push(...fillerLayout.fillerSolids());
+    list.push(...streetPropSolids(cityProps()), ...cityLots().filter(lot => !lot.site).map(lotSolid), ...cityLots().filter(lot => lot.site).map(lot => { const s = lotSolid(lot); return { ...s, hw:s.hw + 2, hd:s.hd + 2 }; }));
     // LEGAL: An alley is the gap BETWEEN two buildings: the gap is walkable and the buildings
     // LEGAL: forming it are not. A single bounds box cannot say "blocked, open, blocked", so
     // LEGAL: the flanks are added here, sized from the same constant the shell is drawn with.
@@ -5170,7 +5149,7 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: and saved nothing measurable, so they stay as authored.
   // LEGAL: Static pieces built as hundreds of separate meshes, merged into one group each.
   const LOOSE_SCENERY_PREFIXES = ['road:', 'bridge:', 'sign:', 'tree:street', 'trail:'];
-  const MERGEABLE_SCENERY_PREFIXES = ['resort:', 'filler:construction:', 'filler:lot-cars:', 'crane:', 'suburb:', 'outskirt:'];
+  const MERGEABLE_SCENERY_PREFIXES = ['resort:', 'filler:construction:', 'crane:', 'suburb:', 'outskirt:'];
   let scene: ThreeNamespace.Scene, camera3d: ThreeNamespace.PerspectiveCamera, renderer: ThreeNamespace.WebGLRenderer, worldGroup: ThreeNamespace.Group, playerGroup: ThreeNamespace.Group, ambientLight: ThreeNamespace.AmbientLight, sunLight: ThreeNamespace.DirectionalLight, moonLight: ThreeNamespace.DirectionalLight, waypointBeacon: ThreeNamespace.Group | null = null, missionObjectiveMarker: ThreeNamespace.Group | null = null, parkedCarMesh: ThreeNamespace.Group | null = null, trainGroup: ThreeNamespace.Group | null = null;
   let missionObjectiveMarkerKey = '';
   let streetLamps: LampHead[] = [];
@@ -5572,14 +5551,6 @@ import type * as ThreeNamespace from 'three';
     beacon.position.set(0, box.max.y + 2, (box.min.z + box.max.z) / 2);
     model.add(blade, beacon);
   }
-  // LEGAL: Ordinary cars for the parking lots.
-  const PARKED_CLASSES = ['sedan', 'beater', 'wagon', 'suv', 'ev', 'pickup', 'van'] as const;
-  function buildParkedCar(color: string, seed: number): ThreeNamespace.Object3D | null {
-    const cls = PARKED_CLASSES[seed % PARKED_CLASSES.length];
-    const size = trafficFootprint(`parked-${cls}`);
-    // LEGAL: A little narrower than in traffic, so neighbours fit between the bay lines.
-    return vehicleLibrary ? vehicleLibrary.create(cls, color, size.length * 0.9, size.width * 0.82) : null;
-  }
   function buildTrafficCarModel(id: string, color: string): ThreeNamespace.Group {
     const size = trafficFootprint(id);
     if(vehicleLibrary){
@@ -5927,7 +5898,7 @@ import type * as ThreeNamespace from 'three';
     const materials = createMapSceneMaterials(THREE);
     sceneMaterials = materials;
     snowSurfaces = []; snowShown = -1;
-    const baseScene = { THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, materials, newWorld:newMapBeta() };
+    const baseScene = { THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, materials };
     timer.measure('terrain', function(): void {
       tagWorld('terrain:ground', function(){ buildBaseGround(baseScene); });
       tagWorld('terrain:canal', function(){ buildCanalWater(baseScene); });
@@ -5964,13 +5935,12 @@ import type * as ThreeNamespace from 'three';
 
     timer.measure('fill-and-landmarks', function(): void {
       tagWorld('filler', function(){
-        if(newMapBeta()) buildCityLots(THREE, cityLots(), buildingLibrary, materials, function(lot){
+        buildCityLots(THREE, cityLots(), buildingLibrary, materials, function(lot){
           const mesh = buildDetailedBuilding(lot.w, lot.h, lot.d, lot.color, 'residential', 0);
           mesh.position.set(lot.x, lot.h / 2, lot.y); mesh.rotation.y = lot.rot;
           mesh.name = `filler:lot@${Math.round(lot.x)},${Math.round(lot.y)}`;
           return mesh;
         }).forEach(part => worldGroup.add(part));
-        buildFillerCity({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, districtOffsets:DISTRICT_OFFSETS, fillerFor:sceneFillerFor, helpers:{ box, addSign, buildDetailedBuilding, buildPlaceModel, buildParkedCar, renderZoneType, seededRandom } });
       });
       tagWorld('landmark', function(){
         buildLandmarks({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, landmarks, helpers:{ box, addSign }, buildPlaceModel, landmarkModel:name => landmarkCatalog?.create(name) ?? null });
@@ -6008,14 +5978,6 @@ import type * as ThreeNamespace from 'three';
     }
 
     updateDayNightLighting();
-  }
-
-  // LEGAL: The "New map (beta)" setting, kept in this browser. The city is built once, so changing
-  // LEGAL: it saves and reloads.
-  const NEW_MAP_KEY = 'seat-new-map';
-  function newMapBeta(): boolean {
-    // LEGAL: On unless switched off: its blended ground is what the zoning should look like (TODO 29).
-    try{ return window.localStorage.getItem(NEW_MAP_KEY) !== '0'; }catch(e){ return true; }
   }
 
   function isLocalDevBuild(): boolean {
@@ -6452,7 +6414,7 @@ import type * as ThreeNamespace from 'three';
       player,
       mapObjects: minimapObjects(),
       districtOffsets:DISTRICT_OFFSETS,
-      fillerFor,
+      buildings:cityLotFootprints(),
       worldWidth:WORLD_W,
       worldHeight:WORLD_H,
       landmass:WINDHAVEN_LANDMASS,
@@ -6675,7 +6637,7 @@ import type * as ThreeNamespace from 'three';
   function drawCityMap(){
     drawMapMinimap({
       ctx:cityCtx, indoors:false, dragging:false, pan:{x:0,y:0},
-      player, mapObjects:cityVisibleMapObjects(), districtOffsets:DISTRICT_OFFSETS, fillerFor,
+      player, mapObjects:cityVisibleMapObjects(), districtOffsets:DISTRICT_OFFSETS, buildings:cityLotFootprints(),
       worldWidth:WORLD_W, worldHeight:WORLD_H, landmass:WINDHAVEN_LANDMASS, landmarks,
       waypoint:currentWaypoint(),
       // LEGAL: Same territory data as the minimap, but the full map has room for block
@@ -7284,11 +7246,6 @@ import type * as ThreeNamespace from 'three';
     document.body.classList.toggle('theme-light', t.checked);
     byId<HTMLInputElement>('delhi-theme-toggle').checked = false;
     scheduleSave();
-  });
-  byId<HTMLInputElement>('new-map-toggle').checked = newMapBeta();
-  byId('new-map-toggle').addEventListener('change', function(e){
-    try{ window.localStorage.setItem(NEW_MAP_KEY, (e.target as HTMLInputElement).checked ? '1' : '0'); }catch(err){}
-    void saveGame(false).then(function(){ window.location.reload(); });
   });
   byId('delhi-theme-toggle').addEventListener('change', function(e){
     const t = e.target as HTMLInputElement;

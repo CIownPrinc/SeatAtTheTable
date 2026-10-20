@@ -1,5 +1,5 @@
 import { CENTRAL_PARK, CENTRAL_POND } from './centralPark';
-import type { Corner, FillerItem, Point } from '../config/types';
+import type { Corner, Point, Solid } from '../config/types';
 import type { MapObject, MinimapIcon } from './objects';
 import { roadLandSegments, windhavenMapModel } from './mapModel';
 import type { RoadPath } from './mapModel';
@@ -52,7 +52,8 @@ export interface MinimapRenderOptions {
   player: MinimapPlayerSnapshot;
   mapObjects: MapObject[];
   districtOffsets: Record<string, number>;
-  fillerFor: (districtId: string) => FillerItem[];
+  // LEGAL: Every building that isn't a named place (the city's lots), as world footprints.
+  buildings: readonly Solid[];
   worldWidth: number;
   worldHeight: number;
   landmass: Point[];
@@ -109,7 +110,7 @@ export function minimapStaticLayerCacheKey(options: MinimapRenderOptions): strin
     mapTerrainTheme.canalWater,
     ...windhavenMapModel.districts.map(district => `${district.id}:${terrainForDistrict(district.id).minimapLand}:${district.landArea.length}`),
   ].join('|');
-  const fillerVersion = ['devlin','westside','hub'].map(districtId => `${districtId}:${options.fillerFor(districtId).length}`).join('|');
+  const fillerVersion = String(options.buildings.length);
   return [
     frame.viewW,
     frame.viewH,
@@ -288,30 +289,12 @@ function drawStaticMinimapLayer(mctx: CanvasRenderingContext2D, options: Minimap
   mctx.fillStyle = MINIMAP_COLORS.water;
   mctx.beginPath(); mctx.ellipse(pond.x, pond.y, Math.max(1, CENTRAL_POND.rx * scale), Math.max(1, CENTRAL_POND.ry * scale), 0, 0, Math.PI * 2); mctx.fill();
 
-  ['devlin','westside','hub'].forEach(function(distId){
-    const off = options.districtOffsets[distId];
-    options.fillerFor(distId).forEach(function(f){
-      if(f.kind==='building'){
-        const p = proj(f.x+off, f.y);
-        if(!isOnMap(p, viewW, viewH)) return;
-        const bw = Math.max(1.5, f.w*scale);
-        const bd = Math.max(1.5, f.d*scale);
-        mctx.fillStyle = MINIMAP_COLORS.building;
-        mctx.fillRect(p.x-bw/2, p.y-bd/2, bw, bd);
-      } else if(f.kind==='construction'){
-        const p = proj(f.x+off, f.y);
-        if(!isOnMap(p, viewW, viewH)) return;
-        mctx.fillStyle = MINIMAP_COLORS.building;
-        mctx.fillRect(p.x-f.w*scale/2, p.y-f.d*scale/2, f.w*scale, f.d*scale);
-      } else if(f.kind==='park'){
-        const p = proj((f.x0+f.x1)/2+off,(f.y0+f.y1)/2);
-        if(!isOnMap(p, viewW, viewH)) return;
-        const w=(f.x1-f.x0)*scale;
-        const d=(f.y1-f.y0)*scale;
-        mctx.fillStyle=MINIMAP_COLORS.park;
-        mctx.fillRect(p.x-w/2,p.y-d/2,w,d);
-      }
-    });
+  mctx.fillStyle = MINIMAP_COLORS.building;
+  options.buildings.forEach(function(b){
+    const p = proj(b.x, b.y);
+    if(!isOnMap(p, viewW, viewH)) return;
+    const bw = Math.max(1.5, b.hw * 2 * scale), bd = Math.max(1.5, b.hd * 2 * scale);
+    mctx.fillRect(p.x - bw / 2, p.y - bd / 2, bw, bd);
   });
 
   drawPolygon(windhavenMapModel.lakefrontBeach, MINIMAP_COLORS.beach, null, 0);

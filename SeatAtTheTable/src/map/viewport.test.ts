@@ -105,7 +105,7 @@ describe('map viewport and geometry model', function () {
       player: { x: 700, y: 600, vx: 0, vy: 0, facing: 0 },
       mapObjects: [],
       districtOffsets: { devlin: 0, westside: 2000, hub: 4000 },
-      fillerFor: function(){ return []; },
+      buildings: [],
       worldWidth: 5500,
       worldHeight: 1200,
       landmass: windhavenMapModel.landmass,

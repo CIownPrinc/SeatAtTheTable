@@ -1,5 +1,4 @@
 import type { PersonLook } from '../map/personModel';
-import type { BlockCharacter } from '../map/neighbourhoods';
 
 export type VentureCategory = 'legit' | 'street';
 
@@ -261,20 +260,6 @@ export interface Solid {
 }
 
 export type MapZoneType = 'smallBusiness' | 'residential' | 'industrial' | 'corporate' | 'entertainment' | 'logistics' | 'street' | 'civic';
-
-// LEGAL: Procedurally-placed decorative map fill: green space, empty lot, or
-// LEGAL: a generic building. Discriminated on kind.
-export type FillerItem =
-  | { kind: 'park'; name: string; x0: number; y0: number; x1: number; y1: number }
-  | { kind: 'lot'; x0: number; y0: number; x1: number; y1: number }
-  // LEGAL: `character` is the stage-3 neighbourhood axis (affluent / rough / shopping...),
-  // LEGAL: independent of `zone`, which is only land use. The renderer picks its palette
-  // LEGAL: from character so two residential blocks can look like different worlds.
-  | { kind: 'building'; zone: MapZoneType; character: BlockCharacter; x: number; y: number; w: number; d: number; h: number; hue: number; rot: number; style?: 'apartment' }
-  // LEGAL: A building site on an empty plot (map/construction); `seed` picks how far it's got.
-  | { kind: 'construction'; x: number; y: number; w: number; d: number; seed: number }
-  // LEGAL: 'edge' = cheap background block forming the city's rough outer skyline.
-  | { kind: 'edge'; x: number; y: number; w: number; d: number; h: number; hue: number; rot: number };
 
 export interface ProceduralNPC {
   name: string;

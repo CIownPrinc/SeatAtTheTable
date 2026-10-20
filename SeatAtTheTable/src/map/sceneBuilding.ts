@@ -1,29 +1,18 @@
-import { buildConstructionSite, buildTowerCrane } from './construction';
 import { TREE_SCALE } from './scale';
-import type { DiagonalRoad, HorizontalRoad, Landmark, OutskirtRegion, VerticalRoad } from './world';
-import { OUTSKIRT_REGIONS } from './world';
-import { characterDetail, characterProfile } from './neighbourhoods';
+import type { DiagonalRoad, HorizontalRoad, Landmark, VerticalRoad } from './world';
 import { createOutskirtSceneryLayout } from './outskirtScenery';
 import { buildCountryBuilding } from './countryBuildings';
-import { fillerArchetype, type PlaceArchetype } from './archetypes';
+import type { PlaceArchetype } from './archetypes';
 import { ribbonGeometry } from './ribbon';
 import { TRAILS, TRAIL_WIDTH } from './trails';
 import { applyShoreFoam, applyWaterWaves } from './waterShader';
 import { buildTerrainMesh } from '../world/render/terrain';
 
-// LEGAL: One colour per outskirt belt kind, read from the shared terrain theme so the 3D
-// LEGAL: world and any future minimap treatment cannot drift apart.
-function outskirtColor(kind: OutskirtRegion['kind']): string {
-  if(kind === 'forest') return mapTerrainTheme.outskirtForest;
-  if(kind === 'suburb') return mapTerrainTheme.outskirtSuburb;
-  if(kind === 'industrial') return mapTerrainTheme.outskirtIndustrial;
-  return mapTerrainTheme.outskirtFarmland;
-}
 import { districtIdAtPlayablePoint, roadDeadEnds, roadLandSegments, windhavenMapModel, type RoadPath } from './mapModel';
 import { boundsForPoints, isPointInWater } from './geometry';
-import { mapTerrainTheme, mapTransportTheme, terrainForDistrict } from './renderTheme';
+import { mapTerrainTheme, mapTransportTheme } from './renderTheme';
 import { addInstancedMesh, createMapSceneMaterials, type MapSceneMaterialCache, type SceneInstance } from './scenePerformance';
-import type { FillerItem, MapZoneType, Point } from '../config/types';
+import type { Point } from '../config/types';
 import type * as ThreeNamespace from 'three';
 
 export interface RoadNetworkRenderData {
@@ -38,8 +27,6 @@ export interface BaseSceneOptions {
   worldWidth: number;
   worldHeight: number;
   materials?: MapSceneMaterialCache;
-  // LEGAL: "New map (beta)": swap in pieces of the rebuilt world (src/world) as they're ready.
-  newWorld?: boolean;
 }
 
 export interface RoadSceneOptions extends BaseSceneOptions {
@@ -50,22 +37,6 @@ export interface RoadSceneOptions extends BaseSceneOptions {
 export interface SceneRenderHelpers {
   box: (w: number, h: number, d: number, color: number | string) => ThreeNamespace.Mesh;
   addSign: (parent: ThreeNamespace.Object3D, text: string, w: number, h: number, y: number, color: string) => void;
-}
-
-export interface FillerSceneHelpers extends SceneRenderHelpers {
-  buildDetailedBuilding: (w: number, h: number, d: number, color: number | string, zoneType: string, variant: number) => ThreeNamespace.Group;
-  // LEGAL: The Blender model for this archetype, or null when the models didn't load.
-  buildPlaceModel: (archetype: PlaceArchetype, color: string, w: number, h: number, d: number) => ThreeNamespace.Group | null;
-  // LEGAL: A parked car model (`seed` picks which), or null when the models didn't load.
-  buildParkedCar: (color: string, seed: number) => ThreeNamespace.Object3D | null;
-  renderZoneType: (zone: MapZoneType) => string;
-  seededRandom: (seed: number) => () => number;
-}
-
-export interface FillerSceneOptions extends BaseSceneOptions {
-  districtOffsets: Record<string, number>;
-  fillerFor: (districtId: string) => FillerItem[];
-  helpers: FillerSceneHelpers;
 }
 
 export interface TreeSceneOptions extends BaseSceneOptions {
@@ -151,39 +122,8 @@ export function buildBaseGround(options: BaseSceneOptions): void {
   const oceanD = (land.maxY - land.minY) + 1400;
   const waterBase = new THREE.Mesh(new THREE.PlaneGeometry(oceanW, oceanD), applyWaterWaves(materials.standard('terrain:open-water', {color:mapTerrainTheme.openWater, emissive:mapTerrainTheme.waterEmissive, emissiveIntensity:0.26, roughness:0.18, metalness:0.18})));
   waterBase.rotation.x=-Math.PI/2; waterBase.position.set((land.minX+land.maxX)/2, -0.04, (land.minY+land.maxY)/2); waterBase.receiveShadow=true; waterBase.renderOrder = 0; worldGroup.add(waterBase);
-  if(options.newWorld){
-    worldGroup.add(buildTerrainMesh(THREE));
-  } else {
-    addGroundShape(options, windhavenMapModel.landmass, mapTerrainTheme.baseLand, 0, 1);
-    // LEGAL: Outskirt belts sit between the base land and the districts, so the countryside
-    // LEGAL: reads as farmland / forest / suburb / industrial edge rather than one flat field,
-    // LEGAL: and the districts still draw on top of it.
-    OUTSKIRT_REGIONS.forEach(function(region){
-      const material = materials.standard(`terrain:outskirt:${region.id}`, {
-        color: outskirtColor(region.kind),
-        roughness: 1,
-        side: THREE.DoubleSide,
-      });
-      const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPoints(THREE, region.area)), material);
-      mesh.rotation.x = Math.PI/2;
-      mesh.position.y = 0.02;
-      mesh.receiveShadow = true;
-      worldGroup.add(mesh);
-    });
-    windhavenMapModel.districts.forEach(function(district){
-      const terrain = terrainForDistrict(district.id);
-      const material = materials.standard(`terrain:district:${district.id}`, {
-        color: terrain.land,
-        roughness: 1,
-        side: THREE.DoubleSide,
-      });
-      const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPoints(THREE, district.landArea)), material);
-      mesh.rotation.x = Math.PI/2;
-      mesh.position.y = 0.03;
-      mesh.receiveShadow = true;
-      worldGroup.add(mesh);
-    });
-  }
+  // LEGAL: One terrain mesh cut to the coast, coloured by the zoning field (world/render/terrain).
+  worldGroup.add(buildTerrainMesh(THREE));
   // LEGAL: No hairline coastline or outline strokes: 1-pixel lines alias and flicker at any
   // LEGAL: distance, and the outlines drew across the canal mouths and out over the water. The
   // LEGAL: surf is a strip with real width instead (buildShoreFoam).
@@ -417,175 +357,6 @@ export function buildStreetTrees(options: TreeSceneOptions): void {
         const treeX = v.x + side*50 + (rand()-0.5)*12;
         const treeY = y + (rand()-0.5)*18;
         if(districtIdAtPlayablePoint({ x:treeX, y:treeY }, 8) === distId){ buildStreetTree(options, treeX, treeY, (0.72 + rand()*0.38) * TREE_SCALE); options.treeSpots.push({ x:treeX, y:treeY }); }
-      }
-    });
-  });
-}
-
-// LEGAL: Stage 4 — facade detailing per neighbourhood character, so a run-down block and a
-// LEGAL: bougie one read differently at a glance rather than being the same box in a
-// LEGAL: different colour. Boxes only, added to the building's own group so they inherit
-// LEGAL: its rotation and position.
-function addCharacterDetail(
-  helpers: FillerSceneHelpers,
-  mesh: ThreeNamespace.Group,
-  f: Extract<FillerItem, { kind: 'building' }>,
-): void {
-  const detail = characterDetail(f.character);
-  const front = f.d / 2;
-  const top = f.h / 2;
-
-  if(detail.cornice){
-    const cornice = helpers.box(f.w * 1.06, 3, f.d * 1.06, detail.trim);
-    cornice.position.set(0, top - 2, 0); mesh.add(cornice);
-  }
-  if(detail.balcony){
-    // LEGAL: A couple of storeys of projecting balconies down the frontage.
-    for(let i = 1; i <= 2; i += 1){
-      const y = -top + (f.h * i) / 3;
-      const slab = helpers.box(f.w * 0.52, 1.6, 5, detail.trim);
-      slab.position.set(0, y, front + 2.4); mesh.add(slab);
-    }
-  }
-  if(detail.fireEscape){
-    // LEGAL: Zig-zag ladder stack — the single clearest "walk-up" read from above.
-    const rungs = Math.max(2, Math.floor(f.h / 22));
-    for(let i = 0; i < rungs; i += 1){
-      const y = -top + 8 + i * (f.h / (rungs + 1));
-      const platform = helpers.box(f.w * 0.34, 1.2, 4, detail.trim);
-      platform.position.set(i % 2 === 0 ? -f.w * 0.2 : f.w * 0.2, y, front + 2); mesh.add(platform);
-    }
-  }
-  if(detail.boarded){
-    // LEGAL: Boarded openings — pale patches where windows used to be.
-    const boards = Math.max(1, Math.floor(f.w / 26));
-    for(let i = 0; i < boards; i += 1){
-      const bx = -f.w / 2 + (f.w * (i + 0.5)) / boards;
-      const board = helpers.box(Math.min(11, f.w * 0.2), 7, 1.4, '#8a7f6b');
-      board.position.set(bx, -top + f.h * 0.34, front + 0.9); mesh.add(board);
-    }
-  }
-  if(detail.shopfront){
-    const awning = helpers.box(f.w * 0.82, 2.6, 7, detail.trim);
-    awning.position.set(0, -top + 13, front + 3.2); mesh.add(awning);
-    const sign = helpers.box(f.w * 0.66, 5, 1.4, detail.trim);
-    sign.position.set(0, -top + 21, front + 0.9); mesh.add(sign);
-  }
-  if(detail.neon){
-    const strip = helpers.box(f.w * 0.7, 2.2, 1.2, detail.trim);
-    strip.position.set(0, top - f.h * 0.28, front + 0.9); mesh.add(strip);
-  }
-  if(detail.roofPlant){
-    const plant = helpers.box(f.w * 0.34, 6, f.d * 0.34, detail.trim);
-    plant.position.set(f.w * 0.16, top + 3, -f.d * 0.14); mesh.add(plant);
-  }
-  if(detail.vents){
-    const tank = helpers.box(f.w * 0.24, 8, f.d * 0.24, detail.trim);
-    tank.position.set(-f.w * 0.2, top + 4, f.d * 0.16); mesh.add(tank);
-    const duct = helpers.box(f.w * 0.5, 2.4, 3, detail.trim);
-    duct.position.set(0, top + 1.4, -f.d * 0.24); mesh.add(duct);
-  }
-}
-
-export function buildFillerCity(options: FillerSceneOptions): void {
-  const { THREE, worldGroup, districtOffsets, fillerFor, helpers } = options;
-  const materials = materialsFor(options);
-  ['devlin','westside','hub'].forEach(function(distId){
-    const off = districtOffsets[distId];
-    fillerFor(distId).forEach(function(f){
-      if(f.kind==='building'){
-        const zoneType = helpers.renderZoneType(f.zone);
-        // LEGAL: Palette comes from the block's CHARACTER, not its zone. Zone only says
-        // LEGAL: what a block is for; two residential blocks should look like different
-        // LEGAL: worlds if one is Gilt Shore and the other is Canal Row.
-        // LEGAL: Walk-up apartments keep their own brick palette on top of that, which is
-        // LEGAL: what gives a single block two families of colour. Collapsing them into the
-        // LEGAL: character palette measurably flattened the view — the mobile colour-variety
-        // LEGAL: guard caught it.
-        const palette = f.style === 'apartment'
-          ? ['#6a4b3f', '#705848', '#61564d', '#7a6254', '#5d4a46']
-          : characterProfile(f.character).palette;
-        const color = palette[Math.floor(f.hue * palette.length) % palette.length];
-        const mesh = helpers.buildPlaceModel(fillerArchetype(f.zone, f.style === 'apartment', f.h), color, f.w, f.h, f.d) ?? helpers.buildDetailedBuilding(f.w,f.h,f.d,color,zoneType,f.hue);
-        if(f.style==='apartment'){
-          const stoop = helpers.box(Math.min(22,f.w*0.45),3,8,'#4b423d');
-          stoop.position.set(0,-f.h/2+2,f.d/2+4); mesh.add(stoop);
-          const awning = helpers.box(Math.min(26,f.w*0.55),3,7,'#2f5360');
-          awning.position.set(0,-f.h/2+16,f.d/2+3); mesh.add(awning);
-        }
-        addCharacterDetail(helpers, mesh, f);
-        mesh.position.set(f.x+off,f.h/2,f.y); mesh.rotation.y = f.rot;
-        // LEGAL: Named with everything needed to find the offender in the generator when the
-        // LEGAL: scene audit reports it: which district, which block character, and the
-        // LEGAL: authored (pre-offset) coordinate it was allocated at.
-        mesh.name = `filler:${distId}:${f.character}:${f.zone}@${Math.round(f.x)},${Math.round(f.y)}`;
-        worldGroup.add(mesh);
-      } else if(f.kind==='construction'){
-        const site = buildConstructionSite(THREE, materials, f.w, f.d, f.seed);
-        site.position.set(f.x+off, 0, f.y);
-        site.name = `filler:construction:${distId}@${Math.round(f.x)},${Math.round(f.y)}`;
-        worldGroup.add(site);
-        const crane = buildTowerCrane(THREE, materials, f.w, f.d, f.seed);
-        crane.position.set(f.x+off, 0, f.y);
-        crane.name = `crane:${distId}@${Math.round(f.x)},${Math.round(f.y)}`;
-        worldGroup.add(crane);
-      } else if(f.kind==='park'){
-        const cx=(f.x0+f.x1)/2+off, cy=(f.y0+f.y1)/2, w=f.x1-f.x0, d=f.y1-f.y0;
-        const grass = new THREE.Mesh(new THREE.PlaneGeometry(w,d), materials.standard('terrain:park-grass', {color:'#2c4a30', roughness:1}));
-        grass.rotation.x=-Math.PI/2; grass.position.set(cx,0.08,cy); grass.receiveShadow=true; worldGroup.add(grass);
-        // LEGAL: Two walks crossing the park, and round-crowned trees (the street trees' shape) kept off them.
-        const pathMat = materials.standard('park:path', {color:'#c8bb98', roughness:0.95});
-        [[w - 30, 10], [10, d - 30]].forEach(function([pw, pd]){
-          const walk = new THREE.Mesh(new THREE.PlaneGeometry(pw, pd), pathMat);
-          walk.rotation.x=-Math.PI/2; walk.position.set(cx,0.12,cy); walk.receiveShadow=true; worldGroup.add(walk);
-        });
-        const rand = helpers.seededRandom(Math.floor(cx*7+cy*13));
-        const trunkInstances: SceneInstance[] = [];
-        const leafInstances: SceneInstance[] = [];
-        for(let i=0;i<24 && trunkInstances.length<14;i++){
-          const tx=f.x0+off+20+rand()*(w-40), ty=f.y0+20+rand()*(d-40);
-          if(Math.abs(tx-cx) < 16 || Math.abs(ty-cy) < 16) continue;
-          if(trunkInstances.some(t => Math.hypot(t.x-tx, t.z-ty) < 26)) continue;
-          trunkInstances.push({ x:tx, y:7.5*TREE_SCALE, z:ty });
-          leafInstances.push({ x:tx, y:22*TREE_SCALE, z:ty, rotationY:i });
-        }
-        addInstancedMesh(THREE, worldGroup, new THREE.CylinderGeometry(2.4,3,15,7).scale(TREE_SCALE,TREE_SCALE,TREE_SCALE), materials.standard('prop:tree-trunk', {color:'#4a3624', roughness:0.9}), trunkInstances, { cast:true });
-        addInstancedMesh(THREE, worldGroup, new THREE.SphereGeometry(12,12,9).scale(TREE_SCALE,TREE_SCALE*0.9,TREE_SCALE), materials.standard('prop:tree-crown-park', {color:'#2f6a3d', roughness:0.95}), leafInstances, { cast:true });
-        if(f.name==='MILLENNIUM PARK'){
-          const potato = new THREE.Mesh(new THREE.SphereGeometry(20,24,18), materials.standard('landmark:potato', {color:'#c9c9d4', metalness:1, roughness:0.08}));
-          potato.scale.set(1.6,0.85,1); potato.position.set(cx,22,cy); potato.castShadow=true; potato.receiveShadow=true; worldGroup.add(potato);
-          helpers.addSign(potato,'THE POTATO',44,10,34,'#e8e6de');
-        } else {
-          helpers.addSign(grass,f.name,44,9,4,'#a8d0a8');
-        }
-      } else if(f.kind==='lot'){
-        const cx=(f.x0+f.x1)/2+off, cy=(f.y0+f.y1)/2, w=f.x1-f.x0, d=f.y1-f.y0;
-        const lot = new THREE.Mesh(new THREE.PlaneGeometry(w,d), materials.standard('terrain:parking-lot', {color:'#26282e', roughness:1}));
-        lot.rotation.x=-Math.PI/2; lot.position.set(cx,0.08,cy); lot.receiveShadow=true; worldGroup.add(lot);
-        const stripeMat = materials.basic('terrain:parking-stripe', {color:'#d9d2b8', transparent:true, opacity:0.5});
-        const stripeInstances: SceneInstance[] = [];
-        for(let sx=f.x0+off+18; sx<f.x1+off-18; sx+=24){
-          stripeInstances.push({ x:sx, y:0.11, z:cy, rotationX:-Math.PI/2 });
-        }
-        addInstancedMesh(THREE, worldGroup, new THREE.PlaneGeometry(2,d-24), stripeMat, stripeInstances);
-        const curb = helpers.box(w,2,3,'#565a63'); curb.position.set(cx,1,f.y0+8); worldGroup.add(curb);
-        // LEGAL: Cars parked nose-in, in the bays, on two rows facing each other; real models,
-        // LEGAL: merged into one group per lot.
-        const rand = helpers.seededRandom(Math.floor(cx*11+cy*17));
-        const carColors=['#556070','#704040','#405560','#606050','#d8dce2','#20242c','#8a7a5a'];
-        const parked = new THREE.Group();
-        parked.name = `filler:lot-cars:${distId}@${Math.round(cx)},${Math.round(cy)}`;
-        for(let bx=f.x0+off+30; bx<f.x1+off-30; bx+=24){
-          for(const row of [-1, 1]){
-            if(rand() < 0.4) continue;
-            const color = carColors[Math.floor(rand()*carColors.length)];
-            const car = helpers.buildParkedCar(color, Math.floor(rand()*1000)) ?? helpers.box(20,9,11,color);
-            car.position.set(bx, car.type === 'Mesh' ? 4.5 : 0, cy + row*d/4);
-            car.rotation.y = row < 0 ? 0 : Math.PI;
-            parked.add(car);
-          }
-        }
-        worldGroup.add(parked);
       }
     });
   });

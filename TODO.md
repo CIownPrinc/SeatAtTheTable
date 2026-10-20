@@ -402,8 +402,13 @@ Build order:
 4. **PART** Scenery placed from zoning that keeps clear of roads. Street furniture is in: benches,
    bins, hydrants, planters, postboxes and bus shelters modelled in Blender (`art/blender/props.py`)
    and set out in front of the lots by block character (`world/data/streetProps.ts`), instanced.
-5. Models: Blender-made, instanced, with levels of detail.
-6. The new places from section 10F, built on the new engine rather than the old one.
+5. **DONE** Models: Blender-made and instanced (lots and props). Levels of detail weren't needed:
+   the busiest view is about 490 draw calls.
+6. **DONE** The new places from section 10F (mall, Central Park, suburb, building sites, snow).
+7. **DONE** Switch over (2026-10-19). Parity held: every place reachable, mission objectives on their
+   places, saves load, and the new map ran as fast as the old one (22.7 fps against 21.3 on the
+   4x-throttled phone profile, after the frame-rate fixes doubled both). The "New map (beta)"
+   setting, the classic flat ground and the old filler layout are deleted.
 
 ---
 
