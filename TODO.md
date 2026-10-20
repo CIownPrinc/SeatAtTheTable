@@ -255,12 +255,16 @@ old one.
     (`spinWheels`); traffic is merged back into one mesh per material, where nobody would notice.
 
 **D. How the world looks**
-26. **PART** Audit the whole map for primitive designs that could be better, not just the ground.
+26. **DONE** Audit the whole map for primitive designs that could be better, not just the ground.
     Done so far: countryside buildings, filler buildings, the newsstand (now a kiosk), the park
     chess tables (round stone tables with inlaid boards), the pet store (a shopfront with an
     awning), Devlin Hall (a civic hall under its dome), parking-lot cars (real models, parked in
-    the bays), building sites, parks, the suburb, the plow, the bikes and their rider. Still open:
-    a full tour for anything else that's still boxes.
+    the bays), building sites, parks, the suburb, the plow, the bikes and their rider. The tour of
+    every countryside place and yard found the rest, now each built as itself
+    (`map/placeSpecials.ts`): the airfield (runway, barrel hangar, windsock, crop-duster), the docks
+    (wharf, bollards, container stacks, gantry crane), the railyard (tracks, freight wagons, signal
+    hut), the drive-in (big screen, parking rows, projection booth, snack bar), the lodge (a log
+    cabin), the motel (a row of rooms and its pylon sign) and the casino's lit marquee.
 27. **PART** The map was very polygonal. The coast and lake shore are now smoothed in the map data
     itself (Chaikin, two passes), and a spliced-on needle of sea in the east coast is gone. The
     diagonals, country lanes and trails are real curves, and the blended ground has no polygon

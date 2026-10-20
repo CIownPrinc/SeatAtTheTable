@@ -148,7 +148,7 @@ export const SERVICE_ARCHETYPES: Record<string, PlaceArchetype> = {
   docksDockmaster: 'lot',           // LEGAL: A dockside yard.
   airfieldKettle: 'lot',            // LEGAL: A crop-duster strip is open ground, not an office.
   lodgeRidgewood: 'works',          // LEGAL: A remote lodge is a weathered meeting house.
-  driveInBoundary: 'bay',           // LEGAL: The drive-in is an open parking bay facing one screen.
+  driveInBoundary: 'lot',           // LEGAL: The drive-in is open ground facing one screen (map/placeSpecials).
   motelSunset: 'storefront',        // LEGAL: The shore motel is one low, enterable roadside building.
   fireRoadKestrel: 'lot',           // LEGAL: A trailhead shed and dirt turnout, with the course beyond it.
   // LEGAL: The mall's front plaza is the place you walk into; the building behind it is map/mall.

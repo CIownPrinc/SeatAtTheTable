@@ -2,6 +2,7 @@ import type { Business, Corner, LocalBusiness, MapAmenity, ServiceBuilding } fro
 import type * as ThreeNamespace from 'three';
 import { storeys } from './scale';
 import { GARAGE_OFFICE, garageOfficeCenter } from './driveIn';
+import { addCasinoFront, specialPlace } from './placeSpecials';
 import type { MapBuilding } from './markers';
 import type { MapObject } from './objects';
 import type { VentureFootprint } from './objectFactory';
@@ -115,15 +116,18 @@ function renderServiceBuildings(options: MapPlaceRenderOptions): void {
     const building = object.ref as ServiceBuilding;
     const archetype = serviceArchetype(building);
     const silhouette = serviceBuildingSilhouette(building);
-    const built = buildPlaceShell(options, archetype, silhouette, helpers.variantForId(building.id));
+    // LEGAL: One-of-a-kind places (map/placeSpecials) are built as themselves, standing on the ground.
+    const special = specialPlace(building.id);
+    const built = special ? { mesh:special.build(options.THREE), y:0, hasBuilding:false } : buildPlaceShell(options, archetype, silhouette, helpers.variantForId(building.id));
     const mesh = built.mesh;
     if(built.hasBuilding) helpers.addServiceDetail(building, mesh);
+    if(building.id === 'casinoLakeridge' && built.hasBuilding) addCasinoFront(options.THREE, mesh, silhouette.w, silhouette.h, silhouette.d);
     mesh.position.set(object.x, built.y, object.y);
     mesh.name = `service:${building.id}:${building.name}`;
     if(building.kind === 'playerGarage') addGarageOffice(options.THREE, mesh, silhouette.w, silhouette.d);
     worldGroup.add(mesh);
     // LEGAL: The mall carries its name on its own facade (map/mall).
-    if(building.kind !== 'mall') helpers.addSign(mesh, building.name, Math.min(54, silhouette.w * 0.72), 9, built.hasBuilding ? silhouette.h - 8 : silhouette.h + 12, '#ffe6a0');
+    if(building.kind !== 'mall') helpers.addSign(mesh, building.name, Math.min(54, silhouette.w * 0.72), 9, special ? 62 : built.hasBuilding ? silhouette.h - 8 : silhouette.h + 12, '#ffe6a0');
   });
 }
 

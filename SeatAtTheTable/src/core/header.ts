@@ -29,6 +29,7 @@ import { isItemOwned, itemKey, itemPrice, lookPrice, ownedWardrobe, type MallSho
 import { MALL_ROOM, MALL_SPOTS } from '../map/mallInterior';
 import { buildMall, mallSolids } from '../map/mall';
 import { buildCentralPark, centralParkSolids } from '../map/centralPark';
+import { specialPlaceSolids } from '../map/placeSpecials';
 import { buildSuburb, suburbSolids } from '../map/suburb';
 import { countryFootprint } from '../map/countryBuildings';
 import { renderRoamingActors } from '../map/actorRendering';
@@ -4547,6 +4548,7 @@ import type * as ThreeNamespace from 'three';
       const building = object.ref as ServiceBuilding;
       const shape = serviceBuildingSilhouette(building);
       list.push(...archetypeExtraSolids(serviceArchetype(building), object.x, object.y, shape.w, shape.d));
+      list.push(...specialPlaceSolids(building.id, object.x, object.y));
     });
     // LEGAL: Trees, barns and silos used to be walk-through. Trunks are small boxes; countryside
     // LEGAL: buildings take most of their drawn footprint.
