@@ -1,6 +1,7 @@
 import type * as ThreeNamespace from 'three';
 import type { OutskirtSceneryKind } from './outskirtScenery';
 import type { MapSceneMaterialCache } from './scenePerformance';
+import { addPlaceModel, placeModel } from './placeModels';
 import { buildHouseModel } from './suburb';
 
 // LEGAL: The countryside's buildings, each built to look like what it is. They were a box with a
@@ -28,10 +29,13 @@ function roofPrism(THREE: typeof ThreeNamespace, profile: Array<[number, number]
   return geometry;
 }
 
+const FARMHOUSE_WALLS = ['#ece6d6', '#e4d8c0', '#d8dccc'];
+const SHED_CLADDING = ['#7c8288', '#6a7a6e', '#8a7c6a'];
+
 const farmhouse: Builder = function(THREE, materials, variant){
   const g = new THREE.Group();
   const add = parts(THREE, materials, g);
-  const walls = ['#ece6d6', '#e4d8c0', '#d8dccc'][variant % 3];
+  const walls = FARMHOUSE_WALLS[variant % 3];
   const w = 36, d = 26, h = 30;
   add(new THREE.BoxGeometry(w, h, d), walls, 0, h / 2, 0);
   add(roofPrism(THREE, [[-d / 2 - 2, 0], [d / 2 + 2, 0], [0, 14]], w + 4), '#4a3a34', 0, h, 0, 'country:farmhouse:roof');
@@ -82,7 +86,7 @@ const shed: Builder = function(THREE, materials, variant){
   const g = new THREE.Group();
   const add = parts(THREE, materials, g);
   const w = 40, d = 30, h = 18;
-  const cladding = ['#7c8288', '#6a7a6e', '#8a7c6a'][variant % 3];
+  const cladding = SHED_CLADDING[variant % 3];
   add(new THREE.BoxGeometry(w, h, d), cladding, 0, h / 2, 0);
   // LEGAL: Ribbed metal: vertical ribs down the long sides.
   for(let x = -w / 2 + 2; x < w / 2; x += 4) for(const z of [-d / 2 - 0.3, d / 2 + 0.3]) add(new THREE.BoxGeometry(0.8, h, 0.6), '#5c6268', x, h / 2, z);
@@ -113,6 +117,12 @@ const BUILDERS: Record<Exclude<OutskirtSceneryKind, 'tree'>, Builder> = {
   suburbHouse:(THREE, materials, variant) => buildHouseModel(THREE, materials, variant),
 };
 
+// LEGAL: The Blender model (art/blender/places.py) when it's loaded, the farmhouse's walls and the
+// LEGAL: shed's cladding in this one's colour; otherwise the builders above.
 export function buildCountryBuilding(THREE: typeof ThreeNamespace, materials: MapSceneMaterialCache, kind: Exclude<OutskirtSceneryKind, 'tree'>, variant: number): ThreeNamespace.Group {
-  return BUILDERS[kind](THREE, materials, variant);
+  const model = kind === 'suburbHouse' ? null : placeModel(kind);
+  if(!model) return BUILDERS[kind](THREE, materials, variant);
+  const g = new THREE.Group();
+  addPlaceModel(THREE, g, model, materials, `country:${kind}`, { walls:FARMHOUSE_WALLS[variant % 3], cladding:SHED_CLADDING[variant % 3] });
+  return g;
 }

@@ -344,6 +344,12 @@ old one.
     furniture, landmarks, people's parts and spinning wheels in Blender, the countryside places,
     the frame-rate fixes and the switch-over. Curved city streets were dropped: the user said the
     straight grid is fine (2026-10-19).
+50. Move the rest of the code-built models into Blender too, even the ones that already look fine
+    (user, 2026-10-20). Done so far: the suburb house, the farmhouse, barn, silo, shed and tank, the
+    site cabin, toilet and a tower crane built from mast and jib bays, the mall and its garage, and the
+    airfield, docks, railyard, drive-in, lodge and motel (`art/blender/places.py`, loaded by
+    `world/assets/places.ts`, drawn by `map/placeModels.ts`; each keeps its old shapes as the
+    fallback). Left: interior furniture, the mall's inside and the minigame scenes.
 
 **E. Interiors**
 34. **DONE** Interiors you walk around in like outside, in 3D. Today most rooms are a few small icons that

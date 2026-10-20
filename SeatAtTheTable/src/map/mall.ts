@@ -1,6 +1,7 @@
 import type * as ThreeNamespace from 'three';
 import type { Point, Solid } from '../config/types';
 import { mergeMeshesWithin, type MergeGeometries } from './mergeScenery';
+import { addPlaceModel, localMaterials, placeModel } from './placeModels';
 import { storeys } from './scale';
 
 // LEGAL: Lakeridge Mall, at the end of Wabash Avenue where the city gives way to the suburbs. The
@@ -121,9 +122,18 @@ export function buildMall(THREE: typeof ThreeNamespace, merge?: MergeGeometries)
   };
   const mall = new THREE.Group();
   mall.name = 'landmark:mall';
-  const body = buildBody(THREE, materials);
+  // LEGAL: The Blender mall and garage (art/blender/places.py) when they've loaded, else the shapes above.
+  const parts = localMaterials(THREE);
+  const modelled = (name: 'mall' | 'mall-garage', fallback: () => ThreeNamespace.Group) => {
+    const model = placeModel(name);
+    if(!model) return fallback();
+    const g = new THREE.Group();
+    addPlaceModel(THREE, g, model, parts, name);
+    return g;
+  };
+  const body = modelled('mall', () => buildBody(THREE, materials));
   body.position.set(MALL_BODY.x, 0, MALL_BODY.y);
-  const garage = buildGarage(THREE, materials);
+  const garage = modelled('mall-garage', () => buildGarage(THREE, materials));
   garage.position.set(MALL_GARAGE.x, 0, MALL_GARAGE.y);
   if(merge){ mergeMeshesWithin(THREE, body, merge); mergeMeshesWithin(THREE, garage, merge); }
   mall.add(body, garage);

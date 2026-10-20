@@ -1,5 +1,7 @@
 import type * as ThreeNamespace from 'three';
 import type { Solid } from '../config/types';
+import type { PlaceModelName } from '../world/assets/places';
+import { addPlaceModel, localMaterials, placeModel } from './placeModels';
 
 // LEGAL: Places that are one of a kind and were drawn with a generic shell: the airfield, the docks
 // LEGAL: and the railyard all got the same fenced yard with a hut and two containers, the drive-in
@@ -157,7 +159,26 @@ const SPECIALS: Record<string, Special> = {
   },
 };
 
-export function specialPlace(id: string): Special | null { return SPECIALS[id] ?? null; }
+// LEGAL: Each place's Blender model (art/blender/places.py), which replaces its shapes above once loaded.
+const MODELS: Record<string, PlaceModelName> = {
+  airfieldKettle:'airfield', docksDockmaster:'docks', railyard:'railyard', driveInBoundary:'drive-in', lodgeRidgewood:'lodge', motelSunset:'motel',
+};
+
+export function specialPlace(id: string): Special | null {
+  const special = SPECIALS[id];
+  if(!special) return null;
+  const name = MODELS[id];
+  return {
+    solids:special.solids,
+    build(THREE){
+      const model = name ? placeModel(name) : null;
+      if(!model) return special.build(THREE);
+      const g = new THREE.Group();
+      addPlaceModel(THREE, g, model, localMaterials(THREE), `special:${name}`);
+      return g;
+    },
+  };
+}
 
 export function specialPlaceSolids(id: string, x: number, y: number): Solid[] {
   return (SPECIALS[id]?.solids ?? []).map(s => ({ x:x + s.x, y:y + s.y, hw:s.hw, hd:s.hd }));
