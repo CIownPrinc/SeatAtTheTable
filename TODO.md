@@ -53,6 +53,9 @@ V1 is finished when all of these hold at once:
   screen and no dead button.
 - Every result screen tells the truth: a number shown is a number that actually changed.
 
+Last check, 2026-10-20: the gate (lint, typecheck, 460 unit tests, build) and the full e2e suite
+(157 tests) passed twice in a row. What's left needs a person: the full play-through (section 4).
+
 ---
 
 # V1 FINISH LIST — in priority order
