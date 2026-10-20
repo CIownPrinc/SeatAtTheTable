@@ -295,7 +295,20 @@ function streetGroundAt(point: Point, road: RoadPath, model: WindhavenMapModel):
   return !isPointInWater(point, road.width / 2);
 }
 
+// LEGAL: The map is fixed once built, so its land segments are worked out once per model. The
+// LEGAL: minimap asked for them every frame, which was 40% of each frame on a phone.
+const landSegmentCache = new WeakMap<WindhavenMapModel, Map<number, RoadLandSegment[]>>();
 export function roadLandSegments(model: WindhavenMapModel = windhavenMapModel, sampleLength = 36): RoadLandSegment[] {
+  const byLength = landSegmentCache.get(model) ?? new Map<number, RoadLandSegment[]>();
+  landSegmentCache.set(model, byLength);
+  const cached = byLength.get(sampleLength);
+  if(cached) return cached;
+  const computed = computeRoadLandSegments(model, sampleLength);
+  byLength.set(sampleLength, computed);
+  return computed;
+}
+
+function computeRoadLandSegments(model: WindhavenMapModel, sampleLength: number): RoadLandSegment[] {
   const segments: RoadLandSegment[] = [];
   model.roadPaths.forEach(function(road){
     // LEGAL: Country lanes run through the countryside by design (and are tested to stay on dry

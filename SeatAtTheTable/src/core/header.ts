@@ -110,7 +110,7 @@ import { renderZoneType } from '../map/zoning';
 import { INTERIOR_SCALE, buildInteriorRoom3d, spotKey, type InteriorView } from '../map/interiorRoom3d';
 import { activeMissionCount, advanceMissionStage, canOfferRepeatableEvent, canOfferUniqueEvent, completeMission, declineMission, delayedMissionReady, missionCompleted, missionSaveDefaults, recordEventOffer, scheduleDelayedMission, startMission } from './missions';
 import { freezeStaticScenery } from '../map/staticScenery';
-import { mergeMeshesWithin, type MergeGeometries } from '../map/mergeScenery';
+import { mergeLooseByPrefix, mergeMeshesWithin, type MergeGeometries } from '../map/mergeScenery';
 import { choiceDelta, describeMissionLedger, foldMissionLedger, openMissionLedger, rebaseMissionLedger, reconcileResultText, type MissionLedger, type OutcomeSnapshot } from './missionLedger';
 import { getOnboardingSteps, type OnboardingMissionSnapshot, type OnboardingPanelTarget } from './onboarding';
 import { MISSION_CONFIG as PHASE2_MISSION_CONFIG, OUTSKIRT_VENUE_CONFIG, missionEventPool, type MissionEventDefinition } from '../config/missions';
@@ -4492,15 +4492,21 @@ import type * as ThreeNamespace from 'three';
     const items = fillerLayout.fillerFor(districtId);
     return newMapBeta() ? items.filter(f => f.kind !== 'building' && f.kind !== 'construction') : items;
   }
-  // LEGAL: What the minimap and the City Map draw: the lots too, as plain footprints.
+  // LEGAL: What the minimap and the City Map draw: the lots too, as plain footprints. Asked for every
+  // LEGAL: frame, so each district's list is made once.
+  const minimapFiller = new Map<string, ReturnType<typeof fillerLayout.fillerFor>>();
   function fillerFor(districtId: string){
     if(!newMapBeta()) return fillerLayout.fillerFor(districtId);
+    const known = minimapFiller.get(districtId);
+    if(known) return known;
     const off = DISTRICT_OFFSETS[districtId] ?? 0;
     const lots = cityLots().filter(lot => lot.district === districtId).map(function(lot){
       const solid = lotSolid(lot);
       return { kind:'building' as const, zone:'residential' as const, character:lot.character, x:lot.x - off, y:lot.y, w:solid.hw * 2, d:solid.hd * 2, h:lot.h, hue:0, rot:0 };
     });
-    return [...sceneFillerFor(districtId), ...lots];
+    const items = [...sceneFillerFor(districtId), ...lots];
+    minimapFiller.set(districtId, items);
+    return items;
   }
   // LEGAL: Everything already standing that the lots must keep clear of: the named places and their
   // LEGAL: annexes, landmarks, and every spot something stands on (dealers' corners, amenities, people).
@@ -5162,6 +5168,8 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: Only the resort: it was ~1,900 of ~5,000 scene objects (measured 2026-10-17; merging
   // LEGAL: it took idle fps from ~44 to ~56). Trees, outskirts, filler and landmarks were tried too
   // LEGAL: and saved nothing measurable, so they stay as authored.
+  // LEGAL: Static pieces built as hundreds of separate meshes, merged into one group each.
+  const LOOSE_SCENERY_PREFIXES = ['road:', 'bridge:', 'sign:', 'tree:street', 'trail:'];
   const MERGEABLE_SCENERY_PREFIXES = ['resort:', 'filler:construction:', 'filler:lot-cars:', 'crane:', 'suburb:', 'outskirt:'];
   let scene: ThreeNamespace.Scene, camera3d: ThreeNamespace.PerspectiveCamera, renderer: ThreeNamespace.WebGLRenderer, worldGroup: ThreeNamespace.Group, playerGroup: ThreeNamespace.Group, ambientLight: ThreeNamespace.AmbientLight, sunLight: ThreeNamespace.DirectionalLight, moonLight: ThreeNamespace.DirectionalLight, waypointBeacon: ThreeNamespace.Group | null = null, missionObjectiveMarker: ThreeNamespace.Group | null = null, parkedCarMesh: ThreeNamespace.Group | null = null, trainGroup: ThreeNamespace.Group | null = null;
   let missionObjectiveMarkerKey = '';
@@ -5985,6 +5993,7 @@ import type * as ThreeNamespace from 'three';
       rebuildWaypointBeacon();
       const merge = mergeSceneryGeometries;
       if(merge) worldGroup.children.filter(function(child){ return MERGEABLE_SCENERY_PREFIXES.some(function(prefix){ return child.name.startsWith(prefix); }); }).forEach(function(group){ mergeMeshesWithin(THREE, group, merge); });
+      if(merge) LOOSE_SCENERY_PREFIXES.forEach(prefix => mergeLooseByPrefix(THREE, worldGroup, prefix, merge));
       freezeStaticScenery(worldGroup);
     });
     if(isLocalDevBuild()){

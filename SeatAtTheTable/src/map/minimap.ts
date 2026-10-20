@@ -96,10 +96,12 @@ interface MinimapRenderFrame {
 
 const staticLayerCache = new Map<string, HTMLCanvasElement>();
 
+// LEGAL: The roads never change after the map is built, so their part of the key is made once.
+let roadVersion: string | null = null;
 export function minimapStaticLayerCacheKey(options: MinimapRenderOptions): string {
   const frame = minimapRenderFrame(options);
   const districtNames = options.districtNames?.map(name => `${name.name}:${Math.round(name.x)}:${Math.round(name.y ?? 6)}`).join('|') ?? '';
-  const roadVersion = roadLandSegments().map(segment => `${segment.road.id}:${segment.road.roadClass}:${segment.road.width}:${Math.round(segment.path[0].x)}:${Math.round(segment.path[0].y)}:${Math.round(segment.path[1].x)}:${Math.round(segment.path[1].y)}`).join('|');
+  roadVersion ??= roadLandSegments().map(segment => `${segment.road.id}:${segment.road.roadClass}:${segment.road.width}:${Math.round(segment.path[0].x)}:${Math.round(segment.path[0].y)}:${Math.round(segment.path[1].x)}:${Math.round(segment.path[1].y)}`).join('|');
   const waterVersion = `${windhavenMapModel.canals.length}:${windhavenMapModel.lake.length}:${windhavenMapModel.lakefrontBeach.length}`;
   const terrainVersion = [
     mapTerrainTheme.openWater,

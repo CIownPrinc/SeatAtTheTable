@@ -255,7 +255,18 @@ function buildRouteGraph(startRoad: RoadProjection, endRoad: RoadProjection, mod
   return { nodes, edges };
 }
 
+// LEGAL: Where each railway crosses the roads: fixed once the map is built, and asked for on every
+// LEGAL: movement check, so it's worked out once per line.
+const crossingCache = new WeakMap<RailLineRecord, Array<{ road: RoadPath; point: Point }>>();
 function railCrossings(rail: RailLineRecord, model: WindhavenMapModel): Array<{ road: RoadPath; point: Point }> {
+  const cached = crossingCache.get(rail);
+  if(cached) return cached;
+  const computed = computeRailCrossings(rail, model);
+  crossingCache.set(rail, computed);
+  return computed;
+}
+
+function computeRailCrossings(rail: RailLineRecord, model: WindhavenMapModel): Array<{ road: RoadPath; point: Point }> {
   const railSegments = rail.path.slice(0, -1).map(function(start, index): { start: Point; end: Point } {
     return { start, end: rail.path[index + 1] };
   });

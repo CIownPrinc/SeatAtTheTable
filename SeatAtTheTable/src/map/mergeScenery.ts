@@ -70,3 +70,25 @@ export function mergeMeshesWithin(THREE: ThreeModule, group: Object3D, merge: Me
   merged.forEach(function(mesh){ group.add(mesh); });
   return true;
 }
+
+// LEGAL: Gathers the loose static pieces whose names start with `prefix` (every road ribbon, every
+// LEGAL: bridge rail) into one group and merges it by material. Hundreds of separate meshes cost a
+// LEGAL: draw call and a scene-graph visit each, every frame; merged they are a handful.
+export function mergeLooseByPrefix(THREE: ThreeModule, world: Object3D, prefix: string, merge: MergeGeometries): void {
+  const loose = world.children.filter(function(child){
+    if(!child.name.startsWith(prefix)) return false;
+    let plain = true;
+    child.traverse(function(node){
+      const mesh = node as Mesh;
+      if(mesh.isMesh && ((node as { isInstancedMesh?: boolean }).isInstancedMesh || Array.isArray(mesh.material))) plain = false;
+      else if(!mesh.isMesh && node.type !== 'Group' && node.type !== 'Object3D') plain = false;
+    });
+    return plain;
+  });
+  if(loose.length < 2) return;
+  const group = new THREE.Group();
+  group.name = `${prefix}merged`;
+  loose.forEach(function(child){ world.remove(child); group.add(child); });
+  world.add(group);
+  mergeMeshesWithin(THREE, group, merge);
+}

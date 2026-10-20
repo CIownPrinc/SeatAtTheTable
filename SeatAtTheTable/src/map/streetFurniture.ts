@@ -19,8 +19,18 @@ export function nearestLamps(lamps: LampHead[], x: number, z: number, count: num
     .slice(0, count);
 }
 
+// LEGAL: One material per finish, shared by every pole and arm in the city, so the static furniture
+// LEGAL: merges into a few meshes instead of one per part.
+const finishes = new Map<string, ThreeNamespace.MeshStandardMaterial>();
+function finish(THREE: typeof ThreeNamespace, color: number | string, roughness: number, metalness: number): ThreeNamespace.MeshStandardMaterial {
+  const key = `${color}:${roughness}:${metalness}`;
+  let material = finishes.get(key);
+  if(!material){ material = new THREE.MeshStandardMaterial({ color, roughness, metalness }); finishes.set(key, material); }
+  return material;
+}
+
 function box(THREE: typeof ThreeNamespace, w: number, h: number, d: number, color: number | string): ThreeNamespace.Mesh {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), new THREE.MeshStandardMaterial({color, roughness:0.85, metalness:0.05}));
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), finish(THREE, color, 0.85, 0.05));
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   return mesh;
@@ -38,7 +48,7 @@ export function streetLampBulbs(THREE: typeof import('three')): import('three').
 export function buildStreetLight(options: StreetFurnitureOptions, x: number, z: number, toward: { x: number; z: number }): void {
   const { THREE, worldGroup, streetLamps } = options;
   const group = new THREE.Group();
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(1.3,1.8,34,8), new THREE.MeshStandardMaterial({color:'#3b3e47', roughness:0.55, metalness:0.4}));
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(1.3,1.8,34,8), finish(THREE, '#3b3e47', 0.55, 0.4));
   pole.position.set(0,17,0); pole.castShadow=true; group.add(pole);
   const arm = box(THREE, 14,1.8,1.8,'#3b3e47');
   arm.position.set(6,33,0); group.add(arm);
@@ -66,7 +76,7 @@ export function buildTrafficLight(options: StreetFurnitureOptions, x: number, z:
   const { THREE, worldGroup } = options;
   const group = new THREE.Group();
   const dark = '#2f333c';
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(1,1.4,30,8), new THREE.MeshStandardMaterial({color:dark, roughness:0.5, metalness:0.5}));
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(1,1.4,30,8), finish(THREE, dark, 0.5, 0.5));
   pole.position.set(0,15,0); pole.castShadow=true; group.add(pole);
   const westArm = box(THREE, 22,2,2,dark); westArm.position.set(-10,29,0); group.add(westArm);
   const southArm = box(THREE, 2,2,22,dark); southArm.position.set(0,27,10); group.add(southArm);
@@ -83,7 +93,10 @@ export function buildTrafficLight(options: StreetFurnitureOptions, x: number, z:
   // LEGAL: faces the traffic coming from the east.
   const ns = lamp(-22, 24, 2.7);
   const ew = lamp(2.7, 22, 22);
-  group.position.set(x,0,z); group.scale.setScalar(STREET_FURNITURE_SCALE); worldGroup.add(group);
+  group.position.set(x,0,z); group.scale.setScalar(STREET_FURNITURE_SCALE);
+  // LEGAL: Its own name, so the static street merge leaves it alone: its lamps move and change colour.
+  group.name = `signal:${Math.round(junction.x)},${Math.round(junction.y)}`;
+  worldGroup.add(group);
   return { junction, ns, ew, shown:{ ns:null, ew:null } };
 }
 
