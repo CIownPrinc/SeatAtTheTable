@@ -335,8 +335,10 @@ old one.
     No car? They lend you one and take it back. Getting out of the car forfeits the race.
 
 48. **DONE** Pulling a dealer made them vanish; now they walk off the corner down the street.
-49. Keep going on the map rebuild (section 11 steps 3-6), the Blender work (people, street
-    furniture, props, landmarks) and the rest of this list.
+49. **PART** Keep going on the map rebuild (section 11 steps 3-6), the Blender work (people, street
+    furniture, props, landmarks) and the rest of this list. Done: lots along the streets, street
+    furniture, landmarks, people's parts and spinning wheels in Blender, the countryside places,
+    the frame-rate fixes and the switch-over. Still open: curved city streets (item 27).
 
 **E. Interiors**
 34. **DONE** Interiors you walk around in like outside, in 3D. Today most rooms are a few small icons that
