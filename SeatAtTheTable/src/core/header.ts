@@ -94,7 +94,7 @@ import {
 } from '../map/casino';
 import { buildBaseGround, buildCanalBridges, buildCanalWater, buildLandmarks, buildOutskirtScenery, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
 import { createMapSceneMaterials, createSceneBuildTimer } from '../map/scenePerformance';
-import { buildIntersectionFurniture as buildMapIntersectionFurniture, nearestLamps, showSignal, streetLampBulbs, type LampHead, type SignalHeads } from '../map/streetFurniture';
+import { buildIntersectionFurniture as buildMapIntersectionFurniture, nearestLamps, showSignal, streetLampBulbs, useStreetModels, type LampHead, type SignalHeads } from '../map/streetFurniture';
 import { signalState } from '../map/trafficRules';
 import { plowOut, snowSurfaceFor, snowWhiteness, stepPlowed, stepSnowCover } from '../map/snow';
 import { terrainSnow } from '../world/render/terrain';
@@ -106,6 +106,7 @@ import { LANDMARK_MODELS, loadModelCatalog, type ModelCatalog } from '../world/a
 import { loadPersonGeometries } from '../world/assets/people';
 import { loadTreeShapes } from '../world/assets/trees';
 import { useTreeShapes } from '../map/treeModels';
+import { loadStreetModels } from '../world/assets/street';
 import { DISTRICT_OFFSETS, OUTSKIRT_PLACE_LOTS, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
 import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/viewport';
@@ -4397,7 +4398,9 @@ import type * as ThreeNamespace from 'three';
         mergeSceneryGeometries = (await import('three/examples/jsm/utils/BufferGeometryUtils.js')).mergeGeometries;
         let personParts: Awaited<ReturnType<typeof loadPersonGeometries>> = null;
         let trees: Awaited<ReturnType<typeof loadTreeShapes>> = {};
-        [mapAssets, vehicleLibrary, buildingLibrary, propLibrary, landmarkCatalog, personParts, trees] = await Promise.all([loadMapAssetLibrary(THREE), loadVehicleLibrary(THREE), loadBuildingLibrary(THREE), loadPropLibrary(THREE), loadModelCatalog(THREE, '/assets/world/landmarks/', LANDMARK_MODELS), loadPersonGeometries(THREE), loadTreeShapes(THREE)]);
+        let street: Awaited<ReturnType<typeof loadStreetModels>> = {};
+        [mapAssets, vehicleLibrary, buildingLibrary, propLibrary, landmarkCatalog, personParts, trees, street] = await Promise.all([loadMapAssetLibrary(THREE), loadVehicleLibrary(THREE), loadBuildingLibrary(THREE), loadPropLibrary(THREE), loadModelCatalog(THREE, '/assets/world/landmarks/', LANDMARK_MODELS), loadPersonGeometries(THREE), loadTreeShapes(THREE), loadStreetModels(THREE)]);
+        useStreetModels(street);
         useSculptedPersonParts(personParts);
         useTreeShapes(trees);
         characterLibrary = createCharacterLibrary(THREE, function(){ return state.appearance; }, mergeSceneryGeometries ?? undefined);

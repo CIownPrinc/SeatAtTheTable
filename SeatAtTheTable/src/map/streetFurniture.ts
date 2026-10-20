@@ -36,6 +36,12 @@ function box(THREE: typeof ThreeNamespace, w: number, h: number, d: number, colo
   return mesh;
 }
 
+// LEGAL: The Blender lamp post and signal frame (art/blender/streetlights.py), by part name, once
+// LEGAL: loaded; until then (or if they fail) the posts are built from simple shapes below.
+export interface StreetModels { lampPost?: { iron: ThreeNamespace.BufferGeometry; glass: ThreeNamespace.BufferGeometry }; signalFrame?: ThreeNamespace.BufferGeometry }
+let streetModels: StreetModels = {};
+export function useStreetModels(models: StreetModels): void { streetModels = models; }
+
 // LEGAL: One bulb material for every street lamp, so the day/night cycle can switch them all off
 // LEGAL: in daylight with a single change (each lamp used to glow at full strength at noon).
 let bulbMaterial: import('three').MeshStandardMaterial | null = null;
@@ -48,12 +54,18 @@ export function streetLampBulbs(THREE: typeof import('three')): import('three').
 export function buildStreetLight(options: StreetFurnitureOptions, x: number, z: number, toward: { x: number; z: number }): void {
   const { THREE, worldGroup, streetLamps } = options;
   const group = new THREE.Group();
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(1.3,1.8,34,8), finish(THREE, '#3b3e47', 0.55, 0.4));
-  pole.position.set(0,17,0); pole.castShadow=true; group.add(pole);
-  const arm = box(THREE, 14,1.8,1.8,'#3b3e47');
-  arm.position.set(6,33,0); group.add(arm);
-  const bulb = new THREE.Mesh(new THREE.SphereGeometry(3.2,10,8), streetLampBulbs(THREE));
-  bulb.position.set(13,32,0); group.add(bulb);
+  if(streetModels.lampPost){
+    const post = new THREE.Mesh(streetModels.lampPost.iron, finish(THREE, '#2f333c', 0.5, 0.5));
+    post.castShadow = true;
+    group.add(post, new THREE.Mesh(streetModels.lampPost.glass, streetLampBulbs(THREE)));
+  } else {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(1.3,1.8,34,8), finish(THREE, '#3b3e47', 0.55, 0.4));
+    pole.position.set(0,17,0); pole.castShadow=true; group.add(pole);
+    const arm = box(THREE, 14,1.8,1.8,'#3b3e47');
+    arm.position.set(6,33,0); group.add(arm);
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(3.2,10,8), streetLampBulbs(THREE));
+    bulb.position.set(13,32,0); group.add(bulb);
+  }
   // LEGAL: The arm is built along +X; turn it to point at `toward` so the lamp hangs over the road.
   const angle = Math.atan2(toward.z - z, toward.x - x);
   group.rotation.y = -angle;
@@ -76,12 +88,18 @@ export function buildTrafficLight(options: StreetFurnitureOptions, x: number, z:
   const { THREE, worldGroup } = options;
   const group = new THREE.Group();
   const dark = '#2f333c';
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(1,1.4,30,8), finish(THREE, dark, 0.5, 0.5));
-  pole.position.set(0,15,0); pole.castShadow=true; group.add(pole);
-  const westArm = box(THREE, 22,2,2,dark); westArm.position.set(-10,29,0); group.add(westArm);
-  const southArm = box(THREE, 2,2,22,dark); southArm.position.set(0,27,10); group.add(southArm);
-  const nsHousing = box(THREE, 7,18,5,'#1b1d23'); nsHousing.position.set(-22,24,0); group.add(nsHousing);
-  const ewHousing = box(THREE, 5,18,7,'#1b1d23'); ewHousing.position.set(0,22,22); group.add(ewHousing);
+  if(streetModels.signalFrame){
+    const frame = new THREE.Mesh(streetModels.signalFrame, finish(THREE, '#2a2d33', 0.5, 0.4));
+    frame.castShadow = true;
+    group.add(frame);
+  } else {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(1,1.4,30,8), finish(THREE, dark, 0.5, 0.5));
+    pole.position.set(0,15,0); pole.castShadow=true; group.add(pole);
+    const westArm = box(THREE, 22,2,2,dark); westArm.position.set(-10,29,0); group.add(westArm);
+    const southArm = box(THREE, 2,2,22,dark); southArm.position.set(0,27,10); group.add(southArm);
+    const nsHousing = box(THREE, 7,18,5,'#1b1d23'); nsHousing.position.set(-22,24,0); group.add(nsHousing);
+    const ewHousing = box(THREE, 5,18,7,'#1b1d23'); ewHousing.position.set(0,22,22); group.add(ewHousing);
+  }
   const lamp = (px: number, py: number, pz: number) => {
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(2.3,10,8), new THREE.MeshStandardMaterial({color:SLOT.red.color, emissive:SLOT.red.color, emissiveIntensity:1.2}));
     mesh.position.set(px, py, pz);

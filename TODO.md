@@ -302,6 +302,8 @@ old one.
     shapes, so the silhouette and the walk are unchanged.
     Trees too: a broadleaf (streets, parks, yards, farms) and a tiered pine (forests), in
     `art/blender/trees.py`, drawn instanced with the game's own materials.
+    And the street lamps and signal frames (`art/blender/streetlights.py`): a cast-iron post with a
+    curved arm and lantern, and signal poles with backplates and hooded visors.
 
 33. **DONE** Proportions were off between people, cars, buildings and street furniture. One
     scale in `map/scale.ts` (10.5 units per metre): people 22 units, building heights x1.9,
