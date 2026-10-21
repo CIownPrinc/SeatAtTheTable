@@ -5183,7 +5183,7 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: Static pieces built as hundreds of separate meshes, merged into one group each.
   const LOOSE_SCENERY_PREFIXES = ['road:', 'bridge:', 'sign:', 'tree:street', 'trail:'];
   const MERGEABLE_SCENERY_PREFIXES = ['resort:', 'filler:construction:', 'crane:', 'suburb:', 'outskirt:'];
-  let scene: ThreeNamespace.Scene, camera3d: ThreeNamespace.PerspectiveCamera, renderer: ThreeNamespace.WebGLRenderer, worldGroup: ThreeNamespace.Group, playerGroup: ThreeNamespace.Group, ambientLight: ThreeNamespace.AmbientLight, sunLight: ThreeNamespace.DirectionalLight, moonLight: ThreeNamespace.DirectionalLight, waypointBeacon: ThreeNamespace.Group | null = null, missionObjectiveMarker: ThreeNamespace.Group | null = null, parkedCarMesh: ThreeNamespace.Group | null = null, trainGroup: ThreeNamespace.Group | null = null;
+  let scene: ThreeNamespace.Scene, camera3d: ThreeNamespace.PerspectiveCamera, renderer: ThreeNamespace.WebGLRenderer, worldGroup: ThreeNamespace.Group, playerGroup: ThreeNamespace.Group, ambientLight: ThreeNamespace.HemisphereLight, sunLight: ThreeNamespace.DirectionalLight, moonLight: ThreeNamespace.DirectionalLight, waypointBeacon: ThreeNamespace.Group | null = null, missionObjectiveMarker: ThreeNamespace.Group | null = null, parkedCarMesh: ThreeNamespace.Group | null = null, trainGroup: ThreeNamespace.Group | null = null;
   let missionObjectiveMarkerKey = '';
   let streetLamps: LampHead[] = [];
   // LEGAL: See nearestLamps: a fixed pool, so the shader light count never changes at runtime.
@@ -5599,7 +5599,9 @@ import type * as ThreeNamespace from 'three';
   function buildAmenityModel(amenity: typeof mapAmenities[number]): ThreeNamespace.Group {
     return buildMapAmenityModel(THREE, amenity, { box, addSign, buildDetailedBuilding, buildPlaceModel, variantForId });
   }
+  let SKY_DAY: ThreeNamespace.Color, SKY_DUSK: ThreeNamespace.Color, SKY_NIGHT: ThreeNamespace.Color;
   function updateDayNightLighting(){
+    SKY_DAY ??= new THREE.Color('#9ec4e2'); SKY_DUSK ??= new THREE.Color('#d0906a'); SKY_NIGHT ??= new THREE.Color('#0e1424');
     if(!scene || !sunLight || !moonLight || !ambientLight) return;
     const dayFraction = mapDayFraction();
     const phase = dayFraction * Math.PI * 2;
@@ -5611,7 +5613,7 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: Night ambient was 0.5, which lit the whole city evenly and left nothing for
     // LEGAL: the street lights or headlights to contribute. Dropped so lamps actually read,
     // LEGAL: but not to black — you still have to be able to play.
-    ambientLight.intensity = 0.28 + sun * 0.62 + dusk * 0.1;
+    ambientLight.intensity = 0.3 + sun * 0.9 + dusk * 0.1;
     sunLight.intensity = 0.25 + sun * 1.15;
     sunLight.color.set(sun < 0.18 ? '#9fb4ff' : (dusk > 0.45 ? '#ffc37a' : '#fff2d0'));
     const shadowFrame = sunShadowFrame({ x:player.x, z:player.y }, sun, SHADOW_HALF_SIZE * 2 / sunLight.shadow.mapSize.x);
@@ -5624,10 +5626,14 @@ import type * as ThreeNamespace from 'three';
     moonLight.position.set(WORLD_W*0.5 - Math.cos(phase) * 700, 430, WORLD_H*0.55 - Math.sin(phase) * 220);
     moonLight.target.position.set(WORLD_W/2,0,WORLD_H/2);
     moonLight.target.updateMatrixWorld();
-    // LEGAL: Runs every frame, so recolour the existing sky and fog rather than allocating.
-    (scene.background as ThreeNamespace.Color).set(sun < 0.18 ? '#111827' : (dusk > 0.45 ? '#241b20' : '#0a0b10'));
+    // LEGAL: Runs every frame, so recolour the existing sky and fog rather than allocating. The sky
+    // LEGAL: used to be near-black at every hour, and the fog with it, so anything a few hundred
+    // LEGAL: units off faded to black and the city looked grey at noon. Now it's blue by day, warm
+    // LEGAL: at dusk and navy at night, and the fog takes the sky's colour so distance reads as haze.
+    const sky = scene.background as ThreeNamespace.Color;
+    sky.copy(SKY_NIGHT).lerp(SKY_DAY, sun).lerp(SKY_DUSK, dusk * 0.55);
     const fog = scene.fog as ThreeNamespace.Fog;
-    fog.color.set(sun < 0.18 ? 0x111827 : 0x0a0b10);
+    fog.color.copy(sky);
     fog.near = 520 + night * 80;
     fog.far = 1150 + sun * 180;
     // LEGAL: three's lights are physically based (candela, decay 2). A lamp head sits ~32
@@ -6327,7 +6333,9 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: not just window resizes, so the picture is never stretched to a stale aspect.
     new ResizeObserver(syncRendererSize).observe(container);
 
-    ambientLight = new THREE.AmbientLight(0x8891a8, 0.65);
+    // LEGAL: Sky light from above and a warm bounce off the ground, instead of a flat blue-grey ambient
+    // LEGAL: that tinted every surface the same and left the city looking grey.
+    ambientLight = new THREE.HemisphereLight(0xdcebff, 0x6a5a44, 0.65);
     scene.add(ambientLight);
     sunLight = new THREE.DirectionalLight(0xfff2d0, 0.9);
     sunLight.castShadow = !lowQualitySaved();

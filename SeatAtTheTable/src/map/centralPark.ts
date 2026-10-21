@@ -153,7 +153,7 @@ export function buildCentralPark(THREE: typeof ThreeNamespace, materials: MapSce
     crowns.push({ x:tree.x, y:22 * tree.size, z:tree.y, rotationY:i });
   });
   const trunk = materials.standard('prop:tree-trunk', { color:'#4a3624', roughness:0.9 });
-  const crown = materials.standard('prop:tree-crown-park', { color:'#2f6a3d', roughness:0.95 });
+  const crown = materials.standard('prop:tree-crown-park', { color:'#3b8044', roughness:0.95 });
   const broadleaf = treeShape('broadleaf');
   if(broadleaf){
     instancedTrees(THREE, broadleaf, trunk, crown, parkTrees().map((tree, i) => ({ x:tree.x, z:tree.y, size:tree.size, rot:i * 1.7 }))).forEach(mesh => park.add(mesh));

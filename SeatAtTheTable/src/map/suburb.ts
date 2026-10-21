@@ -139,13 +139,13 @@ export function buildHouseModel(THREE: typeof ThreeNamespace, materials: MapScen
   const broadleaf = treeShape('broadleaf');
   if(v % 3 !== 1 && broadleaf){
     // LEGAL: The Blender broadleaf on the front lawn (map/treeModels).
-    [[broadleaf.bark, '#4a3624', 'prop:tree-trunk'], [broadleaf.leaves, '#2f6a3d', 'prop:tree-crown-yard']].forEach(function([geometry, color, key]){
+    [[broadleaf.bark, '#4a3624', 'prop:tree-trunk'], [broadleaf.leaves, '#3b8044', 'prop:tree-crown-yard']].forEach(function([geometry, color, key]){
       const mesh = add(geometry as ThreeNamespace.BufferGeometry, color as string, hx - w * 0.36, 0, lawnZ + 2, undefined, key as string);
       mesh.scale.setScalar(TREE_SCALE * 0.85);
     });
   } else if(v % 3 !== 1){
     add(new THREE.CylinderGeometry(1.8 * TREE_SCALE, 2.3 * TREE_SCALE, 14 * TREE_SCALE, 7), '#4a3624', hx - w * 0.36, 7 * TREE_SCALE, lawnZ + 2, undefined, 'prop:tree-trunk');
-    const crown = add(new THREE.SphereGeometry(10 * TREE_SCALE, 12, 9), '#2f6a3d', hx - w * 0.36, 20 * TREE_SCALE, lawnZ + 2, undefined, 'prop:tree-crown-yard');
+    const crown = add(new THREE.SphereGeometry(10 * TREE_SCALE, 12, 9), '#3b8044', hx - w * 0.36, 20 * TREE_SCALE, lawnZ + 2, undefined, 'prop:tree-crown-yard');
     crown.scale.y = 0.9;
   }
   return g;

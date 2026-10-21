@@ -330,7 +330,7 @@ function buildStreetTree(options: BaseSceneOptions, x: number, z: number, size: 
   const trunk = new THREE.Mesh(new THREE.CylinderGeometry(2.2*size,2.8*size,15*size,7), materials.standard('prop:tree-trunk', {color:'#4a3624', roughness:0.9}));
   trunk.position.set(0,7.5*size,0); trunk.castShadow=true; group.add(trunk);
   const crownKey = size > 1.08 ? 'prop:tree-crown-large' : 'prop:tree-crown-small';
-  const crownMat = materials.standard(crownKey, {color:size > 1.08 ? '#2f6a3d' : '#365c34', roughness:0.95});
+  const crownMat = materials.standard(crownKey, {color:size > 1.08 ? '#3b8044' : '#457a3c', roughness:0.95});
   // LEGAL: The Blender broadleaf when it's loaded (map/treeModels), sized and turned per tree.
   const shape = treeShape('broadleaf');
   if(shape){
@@ -415,9 +415,9 @@ export function buildOutskirtScenery(options: BaseSceneOptions): void {
   });
   const pine = treeShape('pine'), broadleaf = treeShape('broadleaf');
   const trunkMat = materials.standard('outskirt:tree-trunk', { color:'#5c4930', roughness:1 });
-  const canopyMat = materials.standard('outskirt:tree-canopy', { color:'#325f38', roughness:0.94 });
+  const canopyMat = materials.standard('outskirt:tree-canopy', { color:'#3c7442', roughness:0.94 });
   if(pine && broadleaf){
-    [...instancedTrees(THREE, pine, trunkMat, canopyMat, pines), ...instancedTrees(THREE, broadleaf, trunkMat, materials.standard('prop:tree-crown-farm', { color:'#3a6e3a', roughness:0.95 }), broadleaves)].forEach(function(mesh){
+    [...instancedTrees(THREE, pine, trunkMat, canopyMat, pines), ...instancedTrees(THREE, broadleaf, trunkMat, materials.standard('prop:tree-crown-farm', { color:'#468543', roughness:0.95 }), broadleaves)].forEach(function(mesh){
       mesh.name = 'outskirt:trees';
       worldGroup.add(mesh);
     });

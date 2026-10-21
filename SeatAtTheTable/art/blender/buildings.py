@@ -16,7 +16,9 @@ def mats():
     return {
         "paint": kit.material("paint", "#8a5a44", roughness=0.85),
         "trim": kit.material("trim", "#d8d2c4", roughness=0.7),
-        "glass": kit.material("glass", "#26313f", roughness=0.12, metallic=0.5),
+        # Glass: blue-grey and only slightly metallic. The game has no sky for glass to reflect, so
+        # the old mirror-like glass rendered black and towers read as blank black walls.
+        "glass": kit.material("glass", "#45627e", roughness=0.18, metallic=0.15),
         "lit": kit.material("glass-lit", "#ffd98a", roughness=0.3, emission="#ffcf70", strength=0.6),
         "roof": kit.material("roof", "#3a3d44", roughness=0.9),
         "door": kit.material("door", "#3b2a20", roughness=0.6),
@@ -88,9 +90,37 @@ def build(name, m):
     elif name == "tower":
         # Glass tower with two setbacks and a crown, the financial core's skyline.
         w, d = 54, 50
-        kit.box("base", (w, d, 70), (0, 0, 35), m["glass"], bevel=0.4)
-        kit.box("mid", (w * 0.8, d * 0.8, 60), (0, 0, 100), m["glass"], bevel=0.4)
-        kit.box("top", (w * 0.6, d * 0.6, 40), (0, 0, 150), m["glass"], bevel=0.4)
+        tiers = ((1.0, 0, 70), (0.8, 70, 130), (0.6, 130, 170))
+        for s, z0, z1 in tiers:
+            tw, td, th = w * s, d * s, z1 - z0
+            kit.box(f"glass-{z0}", (tw, td, th), (0, 0, (z0 + z1) / 2), m["glass"], bevel=0.3)
+            # A floor band every storey, wrapping the tier, so it reads as floors of offices.
+            z = z0 + 6
+            floor = 0
+            while z < z1 - 1:
+                kit.box(f"floor-{z0}-{z}", (tw + 0.5, td + 0.5, 1.2), (0, 0, z), m["paint"])
+                # A few lit offices on each floor, picked by a fixed pattern.
+                for side in range(4):
+                    if (floor * 7 + side * 3 + z0) % 5 == 0:
+                        along = ((floor * 13 + side * 5) % 5 - 2) * (tw if side % 2 == 0 else td) * 0.18
+                        if side % 2 == 0:
+                            kit.box("lit-office", (5, 0.3, 4.6), (along, (td / 2 + 0.2) * (1 if side == 0 else -1), z + 3.2), m["lit"])
+                        else:
+                            kit.box("lit-office", (0.3, 5, 4.6), ((tw / 2 + 0.2) * (1 if side == 1 else -1), along, z + 3.2), m["lit"])
+                z += 7
+                floor += 1
+            # Mullions down every face, every 6 units.
+            for i in range(int(tw // 6) + 1):
+                x = -tw / 2 + i * (tw / int(tw // 6))
+                for y in (-td / 2 - 0.25, td / 2 + 0.25):
+                    kit.box(f"mullion-{z0}", (0.5, 0.5, th), (x, y, (z0 + z1) / 2), m["metal"])
+            for i in range(int(td // 6) + 1):
+                y = -td / 2 + i * (td / int(td // 6))
+                for x in (-tw / 2 - 0.25, tw / 2 + 0.25):
+                    kit.box(f"mullion-{z0}", (0.5, 0.5, th), (x, y, (z0 + z1) / 2), m["metal"])
+        # The lobby: a dark double-height entrance with a canopy.
+        kit.box("lobby", (w * 0.4, 0.6, 9), (0, d / 2 + 0.4, 4.5), m["door"])
+        kit.box("canopy", (w * 0.5, 6, 0.8), (0, d / 2 + 3, 10), m["paint"])
         for z, s in ((70, 1.0), (130, 0.8), (170, 0.6)):
             kit.box(f"ledge-{z}", (w * s + 1.2, d * s + 1.2, 2.2), (0, 0, z), m["paint"], bevel=0.3)
         for x in (-1, 1):

@@ -261,31 +261,28 @@ function renderAmenities(options: MapPlaceRenderOptions): void {
 
 function renderCorners(options: MapPlaceRenderOptions): void {
   const { THREE, worldGroup, mapObjects, helpers } = options;
-  const poleGeometry = new THREE.CylinderGeometry(1.4, 1.4, 26, 6);
-  const orbGeometry = new THREE.SphereGeometry(7, 10, 10);
-  const poleMaterial = new THREE.MeshStandardMaterial({ color:'#2a2c33' });
-  const orbMaterials = new Map<string, ThreeNamespace.MeshStandardMaterial>();
+  // LEGAL: A corner is a street-name post, nothing more: the glowing coloured ball that used to sit on
+  // LEGAL: it read as a random shape in the street. Whether it's staffed shows on the minimap, and in
+  // LEGAL: whether a dealer is standing there.
+  const poleGeometry = new THREE.CylinderGeometry(0.6, 0.7, 24, 8);
+  const plateGeometry = new THREE.BoxGeometry(14, 3.2, 0.4);
+  const poleMaterial = new THREE.MeshStandardMaterial({ color:'#2a2c33', roughness:0.6, metalness:0.4 });
+  const plateMaterial = new THREE.MeshStandardMaterial({ color:'#1f6a3a', roughness:0.5 });
   mapObjects.filter(object => object.kind === 'corner').forEach(function(object){
     const corner = object.ref as Corner;
     const staffed = corner.dealer && !corner.busted;
-    const color = corner.busted ? '#5f6275' : (staffed ? '#d4a017' : '#a8394a');
-    // LEGAL: Pole, orb and dealer used to be three loose children of the world. The orb sat
-    // LEGAL: at y=21 with nothing under it as far as any measurement was concerned, which is
-    // LEGAL: exactly the "random floating block" read. A corner is one object; model it as one.
     const group = new THREE.Group();
     group.name = `corner:${corner.id}:${corner.name}`;
     const pole = new THREE.Mesh(poleGeometry, poleMaterial);
-    pole.position.set(0, 13, 0);
+    pole.position.set(0, 12, 0);
     pole.castShadow = true;
     group.add(pole);
-    let orbMaterial = orbMaterials.get(color);
-    if(!orbMaterial){
-      orbMaterial = new THREE.MeshStandardMaterial({ color, emissive:color, emissiveIntensity:0.4 });
-      orbMaterials.set(color, orbMaterial);
-    }
-    const orb = new THREE.Mesh(orbGeometry, orbMaterial);
-    orb.position.set(0, 28, 0);
-    group.add(orb);
+    [0, Math.PI / 2].forEach(function(turn, i){
+      const plate = new THREE.Mesh(plateGeometry, plateMaterial);
+      plate.position.set(0, 22.6 + i * 3.6, 0);
+      plate.rotation.y = turn;
+      group.add(plate);
+    });
     helpers.addSign(pole, corner.name, 30, 8, 22, '#f0efe8');
     if(staffed){
       const dealer = helpers.buildPedestrianModel('#d4a017', `dealer-${corner.id}`);

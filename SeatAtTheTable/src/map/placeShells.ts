@@ -1,5 +1,8 @@
 import type * as ThreeNamespace from 'three';
 import { ALLEY_FLANK_W, BAY_WALL, LOT_CARGO, LOT_CARGO_SIZE, LOT_HUT, archetypeForm, type PlaceArchetype } from './archetypes';
+import { localMaterials } from './placeModels';
+import { TREE_SCALE } from './scale';
+import { treeShape } from './treeModels';
 
 // LEGAL: ---- Shells for places that are NOT buildings ----
 // LEGAL: Section 0a, rule 2. A cart is a stall, an alley is a gap between two blocks and a
@@ -128,10 +131,15 @@ export function buildAlleyShell(THREE: typeof ThreeNamespace, w: number, d: numb
   pallet.position.set(w * 0.2, 1, -d * 0.3);
   group.add(pallet);
 
-  // LEGAL: A single caged bulb, so the alley is legible at night.
-  const lamp = mesh(THREE, new THREE.SphereGeometry(2.2, 8, 8), '#ffe6a0', { roughness:0.3 });
-  lamp.position.set(-(w/2 - 5), h * 0.78, 0);
-  group.add(lamp);
+  // LEGAL: A single caged bulb on a bracket off the wall, so the alley is legible at night. It used
+  // LEGAL: to be a bare ball hanging in the air.
+  const bracket = mesh(THREE, new THREE.BoxGeometry(6, 0.8, 0.8), '#33383c', { roughness:0.6, metalness:0.4 });
+  bracket.position.set(-(w/2 - 3), h * 0.78 + 2.4, 0);
+  const shade = mesh(THREE, new THREE.ConeGeometry(2.6, 2, 10, 1, true), '#33383c', { roughness:0.6, metalness:0.4 });
+  shade.position.set(-(w/2 - 5.6), h * 0.78 + 1.2, 0);
+  const lamp = mesh(THREE, new THREE.SphereGeometry(1.4, 8, 8), '#ffe6a0', { roughness:0.3 });
+  lamp.position.set(-(w/2 - 5.6), h * 0.78, 0);
+  group.add(bracket, shade, lamp);
 
   return group;
 }
@@ -287,16 +295,36 @@ export function buildPlazaShell(THREE: typeof ThreeNamespace, w: number, d: numb
   const border = groundPlate(THREE, w - 12, d - 12, '#c9c1ae');
   border.position.y = 0.16;
   group.add(border);
+  // LEGAL: A tree in a stone planter each side (the Blender broadleaf once it's loaded, not a ball on
+  // LEGAL: a box), and a slim lamp each side of the walk.
+  const materials = localMaterials(THREE);
+  const broadleaf = treeShape('broadleaf');
   [-1, 1].forEach(function(side){
     const planter = mesh(THREE, new THREE.BoxGeometry(22, 6, 22), '#8a7a62', { roughness:0.9 });
     planter.position.set(side * w * 0.36, 3, 0);
-    const tree = mesh(THREE, new THREE.SphereGeometry(12, 10, 8), '#3c7a44', { roughness:0.95 });
-    tree.position.set(side * w * 0.36, 20, 0);
-    const lamp = mesh(THREE, new THREE.CylinderGeometry(1, 1, 30, 6), '#3a3d44', { roughness:0.6, metalness:0.4 });
-    lamp.position.set(side * w * 0.18, 15, d * 0.3);
-    const bulb = mesh(THREE, new THREE.SphereGeometry(3, 8, 8), '#ffe6a0', { roughness:0.3 });
-    bulb.position.set(side * w * 0.18, 31, d * 0.3);
-    group.add(planter, tree, lamp, bulb);
+    group.add(planter);
+    if(broadleaf){
+      const tree = new THREE.Group();
+      tree.add(new THREE.Mesh(broadleaf.bark, materials.standard('plaza:bark', { color:'#4a3624', roughness:0.9 })));
+      tree.add(new THREE.Mesh(broadleaf.leaves, materials.standard('prop:tree-crown-plaza', { color:'#3b8044', roughness:0.95 })));
+      tree.children.forEach(part => { part.castShadow = true; });
+      tree.scale.setScalar(TREE_SCALE * 0.8);
+      tree.position.set(side * w * 0.36, 6, 0);
+      group.add(tree);
+    } else {
+      const tree = mesh(THREE, new THREE.SphereGeometry(12, 10, 8), '#3c7a44', { roughness:0.95 });
+      tree.position.set(side * w * 0.36, 20, 0);
+      group.add(tree);
+    }
+    const pole = mesh(THREE, new THREE.CylinderGeometry(0.6, 0.9, 30, 8), '#3a3d44', { roughness:0.6, metalness:0.4 });
+    pole.position.set(side * w * 0.18, 15, d * 0.3);
+    const arm = mesh(THREE, new THREE.BoxGeometry(6, 0.6, 0.6), '#3a3d44', { roughness:0.6, metalness:0.4 });
+    arm.position.set(side * w * 0.18 - side * 3, 29.6, d * 0.3);
+    const head = mesh(THREE, new THREE.BoxGeometry(5, 0.8, 2), '#3a3d44', { roughness:0.6, metalness:0.4 });
+    head.position.set(side * w * 0.18 - side * 6, 29.4, d * 0.3);
+    const lens = mesh(THREE, new THREE.BoxGeometry(4.2, 0.3, 1.6), '#ffe6a0', { roughness:0.3 });
+    lens.position.set(side * w * 0.18 - side * 6, 28.9, d * 0.3);
+    group.add(pole, arm, head, lens);
   });
   return group;
 }
