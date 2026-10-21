@@ -471,6 +471,20 @@ old one.
 102. SeatAtTheTable 1 should still value the phone and tycoon side (SeatAtTheTable 2 leans on the map).
      Audit the code, features and how the game plays as a whole, and add what's found here, since the
      user hasn't said much about the tycoon and phone side (user, 2026-10-20).
+103. Diagonal roads clip through the roads they cross, and junctions clip too (user, 2026-10-20).
+104. **DONE** Trees are standing in roads (user, 2026-10-20). Street trees only kept clear of the grid
+     streets, so some stood in the curved Canal Bend Road; countryside buildings were spaced as if 22
+     across, so a Lakeridge one stood on the Ring Road. Both now check every road (`onAnyRoad`), and the
+     road-clearance audit samples five lines across each road, kerb to kerb.
+105. Go through every test: make sure each works and is up to date, and fix what they flag. Then go
+     through the whole game's code for systems that should have tests and don't, write them, and fix
+     what they find (user, 2026-10-20).
+106. Some road ends are wrong: one runs through a beach and into the ocean (user, 2026-10-20).
+107. **DONE** The beaches look bare now: where did the beach chairs, palm trees and so on go (user,
+     2026-10-20)? A regression from rounding the coast: the resort skips any spot whose inland side
+     touches water, and with the new shore 5-10 in from the beach's edge every spot did, so it placed
+     nothing. It tests closer to its own spot now (96 palms and lounger sets), and `scene-audit.e2e.ts`
+     fails if the beach empties again.
 51. **DONE** The cars are too small (user, 2026-10-20: "the cars are so tiny bro"). They were drawn at life
     size next to people drawn 1.2x life, under a high camera. Worse, traffic was a bug: merging each
     car into one mesh transformed its quantized Blender geometry in place, which clamped every car to

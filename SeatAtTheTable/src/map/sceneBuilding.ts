@@ -16,7 +16,7 @@ import { mapTerrainTheme, mapTransportTheme } from './renderTheme';
 import { addInstancedMesh, createMapSceneMaterials, type MapSceneMaterialCache, type SceneInstance } from './scenePerformance';
 import type { Point, Solid } from '../config/types';
 import type * as ThreeNamespace from 'three';
-import { railCrossingSpans, railOpenSpans } from './queries';
+import { onAnyRoad, railCrossingSpans, railOpenSpans } from './queries';
 
 export interface RoadNetworkRenderData {
   vertical: VerticalRoad[];
@@ -368,7 +368,8 @@ export function buildStreetTrees(options: TreeSceneOptions): void {
         const side = rand() > 0.5 ? -1 : 1;
         const treeX = x + (rand()-0.5)*18;
         const treeY = r.y + side*58 + (rand()-0.5)*14;
-        if(districtIdAtPlayablePoint({ x:treeX, y:treeY }, 8) === distId){ buildStreetTree(options, treeX, treeY, (0.78 + rand()*0.45) * TREE_SCALE); options.treeSpots.push({ x:treeX, y:treeY }); }
+        // LEGAL: Beside its own street, but never in another one (the curved Canal Bend Road crosses the grid).
+        if(districtIdAtPlayablePoint({ x:treeX, y:treeY }, 8) === distId && !onAnyRoad({ x:treeX, y:treeY }, 8)){ buildStreetTree(options, treeX, treeY, (0.78 + rand()*0.45) * TREE_SCALE); options.treeSpots.push({ x:treeX, y:treeY }); }
       }
     });
     options.roadNetwork.vertical.filter(v=>v.x>off && v.x<off+1500).forEach(function(v){
@@ -377,7 +378,7 @@ export function buildStreetTrees(options: TreeSceneOptions): void {
         const side = rand() > 0.5 ? -1 : 1;
         const treeX = v.x + side*50 + (rand()-0.5)*12;
         const treeY = y + (rand()-0.5)*18;
-        if(districtIdAtPlayablePoint({ x:treeX, y:treeY }, 8) === distId){ buildStreetTree(options, treeX, treeY, (0.72 + rand()*0.38) * TREE_SCALE); options.treeSpots.push({ x:treeX, y:treeY }); }
+        if(districtIdAtPlayablePoint({ x:treeX, y:treeY }, 8) === distId && !onAnyRoad({ x:treeX, y:treeY }, 8)){ buildStreetTree(options, treeX, treeY, (0.72 + rand()*0.38) * TREE_SCALE); options.treeSpots.push({ x:treeX, y:treeY }); }
       }
     });
   });
@@ -538,9 +539,14 @@ function buildBeachResort(options: BaseSceneOptions): void {
     const dy = end.y - start.y;
     const length = Math.hypot(dx, dy) || 1;
     const angle = Math.atan2(dy, dx);
-    // LEGAL: Inland normal, so everything sits BEHIND the waterline rather than in the lake.
-    const nx = -Math.sin(angle);
-    const ny = Math.cos(angle);
+    // LEGAL: Inland normal, so everything sits BEHIND the waterline rather than in the lake. Which
+    // LEGAL: side is inland is asked of the water, not assumed from the ring's winding: rounding the
+    // LEGAL: coast reversed it, every spot then tested as in the lake, and the resort vanished.
+    const mid = { x:(start.x + end.x) / 2, y:(start.y + end.y) / 2 };
+    const flip = isPointInWater({ x:mid.x - Math.sin(angle) * 30, y:mid.y + Math.cos(angle) * 30 }, 4)
+      && !isPointInWater({ x:mid.x + Math.sin(angle) * 30, y:mid.y - Math.cos(angle) * 30 }, 4);
+    const nx = -Math.sin(angle) * (flip ? -1 : 1);
+    const ny = Math.cos(angle) * (flip ? -1 : 1);
 
     for(let t = 40; t < length - 40; t += 96){
       const bx = start.x + Math.cos(angle) * t;
@@ -549,8 +555,10 @@ function buildBeachResort(options: BaseSceneOptions): void {
       // LEGAL: The shore ring runs straight across both canal mouths, so a naive walk down it
       // LEGAL: plants palms and loungers in the canal. Asked of the world's own water rule
       // LEGAL: rather than a hand-picked x range, so new canals cannot reintroduce this.
-      if(isPointInWater({ x: bx + nx * 16, y: by + ny * 16 }, 14)) continue;
-      if(isPointInWater({ x: bx + nx * 40, y: by + ny * 40 }, 14)) continue;
+      // LEGAL: The beach is about 48 deep and the rounded shore sits 5-10 in from its waterline, so a
+      // LEGAL: wide 14 radius at 16 in touched water at every spot and nothing was placed.
+      if(isPointInWater({ x: bx + nx * 24, y: by + ny * 24 }, 8)) continue;
+      if(isPointInWater({ x: bx + nx * 40, y: by + ny * 40 }, 8)) continue;
 
       // LEGAL: Palm. The fronds were cones radiating from the crown, which read as a sea
       // LEGAL: urchin on a stick. A frond is a long flat blade that ARCHES: it leaves the

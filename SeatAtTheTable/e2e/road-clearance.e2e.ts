@@ -10,7 +10,7 @@ import { test, expect } from '@playwright/test';
 // LEGAL: train) and things drawn on the road (markings, crossings, flush rails) are not obstacles.
 const CLEAR_FROM = 1.2;
 const CLEAR_TO = 14;
-const STEP = 24;
+const STEP = 16;
 
 test('every road is clear from the tarmac to head height', async ({ page }) => {
   test.setTimeout(180_000);
@@ -48,7 +48,8 @@ test('every road is clear from the tarmac to head height', async ({ page }) => {
         if(len < 1) continue;
         const ux = (b.x - a.x) / len, uy = (b.y - a.y) / len;
         for(let d = 0; d <= len; d += step){
-          for(const lane of [0, -segment.road.width / 4, segment.road.width / 4]){
+          // LEGAL: Five lines across the carriageway, out to near each kerb.
+          for(const lane of [-0.44, -0.22, 0, 0.22, 0.44].map(f => f * segment.road.width)){
             const x = a.x + ux * d - uy * lane, z = a.y + uy * d + ux * lane;
             const origin = new THREE.Vector3(x, to + 1, z);
             const over = candidates.filter(c => x >= c.box.min.x && x <= c.box.max.x && z >= c.box.min.z && z <= c.box.max.z);
@@ -56,13 +57,14 @@ test('every road is clear from the tarmac to head height', async ({ page }) => {
             ray.set(origin, down); ray.far = to + 1 - from;
             for(const c of over){
               const hit = ray.intersectObject(c.mesh, false)[0];
-              if(hit && hit.point.y > from && hit.point.y < to && !found.has(c.owner)) found.set(c.owner, { at:`${Math.round(x)},${Math.round(z)}`, height:Math.round(hit.point.y * 10) / 10, road:segment.road.name });
+              const key = `${c.owner}|${segment.road.name}`;
+              if(hit && hit.point.y > from && hit.point.y < to && !found.has(key)) found.set(key, { at:`${Math.round(x)},${Math.round(z)}`, height:Math.round(hit.point.y * 10) / 10, road:segment.road.name });
             }
           }
         }
       }
     }
-    return [...found.entries()].map(([owner, f]) => `${owner} stands ${f.height} high in ${f.road} at ${f.at}`);
+    return [...found.entries()].map(([key, f]) => `${key.split('|')[0]} stands ${f.height} high in ${f.road} at ${f.at}`);
   }, { from:CLEAR_FROM, to:CLEAR_TO, step:STEP });
   expect(problems, problems.join('\n')).toEqual([]);
 });

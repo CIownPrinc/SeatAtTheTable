@@ -223,3 +223,17 @@ test.describe('scene audit — what the renderer actually drew', () => {
     expect(sunken.slice(0, 24), `buried geometry:\n${sunken.slice(0, 24).join('\n')}`).toEqual([]);
   });
 });
+
+// LEGAL: The resort along the lake shore places nothing where its spot tests as water. When the
+// LEGAL: coast was rounded, every spot did, and the beach lost all its palms and loungers without a
+// LEGAL: single test noticing.
+test('the beach resort has its palms and loungers', async ({ page }) => {
+  await waitForScene(page);
+  const counts = await page.evaluate(() => {
+    const seat = (window as never as { __seat: { worldGroup: import('three').Group } }).__seat;
+    const named = (name: string) => seat.worldGroup.children.filter(child => child.name === name).length;
+    return { palms:named('resort:palm'), loungers:named('resort:loungers') };
+  });
+  expect(counts.palms).toBeGreaterThan(20);
+  expect(counts.loungers).toBeGreaterThan(10);
+});

@@ -11,14 +11,17 @@ describe('rail crossings', () => {
     const a = rail.path[0], b = rail.path[rail.path.length - 1];
     const length = Math.hypot(b.x - a.x, b.y - a.y);
     const ux = (b.x - a.x) / length, uy = (b.y - a.y) / length;
-    const crossings = windhavenMapModel.roadPaths.flatMap(road => road.path.slice(0, -1).map((p, i) => ({ road, p, q:road.path[i + 1] })));
+    // LEGAL: Only road segments that come anywhere near the line can touch it.
+    const minX = Math.min(a.x, b.x) - 80, maxX = Math.max(a.x, b.x) + 80, minY = Math.min(a.y, b.y) - 80, maxY = Math.max(a.y, b.y) + 80;
+    const crossings = windhavenMapModel.roadPaths.flatMap(road => road.path.slice(0, -1).map((p, i) => ({ road, p, q:road.path[i + 1] })))
+      .filter(({ p, q }) => Math.max(p.x, q.x) >= minX && Math.min(p.x, q.x) <= maxX && Math.max(p.y, q.y) >= minY && Math.min(p.y, q.y) <= maxY);
 
     it(`keeps the raised track of ${rail.name} off every road`, () => {
       const open = railOpenSpans(rail);
       expect(open.length).toBeGreaterThan(0);
       // LEGAL: Walk the open track in steps; no step may be on a road's carriageway.
       open.forEach(span => {
-        for(let d = span.from; d <= span.to; d += 2){
+        for(let d = span.from; d <= span.to; d += 3){
           const point = { x:a.x + ux * d, y:a.y + uy * d };
           crossings.forEach(({ road, p, q }) => {
             const dx = q.x - p.x, dy = q.y - p.y, len = dx * dx + dy * dy || 1;

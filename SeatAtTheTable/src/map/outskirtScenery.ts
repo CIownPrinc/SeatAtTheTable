@@ -53,10 +53,16 @@ function nearCountryRoad(point: Point, radius: number): boolean {
 // LEGAL: Half the clear square round each countryside place: its building, yard and frontage.
 const PLACE_CLEARANCE = 95;
 
+// LEGAL: How far each kind reaches from its centre, which is what keeps it off the lanes and apart
+// LEGAL: from its neighbours. Buildings were all 22, smaller than most of them (a barn is 52 x 36, a
+// LEGAL: family house 60 wide with its lawn and fence 45 out in front), so some stood on the Ring Road.
 export function radiusForKind(kind: OutskirtSceneryKind): number {
   if(kind === 'tree') return 10;
-  if(kind === 'silo' || kind === 'tank') return 12;
-  return 22;
+  if(kind === 'silo') return 12;
+  if(kind === 'tank') return 14;
+  if(kind === 'suburbHouse') return 50;
+  if(kind === 'barn') return 34;
+  return 26;
 }
 
 function samplesInRegion(region: OutskirtRegion, count: number, radius: number, random: () => number): Point[] {

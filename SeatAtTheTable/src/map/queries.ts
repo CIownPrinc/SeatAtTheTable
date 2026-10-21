@@ -1,7 +1,7 @@
 import type { Point } from '../config/types';
 import { isPointInWater, isPointOnWindhavenLand } from './geometry';
 import { distancePointToSegment } from './layout';
-import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel, type BridgeRecord, type MapDistrictRecord, type RailLineRecord, type RoadPath, type WindhavenMapModel } from './mapModel';
+import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel, type BridgeRecord, type MapDistrictRecord, type RailLineRecord, type RoadPath, type WindhavenMapModel, roadLandSegments } from './mapModel';
 import { nearestMapPlace, type MapPlaceCategory, type MapPlaceRecord } from './places';
 
 export interface MapPointContext {
@@ -264,6 +264,20 @@ function railCrossings(rail: RailLineRecord, model: WindhavenMapModel): Array<{ 
   const computed = computeRailCrossings(rail, model);
   crossingCache.set(rail, computed);
   return computed;
+}
+
+// LEGAL: Whether a point is on any drawn road's carriageway, give or take `margin`: for anything that
+// LEGAL: must stand beside a road and never in it (street trees, signal and lamp poles).
+export function onAnyRoad(point: Point, margin: number, model: WindhavenMapModel = windhavenMapModel): boolean {
+  return roadLandSegments(model).some(function(segment){
+    const half = segment.road.width / 2 + margin;
+    return segment.path.slice(0, -1).some(function(a, i){
+      const b = segment.path[i + 1];
+      const dx = b.x - a.x, dy = b.y - a.y, len = dx * dx + dy * dy || 1;
+      const t = Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / len));
+      return Math.hypot(point.x - (a.x + dx * t), point.y - (a.y + dy * t)) < half;
+    });
+  });
 }
 
 // LEGAL: The stretches of a railway that cross a road, as distances along the line from its first

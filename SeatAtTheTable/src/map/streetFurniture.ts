@@ -1,4 +1,4 @@
-import { roadLandSegments } from './mapModel';
+import { onAnyRoad } from './queries';
 import { STREET_FURNITURE_SCALE } from './scale';
 import type * as ThreeNamespace from 'three';
 import type { SignalState } from './trafficRules';
@@ -137,17 +137,7 @@ export function showSignal(heads: SignalHeads, axis: 'ns' | 'ew', state: SignalS
 // LEGAL: A pole may not stand in a road: where another road (the curved Canal Bend Road, say) runs
 // LEGAL: across the usual corner, the signal goes on the opposite corner turned half round, its arms
 // LEGAL: reaching over the same two streets from the other side, and a lamp there is left out.
-function onARoad(x: number, z: number): boolean {
-  return roadLandSegments().some(function(segment){
-    const half = segment.road.width / 2 + 4;
-    return segment.path.slice(0, -1).some(function(a, i){
-      const b = segment.path[i + 1];
-      const dx = b.x - a.x, dy = b.y - a.y, len = dx * dx + dy * dy || 1;
-      const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.y) * dy) / len));
-      return Math.hypot(x - (a.x + dx * t), z - (a.y + dy * t)) < half;
-    });
-  });
-}
+function onARoad(x: number, z: number): boolean { return onAnyRoad({ x, y:z }, 4); }
 export function buildIntersectionFurniture(options: StreetFurnitureOptions, x: number, z: number): SignalHeads {
   if(!onARoad(x - 46, z - 46)) buildStreetLight(options, x - 46, z - 46, { x, z });
   if(!onARoad(x + 46, z + 46)) buildStreetLight(options, x + 46, z + 46, { x, z });
