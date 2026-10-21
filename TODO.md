@@ -163,7 +163,7 @@ every test. Locally, `.tmp-assets/` (ignored Kenney zips) can be deleted by hand
 - All Dependabot PRs closed after the toolchain moved to Vite 7 + Vitest 4. `pnpm audit`:
   24 vulnerabilities → 0. The security headers (CSP, nosniff, referrer and permissions
   policy) live in `vercel.json`, and `vite preview` serves the same ones.
-- One stale remote branch is left, `dependabot/npm_and_yarn/vitest-4.1.11`. Delete it by hand.
+- The stale `dependabot/npm_and_yarn/vitest-4.1.11` branch is gone; `main` is the only remote branch (checked 2026-10-20).
 
 ## 9. Audit, devices and screen shapes — DONE 2026-10-18
 
@@ -360,6 +360,14 @@ old one.
     `map/interiorPieces.ts`), each with its old shapes as the fallback.
 55. Write a quick file of everything that's changed since the last play-test (user, 2026-10-20).
     **DONE**: `PLAYTEST-CHANGES.md`.
+56. Inside buildings, don't switch to first person. What the user meant: the things you use (an office
+    chair at a desk, the workbench, the bulletin board) open as a first-person close-up of the thing
+    itself, a laptop screen or the board with its notices, instead of a text popup (user, 2026-10-20).
+57. Make each interior different, and reflect its building's outside (user, 2026-10-20).
+58. Add a nightclub and a police station (user, 2026-10-20).
+59. Character customisation is janky: the selection carousel is broken, hair clips through the head,
+    and there isn't much to choose from (user, 2026-10-20).
+60. Set up tests for mobile gameplay so nothing breaks on phones (user, 2026-10-20).
 51. **DONE** The cars are too small (user, 2026-10-20: "the cars are so tiny bro"). They were drawn at life
     size next to people drawn 1.2x life, under a high camera. Worse, traffic was a bug: merging each
     car into one mesh transformed its quantized Blender geometry in place, which clamped every car to

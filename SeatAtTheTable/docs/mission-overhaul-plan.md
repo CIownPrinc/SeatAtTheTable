@@ -396,9 +396,9 @@ complete until every unchecked item has browser evidence.
 - [x] Major mission definitions now carry a reusable quality contract, tested in
   `src/config/missions.test.ts`: at least two decision beats, a saved distinct outcome, a later
   consequence/unlock, and an in-person scene beyond one modal.
-- [ ] Audit every result branch for truthful capped values (for example, never promise heat
+- [x] Done 2026-10-16 (`TODO.md` §2, `reconcileResultText`). Audit every result branch for truthful capped values (for example, never promise heat
   reduction that cannot actually occur) and explicit future consequences.
-- [ ] Add browser coverage for every major branch, decline route, and repeat/follow-up rule;
+- [x] Done 2026-10-17 (`TODO.md` §3, `e2e/mission-branches.e2e.ts`). Add browser coverage for every major branch, decline route, and repeat/follow-up rule;
   passing one representative route is not enough.
 - [x] ~~**Known e2e failures as of 2026-08-05 (`7a769a6`):**~~ pigeon and raccoon fixed
   2026-10-16; the phone-overlay failure is tracked in `TODO.md` §1. Original note:
@@ -454,7 +454,7 @@ complete until every unchecked item has browser evidence.
   contest it and take a 90-second, 50% income hit at the named venture.
 - [x] Turf-war failure now makes the paid operation cost and casualties explicit, while victory
   gives permanent control plus a transparent two-minute income surge.
-- [ ] Add dedicated browser scenarios for every stage and meaningful ending of all five chains.
+- [x] Done 2026-10-17 (`e2e/mission-branches.e2e.ts`: 65 branch rows, 10 decline routes). Add dedicated browser scenarios for every stage and meaningful ending of all five chains.
 
 ### Variety, continuity, and map support
 
