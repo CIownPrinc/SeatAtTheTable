@@ -393,7 +393,9 @@ old one.
     no bloat (user, 2026-10-20).
 70. Make walking and sprinting look and feel distinct. Crouching only if it can be made useful (hiding
     from cops, missions); otherwise say so and put it in the SeatAtTheTable 2 plan (user, 2026-10-20).
-71. The cars look too small again, and the trees look too grey (user, 2026-10-20).
+71. **DONE** The cars look too small again, and the trees look too grey (user, 2026-10-20). The cars
+    were a stale tab (confirmed fine after reloading). The grey was the near-black sky and fog at every
+    hour and a blue-grey fill light: the sky is blue by day now, lit from sky and ground, trees greener.
 72. **DONE** Some skyscraper walls are fully black instead of having windows (user, 2026-10-20). The
     tower was plain boxes of near-mirror glass, which renders black with no sky to reflect. Rebuilt
     with a floor band every storey, mullions and lit offices, and the shared glass made lighter.
@@ -407,6 +409,8 @@ old one.
 76. A rare easter-egg mission: someone riding a horse past you falls off; talk to them and help them
     up, Arjun says it's a cool horse, the owner offers to sell it, and if you buy it Arjun takes it
     home and can customise it like himself and name it. The user is open to changes (2026-10-20).
+    Decided: a one-off ride-past that can happen anywhere in the countryside; the horse lives at Arjun's
+    garage and is rideable like a bike.
 77. **DONE** A settings toggle (not the default) to try a camera that turns to follow the way Arjun
     faces (user, 2026-10-20). Settings > "Camera follows Arjun (experimental)": the camera swings
     round behind the way he's heading (and holds still when he stops), and the keys turn with it.
@@ -425,6 +429,9 @@ old one.
     districts, conservatively; reshape the districts to be realistic and to fit the story and the
     zoning (user, 2026-10-20). Confirmed later the same day: enlarge the map. Things that belong near
     the city (the suburbs, the new buildings, a bigger city) are being squeezed out to the world's edge.
+    Decided 2026-10-20: at least 1.5x bigger, and 2-3x if a proper think-through supports it. Two new
+    districts: a rich lakefront district and a working-class south side, with the current three
+    reshaped to fit.
 84. Rebuild the train in Blender (it's too basic). Trains should come at random intervals, in different
     types, not one train on a loop, with level-crossing gates that stop cars, NPC cars included
     (user, 2026-10-20).
@@ -436,7 +443,8 @@ old one.
     Buildings you can buy weren't handled, so the interact key fell through to the stranger popup
     (and its placeholder line). They open their own panel now: owned or for sale, what it pays, and a
     GPS mark for the agent (`e2e/property.e2e.ts`).
-89. Car models have odd rectangles arranged in a circle on each side (user, 2026-10-20).
+89. **DONE** Car models have odd rectangles arranged in a circle on each side (user, 2026-10-20).
+     The scattered-spoke bug, fixed earlier the same day; the user confirmed after reloading.
 90. The street race isn't fun enough: a longer course with more turns and jumps, drifting, and a small
     fading popup at the start that shows the keys (and the touch controls on phones) (user, 2026-10-20).
 91. Countryside homes are out of proportion; recheck proportions across the map (user, 2026-10-20).
