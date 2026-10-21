@@ -29,7 +29,7 @@ import { isItemOwned, itemKey, itemPrice, lookPrice, ownedWardrobe, type MallSho
 import { MALL_ROOM, MALL_SPOTS } from '../map/mallInterior';
 import { buildMall, mallSolids } from '../map/mall';
 import { buildCentralPark, centralParkSolids } from '../map/centralPark';
-import { specialPlaceSolids } from '../map/placeSpecials';
+import { specialPlace, specialPlaceSolids } from '../map/placeSpecials';
 import { buildSuburb, suburbSolids } from '../map/suburb';
 import { countryFootprint } from '../map/countryBuildings';
 import { renderRoamingActors } from '../map/actorRendering';
@@ -60,7 +60,7 @@ import { solidsFromObjects } from '../map/objects';
 import { buildMapObjects, ventureFootprint } from '../map/objectFactory';
 import { GARAGE_RETURN_SECONDS, PARKING_DISTRICT_IDS, carSpawnPositionForDistrict, defaultParkedCarPositions, parkedCarPositionForDistrict, secondsUntilGarageReturn, shouldReturnToGarage } from '../map/parking';
 import { renderMapPlaces, serviceBuildingSilhouette } from '../map/placeRendering';
-import { archetypeExtraSolids, serviceArchetype } from '../map/archetypes';
+import { archetypeExtraSolids, archetypeSilhouette, localArchetype, serviceArchetype, ventureArchetype } from '../map/archetypes';
 import { GARAGE_OFFICE, bayParkSpot, bayStandSpot, garageBay, garageOfficeCenter, garageOfficeDoor, isCarInBay, shouldParkInBay, type Bay } from '../map/driveIn';
 import { allRegions, regionNameAt } from '../map/regions';
 import { propertyPlaces, type PropertyPlace } from '../map/propertyPlaces';
@@ -92,7 +92,7 @@ import {
   type Card,
   type RouletteBet,
 } from '../map/casino';
-import { buildBaseGround, buildCanalBridges, buildCanalWater, buildLandmarks, buildOutskirtScenery, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
+import { buildBaseGround, buildCanalBridges, buildCanalWater, buildLandmarks, landmarkSolids, buildOutskirtScenery, buildRailAndRiver, buildRoadNetwork, buildStreetTrees } from '../map/sceneBuilding';
 import { createMapSceneMaterials, createSceneBuildTimer } from '../map/scenePerformance';
 import { buildIntersectionFurniture as buildMapIntersectionFurniture, nearestLamps, showSignal, streetLampBulbs, useStreetModels, type LampHead, type SignalHeads } from '../map/streetFurniture';
 import { signalState } from '../map/trafficRules';
@@ -4535,13 +4535,33 @@ import type * as ThreeNamespace from 'three';
     cityPropsCache ??= generateStreetProps(cityLots(), streetTreeSpots, solidsFromObjects(mapObjects));
     return cityPropsCache;
   }
-  function placeExtraSolids(): Solid[] {
+  // LEGAL: The solid parts of open places, whichever list the place is in: an alley's two flanking
+  // LEGAL: buildings, a yard's hut and cargo, a garage's walls. Ventures and local businesses were
+  // LEGAL: left out, so you could walk through the walls of Backroom Card Games' alley. A one-off
+  // LEGAL: place (map/placeSpecials) brings its own solids instead.
+  function archetypeSolidsForPlaces(): Solid[] {
     const list: Solid[] = [];
-    mapObjects.filter(object => object.kind === 'service').forEach(function(object){
-      const building = object.ref as ServiceBuilding;
-      const shape = serviceBuildingSilhouette(building);
-      list.push(...archetypeExtraSolids(serviceArchetype(building), object.x, object.y, shape.w, shape.d));
+    mapObjects.forEach(function(object){
+      let archetype: PlaceArchetype | null = null;
+      let shape: { w: number; d: number } | null = null;
+      if(object.kind === 'service'){
+        const building = object.ref as ServiceBuilding;
+        if(specialPlace(building.id)) return;
+        archetype = serviceArchetype(building);
+        shape = serviceBuildingSilhouette(building);
+      } else if(object.kind === 'building'){
+        archetype = ventureArchetype(object.ref as typeof mapBuildings[number]);
+        shape = archetype ? archetypeSilhouette(archetype) : null;
+      } else if(object.kind === 'local'){
+        archetype = localArchetype(object.ref as LocalBusiness);
+        shape = archetype ? archetypeSilhouette(archetype) : null;
+      }
+      if(archetype && shape) list.push(...archetypeExtraSolids(archetype, object.x, object.y, shape.w, shape.d));
     });
+    return list;
+  }
+  function placeExtraSolids(): Solid[] {
+    const list: Solid[] = archetypeSolidsForPlaces();
     const garage = serviceBuildings.find(s => s.id === 'playerGarage');
     if(garage){
       const shape = serviceBuildingSilhouette(garage);
@@ -4556,10 +4576,9 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: An alley is the gap BETWEEN two buildings: the gap is walkable and the buildings
     // LEGAL: forming it are not. A single bounds box cannot say "blocked, open, blocked", so
     // LEGAL: the flanks are added here, sized from the same constant the shell is drawn with.
+    list.push(...archetypeSolidsForPlaces());
     mapObjects.filter(object => object.kind === 'service').forEach(function(object){
       const building = object.ref as ServiceBuilding;
-      const shape = serviceBuildingSilhouette(building);
-      list.push(...archetypeExtraSolids(serviceArchetype(building), object.x, object.y, shape.w, shape.d));
       list.push(...specialPlaceSolids(building.id, object.x, object.y));
     });
     // LEGAL: Trees, barns and silos used to be walk-through. Trunks are small boxes; countryside
@@ -5968,7 +5987,7 @@ import type * as ThreeNamespace from 'three';
       buildTrain();
       currentSolids = buildAllSolids();
       // LEGAL: Block the landmark footprints so you can't walk through them.
-      currentSolids.push({x:125,y:820,hw:44,hd:44}, {x:2125,y:850,hw:26,hd:26});
+      currentSolids.push(...landmarkSolids(landmarks));
       // LEGAL: Must run AFTER the solids exist: an NPC authored inside a building is stuck
       // LEGAL: there forever otherwise, because the point it retreats to when blocked is the
       // LEGAL: same point it is trapped in.

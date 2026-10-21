@@ -1,5 +1,5 @@
 import type * as ThreeNamespace from 'three';
-import { ALLEY_FLANK_W, BAY_WALL, archetypeForm, type PlaceArchetype } from './archetypes';
+import { ALLEY_FLANK_W, BAY_WALL, LOT_CARGO, LOT_CARGO_SIZE, LOT_HUT, archetypeForm, type PlaceArchetype } from './archetypes';
 
 // LEGAL: ---- Shells for places that are NOT buildings ----
 // LEGAL: Section 0a, rule 2. A cart is a stall, an alley is a gap between two blocks and a
@@ -161,17 +161,18 @@ export function buildLotShell(THREE: typeof ThreeNamespace, w: number, d: number
     });
   });
 
-  const hut = mesh(THREE, new THREE.BoxGeometry(w * 0.26, h, d * 0.26), '#5c5348', { roughness:0.85 });
-  hut.position.set(-w * 0.3, h/2, -d * 0.28);
+  const hut = mesh(THREE, new THREE.BoxGeometry(w * LOT_HUT.w, h, d * LOT_HUT.d), '#5c5348', { roughness:0.85 });
+  hut.position.set(w * LOT_HUT.x, h/2, d * LOT_HUT.z);
   group.add(hut);
-  const hutRoof = mesh(THREE, new THREE.BoxGeometry(w * 0.3, 2, d * 0.3), '#3b3630', { roughness:0.8 });
-  hutRoof.position.set(-w * 0.3, h + 1, -d * 0.28);
+  const hutRoof = mesh(THREE, new THREE.BoxGeometry(w * (LOT_HUT.w + 0.04), 2, d * (LOT_HUT.d + 0.04)), '#3b3630', { roughness:0.8 });
+  hutRoof.position.set(w * LOT_HUT.x, h + 1, d * LOT_HUT.z);
   group.add(hutRoof);
 
-  // LEGAL: Stacked containers and pallets — cargo, not architecture.
-  [['#5a4a3e', w * 0.22, -d * 0.2], ['#3f5a5e', w * 0.3, d * 0.08], ['#6a4340', w * 0.1, d * 0.28]].forEach(function(item, index){
-    const container = mesh(THREE, new THREE.BoxGeometry(22, 11, 13), item[0] as string, { roughness:0.8 });
-    container.position.set(item[1] as number, 5.5 + (index === 1 ? 11 : 0), item[2] as number);
+  // LEGAL: Stacked containers and pallets — cargo, not architecture. Solid (archetypes LOT_CARGO).
+  LOT_CARGO.forEach(function(item){
+    const { w:cw, h:ch, d:cd } = LOT_CARGO_SIZE;
+    const container = mesh(THREE, new THREE.BoxGeometry(cw, ch, cd), item.color, { roughness:0.8 });
+    container.position.set(w * item.x, ch / 2 + (item.stacked ? ch : 0), d * item.z);
     group.add(container);
   });
 

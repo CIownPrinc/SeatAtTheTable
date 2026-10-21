@@ -29,7 +29,8 @@ const flat = (THREE: typeof ThreeNamespace, w: number, d: number) => new THREE.P
 const SPECIALS: Record<string, Special> = {
   // LEGAL: A grass strip with a runway, a curved hangar, a windsock and a crop-duster on the apron.
   airfieldKettle:{
-    solids:[{ x:-30, y:-18, hw:20, hd:26 }],
+    // LEGAL: The hangar, and the crop-duster on the grass past the runway's far end (wing included).
+    solids:[{ x:-30, y:-18, hw:20, hd:26 }, { x:122, y:0, hw:14, hd:20 }],
     build(THREE){
       const g = new THREE.Group(); const add = kit(THREE, g);
       add(flat(THREE, 260, 34), '#3a3c42', 40, 0.14, 26);
@@ -40,13 +41,14 @@ const SPECIALS: Record<string, Special> = {
       add(new THREE.BoxGeometry(30, 18, 0.6), '#3a3d44', -30, 9, 8.2);
       add(new THREE.CylinderGeometry(0.6, 0.6, 26, 6), '#d8d8d8', 30, 13, -18);
       add(new THREE.ConeGeometry(2.6, 10, 10), '#e8742a', 34.5, 25, -18, { rot:[0, 0, -Math.PI / 2] });
-      // LEGAL: The crop-duster: fuselage, low wing, tailplane, fin and propeller.
-      add(new THREE.CylinderGeometry(2.6, 1.6, 26, 12), '#d4a017', 10, 5, -6, { rot:[0, 0, Math.PI / 2] });
-      add(new THREE.BoxGeometry(6, 0.8, 40), '#d4a017', 13, 3.4, -6);
-      add(new THREE.BoxGeometry(4, 0.6, 14), '#d4a017', -2, 5.4, -6);
-      add(new THREE.BoxGeometry(4, 6, 0.6), '#c0392b', -2, 8, -6);
-      add(new THREE.BoxGeometry(0.6, 10, 1.2), '#2a2a2a', 23.4, 5, -6);
-      add(new THREE.BoxGeometry(5, 3, 3), '#333333', 18, 2, -6);
+      // LEGAL: The crop-duster, on the grass past the runway's far end: fuselage, low wing, tailplane,
+      // LEGAL: fin and propeller.
+      add(new THREE.CylinderGeometry(2.6, 1.6, 26, 12), '#d4a017', 120, 5, 0, { rot:[0, 0, Math.PI / 2] });
+      add(new THREE.BoxGeometry(6, 0.8, 40), '#d4a017', 123, 3.4, 0);
+      add(new THREE.BoxGeometry(4, 0.6, 14), '#d4a017', 108, 5.4, 0);
+      add(new THREE.BoxGeometry(4, 6, 0.6), '#c0392b', 108, 8, 0);
+      add(new THREE.BoxGeometry(0.6, 10, 1.2), '#2a2a2a', 133.4, 5, 0);
+      add(new THREE.BoxGeometry(5, 3, 3), '#333333', 128, 2, 0);
       return g;
     },
   },
@@ -140,7 +142,8 @@ const SPECIALS: Record<string, Special> = {
   // LEGAL: The motel: a one-storey row of rooms, each with its door and window, the office at one end
   // LEGAL: and the tall sign out front.
   motelSunset:{
-    solids:[],
+    // LEGAL: The office wing on the west end of the block, and the sign's pole out front.
+    solids:[{ x:-44, y:10, hw:9, hd:7 }, { x:48, y:28, hw:2, hd:2 }],
     build(THREE){
       const g = new THREE.Group(); const add = kit(THREE, g);
       const w = 72, d = 40, h = 18;

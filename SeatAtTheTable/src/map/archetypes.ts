@@ -208,7 +208,24 @@ export const ALLEY_FLANK_W = 30;
 // LEGAL: being so wide the walls stop reading as walls.
 export const BAY_WALL = 9;
 
+// LEGAL: A yard's site hut and its stacked cargo, as fractions of the yard (x across, z deep), so
+// LEGAL: the shell draws them and the solids block them from the same numbers. They used to be
+// LEGAL: drawn with nothing to stop you walking through them.
+export const LOT_HUT = { x:-0.3, z:-0.28, w:0.26, d:0.26 };
+export const LOT_CARGO: ReadonlyArray<{ x: number; z: number; color: string; stacked: boolean }> = [
+  { x:0.22, z:-0.2, color:'#5a4a3e', stacked:false },
+  { x:0.3, z:0.08, color:'#3f5a5e', stacked:true },
+  { x:0.1, z:0.28, color:'#6a4340', stacked:false },
+];
+export const LOT_CARGO_SIZE = { w:22, h:11, d:13 };
+
 export function archetypeExtraSolids(archetype: PlaceArchetype | null, x: number, y: number, w: number, d: number): Solid[] {
+  if(archetype === 'lot'){
+    return [
+      { x:x + LOT_HUT.x * w, y:y + LOT_HUT.z * d, hw:LOT_HUT.w * w / 2, hd:LOT_HUT.d * d / 2 },
+      ...LOT_CARGO.map(item => ({ x:x + item.x * w, y:y + item.z * d, hw:LOT_CARGO_SIZE.w / 2, hd:LOT_CARGO_SIZE.d / 2 })),
+    ];
+  }
   if(archetype === 'alley'){
     const offset = w/2 + ALLEY_FLANK_W/2 - 2;
     return [-1, 1].map(function(side){

@@ -36,16 +36,19 @@ describe('roadDeadEnds', function () {
   });
 
   it('gives a street that runs on past its last junction a turning circle', function () {
-    expect(ends.find(end => end.road.name === 'Rockwell Avenue' && end.point.y > 1000)).toBeDefined();
+    // LEGAL: Cicero Avenue stops at Central Park's gate; Rockwell now runs on as a country lane.
+    expect(ends.find(end => end.road.name === 'Cicero Avenue' && end.point.y > 1000)).toBeDefined();
   });
 
   it('does not mark a street that carries on as a country lane', function () {
     expect(ends.find(end => end.road.name === 'Devlin Street' && end.point.y > 1000)).toBeUndefined();
     expect(ends.find(end => end.road.name === 'Roosevelt Road' && end.point.x < 100)).toBeUndefined();
+    expect(ends.find(end => end.road.name === 'Rockwell Avenue' && end.point.y > 1000)).toBeUndefined();
+    expect(ends.find(end => end.road.name === 'Grand Avenue' && end.point.x < 100)).toBeUndefined();
   });
 
   it('points each dead end along its road, away from the street it came from', function () {
-    const end = ends.find(e => e.road.name === 'Rockwell Avenue' && e.point.y > 1000)!;
+    const end = ends.find(e => e.road.name === 'Cicero Avenue' && e.point.y > 1000)!;
     expect(end.direction.y).toBeGreaterThan(0.9);
   });
 

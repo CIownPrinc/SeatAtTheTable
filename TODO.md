@@ -368,6 +368,42 @@ old one.
 59. Character customisation is janky: the selection carousel is broken, hair clips through the head,
     and there isn't much to choose from (user, 2026-10-20).
 60. Set up tests for mobile gameplay so nothing breaks on phones (user, 2026-10-20).
+61. Stairs in some buildings that you use to go up to the next floor (user, 2026-10-20).
+62. People inside: NPCs, characters, maybe missions within the interiors (user, 2026-10-20).
+63. Missions that happen inside buildings must keep working, and should be better for the new
+    interiors (user, 2026-10-20).
+64. People and cars sometimes move weirdly and at random. They should path and react like GTA's, so
+    they don't read as bots (user, 2026-10-20).
+65. You must not be able to clip or phase through any building (user, 2026-10-20).
+66. Some roads may be cut off; check and report back (user, 2026-10-20, "i might be wrong").
+67. Audit the docs against each other and against the code, like the mission-plan boxes that were
+    unticked while TODO said done: where one file says done and another doesn't, check the work the
+    original file asked for is really finished, not just marked. Also look back for anything deleted
+    recklessly along the way (user, 2026-10-20).
+68. The places with alleys look odd, because the only alleys in town are the ones that do something.
+    Add ordinary buildings with plain alleys between them, so the working ones blend in (user, 2026-10-20).
+69. Upgrade posting a dealer: where they stand on the map, how it plays, the dealer pulling up when you
+    post them, cops pulling up when one gets caught, and a message from a gang member when one does,
+    with the details, in that member's voice, over a few different ways of getting caught. Tasteful,
+    no bloat (user, 2026-10-20).
+70. Make walking and sprinting look and feel distinct. Crouching only if it can be made useful (hiding
+    from cops, missions); otherwise say so and put it in the SeatAtTheTable 2 plan (user, 2026-10-20).
+71. The cars look too small again, and the trees look too grey (user, 2026-10-20).
+72. Some skyscraper walls are fully black instead of having windows (user, 2026-10-20).
+73. More cars, and more variety of vehicles (user, 2026-10-20).
+74. Make sure the city has every kind of building you'd expect, even ones you can't enter: apartments,
+    condos, family houses, parks, restaurants, clothing shops, cafes, clubs, stores, corner shops,
+    food stalls and so on (user, 2026-10-20).
+75. Vehicle variety means: food trucks, garbage trucks, lorries, pickups, sports cars, electric cars,
+    cyclists, motorbikes and unicycles. Common ones show up often, rare ones (unicyclists, garbage
+    trucks) seldom (user, 2026-10-20).
+76. A rare easter-egg mission: someone riding a horse past you falls off; talk to them and help them
+    up, Arjun says it's a cool horse, the owner offers to sell it, and if you buy it Arjun takes it
+    home and can customise it like himself and name it. The user is open to changes (2026-10-20).
+77. A settings toggle (not the default) to try a camera that turns to follow the way Arjun faces
+    (user, 2026-10-20).
+78. Many buildings have random spheres, circles, prisms and so on standing in front of them, like
+    City Hall's floating rectangle. Find them and fix them (user, 2026-10-20).
 51. **DONE** The cars are too small (user, 2026-10-20: "the cars are so tiny bro"). They were drawn at life
     size next to people drawn 1.2x life, under a high camera. Worse, traffic was a bug: merging each
     car into one mesh transformed its quantized Blender geometry in place, which clamped every car to

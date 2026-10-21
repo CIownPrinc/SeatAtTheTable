@@ -14,7 +14,7 @@ import { districtIdAtPlayablePoint, roadDeadEnds, roadLandSegments, windhavenMap
 import { boundsForPoints, isPointInWater } from './geometry';
 import { mapTerrainTheme, mapTransportTheme } from './renderTheme';
 import { addInstancedMesh, createMapSceneMaterials, type MapSceneMaterialCache, type SceneInstance } from './scenePerformance';
-import type { Point } from '../config/types';
+import type { Point, Solid } from '../config/types';
 import type * as ThreeNamespace from 'three';
 
 export interface RoadNetworkRenderData {
@@ -425,6 +425,19 @@ export function buildOutskirtScenery(options: BaseSceneOptions): void {
   }
   addInstancedMesh(THREE, worldGroup, new THREE.CylinderGeometry(2, 2.5, 12, 6), trunkMat, trunks, { cast:true });
   addInstancedMesh(THREE, worldGroup, new THREE.ConeGeometry(12, 27, 7), canopyMat, trees, { cast:true });
+}
+
+// LEGAL: What you can't walk through at each landmark, at the sizes buildLandmarks draws them: the
+// LEGAL: hall and its steps, the water tower's four legs (you can walk under the tank), the
+// LEGAL: Potato's polished body. These were hard-coded at the landmarks' pre-widening x, so
+// LEGAL: they sat hundreds of units from the landmarks and every one was walk-through.
+export function landmarkSolids(landmarks: readonly Landmark[]): Solid[] {
+  return landmarks.flatMap(function(lm): Solid[] {
+    if(lm.id === 'devlinHall') return [{ x:lm.x, y:lm.y, hw:40, hd:40 }];
+    if(lm.id === 'ciceroWorks') return [[-16, -16], [16, -16], [-16, 16], [16, 16]].map(([dx, dz]) => ({ x:lm.x + dx, y:lm.y + dz, hw:4, hd:4 }));
+    if(lm.id === 'thePotato') return [{ x:lm.x, y:lm.y, hw:36, hd:25 }];
+    return [];
+  });
 }
 
 export function buildLandmarks(options: LandmarkSceneOptions): void {

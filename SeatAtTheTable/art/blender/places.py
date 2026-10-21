@@ -443,7 +443,10 @@ def airfield():
     for i in range(4):
         bpy.ops.mesh.primitive_cone_add(radius1=2.6 - i * 0.35, radius2=2.25 - i * 0.35, depth=2.4, vertices=12, location=(31.6 + i * 2.4, 18, 25), rotation=(0, math.pi / 2, 0))
         bpy.context.active_object.data.materials.append(sock if i % 2 == 0 else paint)
-    # The crop-duster on the apron: fuselage, cockpit, low wing, struts, tail, wheels and propeller.
+    # The crop-duster, parked on the grass past the far end of the runway, clear of the yard's middle
+    # where you walk in: fuselage, cockpit, low wing, struts, tail, wheels and propeller. Built where it
+    # first stood and then moved, so the parts keep their places relative to each other.
+    before = set(bpy.context.scene.objects)
     yellow = m("plane", "#d4a017", 0.5, 0.2)
     bpy.ops.mesh.primitive_cone_add(radius1=2.6, radius2=1.0, depth=26, vertices=14, location=(10, 6, 5), rotation=(0, -math.pi / 2, 0))
     bpy.context.active_object.data.materials.append(yellow)
@@ -456,6 +459,9 @@ def airfield():
     for zz in (-10, -2):
         rod("strut", 0.25, (16, 0.8, -6 + (zz + 6) * 0.6), (14, 4, -6 + (zz + 6)), m("strut", "#3a3d44"))
         log("wheel", 1.4, 0.8, 16, 1.4, -6 + (zz + 6) * 0.6, m("tyre", "#1a1a1a", 0.9), along="z", vertices=12)
+    for obj in set(bpy.context.scene.objects) - before:
+        obj.location.x += 110
+        obj.location.y -= 6
 
 
 def docks():

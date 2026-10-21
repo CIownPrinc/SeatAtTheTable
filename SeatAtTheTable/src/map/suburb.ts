@@ -50,10 +50,21 @@ export function suburbLots(): HouseLot[] {
   return lots;
 }
 
+// LEGAL: The house and garage, and the two runs of picket fence along the front (the gaps between
+// LEGAL: them are the front path and the drive). Fence runs are in the house's own frame, x across
+// LEGAL: and z toward the lane, matching buildHouseModel and art/blender/places.py.
+const FENCE_RUNS: Array<[number, number]> = [[-36, -19], [-13, 8]];
 export function suburbSolids(): Solid[] {
-  return suburbLots().map(function(lot){
+  const fenceZ = HOUSE.d / 2 + LAWN - 1;
+  return suburbLots().flatMap(function(lot){
     const ext = rotatedHalfExtents(FOOTPRINT_W, HOUSE.d, lot.facing);
-    return { x:lot.x, y:lot.y, hw:ext.hw, hd:ext.hd };
+    const cos = Math.cos(lot.facing), sin = Math.sin(lot.facing);
+    const fences = FENCE_RUNS.map(function([x0, x1]){
+      const cx = (x0 + x1) / 2;
+      const fence = rotatedHalfExtents(x1 - x0, 2, lot.facing);
+      return { x:lot.x + cx * cos + fenceZ * sin, y:lot.y - cx * sin + fenceZ * cos, hw:fence.hw, hd:fence.hd };
+    });
+    return [{ x:lot.x, y:lot.y, hw:ext.hw, hd:ext.hd }, ...fences];
   });
 }
 

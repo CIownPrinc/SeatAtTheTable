@@ -14,6 +14,8 @@ export const MALL_GARAGE = { x:6450, y:1440, w:160, d:160, deck:30, decks:3 };
 export function mallSolids(): Solid[] {
   return [
     { x:MALL_BODY.x, y:MALL_BODY.y, hw:MALL_BODY.w / 2, hd:MALL_BODY.d / 2 },
+    // LEGAL: The glass atrium, which stands 22 proud of the front over the doors.
+    { x:MALL_BODY.x, y:MALL_BODY.y - MALL_BODY.d / 2 - 10, hw:50, hd:11 },
     // LEGAL: The garage and its ramp, which runs up the outside of its east wall.
     { x:MALL_GARAGE.x + 15, y:MALL_GARAGE.y, hw:MALL_GARAGE.w / 2 + 15, hd:MALL_GARAGE.d / 2 },
   ];

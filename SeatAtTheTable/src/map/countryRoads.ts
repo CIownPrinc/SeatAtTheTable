@@ -60,4 +60,13 @@ export const COUNTRY_ROADS: RoadPath[] = [
   lane('ridgewood', 'Ridgewood Lane', [{ x:3580, y:1200 }, { x:3590, y:1480 }, { x:3600, y:1790 }]),
   lane('lakeridge', 'Lakeridge Lane', [{ x:6782, y:1200 }, { x:6800, y:1460 }, { x:6830, y:1750 }]),
   lane('outworks', 'Outworks Lane', [{ x:7300, y:300 }, { x:7380, y:312 }, { x:7500, y:340 }]),
+  // LEGAL: The streets that used to stop dead at the city's edge, each now run on to the ring.
+  // LEGAL: Cicero Avenue and Canal Yard Drive still end at Central Park's gates, Wabash at the mall.
+  lane('grand-west', 'Grand Avenue', [{ x:0, y:300 }, { x:-600, y:302 }, { x:-1310, y:306 }]),
+  lane('cermak-west', 'Cermak Road', [{ x:0, y:900 }, { x:-600, y:905 }, { x:-1290, y:912 }]),
+  lane('roosevelt-east', 'Roosevelt Road', [{ x:7300, y:600 }, { x:7460, y:604 }, { x:7620, y:610 }]),
+  lane('cermak-east', 'Cermak Road', [{ x:7300, y:900 }, { x:7500, y:905 }, { x:7710, y:912 }]),
+  lane('rockwell-south', 'Rockwell Lane', [{ x:378, y:1200 }, { x:384, y:1460 }, { x:392, y:1770 }]),
+  lane('ashland-south', 'Ashland Lane', [{ x:1582, y:1200 }, { x:1588, y:1460 }, { x:1596, y:1790 }]),
+  lane('lasalle-south', 'LaSalle Lane', [{ x:5578, y:1200 }, { x:5584, y:1460 }, { x:5590, y:1780 }]),
 ];
