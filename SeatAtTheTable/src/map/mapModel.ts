@@ -336,7 +336,31 @@ function computeRoadLandSegments(model: WindhavenMapModel, sampleLength: number)
       if(runStart !== null) segments.push({ road, path:[pointBetween(start, end, runStart), end] });
     });
   });
-  return trimShortStubs(segments);
+  return pullEndsOffTheShore(trimShortStubs(segments), model);
+}
+
+// LEGAL: How far a dead end's turning circle reaches, kerb included (drawn in sceneBuilding).
+export function turningCircleRadius(road: RoadPath): number { return road.width * 0.82 + 11; }
+
+// LEGAL: A street that runs down to the lake stopped where its centre line met the beach, so its
+// LEGAL: width and its turning circle spread across the sand, and Wabash Avenue's reached the water.
+// LEGAL: Each end that joins nothing is pulled back until the whole turning circle is on dry ground.
+function pullEndsOffTheShore(segments: RoadLandSegment[], model: WindhavenMapModel): RoadLandSegment[] {
+  const clear = (point: Point, radius: number) => !isPointInWater(point, radius)
+    && ![0, 1, 2, 3, 4, 5, 6, 7].some(k => pointInPolygon({ x:point.x + Math.cos(k * Math.PI / 4) * radius, y:point.y + Math.sin(k * Math.PI / 4) * radius }, model.lakefrontBeach))
+    && !pointInPolygon(point, model.lakefrontBeach);
+  return segments.map(function(segment){
+    if(segment.road.roadClass === 'country' || segment.path.length !== 2) return segment;
+    const radius = turningCircleRadius(segment.road);
+    let [a, b] = segment.path;
+    const length = Math.hypot(b.x - a.x, b.y - a.y);
+    if(length < 1) return segment;
+    const ux = (b.x - a.x) / length, uy = (b.y - a.y) / length;
+    let moved = false;
+    for(let i = 0; i < 40 && !endJoinsAnother(b, segment, segments) && !clear(b, radius) && Math.hypot(b.x - a.x, b.y - a.y) > radius * 2; i++){ b = { x:b.x - ux * 6, y:b.y - uy * 6 }; moved = true; }
+    for(let i = 0; i < 40 && !endJoinsAnother(a, segment, segments) && !clear(a, radius) && Math.hypot(b.x - a.x, b.y - a.y) > radius * 2; i++){ a = { x:a.x + ux * 6, y:a.y + uy * 6 }; moved = true; }
+    return moved ? { road:segment.road, path:[a, b] } : segment;
+  });
 }
 
 // LEGAL: How far past its last junction a street may run before it earns a turning circle.

@@ -10,7 +10,7 @@ import { TRAILS, TRAIL_WIDTH } from './trails';
 import { applyShoreFoam, applyWaterWaves } from './waterShader';
 import { buildTerrainMesh } from '../world/render/terrain';
 
-import { districtIdAtPlayablePoint, roadDeadEnds, roadLandSegments, windhavenMapModel, type RoadPath } from './mapModel';
+import { districtIdAtPlayablePoint, roadDeadEnds, roadLandSegments, turningCircleRadius, windhavenMapModel, type RoadPath } from './mapModel';
 import { boundsForPoints, isPointInWater } from './geometry';
 import { mapTerrainTheme, mapTransportTheme } from './renderTheme';
 import { addInstancedMesh, createMapSceneMaterials, type MapSceneMaterialCache, type SceneInstance } from './scenePerformance';
@@ -272,7 +272,7 @@ export function buildRoadNetwork(options: RoadSceneOptions): void {
   const signPostMat = materials.standard('transport:sign-post', { color:'#8d939c', roughness:0.5, metalness:0.6 });
   const signFaceMat = materials.standard('transport:sign-dead-end', { color:'#f2c230', roughness:0.55 });
   roadDeadEnds().forEach(function(end){
-    const radius = end.road.width * 0.82;
+    const radius = turningCircleRadius(end.road) - 11;
     const kerb = new THREE.Mesh(new THREE.CircleGeometry(radius + 11, 28), materials.standard(`path:${mapTransportTheme.sidewalk}:0.92`, { color:mapTransportTheme.sidewalk, roughness:0.92 }));
     const tarmac = new THREE.Mesh(new THREE.CircleGeometry(radius, 28), materials.standard(`path:${mapTransportTheme.roadSurface}:0.9`, { color:mapTransportTheme.roadSurface, roughness:0.9 }));
     kerb.rotation.x = tarmac.rotation.x = -Math.PI/2;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { roadDeadEnds, roadLandSegments, windhavenMapModel } from './mapModel';
+import { roadDeadEnds, roadLandSegments, turningCircleRadius, windhavenMapModel } from './mapModel';
 import { isPointInWater, pointInPolygon } from './geometry';
 
 describe('city roads on land', function () {
@@ -52,9 +52,18 @@ describe('roadDeadEnds', function () {
     expect(end.direction.y).toBeGreaterThan(0.9);
   });
 
-  it('leaves room for a turning circle on dry land', function () {
+  // LEGAL: The whole turning circle, kerb included, on dry ground: not in the water and not on the
+  // LEGAL: beach. It used to check only half the road's width against the water, and Wabash Avenue's
+  // LEGAL: turning circle sat across the beach with its edge in the lake.
+  it('leaves room for a turning circle on dry land, clear of the beach', function () {
     ends.forEach(function(end){
-      expect(isPointInWater(end.point, end.road.width * 0.5), `${end.road.name} at ${Math.round(end.point.x)},${Math.round(end.point.y)}`).toBe(false);
+      const radius = turningCircleRadius(end.road);
+      const where = `${end.road.name} at ${Math.round(end.point.x)},${Math.round(end.point.y)}`;
+      expect(isPointInWater(end.point, radius), where).toBe(false);
+      for(let k = 0; k < 16; k++){
+        const edge = { x:end.point.x + Math.cos(k * Math.PI / 8) * radius, y:end.point.y + Math.sin(k * Math.PI / 8) * radius };
+        expect(pointInPolygon(edge, windhavenMapModel.lakefrontBeach), `${where}, kerb on the beach`).toBe(false);
+      }
     });
   });
 });

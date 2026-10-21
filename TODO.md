@@ -479,7 +479,11 @@ old one.
 105. Go through every test: make sure each works and is up to date, and fix what they flag. Then go
      through the whole game's code for systems that should have tests and don't, write them, and fix
      what they find (user, 2026-10-20).
-106. Some road ends are wrong: one runs through a beach and into the ocean (user, 2026-10-20).
+106. **DONE** Some road ends are wrong: one runs through a beach and into the ocean (user, 2026-10-20).
+     The northern streets stopped where their centre line met the beach, so their width and turning
+     circles spread over the sand, and Wabash Avenue's reached the water. Dead ends are now pulled back
+     until the whole circle is on dry ground, and `roadEnds.test.ts` checks the full kerb against the
+     beach and the water (it only checked half the road against the water before).
 107. **DONE** The beaches look bare now: where did the beach chairs, palm trees and so on go (user,
      2026-10-20)? A regression from rounding the coast: the resort skips any spot whose inland side
      touches water, and with the new shore 5-10 in from the beach's edge every spot did, so it placed
