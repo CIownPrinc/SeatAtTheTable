@@ -435,6 +435,14 @@ old one.
 90. The street race isn't fun enough: a longer course with more turns and jumps, drifting, and a small
     fading popup at the start that shows the keys (and the touch controls on phones) (user, 2026-10-20).
 91. Countryside homes are out of proportion; recheck proportions across the map (user, 2026-10-20).
+92. Some amenities, buildings and interactions freeze for a while before they open (user, 2026-10-20).
+    Measured: amenity panels ~20 ms; the first room 226 ms and a minigame 200 ms on a fast GPU (much
+    worse on slow ones), both first-time shader and WebGL-context costs. Rooms now compile in the
+    background after the city loads (first room 45 ms) and minigames share one renderer (about 60 ms
+    the first time, 20-40 ms after). Still to do: spread the mall's build (~120 ms) over frames.
+93. Characters and interiors must use Blender models too; fix the primitive-looking designs as a
+    priority (user, 2026-10-20).
+94. A minimap inside the larger interiors (user, 2026-10-20).
 51. **DONE** The cars are too small (user, 2026-10-20: "the cars are so tiny bro"). They were drawn at life
     size next to people drawn 1.2x life, under a high camera. Worse, traffic was a bug: merging each
     car into one mesh transformed its quantized Blender geometry in place, which clamped every car to

@@ -132,11 +132,14 @@ function buildShell(eyebrow: string, title: string): Shell {
 
 // LEGAL: ---------- games ----------
 
+// LEGAL: One canvas for every minigame, kept between games so its WebGL renderer is too
+// LEGAL: (minigameScenes createView): making a new renderer each time froze the game as it opened.
+let sharedCanvas: HTMLCanvasElement | null = null;
 function view3d(shell: Shell): { canvas: HTMLCanvasElement; flash: HTMLElement } {
   const wrap = document.createElement('div');
   wrap.className = 'mg-view';
-  const canvas = document.createElement('canvas');
-  canvas.className = 'mg-3d'; canvas.width = 600; canvas.height = 340;
+  sharedCanvas ??= Object.assign(document.createElement('canvas'), { className:'mg-3d', width:600, height:340 });
+  const canvas = sharedCanvas;
   const flash = document.createElement('div');
   flash.className = 'mg-flash';
   wrap.append(canvas, flash);

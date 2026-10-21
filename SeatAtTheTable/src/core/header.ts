@@ -4440,6 +4440,7 @@ import type * as ThreeNamespace from 'three';
           await renderer.compileAsync(scene, camera3d);
           aimCamera(0);
           renderer.render(scene, camera3d);
+          window.setTimeout(function(){ void warmInteriorShaders(); }, 1500);
         }
       })();
     }
@@ -6870,6 +6871,31 @@ import type * as ThreeNamespace from 'three';
   function interiorCarModel(spec: { color: string; use: 'garage' | 'showroom' | 'bay' }): ThreeNamespace.Object3D | null {
     if(spec.use === 'garage'){ const car = getEquippedCar(); return car && !isFlyingVehicle(car.id) ? buildCarModel(car, false) : null; }
     return vehicleLibrary ? vehicleLibrary.create(spec.use === 'showroom' ? 'supercar' : 'sedan', spec.color, 29, 15) : null;
+  }
+  // LEGAL: The first room you walked into stalled for a couple of hundred milliseconds on a fast GPU
+  // LEGAL: (seconds on a slow one) while its shaders compiled. So once the city is up, a few
+  // LEGAL: representative rooms are built offscreen and compiled in the background
+  // LEGAL: (compileAsync doesn't block a frame), then thrown away; the programs stay cached.
+  async function warmInteriorShaders(): Promise<void> {
+    if(!characterLibrary || state.currentInterior) return;
+    const library = characterLibrary;
+    const warmScene = new THREE.Scene();
+    const warmCamera = new THREE.PerspectiveCamera(50, camera3d.aspect, 1, 3000);
+    warmCamera.position.set(240, 150, 300); warmCamera.lookAt(240, 0, 140);
+    for(const [kind, refId] of [['bankHome', 'bankHome'], ['casino', 'casinoLakeridge'], ['mall', 'mallLakeridge'], ['local', 'patel']] as const){
+      if(state.currentInterior) return;
+      const interior = { kind, refId, name:'', returnX:0, returnY:0, returnDistrict:'' };
+      const room = kind === 'mall' ? MALL_ROOM : { w:ROOM_W, h:ROOM_H };
+      const view = buildInteriorRoom3d(THREE, {
+        kind, refId, room:{ ...room, door:{ x:room.w / 2 } }, door:{ x:room.w / 2, y:room.h - 6 }, spots:hotspotsFor(interior),
+        makePerson:(identity, coat) => library.create(identity, coat), makeCar:interiorCarModel, merge:mergeSceneryGeometries ?? undefined,
+      });
+      warmScene.add(view.root);
+      try{ await renderer.compileAsync(warmScene, warmCamera); }catch(e){}
+      warmScene.remove(view.root);
+      view.dispose();
+      await new Promise(function(resolve){ window.setTimeout(resolve, 200); });
+    }
   }
   function renderInteriorView(dt: number): void {
     const interior = state.currentInterior;

@@ -9,8 +9,15 @@ type Three = typeof ThreeNamespace;
 
 interface View { renderer: ThreeNamespace.WebGLRenderer; scene: ThreeNamespace.Scene; camera: ThreeNamespace.PerspectiveCamera }
 
+// LEGAL: The renderer is kept for the canvas it draws on (minigames.ts reuses one canvas), so
+// LEGAL: opening a game doesn't stall on creating a WebGL context and recompiling every shader.
+let kept: { canvas: HTMLCanvasElement; renderer: ThreeNamespace.WebGLRenderer } | null = null;
 function createView(THREE: Three, canvas: HTMLCanvasElement, background: string, fov: number): View {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+  if(!kept || kept.canvas !== canvas){
+    kept?.renderer.dispose();
+    kept = { canvas, renderer:new THREE.WebGLRenderer({ canvas, antialias:true }) };
+  }
+  const renderer = kept.renderer;
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   renderer.setSize(canvas.width, canvas.height, false);
   const scene = new THREE.Scene();
@@ -26,7 +33,8 @@ function disposeView(view: View): void {
     const material = mesh.material as (ThreeNamespace.Material & { map?: ThreeNamespace.Texture | null }) | undefined;
     if(material){ material.map?.dispose(); material.dispose(); }
   });
-  view.renderer.dispose();
+  // LEGAL: The renderer stays, for the next game (createView).
+  view.renderer.renderLists.dispose();
 }
 
 function canvasTexture(THREE: Three, size: number, paint: (ctx: CanvasRenderingContext2D, size: number) => void): ThreeNamespace.CanvasTexture {
