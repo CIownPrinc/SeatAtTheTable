@@ -266,6 +266,53 @@ function railCrossings(rail: RailLineRecord, model: WindhavenMapModel): Array<{ 
   return computed;
 }
 
+// LEGAL: The stretches of a railway that cross a road, as distances along the line from its first
+// LEGAL: point: the road's width where it meets the rails (wider for a road crossing at a slant), plus
+// LEGAL: a margin. The raised rails and sleepers stop at these and flush crossing rails run through
+// LEGAL: the road instead; they used to stand four units proud straight across every road.
+export interface RailSpan { from: number; to: number }
+export const RAIL_CROSSING_MARGIN = 6;
+export function railCrossingSpans(rail: RailLineRecord, model: WindhavenMapModel = windhavenMapModel): RailSpan[] {
+  const a = rail.path[0], b = rail.path[rail.path.length - 1];
+  const length = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+  const ux = (b.x - a.x) / length, uy = (b.y - a.y) / length;
+  const spans = railCrossings(rail, model).map(function({ road, point }){
+    // LEGAL: The road's direction where it crosses: the segment nearest the crossing point.
+    let dir = { x:1, y:0 }, best = Infinity;
+    road.path.slice(0, -1).forEach(function(start, i){
+      const end = road.path[i + 1];
+      const mid = { x:(start.x + end.x) / 2, y:(start.y + end.y) / 2 };
+      const d = Math.hypot(mid.x - point.x, mid.y - point.y);
+      const len = Math.hypot(end.x - start.x, end.y - start.y) || 1;
+      if(d < best){ best = d; dir = { x:(end.x - start.x) / len, y:(end.y - start.y) / len }; }
+    });
+    const sin = Math.max(0.3, Math.abs(dir.x * uy - dir.y * ux));
+    const along = (point.x - a.x) * ux + (point.y - a.y) * uy;
+    const half = road.width / 2 / sin + RAIL_CROSSING_MARGIN;
+    return { from:along - half, to:along + half };
+  }).sort((p, q) => p.from - q.from);
+  const merged: RailSpan[] = [];
+  spans.forEach(function(span){
+    const last = merged[merged.length - 1];
+    if(last && span.from <= last.to) last.to = Math.max(last.to, span.to);
+    else merged.push({ ...span });
+  });
+  return merged;
+}
+// LEGAL: The rest of the line: where the raised track runs.
+export function railOpenSpans(rail: RailLineRecord, model: WindhavenMapModel = windhavenMapModel): RailSpan[] {
+  const a = rail.path[0], b = rail.path[rail.path.length - 1];
+  const length = Math.hypot(b.x - a.x, b.y - a.y);
+  const open: RailSpan[] = [];
+  let at = 0;
+  railCrossingSpans(rail, model).forEach(function(span){
+    if(span.from > at) open.push({ from:at, to:Math.min(span.from, length) });
+    at = Math.max(at, span.to);
+  });
+  if(at < length) open.push({ from:at, to:length });
+  return open.filter(span => span.to - span.from > 1);
+}
+
 function computeRailCrossings(rail: RailLineRecord, model: WindhavenMapModel): Array<{ road: RoadPath; point: Point }> {
   const railSegments = rail.path.slice(0, -1).map(function(start, index): { start: Point; end: Point } {
     return { start, end: rail.path[index + 1] };

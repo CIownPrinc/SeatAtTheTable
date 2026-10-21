@@ -16,6 +16,7 @@ import { mapTerrainTheme, mapTransportTheme } from './renderTheme';
 import { addInstancedMesh, createMapSceneMaterials, type MapSceneMaterialCache, type SceneInstance } from './scenePerformance';
 import type { Point, Solid } from '../config/types';
 import type * as ThreeNamespace from 'three';
+import { railCrossingSpans, railOpenSpans } from './queries';
 
 export interface RoadNetworkRenderData {
   vertical: VerticalRoad[];
@@ -296,6 +297,10 @@ export function buildRoadNetwork(options: RoadSceneOptions): void {
   addInstancedMesh(THREE, worldGroup, new THREE.PlaneGeometry(4,46), crosswalkMat, crosswalkWide);
 }
 
+// LEGAL: The bridge deck's top, level with the road surface, and how deep it is below that.
+export const BRIDGE_DECK_TOP = 0.2;
+export const BRIDGE_DECK_DEPTH = 6;
+
 export function buildCanalBridges(options: BaseSceneOptions): void {
   const { THREE, worldGroup } = options;
   const materials = materialsFor(options);
@@ -306,9 +311,11 @@ export function buildCanalBridges(options: BaseSceneOptions): void {
     const end = bridge.path[1];
     const length = Math.hypot(end.x-start.x, end.y-start.y);
     const ry = start.y;
-    // LEGAL: The deck overhangs each bank a little so the road runs onto it without a seam.
-    const deck = new THREE.Mesh(new THREE.BoxGeometry(length + 24,4,bridge.width), deckMat);
-    deck.position.set((start.x+end.x)/2,2,ry); worldGroup.add(deck);
+    // LEGAL: The deck overhangs each bank a little so the road runs onto it without a seam. Its top
+    // LEGAL: is flush with the road (BRIDGE_DECK_TOP), its depth hanging below over the canal: it
+    // LEGAL: used to stand 4 proud, and everyone, who walks at ground level, walked inside it.
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(length + 24,BRIDGE_DECK_DEPTH,bridge.width), deckMat);
+    deck.position.set((start.x+end.x)/2,BRIDGE_DECK_TOP - BRIDGE_DECK_DEPTH/2,ry); worldGroup.add(deck);
     [-bridge.width/2+6, bridge.width/2-6].forEach(function(zOffset){
       const rail = new THREE.Mesh(new THREE.BoxGeometry(length,4,4), railMat);
       rail.position.set((start.x+end.x)/2,14,ry+zOffset);
@@ -625,24 +632,48 @@ function buildBeachResort(options: BaseSceneOptions): void {
 }
 
 export function buildRailAndRiver(options: BaseSceneOptions): void {
-  const { THREE, worldGroup, worldHeight } = options;
+  const { THREE, worldGroup } = options;
   const materials = materialsFor(options);
+  // LEGAL: The track (ballast, raised rails and sleepers) runs between the roads; where it crosses one
+  // LEGAL: there's a level crossing instead, with rails flush in the road and crossing panels, so the
+  // LEGAL: road isn't cut by steel. The track used to run straight through every road, sleepers and
+  // LEGAL: all, and its bed sat at the road's height and flickered through it. Rail lines are straight.
+  const steelMat = materials.standard('transport:rail-steel', {color:'#a6a99e', roughness:0.38, metalness:0.55});
+  const bedMat = materials.standard('transport:rail-bed', {color:'#2a2a2e', roughness:1});
+  const panelMat = materials.standard('transport:rail-crossing', {color:'#3a3b40', roughness:0.85});
   windhavenMapModel.railLines.forEach(function(line){
     const start = line.path[0];
-    const end = line.path[1];
+    const end = line.path[line.path.length - 1];
     const length = Math.hypot(end.x-start.x, end.y-start.y);
-    const rail = new THREE.Mesh(new THREE.PlaneGeometry(line.width, length), materials.standard('transport:rail-bed', {color:'#2a2a2e', roughness:1}));
-    rail.rotation.x=-Math.PI/2; rail.position.set(start.x,0.06,(start.y+end.y)/2); rail.receiveShadow=true; worldGroup.add(rail);
-    [-9,9].forEach(function(offset){
-      const steel = new THREE.Mesh(new THREE.BoxGeometry(3,3,length), materials.standard('transport:rail-steel', {color:'#a6a99e', roughness:0.38, metalness:0.55}));
-      steel.position.set(start.x + offset, 2.1, (start.y + end.y) / 2);
-      steel.castShadow = true;
-      worldGroup.add(steel);
-    });
+    const ux = (end.x - start.x) / length, uy = (end.y - start.y) / length;
+    const turn = Math.atan2(ux, uy);
+    const at = (along: number, across = 0) => ({ x:start.x + ux * along + uy * across, z:start.y + uy * along - ux * across });
     const ties: SceneInstance[] = [];
-    for(let ty=20;ty<worldHeight;ty+=26){
-      ties.push({ x:start.x, y:1, z:ty });
-    }
+    railOpenSpans(line).forEach(function(span){
+      const mid = (span.from + span.to) / 2, spanLength = span.to - span.from;
+      const centre = at(mid);
+      const bed = new THREE.Mesh(new THREE.PlaneGeometry(line.width, spanLength), bedMat);
+      bed.rotation.set(-Math.PI/2, 0, -turn); bed.position.set(centre.x, 0.03, centre.z); bed.receiveShadow = true; worldGroup.add(bed);
+      [-9, 9].forEach(function(offset){
+        const p = at(mid, offset);
+        const steel = new THREE.Mesh(new THREE.BoxGeometry(3, 3, spanLength), steelMat);
+        steel.position.set(p.x, 2.1, p.z); steel.rotation.y = turn; steel.castShadow = true;
+        worldGroup.add(steel);
+      });
+      for(let d = span.from + 10; d < span.to - 4; d += 26){ const p = at(d); ties.push({ x:p.x, y:1, z:p.z, rotationY:turn }); }
+    });
+    railCrossingSpans(line).forEach(function(span){
+      const mid = (span.from + span.to) / 2, spanLength = span.to - span.from;
+      const centre = at(mid);
+      const panel = new THREE.Mesh(new THREE.PlaneGeometry(line.width - 4, spanLength), panelMat);
+      panel.rotation.set(-Math.PI/2, 0, -turn); panel.position.set(centre.x, 0.1, centre.z); panel.receiveShadow = true; worldGroup.add(panel);
+      [-9, 9].forEach(function(offset){
+        const p = at(mid, offset);
+        const flush = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.3, spanLength), steelMat);
+        flush.position.set(p.x, 0.16, p.z); flush.rotation.y = turn;
+        worldGroup.add(flush);
+      });
+    });
     addInstancedMesh(THREE, worldGroup, new THREE.BoxGeometry(line.width-4,2,4), materials.standard('transport:rail-tie', {color:'#3a3530', roughness:0.85, metalness:0.05}), ties, { cast:true, receive:true });
   });
   addWaterShape(options, windhavenMapModel.lake, 0.06);

@@ -27,7 +27,7 @@ import { DEFAULT_PLAYER_LOOK, WARDROBE, createPersonParts, normalizeLook, useScu
 import { BIKE_SEATS, seatedRider, type BikeClass } from '../map/bikeRider';
 import { isItemOwned, itemKey, itemPrice, lookPrice, ownedWardrobe, type MallShop, type WardrobeSlot } from '../config/mallShops';
 import { MALL_ROOM, MALL_SPOTS } from '../map/mallInterior';
-import { buildMall, mallSolids } from '../map/mall';
+import { MALL_BODY, buildMall, mallSolids } from '../map/mall';
 import { buildCentralPark, centralParkSolids } from '../map/centralPark';
 import { specialPlace, specialPlaceSolids } from '../map/placeSpecials';
 import { buildSuburb, suburbSolids } from '../map/suburb';
@@ -4959,6 +4959,23 @@ import type * as ThreeNamespace from 'three';
   let drunkUntil = 0;
   let flightHeight = 0;
   let wasFlying = false;
+  // LEGAL: How tall the buildings are, for flying. Flying ignored every building on the idea that you
+  // LEGAL: were over the roofs, but the towers stand up to 450 tall against a flight height of 80,
+  // LEGAL: so you flew straight through them. Now you climb over what's ahead, and can't fly into a
+  // LEGAL: building taller than you are yet.
+  let tallSolidsCache: Array<Solid & { h: number }> | null = null;
+  function tallSolids(): Array<Solid & { h: number }> {
+    tallSolidsCache ??= [
+      ...cityLots().map(lot => ({ ...lotSolid(lot), h:lot.h })),
+      ...mallSolids().map(solid => ({ ...solid, h:MALL_BODY.h + 25 })),
+    ].filter(solid => solid.h > FLIGHT_ALTITUDE - 20);
+    return tallSolidsCache;
+  }
+  function roofHeightNear(x: number, y: number, margin: number): number {
+    let top = 0;
+    for(const solid of tallSolids()) if(Math.abs(x - solid.x) < solid.hw + margin && Math.abs(y - solid.y) < solid.hd + margin) top = Math.max(top, solid.h);
+    return top;
+  }
   let bigHeads = false;
   function isFlying(): boolean {
     if(state.currentInterior) return false;
@@ -4967,7 +4984,10 @@ import type * as ThreeNamespace from 'three';
   function isDrunk(): boolean { return state.playSeconds < drunkUntil; }
   function updateCheatEffects(dt: number): void {
     const flying = isFlying();
-    flightHeight += ((flying ? FLIGHT_ALTITUDE : 0) - flightHeight) * (1 - Math.exp(-3 * dt));
+    // LEGAL: Climb over the roofs about a second ahead of where you're heading.
+    const ahead = flying ? roofHeightNear(player.x + player.vx * 1.1, player.y + player.vy * 1.1, 30) : 0;
+    const target = flying ? Math.max(FLIGHT_ALTITUDE, ahead + 30) : 0;
+    flightHeight += (target - flightHeight) * (1 - Math.exp(-(target > flightHeight ? 4 : 3) * dt));
     // LEGAL: Coming down over a roof or the lake sets you down on the nearest open ground.
     if(wasFlying && !flying){
       const free = nearestFreePoint(player.x, player.y, currentSolids, state.inVehicle, 600);
@@ -5200,6 +5220,7 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: only the edge of the world still stops you.
     if(isFlying()){
       const b = windhavenMapModel.landBounds;
+      if(roofHeightNear(nx, ny, 6) > flightHeight - 4) return false;
       return nx > b.minX - 300 && nx < b.maxX + 300 && ny > b.minY - 300 && ny < b.maxY + 300;
     }
     // LEGAL: The crossing used to be checked only while driving, so on foot you walked

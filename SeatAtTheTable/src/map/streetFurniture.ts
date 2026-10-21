@@ -1,3 +1,4 @@
+import { roadLandSegments } from './mapModel';
 import { STREET_FURNITURE_SCALE } from './scale';
 import type * as ThreeNamespace from 'three';
 import type { SignalState } from './trafficRules';
@@ -87,7 +88,7 @@ const SLOT: Record<SignalState, { y: number; color: string }> = {
   red:{ y:5, color:'#ff3b30' }, amber:{ y:0, color:'#ffb000' }, green:{ y:-5, color:'#2fd36f' },
 };
 
-export function buildTrafficLight(options: StreetFurnitureOptions, x: number, z: number, junction: { x: number; y: number }): SignalHeads {
+export function buildTrafficLight(options: StreetFurnitureOptions, x: number, z: number, junction: { x: number; y: number }, turn = 0): SignalHeads {
   const { THREE, worldGroup } = options;
   const group = new THREE.Group();
   const dark = '#2f333c';
@@ -114,7 +115,7 @@ export function buildTrafficLight(options: StreetFurnitureOptions, x: number, z:
   // LEGAL: faces the traffic coming from the east.
   const ns = lamp(-22, 24, 2.7);
   const ew = lamp(2.7, 22, 22);
-  group.position.set(x,0,z); group.scale.setScalar(STREET_FURNITURE_SCALE);
+  group.position.set(x,0,z); group.rotation.y = turn; group.scale.setScalar(STREET_FURNITURE_SCALE);
   // LEGAL: Its own name, so the static street merge leaves it alone: its lamps move and change colour.
   group.name = `signal:${Math.round(junction.x)},${Math.round(junction.y)}`;
   worldGroup.add(group);
@@ -133,8 +134,23 @@ export function showSignal(heads: SignalHeads, axis: 'ns' | 'ew', state: SignalS
 
 // LEGAL: Every junction is signalled (map/trafficRules), so each has a working light and no stop
 // LEGAL: sign: a stop sign under a traffic light would say two different things.
+// LEGAL: A pole may not stand in a road: where another road (the curved Canal Bend Road, say) runs
+// LEGAL: across the usual corner, the signal goes on the opposite corner turned half round, its arms
+// LEGAL: reaching over the same two streets from the other side, and a lamp there is left out.
+function onARoad(x: number, z: number): boolean {
+  return roadLandSegments().some(function(segment){
+    const half = segment.road.width / 2 + 4;
+    return segment.path.slice(0, -1).some(function(a, i){
+      const b = segment.path[i + 1];
+      const dx = b.x - a.x, dy = b.y - a.y, len = dx * dx + dy * dy || 1;
+      const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.y) * dy) / len));
+      return Math.hypot(x - (a.x + dx * t), z - (a.y + dy * t)) < half;
+    });
+  });
+}
 export function buildIntersectionFurniture(options: StreetFurnitureOptions, x: number, z: number): SignalHeads {
-  buildStreetLight(options, x - 46, z - 46, { x, z });
-  buildStreetLight(options, x + 46, z + 46, { x, z });
+  if(!onARoad(x - 46, z - 46)) buildStreetLight(options, x - 46, z - 46, { x, z });
+  if(!onARoad(x + 46, z + 46)) buildStreetLight(options, x + 46, z + 46, { x, z });
+  if(onARoad(x + 42, z - 42) && !onARoad(x - 42, z + 42)) return buildTrafficLight(options, x - 42, z + 42, { x, y:z }, Math.PI);
   return buildTrafficLight(options, x + 42, z - 42, { x, y:z });
 }

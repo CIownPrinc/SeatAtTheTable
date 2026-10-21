@@ -455,10 +455,22 @@ old one.
     screen ran its Draw button off the window (popups now scroll, and you tap cards to hold them).
     Cards are drawn as cards (`e2e/casino.e2e.ts`). Its size and its people are item 98.
 98. The casino should be bigger, with people in it, waiters and so on (user, 2026-10-20).
-99. Flying vehicles pass through buildings (user, 2026-10-20).
+99. **DONE** Flying vehicles pass through buildings (user, 2026-10-20). Flying ignored buildings on the
+    idea you were over the roofs, but towers reach about 450 against a flight height of 80. You now
+    climb over what's a second ahead, and can't fly into a building taller than you are yet.
 100. The garbage truck's load of trash looks odd; give it depth (user, 2026-10-20).
-101. Railways clip through roads, and Arjun walks inside a bridge instead of on top. Fix it, audit
-    for similar problems, and add tests that catch them so they don't come back (user, 2026-10-20).
+101. **DONE** Railways clip through roads, and Arjun walks inside a bridge instead of on top. Fix it,
+    audit for similar problems, and add tests that catch them so they don't come back (user,
+    2026-10-20). The raised rails and sleepers ran across every road and the rail bed shared the road's
+    height; now each crossing is a level crossing with flush rails and a panel
+    (`railCrossingSpans`/`railOpenSpans` in `map/queries.ts`). Bridge decks stood 4 up while people walk
+    at 0; they're flush with the road now (`BRIDGE_DECK_TOP`). Guarded by `map/railCrossings.test.ts`
+    and a new road-clearance audit (`e2e/road-clearance.e2e.ts`: every lane of every road must be clear
+    from 1.2 to 14 high), which also found a traffic-light pole standing in Canal Bend Road. Junction
+    furniture now checks for roads before it stands anywhere.
+102. SeatAtTheTable 1 should still value the phone and tycoon side (SeatAtTheTable 2 leans on the map).
+     Audit the code, features and how the game plays as a whole, and add what's found here, since the
+     user hasn't said much about the tycoon and phone side (user, 2026-10-20).
 51. **DONE** The cars are too small (user, 2026-10-20: "the cars are so tiny bro"). They were drawn at life
     size next to people drawn 1.2x life, under a high camera. Worse, traffic was a bug: merging each
     car into one mesh transformed its quantized Blender geometry in place, which clamped every car to
