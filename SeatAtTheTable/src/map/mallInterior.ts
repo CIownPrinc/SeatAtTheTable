@@ -20,6 +20,32 @@ export const MALL_SPOTS = {
 };
 const FOUNTAIN = { x:500, z:360, r:54 };
 
+// LEGAL: The upper concourse, up the escalator: an arcade on the left, the cinema on the right.
+export const MALL_UPPER_SPOTS = { arcade:{ x:260, y:260 }, cinema:{ x:760, y:250 } };
+export function mallUpperDecor(): Prop {
+  const fixtures: InteriorFixture[] = [];
+  const solids: Solid[] = [];
+  const glows = ['#ffd23a', '#5ad1ff', '#ff6b9a', '#5ad18a', '#c040ff', '#ff8a2a'];
+  glows.forEach(function(glow, i){
+    const x = 150 + i * 30;
+    fixtures.push(fixture('slot-machine', x, 200, [box(x, 200, 24, 20, 46, '#2a2d33')], { recolour:{ screen:glow, cabinet:'#2a2d33' } }));
+  });
+  solids.push(solidOf(225, 200, 184, 22));
+  fixtures.push(fixture('ticket-booth', 760, 180, [box(760, 180, 40, 36, 50, '#5c6470')]));
+  solids.push(solidOf(760, 180, 40, 36));
+  for(const x of [640, 880]){ fixtures.push(fixture('notice-board', x, 120, [box(x, 120, 66, 4, 66, '#6b4a2c')], { recolour:{ wood:'#2a2d33' } })); solids.push(solidOf(x, 120, 70, 8)); }
+  for(const [x, z] of [[380, 420], [620, 420]] as const){ fixtures.push(fixture('bench-row', x, z, [box(x, z, 72, 14, 20, '#3a6a9a')], { turn:Math.PI })); solids.push(solidOf(x, z, 72, 14)); }
+  for(const x of [460, 540]){ fixtures.push(fixture('planter', x, 560, [box(x, 560, 40, 40, 14, '#8a7a62')])); solids.push(solidOf(x, 560, 40, 40)); }
+  // LEGAL: The glass balustrade over the hall below runs across the middle.
+  const pieces: InteriorPiece[] = [box(500, 320, 260, 4, 18, '#cfe8f4', 0)];
+  solids.push(solidOf(500, 320, 260, 6));
+  const walkers: InteriorWalker[] = [
+    { path:[{ x:200, z:300 }, { x:800, z:300 }, { x:800, z:500 }, { x:200, z:500 }], speed:30, offset:0.2, identity:'mall:upper:1', coat:'#5a7c8a', scale:1 },
+    { path:[{ x:240, z:270 }, { x:320, z:270 }], speed:20, offset:0, identity:'mall:upper:kid', coat:'#e85a5a', scale:0.58 },
+  ];
+  return { pieces, fixtures, solids, people:[{ x:760, z:150, facing:Math.PI / 2, identity:'mall:usher', coat:'#7a2630' }], walkers };
+}
+
 function shopDisplay(shop: MallShop, cx: number): InteriorPiece[] {
   const pieces: InteriorPiece[] = [];
   switch(shop.id){

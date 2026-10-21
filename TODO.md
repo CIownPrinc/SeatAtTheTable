@@ -184,6 +184,17 @@ every test. Locally, `.tmp-assets/` (ignored Kenney zips) can be deleted by hand
 
 Every request the player made while playing, word for word in intent, so none get lost.
 Status: **DONE** shipped and verified · **PART** partly done (what's left is noted) · open.
+
+**Order of work for the open items (set 2026-10-21, after "don't work hastily"):**
+1. Bugs and crashes first (111, 114, 115, 116).
+2. Then put right what was done hastily before: Central Park (112), the beaches (113), the railyard
+   and placement and proportion everywhere (91, 95, 110), the alleys (68). Placement, proportions and
+   the inside matching the outside are standing checks for every place, new or old (110).
+3. Then the half-finished interior work (57-63), mission joining (117) and the camera (118).
+4. Then the rest: mobile tests (60), the test review (105), NPCs and traffic (64, 73-75, 96), the dealer
+   upgrade (69), the wardrobe (59), the race (90), the phone and tycoon audit (102), the docs audit (67).
+5. Last, the big map rebuild (80-87, 108-109), done in one planned pass, not piecemeal.
+Each item is checked in the running game before it's marked done.
 V1 stays feature-frozen everywhere else; this list is the exception the player asked for.
 Most of the open items will be built in the new map engine (section 11), not patched into the
 old one.
@@ -372,15 +383,28 @@ old one.
     Same-kind places must differ too, by brand and by area: the Mudster dealership is rugged, and it
     sits in a poorer, forested, rural spot, so its showroom shouldn't look like a city one. The same
     goes for every building and place: brand and neighbourhood shape what's inside.
+    **PART** (2026-10-21): every place has its own plan now (`map/interiorPlans.ts`): one of 45 themes
+    picked by what it is, its brand and its area (the Mudster trailhead is timber and mud, Diamond
+    Exotics marble, Electron white and blue), a room sized from the building, and its own furniture
+    (`map/interiorThemes.ts`, 35 new Blender pieces). `interiorPlans.test.ts` checks no furniture
+    blocks a hotspot, the door, the stairs or a regular. Left: exterior colours and details carried
+    inside, and a second look at each theme in play.
 58. Add a nightclub and a police station (user, 2026-10-20).
 59. Character customisation is janky: the selection carousel is broken, hair clips through the head,
     and there isn't much to choose from (user, 2026-10-20).
 60. Set up tests for mobile gameplay so nothing breaks on phones (user, 2026-10-20).
-61. Stairs in some buildings that you use to go up to the next floor (user, 2026-10-20). The casino and
-    the mall definitely need upper floors, with stairs, lifts or escalators where they fit.
-62. People inside: NPCs, characters, maybe missions within the interiors (user, 2026-10-20).
-63. Missions that happen inside buildings must keep working, and should be better for the new
-    interiors (user, 2026-10-20).
+61. **PART** Stairs in some buildings that you use to go up to the next floor (user, 2026-10-20). The
+    casino and the mall definitely need upper floors, with stairs, lifts or escalators where they fit.
+    Done: Arjun's flat over the garage (the wardrobe and vault are up there now), City Hall's council
+    chamber, the casino's high-roller room, the Herald editor's office, the family office's boardroom
+    (by lift) and the mall's upper concourse (by escalator: an arcade and a cinema). Left: the nightclub
+    and police station when they're built (58).
+62. **PART** People inside: NPCs, characters, maybe missions within the interiors (user, 2026-10-20).
+    Staff at their posts, people walking round, and a regular or two in most places to talk to, each
+    with their own lines. Left: missions that start from a regular.
+63. **PART** Missions that happen inside buildings must keep working, and should be better for the new
+    interiors (user, 2026-10-20). All 95 mission tests pass with the new rooms (they now stand at the
+    hotspots' real positions instead of hard-coded ones). Left: the "better" part.
 64. People and cars sometimes move weirdly and at random. They should path and react like GTA's, so
     they don't read as bots (user, 2026-10-20).
 65. You must not be able to clip or phase through any building (user, 2026-10-20).
@@ -469,7 +493,9 @@ old one.
     the slots took the stake and spun at once (now the machine waits for a pull), and the draw-poker
     screen ran its Draw button off the window (popups now scroll, and you tap cards to hold them).
     Cards are drawn as cards (`e2e/casino.e2e.ts`). Its size and its people are item 98.
-98. The casino should be bigger, with people in it, waiters and so on (user, 2026-10-20).
+98. **DONE** The casino should be bigger, with people in it, waiters and so on (user, 2026-10-20). Now
+    900 x 560 (from 480 x 280), with a cashier's cage, two banks of slots, four tables with dealers, a
+    waiter and gamblers walking the floor, an aisle of ropes from the door, and a high-roller room upstairs.
 99. **DONE** Flying vehicles pass through buildings (user, 2026-10-20). Flying ignored buildings on the
     idea you were over the roofs, but towers reach about 450 against a flight height of 80. You now
     climb over what's a second ahead, and can't fly into a building taller than you are yet.
@@ -514,6 +540,30 @@ old one.
 109. Make the water look real: the lake to the north and the water between the districts are too
      geometric and perfect. Add peninsulas, islets and the like where they fit, and small ponds or
      lakes here and there (user, 2026-10-20).
+110. The railyard isn't to scale and isn't near the rails. Standing rule for every new place and every
+     old one reviewed: placement, proportions, and the inside matching the outside (user, 2026-10-20).
+111. **PART** Playing any amenity game crashes the game (user, 2026-10-20). Couldn't reproduce a
+     crash, headless or in a real Chrome: both games play through cleanly and the map keeps running.
+     What did happen: when a game ended its window vanished with no result (the line was too minor for
+     the street log), which reads like a crash. It now shows the score and what you won, a game that
+     throws closes cleanly, and a lost GPU context is replaced. `e2e/amenity-games.e2e.ts` plays both
+     to the end twice. Waiting on the user to confirm.
+112. Central Park is poor: longer than it needs to be, parts of its water can be walked on, it's short of
+     things to do, and it has no parody name. Fix the earlier hasty work properly before adding more
+     (user, 2026-10-20: "dont work hastely ... set your priorities straight on the todo and fix the
+     mistakes you made in the past being hasty").
+113. The beaches: trees and chairs are spaced too evenly to look real. Give them real beach terrain,
+     people, sandcastles, random placement and stalls, and a shoreline with curves and edges, not a
+     straight strip (user, 2026-10-20).
+114. The railway runs through water, which is impossible: give it a bridge, one the player can't walk
+     onto (user, 2026-10-20).
+115. A random floating plank-like rectangle on the right of the railway (user, 2026-10-20).
+116. The GPS breaks in the countryside, when flying, or off the streets; it could cover more places.
+     And the place categories on the minimap are muddled (user, 2026-10-20).
+117. Missions are cumbersome to find and join: make joining natural and less dependent on lots of
+     phone messages, and cut down the flood of mission messages on the phone (user, 2026-10-21).
+118. For the "camera follows Arjun" setting: make it first person if that's not too hard; otherwise a
+     lower angle and the camera a little closer to Arjun (user, 2026-10-21).
 51. **DONE** The cars are too small (user, 2026-10-20: "the cars are so tiny bro"). They were drawn at life
     size next to people drawn 1.2x life, under a high camera. Worse, traffic was a bug: merging each
     car into one mesh transformed its quantized Blender geometry in place, which clamped every car to

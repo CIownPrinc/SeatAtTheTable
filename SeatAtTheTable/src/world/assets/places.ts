@@ -16,6 +16,10 @@ export const FURNITURE_MODELS = [
   'war-table', 'office-desk', 'lockers', 'potted-plant', 'tyre-stack', 'column', 'shop-shelf', 'tool-chest', 'filing-cabinet',
   'fountain', 'perfume-kiosk', 'ice-cream-cart', 'food-counter', 'food-table', 'climbing-frame', 'ball-pit', 'mall-bench', 'planter',
   'hoop', 'chess-table',
+  'washer', 'dryer', 'folding-table', 'booth', 'dining-set', 'drinks-fridge', 'pallet-rack', 'crate-stack', 'forklift',
+  'car-lift', 'parts-shelf', 'fireplace', 'display-case', 'jar-wall', 'stage', 'dj-booth', 'dartboard', 'pool-table',
+  'staircase', 'escalator', 'lift', 'sofa', 'coffee-table', 'bed', 'kitchenette', 'tv-wall', 'bench-row', 'departure-board',
+  'ticket-booth', 'newsroom-desk', 'cell', 'bar-stool', 'piano', 'phone-bank', 'velvet-rope',
 ] as const;
 export type FurnitureName = typeof FURNITURE_MODELS[number];
 export type PlaceModelName = typeof PLACE_MODELS[number] | FurnitureName;

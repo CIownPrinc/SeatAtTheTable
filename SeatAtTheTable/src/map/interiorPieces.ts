@@ -24,7 +24,7 @@ export interface InteriorPiece {
 export interface InteriorPerson { x: number; z: number; facing: number; identity: string; coat: string }
 
 // LEGAL: A real car model stands here: yours in the garage, the brand's on a showroom floor.
-export interface InteriorCar { x: number; z: number; heading: number; color: string; use: 'garage' | 'showroom' | 'bay' }
+export interface InteriorCar { x: number; z: number; heading: number; color: string; use: 'garage' | 'showroom' | 'bay'; cls?: 'sedan' | 'supercar' | 'roadster' | 'suv' | 'pickup' | 'ev' | 'ev-luxury' | 'sportbike' | 'chopper' }
 
 // LEGAL: Someone walking a loop round the room, starting `offset` (0-1) of the way along it.
 // LEGAL: `scale` under 1 is a child.

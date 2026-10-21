@@ -273,6 +273,8 @@ export interface InteriorState {
   returnX: number;
   returnY: number;
   returnDistrict: string;
+  // LEGAL: Which floor you're on, in buildings with upper floors (map/interiorPlans); 0 is the ground.
+  floor?: number;
 }
 
 export interface StockPosition {

@@ -39,7 +39,9 @@ export function addPlaceModel(
   model.forEach(function(part, name){
     const colour = recolour[name];
     const key = `${prefix}:${name}${colour ? ':' + colour : ''}${name.startsWith('roof') ? ':roof' : ''}`;
-    const mesh = new THREE.Mesh(part.geometry, materials.standard(key, paintParams(part.paint, colour)));
+    // LEGAL: Glass in furniture (a display case, a fridge door) is named 'clear-...' and drawn see-through.
+    const clear = name.startsWith('clear-') ? { transparent:true, opacity:0.32, depthWrite:false } : {};
+    const mesh = new THREE.Mesh(part.geometry, materials.standard(key, { ...paintParams(part.paint, colour), ...clear }));
     mesh.castShadow = true; mesh.receiveShadow = true;
     group.add(mesh);
     meshes.push(mesh);

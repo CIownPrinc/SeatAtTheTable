@@ -303,6 +303,13 @@ export function playMinigame(THREE: typeof ThreeNamespace, kind: MinigameKind, t
       shell.close();
       resolve(r);
     };
-    RUNNERS[kind](THREE, shell, finish);
+    // LEGAL: A game that throws closes cleanly and reports it, rather than leaving its overlay up and
+    // LEGAL: the map frozen behind it.
+    try {
+      RUNNERS[kind](THREE, shell, finish);
+    } catch(error) {
+      console.error('[minigame]', error);
+      finish({ kind, success:false, score:0, max:0, reward:{ cash:0, respect:0 }, message:'The game fell apart. Try again in a moment.' });
+    }
   });
 }

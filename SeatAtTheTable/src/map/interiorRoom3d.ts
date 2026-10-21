@@ -1,5 +1,6 @@
 import type * as ThreeNamespace from 'three';
 import type { Solid } from '../config/types';
+import type { InteriorPlan } from './interiorPlans';
 import { interiorLayout, type FloorPattern, type InteriorCar, type InteriorPiece, type InteriorSpot, type RoomSize } from './interiorLayout';
 import { mergeMeshesWithin, type MergeGeometries } from './mergeScenery';
 import { addPlaceModel, localMaterials, placeModel } from './placeModels';
@@ -23,7 +24,10 @@ export interface InteriorBuild {
   kind: string;
   refId: string;
   room: RoomSize;
-  door: { x: number; y: number };
+  // LEGAL: The way out, on the ground floor; upper floors have none.
+  door: { x: number; y: number } | null;
+  plan?: InteriorPlan;
+  floor?: number;
   spots: InteriorSpot[];
   makePerson(identity: string, coat: string): ThreeNamespace.Object3D;
   makeCar(car: InteriorCar): ThreeNamespace.Object3D | null;
@@ -123,7 +127,7 @@ function pieceMesh(THREE: typeof ThreeNamespace, piece: InteriorPiece, material:
 export function buildInteriorRoom3d(THREE: typeof ThreeNamespace, build: InteriorBuild): InteriorView {
   const s = INTERIOR_SCALE;
   const { room } = build;
-  const layout = interiorLayout(build.kind, build.refId, room, build.spots);
+  const layout = interiorLayout(build.kind, build.refId, room, build.spots, build.plan, build.floor ?? 0);
   const root = new THREE.Group();
   root.name = `interior:${build.refId}`;
 
@@ -227,12 +231,14 @@ export function buildInteriorRoom3d(THREE: typeof ThreeNamespace, build: Interio
     label.name = `interior:label:${spot.id}`;
     root.add(label);
   });
-  addRing('door', build.door.x, build.door.y, '#5ad1ff');
+  if(build.door) addRing('door', build.door.x, build.door.y, '#5ad1ff');
 
-  const exitLabel = labelSprite(THREE, 'Exit');
-  exitLabel.position.set(build.door.x * s, 18, (room.h + 10) * s);
-  exitLabel.scale.set(30, 7.5, 1);
-  root.add(exitLabel);
+  if(build.door){
+    const exitLabel = labelSprite(THREE, 'Exit');
+    exitLabel.position.set(build.door.x * s, 18, (room.h + 10) * s);
+    exitLabel.scale.set(30, 7.5, 1);
+    root.add(exitLabel);
+  }
 
   return {
     root,

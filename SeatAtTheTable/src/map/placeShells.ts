@@ -20,7 +20,7 @@ function mesh(
   color: string,
   options: { roughness?: number; metalness?: number; transparent?: boolean; opacity?: number } = {},
 ): ThreeNamespace.Mesh {
-  const material = new THREE.MeshStandardMaterial({ color, roughness:options.roughness ?? 0.85, metalness:options.metalness ?? 0.05, transparent:options.transparent, opacity:options.opacity });
+  const material = new THREE.MeshStandardMaterial({ color, roughness:options.roughness ?? 0.85, metalness:options.metalness ?? 0.05, ...(options.transparent !== undefined ? { transparent:options.transparent, opacity:options.opacity } : {}) });
   const created = new THREE.Mesh(geometry, material);
   created.castShadow = true;
   created.receiveShadow = true;

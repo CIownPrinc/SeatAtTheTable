@@ -13,6 +13,9 @@ async function inTheGarage(page: Page): Promise<void> {
   await page.locator('.tab-btn[data-tab="map"]').click();
   await page.waitForFunction(() => !!(window as unknown as { __seat?: unknown }).__seat, undefined, { timeout: 45_000 });
   await page.evaluate(() => (window as unknown as { __seat: Seat }).__seat.enterBuilding('playerGarage', 'playerGarage', 'Your Garage'));
+  // LEGAL: The flat is upstairs: take the stairs from the garage floor.
+  await page.evaluate(() => (window as unknown as { __seat: Seat }).__seat.hotspots().find(h => h.id === 'stairs-up')!.action());
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __seat: Seat }).__seat.hotspots().some(h => h.id === 'wardrobe'))).toBe(true);
 }
 
 test.describe("Arjun's flat above the garage", () => {

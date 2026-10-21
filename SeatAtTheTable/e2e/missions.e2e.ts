@@ -4,7 +4,7 @@ interface MissionTestHook {
   startMission: (id: string) => void;
   resolveMission: (id: string) => void;
   enterBuilding: (kind: string, refId: string, name: string) => void;
-  hotspots: () => { label: string; action: () => void }[];
+  hotspots: () => { id: string; x: number; y: number; label: string; action: () => void }[];
   player: { x: number; y: number };
   mapPlaces: { x: number; y: number; sourceObject?: { id: string; kind?: string } }[];
   worldGroup: { children: { name: string }[] };
@@ -81,16 +81,18 @@ test.describe('mission flow', function () {
     expect(labels).toEqual(expect.arrayContaining(['Teller Window', 'Mission Contact']));
     await page.evaluate(function(){
       const seat = (window as unknown as { __seat: MissionTestHook }).__seat;
-      seat.player.x = 86;
-      seat.player.y = 80;
+      const spot = seat.hotspots().find(function(h){ return h.id === 'mission'; })!;
+      seat.player.x = spot.x;
+      seat.player.y = spot.y;
     });
     await page.keyboard.press('e');
     await expect(page.locator('#modal-overlay')).toContainText('Keep What Is Left');
     await page.getByRole('button', { name:'Hear the teller out', exact:true }).click();
     await page.evaluate(function(){
       const seat = (window as unknown as { __seat: MissionTestHook }).__seat;
-      seat.player.x = 240;
-      seat.player.y = 80;
+      const spot = seat.hotspots().find(function(h){ return ['teller', 'clerk', 'counter', 'register', 'frontdesk', 'mission', 'wartable'].includes(h.id); })!;
+      seat.player.x = spot.x;
+      seat.player.y = spot.y;
     });
     await page.keyboard.press('e');
     await expect(page.locator('#modal-overlay')).toContainText('The Teller Has Seen This Before');
@@ -187,8 +189,9 @@ test.describe('mission flow', function () {
     await page.keyboard.press('e');
     await page.evaluate(function(){
       const seat = (window as unknown as { __seat: MissionTestHook }).__seat;
-      seat.player.x = 86;
-      seat.player.y = 80;
+      const spot = seat.hotspots().find(function(h){ return h.id === 'mission'; })!;
+      seat.player.x = spot.x;
+      seat.player.y = spot.y;
     });
     await page.keyboard.press('e');
     await expect(page.locator('#modal-overlay')).toContainText('A Bird in the Best Space');
@@ -218,8 +221,9 @@ test.describe('mission flow', function () {
     }).toBe('heraldHq');
     await page.evaluate(function(){
       const seat = (window as unknown as { __seat: MissionTestHook }).__seat;
-      seat.player.x = 240;
-      seat.player.y = 80;
+      const spot = seat.hotspots().find(function(h){ return ['teller', 'clerk', 'counter', 'register', 'frontdesk', 'mission', 'wartable'].includes(h.id); })!;
+      seat.player.x = spot.x;
+      seat.player.y = spot.y;
     });
     await page.keyboard.press('e');
     await page.getByRole('button', { name:'A business that belongs to the neighborhood', exact:true }).click();
@@ -302,8 +306,9 @@ test.describe('mission flow', function () {
     }).toBe('cityhall');
     await page.evaluate(function(){
       const seat = (window as unknown as { __seat: MissionTestHook }).__seat;
-      seat.player.x = 240;
-      seat.player.y = 80;
+      const spot = seat.hotspots().find(function(h){ return ['teller', 'clerk', 'counter', 'register', 'frontdesk', 'mission', 'wartable'].includes(h.id); })!;
+      seat.player.x = spot.x;
+      seat.player.y = spot.y;
     });
     await page.keyboard.press('e');
     await expect(page.locator('#modal-overlay')).toContainText("Clerk's Window");
@@ -333,8 +338,9 @@ test.describe('mission flow', function () {
     }).toBe('cityhall');
     await page.evaluate(function(){
       const seat = (window as unknown as { __seat: MissionTestHook }).__seat;
-      seat.player.x = 86;
-      seat.player.y = 80;
+      const spot = seat.hotspots().find(function(h){ return h.id === 'mission'; })!;
+      seat.player.x = spot.x;
+      seat.player.y = spot.y;
     });
     await page.keyboard.press('e');
     await expect(page.locator('#modal-overlay')).toContainText('The Audit Notice');
@@ -359,8 +365,9 @@ test.describe('mission flow', function () {
     expect(labels).toContain('The Armory');
     await page.evaluate(function(){
       const seat = (window as unknown as { __seat: MissionTestHook }).__seat;
-      seat.player.x = 240;
-      seat.player.y = 148;
+      const spot = seat.hotspots().find(function(h){ return h.id === 'armory'; })!;
+      seat.player.x = spot.x;
+      seat.player.y = spot.y;
     });
     await page.keyboard.press('e');
     await expect(page.locator('#modal-overlay')).toContainText('The Armory');
@@ -382,8 +389,9 @@ test.describe('mission flow', function () {
     expect(labels).toContain('The Back-Room Table');
     await page.evaluate(function(){
       const seat = (window as unknown as { __seat: MissionTestHook }).__seat;
-      seat.player.x = 240;
-      seat.player.y = 80;
+      const spot = seat.hotspots().find(function(h){ return ['teller', 'clerk', 'counter', 'register', 'frontdesk', 'mission', 'wartable'].includes(h.id); })!;
+      seat.player.x = spot.x;
+      seat.player.y = spot.y;
     });
     await page.keyboard.press('e');
     await expect(page.locator('#modal-overlay')).toContainText('The Back-Room Table');

@@ -1,7 +1,9 @@
 import type { Solid } from '../config/types';
 
 import { PERSON_FACING_DOOR, WALL_HEIGHT, box, cyl, fixture, solidOf, type InteriorCar, type InteriorFixture, type InteriorPerson, type InteriorPiece, type InteriorSpot, type InteriorWalker, type Prop } from './interiorPieces';
-import { mallDecor, mallSpotProp } from './mallInterior';
+import { mallDecor, mallSpotProp, mallUpperDecor } from './mallInterior';
+import type { InteriorPlan } from './interiorPlans';
+import { themeDecor, themeHasDecor } from './interiorThemes';
 
 export type { InteriorCar, InteriorFixture, InteriorPerson, InteriorPiece, InteriorSpot, InteriorWalker } from './interiorPieces';
 
@@ -372,6 +374,19 @@ function decorFor(kind: string, room: RoomSize, look: Look): Prop {
   return { pieces, people, solids, cars, fixtures };
 }
 
+// LEGAL: Daylight through a window on each side wall and framed pictures either side of the back,
+// LEGAL: except where a room shouldn't have them (a vault, a casino, a warehouse, the mall).
+function withWindows(decor: Prop, theme: string, room: RoomSize, look: Look): Prop {
+  if(['vaultBank', 'casino', 'warehouse', 'backroom', 'wireroom', 'alley', 'lounge', 'club', 'mall', 'hangar'].includes(theme)) return decor;
+  const { w, h } = room;
+  const pieces = [...decor.pieces];
+  for(const side of [-1, 1]){
+    const wx = side < 0 ? 0.6 : w - 0.6;
+    pieces.push(box(wx, h * 0.62, 2, 70, 34, '#000000', 30, '#bcd8ea'), box(wx, h * 0.62, 3, 74, 3, look.trimColor, 28), box(wx, h * 0.62, 3, 3, 34, look.trimColor, 30));
+  }
+  return { ...decor, pieces };
+}
+
 function wallPieces(room: RoomSize, look: Look): InteriorPiece[] {
   const { w, h, door } = room;
   const t = 8;
@@ -390,9 +405,15 @@ function wallPieces(room: RoomSize, look: Look): InteriorPiece[] {
   ];
 }
 
-export function interiorLayout(kind: string, refId: string, room: RoomSize, spots: InteriorSpot[]): InteriorLayout {
-  const look = lookFor(kind);
-  const decor = decorFor(kind, room, look);
+// LEGAL: With a plan (map/interiorPlans) the room is that place's own: its theme's look and furniture,
+// LEGAL: on the floor you're on. Without one (and for the mall, which has its own hall) it falls
+// LEGAL: back to the older look per kind of place.
+export function interiorLayout(kind: string, refId: string, room: RoomSize, spots: InteriorSpot[], plan?: InteriorPlan, floor = 0): InteriorLayout {
+  const themed = !!plan && themeHasDecor(plan.theme);
+  const look = themed ? { ...lookFor(kind), ...plan.look } : lookFor(kind);
+  let decor = themed ? withWindows(themeDecor(plan, refId, floor), plan.theme, room, look) : decorFor(kind, room, look);
+  if(kind === 'mall' && floor === 1) decor = mallUpperDecor();
+  else if(kind === 'mall' && plan?.stairs) decor = { ...decor, fixtures:[...(decor.fixtures ?? []), ...(themeDecor({ ...plan, regulars:[] }, refId, floor).fixtures ?? [])] };
   const props = spots.map(spot => propFor(spot, kind, refId, look));
   return {
     floor:look.floor, floorColor:look.floorColor, wallColor:look.wallColor, trimColor:look.trimColor,

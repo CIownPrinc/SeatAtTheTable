@@ -26,7 +26,7 @@ import { createCharacterLibrary, type CharacterLibrary } from '../map/characters
 import { DEFAULT_PLAYER_LOOK, WARDROBE, createPersonParts, normalizeLook, useSculptedPersonParts } from '../map/personModel';
 import { BIKE_SEATS, seatedRider, type BikeClass } from '../map/bikeRider';
 import { isItemOwned, itemKey, itemPrice, lookPrice, ownedWardrobe, type MallShop, type WardrobeSlot } from '../config/mallShops';
-import { MALL_ROOM, MALL_SPOTS } from '../map/mallInterior';
+import { MALL_ROOM, MALL_SPOTS, MALL_UPPER_SPOTS } from '../map/mallInterior';
 import { MALL_BODY, buildMall, mallSolids } from '../map/mall';
 import { buildCentralPark, centralParkSolids } from '../map/centralPark';
 import { specialPlace, specialPlaceSolids } from '../map/placeSpecials';
@@ -110,6 +110,8 @@ import { loadStreetModels } from '../world/assets/street';
 import { loadPlaceModels } from '../world/assets/places';
 import { usePlaceModels } from '../map/placeModels';
 import { LIGHT_SKINS, closeUpFor, type CloseUp } from '../map/closeUps';
+import { interiorPlanFor, stairsLanding, type InteriorPlan } from '../map/interiorPlans';
+import type { InteriorCar } from '../map/interiorPieces';
 import { VEHICLE_SCALE } from '../map/scale';
 import { DISTRICT_OFFSETS, OUTSKIRT_PLACE_LOTS, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
@@ -4658,7 +4660,17 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: ---- interiors: a room per building, with its hotspots (drawn by renderInteriorView) ----
   const ROOM_W = 480, ROOM_H = 280;
   // LEGAL: Every room is ROOM_W x ROOM_H except the mall, which is a hall (map/mallInterior MALL_ROOM).
-  function roomSize(): { w: number; h: number } { return state.currentInterior?.kind === 'mall' ? MALL_ROOM : { w:ROOM_W, h:ROOM_H }; }
+  // LEGAL: Each building's room is its own size (map/interiorPlans), set from the building's outside.
+  function planFor(interior: InteriorState): InteriorPlan {
+    const svc = serviceBuildings.find(sv => sv.id === interior.refId);
+    return interiorPlanFor(interior.kind, interior.refId, brandById(svc?.brandId)?.category);
+  }
+  function roomSizeFor(interior: InteriorState): { w: number; h: number } {
+    if(interior.kind === 'mall') return MALL_ROOM;
+    const plan = planFor(interior);
+    return { w:plan.w, h:plan.h };
+  }
+  function roomSize(): { w: number; h: number } { return state.currentInterior ? roomSizeFor(state.currentInterior) : { w:ROOM_W, h:ROOM_H }; }
   function doorLocal(): { x: number; y: number } { const room = roomSize(); return { x:room.w / 2, y:room.h - 6 }; }
 
   type HotSpot = { id: string; x: number; y: number; label: string; icon: string; action: () => void };
@@ -4695,12 +4707,12 @@ import type * as ThreeNamespace from 'three';
       { label:'Step back', secondary:true },
     ];
   }
-  // LEGAL: Shared placement for the secondary "ambient" hotspot so it never collides with
-  // LEGAL: the primary counter (top-centre) or the door (bottom-centre).
-  const AMBIENT_X = ROOM_W*0.85, AMBIENT_Y = ROOM_H*0.55;
+  // LEGAL: The secondary "ambient" hotspot sits right of centre (AMBIENT_X, AMBIENT_Y in groundSpotsFor) so
+  // LEGAL: it never collides with the primary counter (top-centre) or the door (bottom-centre).
 
-  function hotspotsFor(interior: InteriorState | null): HotSpot[] {
-    if(!interior) return [];
+  function groundSpotsFor(interior: InteriorState): HotSpot[] {
+    const { w:ROOM_W, h:ROOM_H } = roomSizeFor(interior);
+    const AMBIENT_X = ROOM_W*0.85, AMBIENT_Y = ROOM_H*0.55;
     const missionId = activeMissionForServiceId(interior.refId) ?? activeMissionForObjectId(interior.refId);
     const spots: HotSpot[] = [];
     const kind = interior.kind;
@@ -4743,9 +4755,7 @@ import type * as ThreeNamespace from 'three';
       // LEGAL: Your own garage: the fleet lives here. Pick which car to drive, and repair
       // LEGAL: anything that broke down. Nothing is for sale — that is what dealerships are.
       spots.push({ id:'fleet', x:ROOM_W/2, y:80, label:'Your Fleet', icon:'🔑', action:openGarageFleet });
-      // LEGAL: Arjun lives in the flat upstairs: his clothes and his vault are up there.
-      spots.push({ id:'wardrobe', x:ROOM_W*0.36, y:205, label:'Wardrobe', icon:'👔', action:openWardrobeSpot });
-      spots.push({ id:'vault', x:ROOM_W*0.62, y:205, label:'Vault', icon:'🔒', action:openVault });
+      // LEGAL: Arjun lives in the flat upstairs (upperSpotsFor): his clothes and his vault are up there.
       spots.push({ id:'bench', x:AMBIENT_X, y:AMBIENT_Y, label:'Work Bench', icon:'🔧', action:function(){
         const parked = state.carParkedAt;
         const left = secondsUntilGarageReturn(parked, state.playSeconds);
@@ -4842,7 +4852,84 @@ import type * as ThreeNamespace from 'three';
     return spots;
   }
 
+  // LEGAL: Every floor's hotspots: the ground floor's own, the stairs between floors, and the regulars
+  // LEGAL: (map/interiorPlans) you can stop and talk to.
+  function hotspotsFor(interior: InteriorState | null): HotSpot[] {
+    if(!interior) return [];
+    const plan = planFor(interior);
+    const floor = interior.floor ?? 0;
+    const spots = floor === 0 ? groundSpotsFor(interior) : upperSpotsFor(interior, plan, floor);
+    if(plan.stairs){
+      const { kind } = plan.stairs;
+      const stand = stairsLanding(plan)!;
+      const up = floor < plan.floors.length - 1;
+      const label = kind === 'lift' ? 'Lift' : `${kind === 'escalator' ? 'Escalator' : 'Stairs'} ${up ? 'up' : 'down'}`;
+      spots.push({ id:up ? 'stairs-up' : 'stairs-down', ...stand, label, icon:'🪜', action:function(){ changeFloor(up ? floor + 1 : floor - 1); } });
+    }
+    plan.regulars.filter(r => r.floor === floor).forEach(function(regular){
+      spots.push({ id:`talk:${regular.id}`, x:regular.x, y:regular.z + 20, label:regular.name, icon:'💬', action:function(){
+        const line = regular.lines[Math.floor(state.playSeconds / 45) % regular.lines.length];
+        showModal({ eyebrow:regular.role, title:regular.name, body:`<p class="flavor">"${line}"</p>`, buttons:[{ label:'Nod and move on' }] });
+      } });
+    });
+    return spots;
+  }
+  // LEGAL: What's on the upper floors.
+  function upperSpotsFor(interior: InteriorState, plan: InteriorPlan, floor: number): HotSpot[] {
+    const { w:W, h:H } = roomSizeFor(interior);
+    const room = plan.floors[floor]?.name ?? '';
+    switch(plan.theme){
+      case 'garageHome': return [
+        { id:'wardrobe', x:W*0.3, y:H*0.45, label:'Wardrobe', icon:'👔', action:openWardrobeSpot },
+        { id:'vault', x:W*0.62, y:H*0.45, label:'Vault', icon:'🔒', action:openVault },
+      ];
+      case 'civic': return [{ id:'council', x:W/2, y:H*0.44 + 34, label:'Council Table', icon:'🏛️', action:()=>
+        showRoomBrief(room, interior.name, 'Twelve chairs, one gavel, and a seating plan that tells you who owes whom.', briefRow('Your influence', formatCount(state.influence)) + briefRow('Elected office', state.electedOffice ? 'Yours' : 'Not yet')) }];
+      case 'casino': return [{ id:'vip-table', x:W/2, y:H*0.38 + 40, label:'High-Roller Table', icon:'🂡', action:function(){
+        showModal({ eyebrow:room, title:'Five Thousand a Hand', body:"<p class='flavor'>The cards are the same upstairs. The stakes aren't.</p>" + briefRow('Your cash', formatMoney(state.cash)), buttons:[
+          { label:'Play at $5,000', cost:5000, onClick:function(){ casinoStake = 5000; openCasinoFloor(); } },
+          { label:'Watch a hand', secondary:true },
+        ] });
+      } }];
+      case 'newsroom': return [{ id:'editor', x:W/2, y:80, label:"Editor's Desk", icon:'📰', action:()=>
+        showRoomBrief(room, interior.name, "Proofs, a cold coffee and tomorrow's front page, face down.", briefRow('Your respect', formatCount(state.respect))) }];
+      case 'executive': return [{ id:'boardroom', x:W/2, y:H*0.44 + 34, label:'Boardroom', icon:'📈', action:()=>
+        showRoomBrief(room, interior.name, 'A long table, a long view, and nobody in the chairs but you.', briefRow('Income', formatMoneyRate(netIncome()))) }];
+      case 'mall': return mallUpperSpots();
+      default: return [];
+    }
+  }
+  function changeFloor(floor: number): void {
+    const interior = state.currentInterior;
+    if(!interior) return;
+    const plan = planFor(interior);
+    interior.floor = Math.max(0, Math.min(plan.floors.length - 1, floor));
+    const stairs = plan.stairs;
+    const landing = stairsLanding(plan);
+    if(stairs && landing){ player.x = landing.x + 30; player.y = landing.y; }
+    player.vx = 0; player.vy = 0;
+    log(`<i aria-hidden="true" class="ph-duotone ph-stairs"></i> ${plan.floors[interior.floor].name}.`);
+    renderAll();
+  }
+
   // LEGAL: ---- The mall's hall: the kiosks, the food court and the play area ----
+  // LEGAL: Up the escalator: an arcade and a cinema.
+  function mallUpperSpots(): HotSpot[] {
+    return [
+      { id:'arcade', ...MALL_UPPER_SPOTS.arcade, label:'Arcade', icon:'🕹️', action:function(){
+        showModal({ eyebrow:'Lakeridge Mall', title:'The Arcade', body:"<p class='flavor'>A row of cabinets older than the kids playing them, and one claw machine nobody has ever beaten.</p>", buttons:[
+          { label:'Feed the claw machine ($5)', cost:5, onClick:function(){ state.cash -= 5; const won = Math.random() < 0.12; log(won ? '<i aria-hidden="true" class="ph-duotone ph-game-controller"></i> The claw holds. A plush raccoon in a tiny suit is yours.' : '<i aria-hidden="true" class="ph-duotone ph-game-controller"></i> The claw drops it at the last second. Of course it does.'); if(won) state.worldMemory.arcadePrize = 'raccoon'; renderAll(); } },
+          { label:'Walk on', secondary:true },
+        ] });
+      } },
+      { id:'cinema', ...MALL_UPPER_SPOTS.cinema, label:'Cinema', icon:'🎬', action:function(){
+        showModal({ eyebrow:'Lakeridge Mall', title:'Lakeridge Six', body:"<p class='flavor'>Six screens. Five of them are showing the same car chase.</p>", buttons:[
+          { label:'Catch a film ($12)', cost:12, onClick:function(){ state.cash -= 12; state.playSeconds += 60; state.heat = Math.max(0, state.heat - 2); log('<i aria-hidden="true" class="ph-duotone ph-film-strip"></i> Two hours in the dark. Nobody looks for you at a matinee: heat -2.'); renderAll(); } },
+          { label:'Not today', secondary:true },
+        ] });
+      } },
+    ];
+  }
   function openPerfumeKiosk(): void {
     showModal({ eyebrow:'Lakeridge Mall', title:'The Perfume Kiosk', body:"<p class='flavor'>She's out from behind the counter before you can change course, tester raised. \"Just one spray. It's called <em>Ambition</em>. It suits you, I can tell.\"</p>", buttons:[
       { label:'Buy a bottle ($85)', cost:85, onClick:function(){ state.cash -= 85; state.respect += 2; state.worldMemory.cologne = 'ambition'; log('<i aria-hidden="true" class="ph-duotone ph-drop"></i> You walk off smelling of Ambition. People lean in a little when you talk: respect +2.'); renderAll(); scheduleSave(); } },
@@ -4871,7 +4958,7 @@ import type * as ThreeNamespace from 'three';
 
   function enterBuilding(kind: string, refId: string, name: string){
     if(state.inVehicle) exitVehicle();
-    state.currentInterior = { kind, refId, name, returnX:player.x, returnY:player.y, returnDistrict:state.currentDistrict };
+    state.currentInterior = { kind, refId, name, returnX:player.x, returnY:player.y, returnDistrict:state.currentDistrict, floor:0 };
     const door = doorLocal();
     player.x = door.x; player.y = door.y - 40; player.facing = -Math.PI/2; player.vx=0; player.vy=0;
     Object.keys(keys).forEach(k=> keys[k]=false);
@@ -4941,6 +5028,14 @@ import type * as ThreeNamespace from 'three';
       if(res.message) log(res.message);
       renderAll();
       scheduleSave();
+      // LEGAL: How it went, on screen. The game used to just vanish (its line was too minor for the
+      // LEGAL: street log), which read as the game crashing.
+      if(!res.max) return;
+      const gains = [res.reward.cash ? `+${formatMoney(res.reward.cash)}` : '', res.reward.respect ? `respect +${res.reward.respect}` : ''].filter(Boolean).join(' · ');
+      showModal({ eyebrow:amenity.name, title:`${res.score} of ${res.max}`, body:`<p class="flavor">${res.message}</p>${gains ? briefRow('You get', gains) : ''}`, buttons:[
+        { label:'Again', onClick:function(){ runAmenityMinigame(amenity); } },
+        { label:'Done', secondary:true },
+      ] });
     });
   }
   function openAmenityPanel(amenity: typeof mapAmenities[number]){
@@ -5147,7 +5242,8 @@ import type * as ThreeNamespace from 'three';
       let best: MapMarker | null = null, bestDist=46;
       const door = doorLocal();
       const dDoor = Math.hypot(player.x-door.x, player.y-door.y);
-      if(dDoor<bestDist){ bestDist=dDoor; best={type:'door', ref:{label:'Exit'}}; }
+      // LEGAL: The way out is on the ground floor.
+      if(dDoor<bestDist && !(state.currentInterior.floor ?? 0)){ bestDist=dDoor; best={type:'door', ref:{label:'Exit'}}; }
       hotspotsFor(state.currentInterior).forEach(h=>{
         const d = Math.hypot(player.x-h.x, player.y-h.y);
         if(d<bestDist){ bestDist=d; best={type:'hotspot', ref:h}; }
@@ -6922,9 +7018,9 @@ import type * as ThreeNamespace from 'three';
     byId('scene3d-container').classList.remove('indoors');
   }
   // LEGAL: Your own car stands in your garage; a showroom or paint bay shows one in the room's colour.
-  function interiorCarModel(spec: { color: string; use: 'garage' | 'showroom' | 'bay' }): ThreeNamespace.Object3D | null {
+  function interiorCarModel(spec: InteriorCar): ThreeNamespace.Object3D | null {
     if(spec.use === 'garage'){ const car = getEquippedCar(); return car && !isFlyingVehicle(car.id) ? buildCarModel(car, false) : null; }
-    return vehicleLibrary ? vehicleLibrary.create(spec.use === 'showroom' ? 'supercar' : 'sedan', spec.color, 29, 15) : null;
+    return vehicleLibrary ? vehicleLibrary.create(spec.cls ?? (spec.use === 'showroom' ? 'supercar' : 'sedan'), spec.color, 29, 15) : null;
   }
   // LEGAL: The first room you walked into stalled for a couple of hundred milliseconds on a fast GPU
   // LEGAL: (seconds on a slow one) while its shaders compiled. So once the city is up, a few
@@ -6939,9 +7035,9 @@ import type * as ThreeNamespace from 'three';
     for(const [kind, refId] of [['bankHome', 'bankHome'], ['casino', 'casinoLakeridge'], ['mall', 'mallLakeridge'], ['local', 'patel']] as const){
       if(state.currentInterior) return;
       const interior = { kind, refId, name:'', returnX:0, returnY:0, returnDistrict:'' };
-      const room = kind === 'mall' ? MALL_ROOM : { w:ROOM_W, h:ROOM_H };
+      const room = roomSizeFor(interior);
       const view = buildInteriorRoom3d(THREE, {
-        kind, refId, room:{ ...room, door:{ x:room.w / 2 } }, door:{ x:room.w / 2, y:room.h - 6 }, spots:hotspotsFor(interior),
+        kind, refId, room:{ ...room, door:{ x:room.w / 2 } }, door:{ x:room.w / 2, y:room.h - 6 }, spots:hotspotsFor(interior), plan:planFor(interior), floor:0,
         makePerson:(identity, coat) => library.create(identity, coat), makeCar:interiorCarModel, merge:mergeSceneryGeometries ?? undefined,
       });
       warmScene.add(view.root);
@@ -6955,7 +7051,7 @@ import type * as ThreeNamespace from 'three';
     const interior = state.currentInterior;
     if(!interior || !characterLibrary) return;
     const spots = hotspotsFor(interior);
-    const key = `${interior.kind}|${interior.refId}|${spots.map(h => `${h.id}@${h.x},${h.y}`).join(';')}`;
+    const key = `${interior.kind}|${interior.refId}|${interior.floor ?? 0}|${spots.map(h => `${h.id}@${h.x},${h.y}`).join(';')}`;
     if(!interiorScene3d){
       interiorScene3d = new THREE.Scene();
       interiorScene3d.background = new THREE.Color('#0d0e13');
@@ -6964,8 +7060,10 @@ import type * as ThreeNamespace from 'three';
     if(key !== interiorViewKey){
       if(interiorView){ interiorScene3d.remove(interiorView.root); interiorView.dispose(); }
       const library = characterLibrary;
+      const floor = interior.floor ?? 0;
       interiorView = buildInteriorRoom3d(THREE, {
-        kind:interior.kind, refId:interior.refId, room:{ ...roomSize(), door:doorLocal() }, door:doorLocal(), spots,
+        kind:interior.kind, refId:interior.refId, room:{ ...roomSize(), door:doorLocal() }, door:floor ? null : doorLocal(), spots,
+        plan:planFor(interior), floor,
         makePerson:(identity, coat) => library.create(identity, coat),
         makeCar:interiorCarModel,
         merge:mergeSceneryGeometries ?? undefined,

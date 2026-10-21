@@ -13,7 +13,8 @@ interface View { renderer: ThreeNamespace.WebGLRenderer; scene: ThreeNamespace.S
 // LEGAL: opening a game doesn't stall on creating a WebGL context and recompiling every shader.
 let kept: { canvas: HTMLCanvasElement; renderer: ThreeNamespace.WebGLRenderer } | null = null;
 function createView(THREE: Three, canvas: HTMLCanvasElement, background: string, fov: number): View {
-  if(!kept || kept.canvas !== canvas){
+  // LEGAL: A renderer whose GPU context was lost (the driver can drop it) is replaced, not reused.
+  if(!kept || kept.canvas !== canvas || kept.renderer.getContext().isContextLost()){
     kept?.renderer.dispose();
     kept = { canvas, renderer:new THREE.WebGLRenderer({ canvas, antialias:true }) };
   }
