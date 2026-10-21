@@ -310,23 +310,42 @@ def build(cls, m):
         kit.tapered_box("windscreen", (0.6, 15), (0.6, 14.5), 4.6, (25.6, 0, 10.6), m["glass"], top_offset=(-0.6, 0), bevel=0.2)
         kit.box("chassis", (54, 12, 2.2), (0, 0, 3.6), m["trim"], bevel=0.3)
         kit.tapered_box("body", (36, 19), (32, 18), 15.5, (-6.5, 0, 4.6), green, top_offset=(-1.5, 0), bevel=1.6, segments=3)
-        kit.box("hopper", (8, 19, 9), (-26.5, 0, 9.5), m["chrome"], bevel=0.6)
+        # The open hopper at the back: walls round a dark well, and the load heaped in it, a lumpy
+        # mound with bags and flattened boxes on top. It used to be a closed box with bags like
+        # balls sitting on the roof, which read flat from above.
+        well = kit.material("hopper-well", "#1a1c1a", roughness=0.9)
+        kit.box("hopper-floor", (8, 18, 0.8), (-26.5, 0, 5.4), well)
+        kit.box("hopper-back", (0.9, 19, 9.5), (-30.6, 0, 9.8), m["chrome"], bevel=0.3)
         for side in (-1, 1):
+            kit.box(f"hopper-side-{side}", (8.6, 0.9, 9.5), (-26.5, side * 9.1, 9.8), m["chrome"], bevel=0.3)
             kit.box(f"stripe-{side}", (34, 0.4, 1.4), (-6.5, side * 9.6, 9.0), m["white"])
             kit.box(f"lifter-arm-{side}", (1.2, 1.2, 10), (-30.8, side * 6.5, 8.5), m["trim"], bevel=0.3)
         trash = [kit.material("trash-a", "#1c1c1c", roughness=0.4), kit.material("trash-b", "#3b4a2a", roughness=0.5), kit.material("trash-c", "#6b5a3a", roughness=0.9)]
         for x in (-18, -10, -2, 6):
             kit.box(f"rib-{x}", (0.9, 19.4, 15.0), (x, 0, 12.0), green, bevel=0.3)
-        # Overflowing: bags piled on the roof and spilling out of the hopper, visible from above.
-        bags = [(-25.5, -4.5, 14.8, 2.6), (-27.2, 2.0, 15.4, 2.9), (-24.4, 5.6, 14.6, 2.2), (-28.6, -1.0, 17.0, 2.0),
-                (-19.0, -3.5, 21.4, 2.8), (-14.5, 3.0, 21.6, 3.1), (-9.0, -1.0, 21.2, 2.6), (-16.5, -0.5, 23.6, 2.2),
-                (-4.0, 4.5, 21.0, 2.0), (-21.5, 5.0, 21.0, 2.1)]
-        for i, (x, y, z, r) in enumerate(bags):
-            bpy.ops.mesh.primitive_uv_sphere_add(radius=r, segments=10, ring_count=8, location=(x, y, z))
+        import random as _random
+        rng = _random.Random(7)
+        bpy.ops.mesh.primitive_ico_sphere_add(radius=1, subdivisions=3, location=(-26.4, 0, 12.4))
+        mound = bpy.context.active_object
+        mound.name = "trash-mound"
+        mound.scale = (3.6, 8.2, 3.0)
+        for v in mound.data.vertices:
+            v.co *= 1 + (rng.random() - 0.5) * 0.35
+        mound.data.materials.append(trash[2])
+        bpy.ops.object.shade_smooth()
+        for i, (x, y, z, r) in enumerate(((-25.0, -4.6, 15.0, 1.9), (-27.6, 2.4, 15.6, 2.2), (-26.0, 5.8, 14.6, 1.6), (-28.2, -2.0, 15.0, 1.5), (-24.6, 0.8, 15.9, 1.7))):
+            bpy.ops.mesh.primitive_ico_sphere_add(radius=r, subdivisions=2, location=(x, y, z))
             bag = bpy.context.active_object
-            bag.name = f"trash-{i}"
-            bag.scale = (1.0, 0.85, 0.8)
-            bag.data.materials.append(trash[i % 3])
+            bag.name = f"trash-bag-{i}"
+            bag.scale = (1.0, 0.85, 0.75)
+            for v in bag.data.vertices:
+                v.co *= 1 + (rng.random() - 0.5) * 0.25
+            bag.data.materials.append(trash[i % 2])
+            bpy.ops.object.shade_smooth()
+        cardboard = kit.material("cardboard", "#a0784a", roughness=0.9)
+        for i, (x, y, z, turn) in enumerate(((-26.8, -1.2, 16.4, 0.4), (-25.2, 3.6, 15.4, -0.7))):
+            box = kit.box(f"carton-{i}", (3.2, 2.6, 0.5), (x, y, z), cardboard)
+            box.rotation_euler = (0.3 * (i - 0.5), 0.2, turn)
         kit.box("bin", (3.4, 3.4, 4.6), (-31.8, 0, 6.0), kit.material("bin", "#1f4fa8", roughness=0.6), bevel=0.4)
         wheels(m, (20.5, -12.0, -20.0), 3.0, 4.2, 7.6, hub=False)
         lights(m, 51, 18, 6.2)
@@ -381,4 +400,4 @@ for cls in [c for c in CLASSES if not only or c == only]:
     if out_dir:
         kit.export(os.path.join(out_dir, f"{cls}.glb"))
     if preview_dir:
-        kit.preview(os.path.join(preview_dir, f"vehicle-{cls}.png"), distance=78, height=36)
+        kit.preview(os.path.join(preview_dir, f"vehicle-{cls}.png"), distance=78, height=36, angle=float(os.environ.get("ANGLE", "-40")))

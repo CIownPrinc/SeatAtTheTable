@@ -11,9 +11,13 @@ export interface CameraRigInput {
   vy: number;
   inVehicle: boolean;
   dt: number;
+  // LEGAL: The experimental "camera follows Arjun" setting: turn to look the way he's heading.
+  followHeading?: boolean;
 }
 
-export interface CameraView { eye: Vec3; target: Vec3 }
+// LEGAL: `heading` is the way the camera looks across the ground, in the same angle convention as
+// LEGAL: movement (atan2 of y, x); north-up is -PI/2. Callers turn movement keys by it.
+export interface CameraView { eye: Vec3; target: Vec3; heading: number }
 
 export interface CameraRig {
   update(input: CameraRigInput): CameraView;
@@ -36,12 +40,18 @@ const LEAD_RATE = 2.4;
 const ZOOM_RATE = 1.6;
 const AIM_HEIGHT = 14;
 const TELEPORT_DISTANCE = 600;
+const NORTH_UP = -Math.PI / 2;
+// LEGAL: How fast the following camera swings round, and the speed below which it holds still, so
+// LEGAL: it doesn't spin when Arjun stops or turns on the spot.
+const TURN_RATE = 1.8;
+const TURN_MIN_SPEED = 30;
 
 export function createCameraRig(): CameraRig {
   let fresh = true;
   const focus = { x: 0, z: 0 };
   const lead = { x: 0, z: 0 };
   let distance = WALK_DISTANCE;
+  let heading = NORTH_UP;
 
   return {
     snap(){ fresh = true; },
@@ -70,10 +80,15 @@ export function createCameraRig(): CameraRig {
         lead.z += (wantLeadZ - lead.z) * leadEase;
         distance += (wantDistance - distance) * zoomEase;
       }
+      const wantHeading = !input.followHeading ? NORTH_UP : speed > TURN_MIN_SPEED ? Math.atan2(input.vy, input.vx) : heading;
+      const turn = Math.atan2(Math.sin(wantHeading - heading), Math.cos(wantHeading - heading));
+      heading += turn * (1 - Math.exp(-TURN_RATE * input.dt));
       const target = { x: focus.x + lead.x, y: AIM_HEIGHT, z: focus.z + lead.z };
+      const back = Math.cos(PITCH) * distance;
       return {
         target,
-        eye: { x: target.x, y: target.y + Math.sin(PITCH) * distance, z: target.z + Math.cos(PITCH) * distance },
+        heading,
+        eye: { x: target.x - Math.cos(heading) * back, y: target.y + Math.sin(PITCH) * distance, z: target.z - Math.sin(heading) * back },
       };
     },
   };

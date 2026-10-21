@@ -6486,6 +6486,14 @@ import type * as ThreeNamespace from 'three';
     return routeSummary(routeHintBetween({ x:player.x, y:player.y }, point)).label;
   }
 
+  // LEGAL: Wheel to zoom the minimap in and out, remembered in this browser.
+  const MINIMAP_ZOOM_KEY = 'seat-minimap-zoom';
+  let minimapZoom = (function(){ try{ const saved = Number(window.localStorage.getItem(MINIMAP_ZOOM_KEY)); return saved >= 0.5 && saved <= 4 ? saved : 1; }catch(e){ return 1; } })();
+  minimapCanvas.addEventListener('wheel', function(e){
+    e.preventDefault();
+    minimapZoom = Math.max(0.5, Math.min(4, minimapZoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
+    try{ window.localStorage.setItem(MINIMAP_ZOOM_KEY, String(minimapZoom)); }catch(err){}
+  }, { passive:false });
   minimapCanvas.addEventListener('pointerdown', function(e){
     minimapDragging = true; minimapDragMoved = false;
     minimapDragStart = { clientX:e.clientX, clientY:e.clientY, panX:minimapPan.x, panY:minimapPan.y };
@@ -6494,8 +6502,8 @@ import type * as ThreeNamespace from 'three';
     if(!minimapDragging || !minimapDragStart) return;
     const ddx = e.clientX - minimapDragStart.clientX, ddy = e.clientY - minimapDragStart.clientY;
     if(Math.abs(ddx)>3 || Math.abs(ddy)>3) minimapDragMoved = true;
-    minimapPan.x = minimapDragStart.panX - ddx/MINIMAP_SCALE;
-    minimapPan.y = minimapDragStart.panY - ddy/MINIMAP_SCALE;
+    minimapPan.x = minimapDragStart.panX - ddx/(MINIMAP_SCALE * minimapZoom);
+    minimapPan.y = minimapDragStart.panY - ddy/(MINIMAP_SCALE * minimapZoom);
   });
   window.addEventListener('pointerup', function(){
     if(!minimapDragging) return;
@@ -6527,6 +6535,7 @@ import type * as ThreeNamespace from 'three';
       landmass:WINDHAVEN_LANDMASS,
       landmarks,
       waypoint:currentWaypoint(),
+      scale:MINIMAP_SCALE * minimapZoom,
     });
     updateMinimapTurf();
     refreshWaypointGuide();
@@ -7206,8 +7215,18 @@ import type * as ThreeNamespace from 'three';
     refreshPlayerModel(); updateParkedCarMesh(); renderAll(); scheduleSave();
   }
 
+  // LEGAL: The experimental setting: the camera turns to follow Arjun (map/cameraRig), off by default.
+  const CAMERA_FOLLOW_KEY = 'seat-camera-follow';
+  let cameraFollows = (function(){ try{ return window.localStorage.getItem(CAMERA_FOLLOW_KEY) === '1'; }catch(e){ return false; } })();
+  let cameraHeading = -Math.PI / 2;
+  byId<HTMLInputElement>('camera-follow-toggle').checked = cameraFollows;
+  byId<HTMLInputElement>('camera-follow-toggle').addEventListener('change', function(e){
+    cameraFollows = (e.target as HTMLInputElement).checked;
+    try{ window.localStorage.setItem(CAMERA_FOLLOW_KEY, cameraFollows ? '1' : '0'); }catch(err){}
+  });
   function aimCamera(dt: number): void {
-    const view = cameraRig.update({ x:player.x, y:player.y, vx:player.vx, vy:player.vy, inVehicle:state.inVehicle, dt });
+    const view = cameraRig.update({ x:player.x, y:player.y, vx:player.vx, vy:player.vy, inVehicle:state.inVehicle, dt, followHeading:cameraFollows && !state.currentInterior });
+    cameraHeading = view.heading;
     camera3d.position.set(view.eye.x, view.eye.y, view.eye.z);
     camera3d.lookAt(view.target.x, view.target.y, view.target.z);
   }
@@ -7232,6 +7251,12 @@ import type * as ThreeNamespace from 'three';
       if(keys['arrowright']||keys['d']) dx += 1;
       const stick = touchStick.vector();
       if(stick.x || stick.y){ dx = stick.x; dy = stick.y; }
+      // LEGAL: With the camera following Arjun, up on the keys is the way the camera looks.
+      if(cameraFollows && !state.currentInterior && (dx || dy)){
+        const fx = Math.cos(cameraHeading), fy = Math.sin(cameraHeading);
+        const turnedX = fx * -dy + -fy * dx, turnedY = fy * -dy + fx * dx;
+        dx = turnedX; dy = turnedY;
+      }
       // LEGAL: The drunk cheat: your feet don't quite go where you point them.
       if(isDrunk() && (dx || dy)){ dx += Math.sin(state.playSeconds * 1.9) * 0.55; dy += Math.cos(state.playSeconds * 1.3) * 0.45; }
     }

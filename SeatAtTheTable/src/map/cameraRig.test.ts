@@ -81,3 +81,23 @@ describe('sunShadowFrame', function () {
     expect(b.target).toEqual(a.target);
   });
 });
+
+describe('the experimental following camera', function () {
+  it('stays north-up when following is off', function () {
+    const rig = createCameraRig();
+    const view = rig.update({ x:0, y:0, vx:120, vy:0, inVehicle:false, dt:0.1 });
+    expect(view.heading).toBeCloseTo(-Math.PI / 2);
+    expect(view.eye.z).toBeGreaterThan(view.target.z);
+  });
+
+  it('swings round behind Arjun as he heads east, and holds still when he stops', function () {
+    const rig = createCameraRig();
+    let view = rig.update({ x:0, y:0, vx:0, vy:0, inVehicle:false, dt:0.016, followHeading:true });
+    for(let i = 0; i < 300; i++) view = rig.update({ x:0, y:0, vx:120, vy:0, inVehicle:false, dt:0.016, followHeading:true });
+    expect(view.heading).toBeCloseTo(0, 1);
+    expect(view.eye.x).toBeLessThan(view.target.x);
+    const held = view.heading;
+    for(let i = 0; i < 60; i++) view = rig.update({ x:0, y:0, vx:0, vy:0, inVehicle:false, dt:0.016, followHeading:true });
+    expect(view.heading).toBeCloseTo(held, 5);
+  });
+});

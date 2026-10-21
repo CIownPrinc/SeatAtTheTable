@@ -394,7 +394,9 @@ old one.
 70. Make walking and sprinting look and feel distinct. Crouching only if it can be made useful (hiding
     from cops, missions); otherwise say so and put it in the SeatAtTheTable 2 plan (user, 2026-10-20).
 71. The cars look too small again, and the trees look too grey (user, 2026-10-20).
-72. Some skyscraper walls are fully black instead of having windows (user, 2026-10-20).
+72. **DONE** Some skyscraper walls are fully black instead of having windows (user, 2026-10-20). The
+    tower was plain boxes of near-mirror glass, which renders black with no sky to reflect. Rebuilt
+    with a floor band every storey, mullions and lit offices, and the shared glass made lighter.
 73. More cars, and more variety of vehicles (user, 2026-10-20).
 74. Make sure the city has every kind of building you'd expect, even ones you can't enter: apartments,
     condos, family houses, parks, restaurants, clothing shops, cafes, clubs, stores, corner shops,
@@ -405,11 +407,12 @@ old one.
 76. A rare easter-egg mission: someone riding a horse past you falls off; talk to them and help them
     up, Arjun says it's a cool horse, the owner offers to sell it, and if you buy it Arjun takes it
     home and can customise it like himself and name it. The user is open to changes (2026-10-20).
-77. A settings toggle (not the default) to try a camera that turns to follow the way Arjun faces
-    (user, 2026-10-20).
+77. **DONE** A settings toggle (not the default) to try a camera that turns to follow the way Arjun
+    faces (user, 2026-10-20). Settings > "Camera follows Arjun (experimental)": the camera swings
+    round behind the way he's heading (and holds still when he stops), and the keys turn with it.
 78. Many buildings have random spheres, circles, prisms and so on standing in front of them, like
     City Hall's floating rectangle. Find them and fix them (user, 2026-10-20).
-79. Scroll the mouse wheel to zoom the minimap (user, 2026-10-20).
+79. **DONE** Scroll the mouse wheel to zoom the minimap (user, 2026-10-20). Half to four times, remembered.
 80. Zone the city like a real one: commercial, rich, industrial, poor and middle-class areas, suburbs,
     woodland, farms, beach, a holiday spot, open space, sports fields, transport hubs, nature parks,
     museums and so on. Zones blend into each other gradually, not hard cut-outs (user, 2026-10-20).
@@ -458,7 +461,8 @@ old one.
 99. **DONE** Flying vehicles pass through buildings (user, 2026-10-20). Flying ignored buildings on the
     idea you were over the roofs, but towers reach about 450 against a flight height of 80. You now
     climb over what's a second ahead, and can't fly into a building taller than you are yet.
-100. The garbage truck's load of trash looks odd; give it depth (user, 2026-10-20).
+100. **DONE** The garbage truck's load of trash looks odd; give it depth (user, 2026-10-20). An open
+     hopper with walls and a dark well, and a heaped load of bags and boxes in it, not balls on the roof.
 101. **DONE** Railways clip through roads, and Arjun walks inside a bridge instead of on top. Fix it,
     audit for similar problems, and add tests that catch them so they don't come back (user,
     2026-10-20). The raised rails and sleepers ran across every road and the rail bed shared the road's
