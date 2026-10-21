@@ -2045,12 +2045,19 @@ import type * as ThreeNamespace from 'three';
     renderAll();
   }
 
+  // LEGAL: A hand as card tiles; `hidden` face-down ones first (the dealer's hole card). In draw poker
+  // LEGAL: `holdable` makes each card a button you tap to hold, and `held` marks the ones held.
+  function cardTile(card: Card, opts: { back?: boolean; index?: number; held?: boolean } = {}): string {
+    if(opts.back) return `<span class="pcard back" aria-label="Face-down card"></span>`;
+    const label = cardLabel(card);
+    const pip = label.slice(-1), rank = label.slice(0, -1);
+    const red = card.suit === 'H' || card.suit === 'D';
+    const cls = `pcard${red ? ' red' : ''}${opts.held ? ' held' : ''}`;
+    if(opts.index !== undefined) return `<button type="button" class="${cls}" data-hold="${opts.index}" aria-pressed="${opts.held ? 'true' : 'false'}" aria-label="${opts.held ? 'Release' : 'Hold'} ${label}"><span>${rank}</span><span class="pip">${pip}</span></button>`;
+    return `<span class="${cls}" aria-label="${label}"><span>${rank}</span><span class="pip">${pip}</span></span>`;
+  }
   function cardRow(cards: Card[], hidden = 0): string {
-    return cards.map(function(card, index){
-      if(index < hidden) return `<span style="display:inline-block;padding:6px 9px;margin:2px;border-radius:6px;background:#2b3040;color:#6a7080;">?</span>`;
-      const red = card.suit === 'H' || card.suit === 'D';
-      return `<span style="display:inline-block;padding:6px 9px;margin:2px;border-radius:6px;background:#f2efe6;color:${red ? '#b3261e' : '#16181d'};font-weight:700;">${cardLabel(card)}</span>`;
-    }).join('');
+    return `<div class="cards">${cards.map((card, index) => cardTile(card, { back:index < hidden })).join('')}</div>`;
   }
 
   function openCasinoFloor(): void {
@@ -2104,8 +2111,8 @@ import type * as ThreeNamespace from 'three';
       };
       showModal({
         eyebrow:'Blackjack', title:wording[outcome],
-        body:`<p class="flavor">Dealer ${handValue(played.hand)} — ${cardRow(played.hand)}</p>`
-          + `<p class="flavor">You ${handValue(player)} — ${cardRow(player)}</p>`,
+        body:`<p class="flavor">Dealer — ${handValue(played.hand)}</p>${cardRow(played.hand)}`
+          + `<p class="flavor">You — ${handValue(player)}</p>${cardRow(player)}`,
         buttons:[
           { label:'Deal again', onClick:openBlackjack },
           { label:'Back to the floor', secondary:true, onClick:openCasinoFloor },
@@ -2119,8 +2126,8 @@ import type * as ThreeNamespace from 'three';
       if(total >= 21){ finish(); return; }
       showModal({
         eyebrow:'Blackjack', title:`You have ${total}`,
-        body:`<p class="flavor">Dealer shows ${cardRow(dealer, 1)}</p>`
-          + `<p class="flavor">Your hand — ${cardRow(player)}</p>`
+        body:`<p class="flavor">Dealer shows</p>${cardRow(dealer, 1)}`
+          + `<p class="flavor">Your hand</p>${cardRow(player)}`
           + briefRow('Stake', formatMoney(casinoStake)),
         buttons:[
           { label:'Hit', onClick:function(){ player.push(shoe.shift() as Card); turn(); } },
@@ -2174,19 +2181,33 @@ import type * as ThreeNamespace from 'three';
     cherry:'🍒', lemon:'🍋', bell:'🔔', bar:'🍫', seven:'7️⃣',
   };
 
+  // LEGAL: The machine first, then the pull. Walking up to the slots used to take your stake and
+  // LEGAL: spin before you'd chosen anything.
   function openSlots(): void {
-    if(!casinoCanBet()) { openCasinoFloor(); return; }
+    showModal({
+      eyebrow:'Slots', title:'The Kettle Seven',
+      body:`<div class="reels"><span>7️⃣</span><span>7️⃣</span><span>7️⃣</span></div>`
+        + briefRow('Stake', formatMoney(casinoStake)) + briefRow('Three sevens', `${SLOT_PAYOUTS.seven}x`),
+      buttons:[
+        { label:`Pull (${formatMoney(casinoStake)})`, cost:casinoStake, onClick:pullSlots },
+        { label:`Change stake (${formatMoney(casinoStake)})`, secondary:true, onClick:openStakePicker },
+        { label:'Walk away', secondary:true },
+      ],
+    });
+  }
+  function pullSlots(): void {
+    if(!casinoCanBet()) { openSlots(); return; }
     state.cash -= casinoStake;
     const spin = spinSlots(Math.random);
     const returned = slotReturn(spin, casinoStake);
-    const reels = spin.reels.map(symbol => `<span style="font-size:34px;padding:0 8px;">${SLOT_FACES[symbol] ?? '?'}</span>`).join('');
+    const reels = spin.reels.map(symbol => `<span>${SLOT_FACES[symbol] ?? '?'}</span>`).join('');
     showModal({
       eyebrow:'Slots', title:spin.multiplier > 0 ? spin.label : 'No line',
-      body:`<p class="flavor" style="text-align:center;background:#16181d;border-radius:10px;padding:10px 0;">${reels}</p>`
+      body:`<div class="reels">${reels}</div>`
         + briefRow('Pays', `${spin.multiplier}x`)
         + briefRow('Three sevens', `${SLOT_PAYOUTS.seven}x`),
       buttons:[
-        { label:'Pull again', onClick:openSlots },
+        { label:`Pull again (${formatMoney(casinoStake)})`, cost:casinoStake, onClick:pullSlots },
         { label:'Back to the floor', secondary:true, onClick:openCasinoFloor },
       ],
     });
@@ -2215,7 +2236,7 @@ import type * as ThreeNamespace from 'three';
       const returned = pokerReturn(ranked, casinoStake);
       showModal({
         eyebrow:'Five-card draw', title:ranked === 'nothing' ? 'Nothing' : ranked,
-        body:`<p class="flavor">${cardRow(hand)}</p>` + briefRow('Pays', `${POKER_PAYOUTS[ranked]}x`),
+        body:cardRow(hand) + briefRow('Pays', `${POKER_PAYOUTS[ranked]}x`),
         buttons:[
           { label:'Deal again', onClick:openPoker },
           { label:'Back to the floor', secondary:true, onClick:openCasinoFloor },
@@ -2224,21 +2245,24 @@ import type * as ThreeNamespace from 'three';
       casinoSettle(returned, ranked === 'nothing' ? 'No hand' : ranked);
     }
 
+    // LEGAL: Tap a card to hold it. These were five "Hold" buttons stacked under a pay table, which ran
+    // LEGAL: the Draw button off the bottom of the screen.
     function chooseHolds(): void {
       showModal({
         eyebrow:'Five-card draw', title:'Hold and Draw',
-        body:`<p class="flavor">${cardRow(hand)}</p>`
-          + `<p class="flavor">Held: ${[...held].sort().map(i => cardLabel(hand[i])).join(' ') || 'nothing yet'}</p>`
-          + payTable(),
+        body:`<p class="flavor">Tap the cards you want to keep, then draw.</p>`
+          + `<div class="cards">${hand.map((card, index) => cardTile(card, { index, held:held.has(index) })).join('')}</div>`
+          + `<details style="margin-top:14px;"><summary style="cursor:pointer;color:var(--text-faint);font-size:12px;">Pay table</summary>${payTable()}</details>`,
         buttons:[
-          ...hand.map(function(card, index){
-            return { label:`${held.has(index) ? 'Release' : 'Hold'} ${cardLabel(card)}`, secondary:held.has(index), onClick:function(){
-              if(held.has(index)) held.delete(index); else held.add(index);
-              chooseHolds();
-            } };
-          }),
-          { label:'Draw', onClick:draw },
+          { label:held.size ? `Draw ${5 - held.size}` : 'Draw five', onClick:draw },
         ],
+      });
+      byId('modal-body').querySelectorAll<HTMLButtonElement>('[data-hold]').forEach(function(button){
+        button.addEventListener('click', function(){
+          const index = Number(button.dataset.hold);
+          if(held.has(index)) held.delete(index); else held.add(index);
+          chooseHolds();
+        });
       });
     }
     chooseHolds();

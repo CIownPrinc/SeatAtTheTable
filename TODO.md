@@ -372,7 +372,8 @@ old one.
 59. Character customisation is janky: the selection carousel is broken, hair clips through the head,
     and there isn't much to choose from (user, 2026-10-20).
 60. Set up tests for mobile gameplay so nothing breaks on phones (user, 2026-10-20).
-61. Stairs in some buildings that you use to go up to the next floor (user, 2026-10-20).
+61. Stairs in some buildings that you use to go up to the next floor (user, 2026-10-20). The casino and
+    the mall definitely need upper floors, with stairs, lifts or escalators where they fit.
 62. People inside: NPCs, characters, maybe missions within the interiors (user, 2026-10-20).
 63. Missions that happen inside buildings must keep working, and should be better for the new
     interiors (user, 2026-10-20).
@@ -419,7 +420,8 @@ old one.
     station in each district that you can ride between (user, 2026-10-20).
 83. Make the city bigger if the new things need it, but keep it alive and full. Maybe one to three new
     districts, conservatively; reshape the districts to be realistic and to fit the story and the
-    zoning (user, 2026-10-20).
+    zoning (user, 2026-10-20). Confirmed later the same day: enlarge the map. Things that belong near
+    the city (the suburbs, the new buildings, a bigger city) are being squeezed out to the world's edge.
 84. Rebuild the train in Blender (it's too basic). Trains should come at random intervals, in different
     types, not one train on a loop, with level-crossing gates that stop cars, NPC cars included
     (user, 2026-10-20).
@@ -443,6 +445,20 @@ old one.
 93. Characters and interiors must use Blender models too; fix the primitive-looking designs as a
     priority (user, 2026-10-20).
 94. A minimap inside the larger interiors (user, 2026-10-20).
+95. Some houses and yards sit in the streets or are scattered at random rather than laid out like a
+    neighbourhood; the same goes for the newer buildings like factories (user, 2026-10-20).
+96. People and vehicles that fit where they are, with the odd random one: dog walkers and kids in
+    neighbourhoods, business people in the office district, rugged workers by factories, farmers and
+    more tractors in farm country. Apply it across the whole game (user, 2026-10-20).
+97. **DONE** The casino's gameplay and UI are bugged (user, 2026-10-20). Played through: walking up to
+    the slots took the stake and spun at once (now the machine waits for a pull), and the draw-poker
+    screen ran its Draw button off the window (popups now scroll, and you tap cards to hold them).
+    Cards are drawn as cards (`e2e/casino.e2e.ts`). Its size and its people are item 98.
+98. The casino should be bigger, with people in it, waiters and so on (user, 2026-10-20).
+99. Flying vehicles pass through buildings (user, 2026-10-20).
+100. The garbage truck's load of trash looks odd; give it depth (user, 2026-10-20).
+101. Railways clip through roads, and Arjun walks inside a bridge instead of on top. Fix it, audit
+    for similar problems, and add tests that catch them so they don't come back (user, 2026-10-20).
 51. **DONE** The cars are too small (user, 2026-10-20: "the cars are so tiny bro"). They were drawn at life
     size next to people drawn 1.2x life, under a high camera. Worse, traffic was a bug: merging each
     car into one mesh transformed its quantized Blender geometry in place, which clamped every car to
