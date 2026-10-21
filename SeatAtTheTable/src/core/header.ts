@@ -464,7 +464,7 @@ import type * as ThreeNamespace from 'three';
     const npc = state.procNpc;
     showModal({
       eyebrow:'A Stranger', title: npc.name,
-      body:`<p>${npc.disposition} energy. Could be nothing, could be something.</p><p class="flavor">(New faces will show up as your territory grows — this one's just passing through for now.)</p>`,
+      body:`<p>${npc.disposition} energy. Could be nothing, could be something.</p>`,
       buttons:[
         { label:'Make conversation', onClick:function(){
           if(Math.random()<0.5){ state.respect += 3; log(`<i aria-hidden="true" class="ph-duotone ph-info"></i> ${npc.name} respects the hustle. +3 respect.`); }
@@ -474,6 +474,24 @@ import type * as ThreeNamespace from 'three';
         { label:'Walk away', onClick:function(){} },
       ]
     });
+  }
+
+  // LEGAL: A building you can own, seen from the street: whose it is, what it pays, and where to buy
+  // LEGAL: it. Walking up to one used to fall through to the stranger popup with a random name.
+  function openPropertyPlace(place: PropertyPlace): void {
+    const property = place.property;
+    const brand = brandById(property.brand);
+    const owned = state.ownedProperties.includes(property.id);
+    const office = serviceBuildings.find(s => s.brandId === property.brand);
+    const officePlace = office ? mapObjects.find(o => o.kind === 'service' && (o.ref as ServiceBuilding).id === office.id) : null;
+    const body = owned
+      ? `<p class="flavor">Yours. The keys are on your ring and the rent comes in on time.</p>${briefRow('Pays', formatMoneyRate(propertyIncomeFor(property)))}`
+      : `<p class="flavor">${brand ? `Listed with ${brand.name}.` : 'On the market.'} ${property.online ? 'You can close on it from the phone.' : 'You have to see the agent in person.'}</p>`
+        + briefRow('Price', formatMoney(property.cost)) + briefRow('Would pay', formatMoneyRate(property.incomePerSec));
+    const buttons: ModalOptions['buttons'] = [];
+    if(!owned && officePlace) buttons.push({ label:`Mark ${office!.name} on the GPS`, onClick:function(){ setGlobalWaypoint({ x:officePlace.x, y:officePlace.y }); log(`<i aria-hidden="true" class="ph-duotone ph-map-pin"></i> GPS set to ${office!.name}.`); renderAll(); } });
+    buttons.push({ label:'Walk on', secondary:buttons.length > 0 });
+    showModal({ eyebrow:owned ? 'Your property' : 'For sale', title:place.name, body, buttons });
   }
 
   // LEGAL: ================= STATE =================
@@ -5074,7 +5092,8 @@ import type * as ThreeNamespace from 'three';
     | { type: 'gangnpc'; ref: GangRecruit }
     | { type: 'local'; ref: LocalBusiness }
     | { type: 'amenity'; ref: typeof mapAmenities[number] }
-    | { type: 'corner'; ref: Corner };
+    | { type: 'corner'; ref: Corner }
+    | { type: 'property'; ref: PropertyPlace };
   function nearestMarker(): MapMarker | null {
     if(state.currentInterior){
       let best: MapMarker | null = null, bestDist=46;
@@ -5137,7 +5156,8 @@ import type * as ThreeNamespace from 'three';
     else if(m.type==='corner') openCornerPanel(m.ref);
     else if(m.type==='gangnpc') playDialogue(m.ref.dialogueKey, m.ref.inducted ? 'checkin' : 'start');
     else if(m.type==='npc' && m.ref.type==='named') playDialogue(m.ref.id, npcOpeningNode(m.ref.id));
-    else proceduralInteract();
+    else if(m.type==='npc') proceduralInteract();
+    else if(m.type==='property') openPropertyPlace(m.ref);
   }
 
   function currentSpeed(){
@@ -7264,6 +7284,7 @@ import type * as ThreeNamespace from 'three';
       else if(near.type==='amenity') label=near.ref.name;
       else if(near.type==='corner') label=near.ref.name;
       else if(near.type==='gangnpc') label=near.ref.name;
+      else if(near.type==='property') label=near.ref.name;
       else label = (near.ref.type==='named' ? near.ref.name : state.procNpc.name);
       hintEl.textContent = state.currentInterior ? 'Press E to interact — ' + label : 'Press E to interact — ' + label + ' | ' + outdoorStatus;
     } else if(state.inVehicle){

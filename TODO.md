@@ -365,6 +365,9 @@ old one.
     itself, a laptop screen or the board with its notices, instead of a text popup (user, 2026-10-20).
 57. Make each interior different, and reflect its building's outside (user, 2026-10-20). Repeated later:
     insides and outsides must match, and both can be upgraded to look better.
+    Same-kind places must differ too, by brand and by area: the Mudster dealership is rugged, and it
+    sits in a poorer, forested, rural spot, so its showroom shouldn't look like a city one. The same
+    goes for every building and place: brand and neighbourhood shape what's inside.
 58. Add a nightclub and a police station (user, 2026-10-20).
 59. Character customisation is janky: the selection carousel is broken, hair clips through the head,
     and there isn't much to choose from (user, 2026-10-20).
@@ -424,6 +427,14 @@ old one.
 86. Consider another biome, such as a swamp (user, 2026-10-20).
 87. Make sure every note from this conversation is in this TODO (user, 2026-10-20). Checked: items
     49-87 cover them.
+88. **DONE** Some buildings open a "Fatima Singh" stranger popup when you interact: a bug (user, 2026-10-20).
+    Buildings you can buy weren't handled, so the interact key fell through to the stranger popup
+    (and its placeholder line). They open their own panel now: owned or for sale, what it pays, and a
+    GPS mark for the agent (`e2e/property.e2e.ts`).
+89. Car models have odd rectangles arranged in a circle on each side (user, 2026-10-20).
+90. The street race isn't fun enough: a longer course with more turns and jumps, drifting, and a small
+    fading popup at the start that shows the keys (and the touch controls on phones) (user, 2026-10-20).
+91. Countryside homes are out of proportion; recheck proportions across the map (user, 2026-10-20).
 51. **DONE** The cars are too small (user, 2026-10-20: "the cars are so tiny bro"). They were drawn at life
     size next to people drawn 1.2x life, under a high camera. Worse, traffic was a bug: merging each
     car into one mesh transformed its quantized Blender geometry in place, which clamped every car to
