@@ -223,8 +223,9 @@ const PAVED_LANES = new Set(['road-country-lakeridge']);
 export function buildRoadNetwork(options: RoadSceneOptions): void {
   const { THREE, worldGroup, roadNetwork } = options;
   const materials = materialsFor(options);
-  const laneMat = materials.standard('transport:lane', {color:mapTransportTheme.lane, roughness:0.6, emissive:'#4a4020', emissiveIntensity:0.15});
-  const crosswalkMat = materials.standard('transport:crosswalk', {color:mapTransportTheme.crosswalk, roughness:0.76});
+  // LEGAL: Paint sits on the road, whatever road it's on: drawn with the strongest depth offset.
+  const laneMat = materials.standard('transport:lane', {color:mapTransportTheme.lane, roughness:0.6, emissive:'#4a4020', emissiveIntensity:0.15, ...ROAD_LAYER.paint});
+  const crosswalkMat = materials.standard('transport:crosswalk', {color:mapTransportTheme.crosswalk, roughness:0.76, ...ROAD_LAYER.paint});
   const laneDashes: SceneInstance[] = [];
   const crosswalkLong: SceneInstance[] = [];
   const crosswalkWide: SceneInstance[] = [];
@@ -242,9 +243,12 @@ export function buildRoadNetwork(options: RoadSceneOptions): void {
     // LEGAL: rectangles with wedge gaps at every bend.
     const sidewalk = new THREE.Mesh(ribbonGeometry(THREE, segment.path, road.width + (road.roadClass === 'arterial' ? 34 : 22), 0.04), materials.standard(`path:${mapTransportTheme.sidewalk}:0.92`, { color:mapTransportTheme.sidewalk, roughness:0.92 }));
     const surfaceColor = road.roadClass === 'arterial' ? mapTransportTheme.arterialSurface : mapTransportTheme.roadSurface;
-    const surface = new THREE.Mesh(ribbonGeometry(THREE, segment.path, road.width, 0.06), materials.standard(`path:${surfaceColor}:0.9`, { color:surfaceColor, roughness:0.9 }));
+    const surface = new THREE.Mesh(ribbonGeometry(THREE, segment.path, road.width, 0.06), materials.standard(`path:${surfaceColor}:0.9:${road.roadClass}`, { color:surfaceColor, roughness:0.9, ...ROAD_LAYER[road.roadClass] }));
     [sidewalk, surface].forEach(function(mesh){ mesh.receiveShadow = true; mesh.name = `road:${road.id}`; worldGroup.add(mesh); });
+    // LEGAL: The centre line stops short of every other road, so two roads' paint never crosses in a
+    // LEGAL: junction or runs over a crosswalk.
     addPathLineDashes(segment.path, 94, 40, function(x, y, angle){
+      if(onAnyRoad({ x, y }, 26, windhavenMapModel, other => other.id === road.id)) return;
       laneDashes.push({
         x,
         y:0.075,
@@ -254,8 +258,12 @@ export function buildRoadNetwork(options: RoadSceneOptions): void {
       });
     });
   });
+  // LEGAL: A junction only where both streets are actually drawn: every pair used to get crosswalks
+  // LEGAL: and a signal, including where one street stops short of the other at the water.
+  const drawnAt = (name: string, point: { x: number; y: number }) => onAnyRoad(point, 2, windhavenMapModel, other => other.name !== name);
   roadNetwork.vertical.forEach(function(v, vi){
     roadNetwork.horizontal.forEach(function(h, hi){
+      if(!drawnAt(v.name, { x:v.x, y:h.y }) || !drawnAt(h.name, { x:v.x, y:h.y })) return;
       for(let offset=-18; offset<=18; offset+=12){
         crosswalkLong.push({ x:v.x + offset, y:0.09, z:h.y - v.w/2 - 10, rotationX:-Math.PI/2 });
         crosswalkLong.push({ x:v.x + offset, y:0.09, z:h.y + v.w/2 + 10, rotationX:-Math.PI/2 });
@@ -296,6 +304,17 @@ export function buildRoadNetwork(options: RoadSceneOptions): void {
   addInstancedMesh(THREE, worldGroup, new THREE.PlaneGeometry(46,4), crosswalkMat, crosswalkLong);
   addInstancedMesh(THREE, worldGroup, new THREE.PlaneGeometry(4,46), crosswalkMat, crosswalkWide);
 }
+
+// LEGAL: Where roads overlap (a junction, the curved Canal Bend Road over the grid) their surfaces are
+// LEGAL: at the same height and flickered through each other, worst where the colours differ. Each
+// LEGAL: class gets its own GPU depth offset, so the same one always wins, and paint wins over all.
+const ROAD_LAYER: Record<'local' | 'arterial' | 'diagonal' | 'country' | 'paint', { polygonOffset?: boolean; polygonOffsetFactor?: number; polygonOffsetUnits?: number }> = {
+  country:{},
+  local:{ polygonOffset:true, polygonOffsetFactor:-1, polygonOffsetUnits:-1 },
+  arterial:{ polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-2 },
+  diagonal:{ polygonOffset:true, polygonOffsetFactor:-3, polygonOffsetUnits:-3 },
+  paint:{ polygonOffset:true, polygonOffsetFactor:-5, polygonOffsetUnits:-5 },
+};
 
 // LEGAL: The bridge deck's top, level with the road surface, and how deep it is below that.
 export const BRIDGE_DECK_TOP = 0.2;

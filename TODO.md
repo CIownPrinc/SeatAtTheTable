@@ -471,7 +471,11 @@ old one.
 102. SeatAtTheTable 1 should still value the phone and tycoon side (SeatAtTheTable 2 leans on the map).
      Audit the code, features and how the game plays as a whole, and add what's found here, since the
      user hasn't said much about the tycoon and phone side (user, 2026-10-20).
-103. Diagonal roads clip through the roads they cross, and junctions clip too (user, 2026-10-20).
+103. **DONE** Diagonal roads clip through the roads they cross, and junctions clip too (user,
+     2026-10-20). Overlapping road surfaces sat at the same height and flickered; each class now has
+     its own depth offset and paint beats them all. Centre lines ran straight through junction boxes
+     and over the crosswalks; they stop short of any other road now. Crosswalks and signals were laid
+     at every pair of grid streets, even where one stopped short of the other; only real junctions now.
 104. **DONE** Trees are standing in roads (user, 2026-10-20). Street trees only kept clear of the grid
      streets, so some stood in the curved Canal Bend Road; countryside buildings were spaced as if 22
      across, so a Lakeridge one stood on the Ring Road. Both now check every road (`onAnyRoad`), and the

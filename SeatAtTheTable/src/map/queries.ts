@@ -268,8 +268,9 @@ function railCrossings(rail: RailLineRecord, model: WindhavenMapModel): Array<{ 
 
 // LEGAL: Whether a point is on any drawn road's carriageway, give or take `margin`: for anything that
 // LEGAL: must stand beside a road and never in it (street trees, signal and lamp poles).
-export function onAnyRoad(point: Point, margin: number, model: WindhavenMapModel = windhavenMapModel): boolean {
+export function onAnyRoad(point: Point, margin: number, model: WindhavenMapModel = windhavenMapModel, except?: (road: RoadPath) => boolean): boolean {
   return roadLandSegments(model).some(function(segment){
+    if(except?.(segment.road)) return false;
     const half = segment.road.width / 2 + margin;
     return segment.path.slice(0, -1).some(function(a, i){
       const b = segment.path[i + 1];
