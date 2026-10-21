@@ -406,6 +406,24 @@ old one.
 78. Many buildings have random spheres, circles, prisms and so on standing in front of them, like
     City Hall's floating rectangle. Find them and fix them (user, 2026-10-20).
 79. Scroll the mouse wheel to zoom the minimap (user, 2026-10-20).
+80. Zone the city like a real one: commercial, rich, industrial, poor and middle-class areas, suburbs,
+    woodland, farms, beach, a holiday spot, open space, sports fields, transport hubs, nature parks,
+    museums and so on. Zones blend into each other gradually, not hard cut-outs (user, 2026-10-20).
+81. A really big park in the spirit of Central Park, with things to do: chess hustlers, statues,
+    yoga classes and so on, and a mission or two there, recreational (yoga) or a real one (user,
+    2026-10-20).
+82. A commuter rail line like Metra, separate from the freight train, running through the city with a
+    station in each district that you can ride between (user, 2026-10-20).
+83. Make the city bigger if the new things need it, but keep it alive and full. Maybe one to three new
+    districts, conservatively; reshape the districts to be realistic and to fit the story and the
+    zoning (user, 2026-10-20).
+84. Rebuild the train in Blender (it's too basic). Trains should come at random intervals, in different
+    types, not one train on a loop, with level-crossing gates that stop cars, NPC cars included
+    (user, 2026-10-20).
+85. Develop the countryside districts from what each is for; they're thin right now (user, 2026-10-20).
+86. Consider another biome, such as a swamp (user, 2026-10-20).
+87. Make sure every note from this conversation is in this TODO (user, 2026-10-20). Checked: items
+    49-87 cover them.
 51. **DONE** The cars are too small (user, 2026-10-20: "the cars are so tiny bro"). They were drawn at life
     size next to people drawn 1.2x life, under a high camera. Worse, traffic was a bug: merging each
     car into one mesh transformed its quantized Blender geometry in place, which clamped every car to
