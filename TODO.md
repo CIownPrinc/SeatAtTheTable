@@ -360,9 +360,13 @@ old one.
     `map/interiorPieces.ts`), each with its old shapes as the fallback.
 55. Write a quick file of everything that's changed since the last play-test (user, 2026-10-20).
     **DONE**: `PLAYTEST-CHANGES.md`.
-56. Inside buildings, don't switch to first person. What the user meant: the things you use (an office
-    chair at a desk, the workbench, the bulletin board) open as a first-person close-up of the thing
-    itself, a laptop screen or the board with its notices, instead of a text popup (user, 2026-10-20).
+56. **DONE** Inside buildings, don't switch to first person. What the user meant: the things you use
+    (an office chair at a desk, the workbench, the bulletin board) open as a first-person close-up of
+    the thing itself, a laptop screen or the board with its notices, instead of a text popup (user,
+    2026-10-20). First person is gone. Using a thing glides the camera in to it and draws the popup as
+    the thing (`map/closeUps.ts`): a desk's screen, a cork board, a clipboard, a counter slip, a
+    blueprint, card-table felt, a slot screen, a bar menu, a map. Talking to a person keeps the plain
+    popup. `e2e/interior3d.e2e.ts` uses the workbench and checks the camera goes in and comes back.
 57. Make each interior different, and reflect its building's outside (user, 2026-10-20). Repeated later:
     insides and outsides must match, and both can be upgraded to look better.
     Same-kind places must differ too, by brand and by area: the Mudster dealership is rugged, and it
@@ -505,6 +509,11 @@ old one.
      touches water, and with the new shore 5-10 in from the beach's edge every spot did, so it placed
      nothing. It tests closer to its own spot now (96 palms and lounger sets), and `scene-audit.e2e.ts`
      fails if the beach empties again.
+108. Alongside the commuter rail, a dock where you take a canoe out to an island, with things on it
+     that are unique and fun, or that matter to missions, new or old (user, 2026-10-20).
+109. Make the water look real: the lake to the north and the water between the districts are too
+     geometric and perfect. Add peninsulas, islets and the like where they fit, and small ponds or
+     lakes here and there (user, 2026-10-20).
 51. **DONE** The cars are too small (user, 2026-10-20: "the cars are so tiny bro"). They were drawn at life
     size next to people drawn 1.2x life, under a high camera. Worse, traffic was a bug: merging each
     car into one mesh transformed its quantized Blender geometry in place, which clamped every car to

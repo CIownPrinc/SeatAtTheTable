@@ -109,6 +109,7 @@ import { useTreeShapes } from '../map/treeModels';
 import { loadStreetModels } from '../world/assets/street';
 import { loadPlaceModels } from '../world/assets/places';
 import { usePlaceModels } from '../map/placeModels';
+import { LIGHT_SKINS, closeUpFor, type CloseUp } from '../map/closeUps';
 import { VEHICLE_SCALE } from '../map/scale';
 import { DISTRICT_OFFSETS, OUTSKIRT_PLACE_LOTS, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
@@ -883,6 +884,8 @@ import type * as ThreeNamespace from 'three';
       };
       footer.appendChild(btn);
     });
+    // LEGAL: Drawn as the thing being used, when a hotspot's close-up is on (map/closeUps).
+    byId('modal-overlay').className = `modal-overlay${closeUpSkinClasses()}`;
     byId('modal-overlay').classList.remove('hidden');
   }
 
@@ -5183,7 +5186,7 @@ import type * as ThreeNamespace from 'three';
     if(state.currentInterior){
       const m = nearestMarker();
       if(!m) return;
-      if(m.type==='door') exitBuilding(); else if(m.type==='hotspot') m.ref.action();
+      if(m.type==='door') exitBuilding(); else if(m.type==='hotspot'){ beginCloseUp(m.ref); m.ref.action(); }
       return;
     }
     if(state.inVehicle){ exitVehicle(); return; }
@@ -6443,6 +6446,7 @@ import type * as ThreeNamespace from 'three';
         enterBuilding,
         hotspots: function(){ return hotspotsFor(state.currentInterior); },
         interiorRoom: function(){ return interiorView?.root ?? null; },
+        interiorCamera: function(){ return interiorCamera; },
         roadNetwork, districtOffsets: DISTRICT_OFFSETS,
         snow: function(){ return { cover:snowCover, plowed:snowPlowed }; },
         lots: function(){ return cityLots(); },
@@ -6896,25 +6900,21 @@ import type * as ThreeNamespace from 'three';
   let interiorScene3d: ThreeNamespace.Scene | null = null;
   let interiorCamera: ThreeNamespace.PerspectiveCamera | null = null;
   function interiorSolids(): Solid[] { return interiorView?.solids ?? []; }
-  // LEGAL: First person indoors, switched with the view button or V and remembered in this browser.
-  // LEGAL: W and S walk forward and back, A and D turn.
-  const FIRST_PERSON_KEY = 'seat-first-person';
-  const FIRST_PERSON_EYE = 19;
-  const FIRST_PERSON_TURN = 2.6;
-  let firstPerson = (function(){ try{ return window.localStorage.getItem(FIRST_PERSON_KEY) === '1'; }catch(e){ return false; } })();
-  function setFirstPerson(on: boolean): void {
-    firstPerson = on;
-    try{ window.localStorage.setItem(FIRST_PERSON_KEY, on ? '1' : '0'); }catch(e){}
-    byId('view-toggle').textContent = on ? '👁 Overhead view' : '👁 First person';
+  // LEGAL: Using a thing in a room moves the camera in to it and draws the popup as the thing
+  // LEGAL: (map/closeUps): a desk's screen, the notice board. This replaced a first-person view, which
+  // LEGAL: wasn't what was wanted (user, 2026-10-20). Set when a hotspot is used, cleared when its
+  // LEGAL: popup is closed; a popup that follows on from it (the next step of a game) keeps it.
+  let activeCloseUp: { spot: { x: number; y: number }; view: CloseUp } | null = null;
+  const interiorEye = { pos:{ x:0, y:0, z:0 }, look:{ x:0, y:0, z:0 }, ready:false };
+  function beginCloseUp(spot: { id: string; x: number; y: number }): void {
+    const view = state.currentInterior ? closeUpFor(spot.id, state.currentInterior.kind) : null;
+    activeCloseUp = view ? { spot:{ x:spot.x, y:spot.y }, view } : null;
   }
-  byId('view-toggle').addEventListener('click', () => setFirstPerson(!firstPerson));
-  window.addEventListener('keydown', function(e){
-    if(e.key.toLowerCase() !== 'v' || !state.currentInterior || e.repeat) return;
-    const target = e.target as HTMLElement | null;
-    if(target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
-    setFirstPerson(!firstPerson);
-  });
-  setFirstPerson(firstPerson);
+  function closeUpSkinClasses(): string {
+    if(!activeCloseUp || !state.currentInterior) return '';
+    const skin = activeCloseUp.view.skin;
+    return ` closeup skin-${skin}${LIGHT_SKINS.has(skin) ? ' skin-light' : ''}`;
+  }
   function leaveInteriorView(): void {
     if(interiorView){ interiorScene3d?.remove(interiorView.root); interiorView.dispose(); interiorView = null; interiorViewKey = ''; }
     if(playerGroup && playerGroup.parent !== scene) scene.add(playerGroup);
@@ -6984,25 +6984,28 @@ import type * as ThreeNamespace from 'three';
     characterLibrary.animator.tick(dt, state.playSeconds);
     // LEGAL: A raised camera in front of the room, drifting with you so the far corners stay in view.
     const camera = interiorCamera!;
-    const fov = firstPerson ? 72 : 50;
-    if(camera.aspect !== camera3d.aspect || camera.fov !== fov){ camera.aspect = camera3d.aspect; camera.fov = fov; camera.updateProjectionMatrix(); }
-    playerGroup.visible = !firstPerson;
-    interiorView?.setEnclosed(firstPerson);
-    if(firstPerson){
-      // LEGAL: Through Arjun's eyes: eye height, looking the way he faces.
-      const eyeX = player.x * s, eyeZ = player.y * s;
-      camera.position.set(eyeX, FIRST_PERSON_EYE, eyeZ);
-      camera.lookAt(eyeX + Math.cos(player.facing) * 20, FIRST_PERSON_EYE - 2.5, eyeZ + Math.sin(player.facing) * 20);
-      renderer.render(interiorScene3d, camera);
-      return;
-    }
-    // LEGAL: The mall is too big to keep in view, so there the camera follows you closely.
+    if(camera.aspect !== camera3d.aspect){ camera.aspect = camera3d.aspect; camera.updateProjectionMatrix(); }
+    if(activeCloseUp && !modalOnScreen()) activeCloseUp = null;
+    // LEGAL: Overhead: a raised camera in front of the room, drifting with you. The mall is too big
+    // LEGAL: to keep in view, so there it follows you closely. A close-up moves in to the thing used.
     const room = roomSize();
     const follow = room.w > ROOM_W ? 0.92 : 0.55;
     const lookX = (room.w / 2 + (player.x - room.w / 2) * follow) * s;
     const lookZ = (room.h * 0.42 + (player.y - room.h * 0.42) * (room.w > ROOM_W ? 0.85 : 0.4)) * s;
-    camera.position.set(lookX, 150, lookZ + 150);
-    camera.lookAt(lookX, 6, lookZ);
+    let want = { pos:{ x:lookX, y:150, z:lookZ + 150 }, look:{ x:lookX, y:6, z:lookZ } };
+    if(activeCloseUp){
+      const { spot, view } = activeCloseUp;
+      const thingZ = spot.y - view.depth;
+      want = { pos:{ x:spot.x * s, y:view.eye * s, z:(thingZ + view.back) * s }, look:{ x:spot.x * s, y:view.height * s, z:thingZ * s } };
+    }
+    const glide = interiorEye.ready ? 1 - Math.exp(-6 * dt) : 1;
+    (['pos', 'look'] as const).forEach(function(key){
+      (['x', 'y', 'z'] as const).forEach(function(axis){ interiorEye[key][axis] += (want[key][axis] - interiorEye[key][axis]) * glide; });
+    });
+    interiorEye.ready = true;
+    playerGroup.visible = !activeCloseUp;
+    camera.position.set(interiorEye.pos.x, interiorEye.pos.y, interiorEye.pos.z);
+    camera.lookAt(interiorEye.look.x, interiorEye.look.y, interiorEye.look.z);
     renderer.render(interiorScene3d, camera);
   }
 
@@ -7263,13 +7266,6 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: Target velocity from input, then ease the actual velocity toward it so
     // LEGAL: movement accelerates and coasts instead of snapping on/off. Cars are
     // LEGAL: heavier (slower to respond and to turn) than the player on foot.
-    // LEGAL: In first person indoors the keys are relative to where you face: left/right turn,
-    // LEGAL: up/down walk forward and back.
-    if(state.currentInterior && firstPerson && (dx || dy)){
-      player.facing += dx * FIRST_PERSON_TURN * dt;
-      const forward = -dy;
-      dx = Math.cos(player.facing) * forward; dy = Math.sin(player.facing) * forward;
-    }
     const spd = currentSpeed();
     let tvx=0, tvy=0;
     // LEGAL: Keys give a unit direction (diagonals normalised); a thumbstick pushed part-way
@@ -7283,8 +7279,7 @@ import type * as ThreeNamespace from 'three';
     if(speed > 2){
       // LEGAL: Steer the heading toward the travel direction at a capped rate — the
       // LEGAL: old code snapped facing instantly, which made the car spin on a dime.
-      // LEGAL: In first person the keys turn you, so walking backwards mustn't swing you round.
-      const targetFacing = state.currentInterior && firstPerson ? player.facing : Math.atan2(player.vy, player.vx);
+      const targetFacing = Math.atan2(player.vy, player.vx);
       let af = targetFacing - player.facing;
       while(af > Math.PI) af -= Math.PI*2;
       while(af < -Math.PI) af += Math.PI*2;

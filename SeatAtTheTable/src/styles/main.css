@@ -471,6 +471,45 @@ main{max-width:1240px;margin:0 auto;padding:26px 24px 60px;}
 /* ---------- MODAL ---------- */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:10001;padding:24px; backdrop-filter: blur(4px);}
 .modal-overlay.hidden{display:none;}
+/* Close-ups: using a thing in a room draws its popup as the thing, over the camera's close view of it. */
+.modal-overlay.closeup{background:rgba(4,5,8,0.32);backdrop-filter:none;}
+.skin-light .modal-body p,.skin-light .modal-body strong,.skin-light .modal-title{color:#231d15;}
+.skin-light .modal-body span{color:#5a5040 !important;}
+.skin-light .modal-eyebrow{color:#7a3b22;}
+.skin-light .modal-body div[style*="border-bottom"]{border-bottom-color:rgba(0,0,0,0.12) !important;}
+.skin-screen .modal{background:#0d1622;border:12px solid #15181d;border-bottom-width:18px;border-radius:10px;box-shadow:0 0 0 2px #2c3038,0 24px 60px rgba(0,0,0,0.85);}
+.skin-screen .modal-header{background:#18253a;border-bottom:1px solid #263a55;padding-top:30px;}
+.skin-screen .modal-header::before{content:'';position:absolute;left:16px;top:12px;width:9px;height:9px;border-radius:50%;background:#e0574f;box-shadow:15px 0 #e0b84f,30px 0 #5fc25f;}
+.skin-screen .modal-body,.skin-screen .modal-footer{background:#0d1622;}
+.skin-screen .modal-body{font-family:var(--font-mono);}
+.skin-board .modal{background:radial-gradient(circle at 20% 30%,#b08a56 0 2px,transparent 3px) 0 0/14px 14px,#a07a4a;border:14px solid #5c3f24;border-radius:4px;}
+.skin-board .modal-header,.skin-board .modal-body{background:#f3ecd6;margin:14px 14px 0;border-radius:2px;box-shadow:0 3px 6px rgba(0,0,0,0.3);}
+.skin-board .modal-header{transform:rotate(-0.8deg);border-bottom:none;}
+.skin-board .modal-body{transform:rotate(0.5deg);}
+.skin-board .modal-header::after{content:'';position:absolute;left:50%;top:-6px;width:12px;height:12px;border-radius:50%;background:#c0392b;box-shadow:0 2px 2px rgba(0,0,0,0.4);}
+.skin-board .modal-footer{background:transparent;}
+.skin-clipboard .modal{background:#f4efe2;border:16px solid #8a6a42;border-top-width:34px;border-radius:12px;position:relative;overflow:visible;}
+.skin-clipboard .modal::before{content:'';position:absolute;top:-28px;left:50%;transform:translateX(-50%);width:90px;height:22px;background:linear-gradient(#c7cad1,#8f949c);border-radius:6px;}
+.skin-clipboard .modal-header,.skin-clipboard .modal-body,.skin-clipboard .modal-footer{background:#f4efe2;}
+.skin-clipboard .modal-body{background-image:repeating-linear-gradient(transparent 0 23px,#c8d4e0 23px 24px);}
+.skin-paper .modal{background:#f6f1e4;border:1px solid #cfc5ae;border-radius:3px;box-shadow:0 12px 30px rgba(0,0,0,0.6);}
+.skin-paper .modal-header,.skin-paper .modal-body,.skin-paper .modal-footer{background:#f6f1e4;}
+.skin-paper .modal-header{border-bottom:2px dashed #cfc5ae;}
+.skin-paper .modal-body{font-family:var(--font-mono);}
+.skin-blueprint .modal{background:linear-gradient(rgba(255,255,255,0.08) 1px,transparent 1px) 0 0/22px 22px,linear-gradient(90deg,rgba(255,255,255,0.08) 1px,transparent 1px) 0 0/22px 22px,#1d4a82;border:3px solid #e8f0ff;border-radius:2px;}
+.skin-blueprint .modal-header,.skin-blueprint .modal-body,.skin-blueprint .modal-footer{background:transparent;}
+.skin-blueprint .modal-body{font-family:var(--font-mono);color:#e8f0ff;}
+.skin-steel .modal{background:linear-gradient(135deg,#59616b,#3a4048);border:10px solid #2c3138;border-radius:8px;box-shadow:inset 0 0 0 2px #6c7480;}
+.skin-steel .modal-header,.skin-steel .modal-body,.skin-steel .modal-footer{background:transparent;}
+.skin-felt .modal{background:radial-gradient(ellipse at center,#2a7444,#174a2b);border:14px solid #5a3a22;border-radius:36px;}
+.skin-felt .modal-header,.skin-felt .modal-body,.skin-felt .modal-footer{background:transparent;}
+.skin-slot .modal{background:#2a0f14;border:12px solid #c9a227;border-radius:20px;box-shadow:0 0 30px rgba(255,210,58,0.35);}
+.skin-slot .modal-header,.skin-slot .modal-body,.skin-slot .modal-footer{background:transparent;}
+.skin-menu .modal{background:#1a120c;border:2px solid #c9a227;outline:6px double #6a4a22;outline-offset:-12px;border-radius:4px;}
+.skin-menu .modal-header,.skin-menu .modal-body,.skin-menu .modal-footer{background:transparent;}
+.skin-menu .modal-title{font-style:italic;color:#f0d890;}
+.skin-map .modal{background:radial-gradient(ellipse at center,#d8c89a,#b8a26c);border:10px solid #6a4a2c;border-radius:4px;}
+.skin-map .modal-header,.skin-map .modal-body,.skin-map .modal-footer{background:transparent;}
 
 /* The phone / "Windhaven OS" device — houses the online-only services. z-index sits just
    below .modal-overlay so trade/confirm modals opened from an app still render on top. */
@@ -629,5 +668,3 @@ button.pcard:hover{transform:translateY(-3px);}
 .wardrobe-footnote { padding:0 18px 10px; font-size:12px; color:var(--text-faint); }
 .wardrobe-foot .wardrobe-save:disabled { opacity:0.45; cursor:not-allowed; }
 /* LEGAL: The indoor view switch: only there while you're inside a room. */
-.view-toggle { display:none; position:absolute; left:12px; bottom:12px; z-index:6; border:1px solid var(--gold); background:rgba(12,13,18,0.82); color:var(--gold); border-radius:6px; padding:6px 12px; font-family:var(--font-display); cursor:pointer; }
-#scene3d-container.indoors .view-toggle { display:block; }
