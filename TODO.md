@@ -802,8 +802,12 @@ missing is the depth the brief asks for: most have two choices and one modal per
      book to collect from (rent piles up until you collect, or the manager banks it), and the bigger
      homes (penthouse, lofts, brownstones) can be your flat: a bed to sleep and save in (158), a
      wardrobe, a stash.
-162. The traffic cars aren't solid: I can drive through them into oncoming traffic (user, 2026-10-21).
-     V1, bug. Your car must collide with traffic cars (and they should brake for you, 75).
+162. **DONE** The traffic cars aren't solid: I can drive through them into oncoming traffic (user, 2026-10-21).
+     V1, bug. Your car was already blocked by traffic, but traffic never looked for your car: it drove
+     into it and through it, and while it sat on top of you every move was refused, which looked like
+     ghosting. Traffic now brakes to a stop short of your car in its lane (`blockerPace`), and if a car
+     does end up on you, you can always move away from it. On foot you can still be run over, as
+     before. Tests in `trafficRules.test.ts` and `e2e/splat.e2e.ts` (fails without the braking).
 163. Parking lots are missing, and pathfinding for people and vehicles is lacking (user, 2026-10-21).
      V1 for parking lots (surface lots and garages by shops, offices, the mall, with parked cars, and
      a place to leave your own car), with the NPC and traffic items (64, 73-75) for the pathfinding:

@@ -1,5 +1,5 @@
 import { CITY_JUNCTIONS, trafficRoutes, walkerRoutes } from './traffic';
-import { followingPace, signalPace } from './trafficRules';
+import { blockerPace, followingPace, signalPace, type RoadBlocker } from './trafficRules';
 
 // LEGAL: Enough that a street is rarely empty; few enough that phones keep their frame rate.
 const WALKER_COUNT = 36;
@@ -42,6 +42,8 @@ export interface RoamingUpdateOptions {
   // LEGAL: Nearest standable point to somewhere unstandable. Supplied by the caller so the
   // LEGAL: pedestrians use the same escape the player does rather than a second opinion.
   rescue?: (x: number, y: number) => Point;
+  // LEGAL: Things in the road that cars must stop for (the player).
+  blockers?: RoadBlocker[];
 }
 
 function roamSeed(id: string): number {
@@ -207,7 +209,8 @@ function moveActorToward(actor: RoamingActor, options: RoamingUpdateOptions): vo
 function updateCarPace(actors: RoamingActor[], options: RoamingUpdateOptions): void {
   const cars = actors.filter(actor => actor.kind === 'car' && !actor.dormant);
   cars.forEach(function(car){
-    const target = Math.min(signalPace(car, CITY_JUNCTIONS, options.playSeconds), followingPace(car, cars));
+    const blocked = (options.blockers ?? []).reduce((pace, blocker) => Math.min(pace, blockerPace(car, blocker)), 1);
+    const target = Math.min(signalPace(car, CITY_JUNCTIONS, options.playSeconds), followingPace(car, cars), blocked);
     const current = car.pace ?? 1;
     // LEGAL: Braking is quicker than pulling away.
     const rate = target < current ? 6 : 1.6;

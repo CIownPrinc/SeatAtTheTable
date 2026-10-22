@@ -14,6 +14,7 @@ const CYCLE = (SIGNAL_GREEN_SECONDS + SIGNAL_ALL_RED_SECONDS) * 2;
 // LEGAL: Where a car's centre stops: its front bumper (half a sedan) just short of the junction box,
 // LEGAL: which is half a 74-wide road.
 const HALF_CAR = 32 * VEHICLE_SCALE / 2;
+const HALF_WIDTH = 15 * VEHICLE_SCALE / 2;
 const STOP_LINE = 37 + HALF_CAR + 3;
 // LEGAL: How far before the line a car starts braking.
 const BRAKING = 48;
@@ -67,6 +68,21 @@ export function signalPace(car: CarPose, junctions: readonly Point[], time: numb
 }
 
 // LEGAL: Slows for the nearest car ahead in the same lane going the same way, and stops behind it.
+// LEGAL: Something in the road that isn't another car going the same way: you, in your car or on foot.
+// LEGAL: Traffic used to drive straight into you and through you, since only cars it was following
+// LEGAL: slowed it down. It now brakes to a stop short of anything in its lane ahead, whichever way
+// LEGAL: that thing is facing.
+export interface RoadBlocker { x: number; y: number; radius: number }
+export function blockerPace(car: CarPose, blocker: RoadBlocker): number {
+  const hx = Math.cos(car.facing), hy = Math.sin(car.facing);
+  const dx = blocker.x - car.x, dy = blocker.y - car.y;
+  const along = dx * hx + dy * hy;
+  const stopAt = HALF_CAR + blocker.radius + 6;
+  if(along <= 0 || along > stopAt + FOLLOW * 1.5) return 1;
+  if(Math.abs(dx * hy - dy * hx) > HALF_WIDTH + blocker.radius) return 1;
+  return clamp01((along - stopAt) / (FOLLOW * 1.5));
+}
+
 export function followingPace(car: CarPose, others: readonly CarPose[]): number {
   const hx = Math.cos(car.facing), hy = Math.sin(car.facing);
   let pace = 1;

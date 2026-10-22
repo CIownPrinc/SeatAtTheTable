@@ -7186,6 +7186,11 @@ import type * as ThreeNamespace from 'three';
     const train = activeTrainSnapshot(Date.now(), windhavenMapModel.railLines[0]);
     if(train) movingObstacles.push({ obstacle:{ x:train.point.x, y:train.point.y, halfLength:TRAIN_HALF_LENGTH, halfWidth:TRAIN_HALF_WIDTH, angle:Math.PI / 2 }, velocity:{ x:0, y:0 } });
   }
+  function movingOverlap(x: number, y: number): Obstacle | null {
+    if(isFlying()) return null;
+    const radius = actorRadius(state.inVehicle);
+    return movingObstacles.find(moving => circleHitsObstacle(x, y, radius, moving.obstacle))?.obstacle ?? null;
+  }
   function playerCanMove(x: number, y: number): boolean {
     if(!tryMove(x, y, currentSolids)) return false;
     if(isFlying()) return true;
@@ -7491,7 +7496,13 @@ import type * as ThreeNamespace from 'three';
           else if(penetrationDepth(tryX, player.y, currentSolids, radius) < here){ player.x=tryX; }
           else if(penetrationDepth(player.x, tryY, currentSolids, radius) < here){ player.y=tryY; }
         }
-        else { player.vx=0; player.vy=0; }
+        // LEGAL: A traffic car that got onto you: any step that takes you further from it is allowed,
+        // LEGAL: so you're never pinned in place while it sits on top of you.
+        else {
+          const from = movingOverlap(player.x, player.y);
+          if(from && tryMove(tryX, tryY, currentSolids) && Math.hypot(tryX - from.x, tryY - from.y) > Math.hypot(player.x - from.x, player.y - from.y)){ player.x=tryX; player.y=tryY; }
+          else { player.vx=0; player.vy=0; }
+        }
       }
     } else { player.vx=0; player.vy=0; }
     // LEGAL: Checked right after the move, on the frame loop rather than the slower game
@@ -7515,7 +7526,9 @@ import type * as ThreeNamespace from 'three';
       updateWeather(dt);
       updateWaterMotion();
       updateSignalHeads();
-      updateRoamingActors(roamingActors, { dt, playSeconds:state.playSeconds, indoors:!!state.currentInterior, canMove:function(x,y){ return tryMove(x,y,currentSolids); }, rescue:rescuePoint });
+      updateRoamingActors(roamingActors, { dt, playSeconds:state.playSeconds, indoors:!!state.currentInterior, canMove:function(x,y){ return tryMove(x,y,currentSolids); }, rescue:rescuePoint,
+        // LEGAL: Traffic stops for your car. On foot you're still fair game if you stand in the road.
+        blockers:state.inVehicle && !isFlying() ? [{ x:player.x, y:player.y, radius:actorRadius(true) }] : [] });
       characterLibrary?.animator.tick(dt, state.playSeconds, { x:player.x, z:player.y });
       updateDealerArrivals(dt);
       updateTrain();

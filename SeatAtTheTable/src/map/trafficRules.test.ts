@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SIGNAL_ALL_RED_SECONDS, SIGNAL_GREEN_SECONDS, axisOf, followingPace, signalGreen, signalPace } from './trafficRules';
+import { SIGNAL_ALL_RED_SECONDS, SIGNAL_GREEN_SECONDS, axisOf, blockerPace, followingPace, signalGreen, signalPace } from './trafficRules';
 
 const junction = { x: 1000, y: 500 };
 const EAST = 0, SOUTH = Math.PI / 2;
@@ -67,5 +67,21 @@ describe('following', function () {
     const pace = followingPace(car, [{ id: 'front', x: 95, y: 0, facing: EAST }]);
     expect(pace).toBeGreaterThan(0);
     expect(pace).toBeLessThan(1);
+  });
+});
+
+// LEGAL: Traffic drove straight through the player's car, because only a car it was following made it
+// LEGAL: slow down. It now stops short of the player in its lane, whichever way the player faces.
+describe('braking for the player', () => {
+  const car = { id:'t1', x:0, y:0, facing:0 };
+  it('stops for a car parked across its lane just ahead', () => {
+    expect(blockerPace(car, { x:50, y:0, radius:28 })).toBe(0);
+  });
+  it('slows as it closes in and ignores what is far ahead, behind or in the next lane', () => {
+    const near = blockerPace(car, { x:120, y:0, radius:28 });
+    expect(near).toBeGreaterThan(0); expect(near).toBeLessThan(1);
+    expect(blockerPace(car, { x:400, y:0, radius:28 })).toBe(1);
+    expect(blockerPace(car, { x:-60, y:0, radius:28 })).toBe(1);
+    expect(blockerPace(car, { x:60, y:80, radius:28 })).toBe(1);
   });
 });
