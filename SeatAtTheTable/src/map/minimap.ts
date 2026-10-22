@@ -61,6 +61,8 @@ export interface MinimapRenderOptions {
   waypoint: Point | null;
   // LEGAL: The GPS route to the waypoint, along the roads (or straight, when flying).
   route?: Point[] | null;
+  // LEGAL: Where your car is parked, when you're not in it.
+  car?: Point | null;
   // LEGAL: Optional overrides. Defaults render the small 150px follow-cam minimap; the
   // LEGAL: full City Map passes viewW/viewH/scale/center to frame the whole world at once.
   size?: number;
@@ -132,6 +134,8 @@ export function minimapStaticLayerCacheKey(options: MinimapRenderOptions): strin
 
 // LEGAL: The GPS colour, the same cyan as the route dots in the 3D view (not the road-marking yellow).
 const GPS_COLOR = '#35e0ff';
+// LEGAL: Your car's marker: a bright orange nothing else on the map uses.
+const CAR_COLOR = '#ff8c2a';
 
 function isOnMap(point: Point, w: number, h: number): boolean {
   const m = 8;
@@ -578,6 +582,29 @@ function drawDynamicMinimapLayer(mctx: CanvasRenderingContext2D, options: Minima
       mctx.closePath(); mctx.fill(); mctx.stroke();
       mctx.restore();
     }
+  }
+  // LEGAL: Your parked car, drawn over everything like the waypoint, and pointed at from the rim when
+  // LEGAL: it's off the minimap, so you can always find your way back to it.
+  if(options.car){
+    const cp = proj(options.car.x, options.car.y);
+    const rim = Math.min(viewW, viewH) / 2 - 9;
+    const dx = cp.x - viewW/2, dy = cp.y - viewH/2;
+    const away = Math.hypot(dx, dy);
+    mctx.save();
+    if(glyphScale < 1.5 && away > rim){
+      const ux = dx / away, uy = dy / away;
+      const at = { x:viewW/2 + ux*rim, y:viewH/2 + uy*rim };
+      mctx.fillStyle = CAR_COLOR; mctx.strokeStyle = '#08090d'; mctx.lineWidth = 1.5;
+      mctx.beginPath(); mctx.arc(at.x, at.y, 5, 0, Math.PI*2); mctx.fill(); mctx.stroke();
+    } else {
+      const s = 4.2 * glyphScale;
+      mctx.fillStyle = '#08090d';
+      mctx.beginPath(); mctx.arc(cp.x, cp.y, s*1.7, 0, Math.PI*2); mctx.fill();
+      mctx.strokeStyle = CAR_COLOR; mctx.lineWidth = Math.max(1.5, s*0.32);
+      mctx.beginPath(); mctx.arc(cp.x, cp.y, s*1.7, 0, Math.PI*2); mctx.stroke();
+      drawGlyph(mctx, cp, 'garage', CAR_COLOR, s * 0.8);
+    }
+    mctx.restore();
   }
   const drawWaypoint = function(wp: Point): void {
     const p = proj(wp.x, wp.y);

@@ -349,7 +349,7 @@ export interface MissionSaveState {
   worldMemory: Record<string, MissionWorldValue>;
 }
 
-// LEGAL: Central mutable game state. Keyed maps (waypoints, parkedCarPos,
+// LEGAL: Central mutable game state. Keyed maps (waypoints,
 // LEGAL: portfolio, market*) are indexed by district or stock symbol at runtime.
 export interface GameState {
   cash: number;
@@ -413,7 +413,7 @@ export interface GameState {
   currentInterior: InteriorState | null;
   inVehicle: boolean;
   waypoints: Record<string, Point | null>;
-  parkedCarPos: Record<string, Point>;
+  parkedCar: Point;
   influence: number;
   influenceBuys: number;
   electedOffice: boolean;

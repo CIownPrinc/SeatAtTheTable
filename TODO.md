@@ -788,8 +788,27 @@ missing is the depth the brief asks for: most have two choices and one modal per
      passes (the clock jumps to morning), the game saves, and it says so. The bed is already there.
 159. Stairs down look like stairs up (user, 2026-10-21). V1, bug. On an upper floor the same rising
      staircase is drawn; it should be an opening in the floor with a railing and steps going down.
-160. I can't find my car on the map: give it an important marker like the garage and Arjun's, and a fee
-     to have it found and towed back to the garage (user, 2026-10-21). V1.
+160. **DONE** I can't find my car on the map: give it an important marker like the garage and Arjun's, and a fee
+     to have it found and towed back to the garage (user, 2026-10-21). V1. The real bug: the parked car
+     was stored per district (left over from separate district maps), so walking from Devlin into West
+     Side made it vanish and another appear at West Side's spawn. There's now one parked position
+     (older saves migrate). The car has a bright orange marker on the minimap (a dot on the rim when
+     it's out of view) and on the City Map, with "Your car" in the legend. The phone's Contacts has
+     Windhaven Towing: it brings the car back to the garage for $80 plus distance.
+     `e2e/parked-car.e2e.ts` walks into another district, checks the car is still there, and tows it.
+161. Properties you own should be places you can enter and explore, where you collect the rent in
+     person, maybe with a flat of your own in one (user, 2026-10-21). V1. Each owned property gets an
+     interior matched to its building (a two-flat, a walk-up, lofts, a tower lobby), tenants, a rent
+     book to collect from (rent piles up until you collect, or the manager banks it), and the bigger
+     homes (penthouse, lofts, brownstones) can be your flat: a bed to sleep and save in (158), a
+     wardrobe, a stash.
+162. The traffic cars aren't solid: I can drive through them into oncoming traffic (user, 2026-10-21).
+     V1, bug. Your car must collide with traffic cars (and they should brake for you, 75).
+163. Parking lots are missing, and pathfinding for people and vehicles is lacking (user, 2026-10-21).
+     V1 for parking lots (surface lots and garages by shops, offices, the mall, with parked cars, and
+     a place to leave your own car), with the NPC and traffic items (64, 73-75) for the pathfinding:
+     people walk to places along pavements and crossings, cars follow lanes, turn at junctions and
+     park. Lane-aware traffic beyond that is in V2.
 51. **DONE** The cars are too small (user, 2026-10-20: "the cars are so tiny bro"). They were drawn at life
     size next to people drawn 1.2x life, under a high camera. Worse, traffic was a bug: merging each
     car into one mesh transformed its quantized Blender geometry in place, which clamped every car to

@@ -58,7 +58,7 @@ import { drawMinimap as drawMapMinimap, MINIMAP_SCALE } from '../map/minimap';
 import type { MapObject } from '../map/objects';
 import { solidsFromObjects } from '../map/objects';
 import { buildMapObjects, ventureFootprint } from '../map/objectFactory';
-import { GARAGE_RETURN_SECONDS, PARKING_DISTRICT_IDS, carSpawnPositionForDistrict, defaultParkedCarPositions, parkedCarPositionForDistrict, secondsUntilGarageReturn, shouldReturnToGarage } from '../map/parking';
+import { GARAGE_RETURN_SECONDS, carSpawnPositionForDistrict, parkedCarFromSave, secondsUntilGarageReturn, shouldReturnToGarage } from '../map/parking';
 import { renderMapPlaces, serviceBuildingSilhouette } from '../map/placeRendering';
 import { archetypeExtraSolids, archetypeSilhouette, localArchetype, serviceArchetype, ventureArchetype } from '../map/archetypes';
 import { GARAGE_OFFICE, bayParkSpot, bayStandSpot, garageBay, garageOfficeCenter, garageOfficeDoor, isCarInBay, shouldParkInBay, type Bay } from '../map/driveIn';
@@ -517,7 +517,7 @@ import type * as ThreeNamespace from 'three';
     currentDistrict: 'devlin', product: 0, productLevel: 0, currentInterior: null,
     inVehicle: false,
     waypoints: { devlin:null, westside:null, hub:null, global:null },
-    parkedCarPos: defaultParkedCarPositions(),
+    parkedCar: carSpawnPositionForDistrict('devlin'),
     influence: 0, influenceBuys: 0, electedOffice: false, nextCampaignAt: 0, nextWarAt: 0,
     campaignActive: false, campaignEndAt: 0, campaignStyle: '',
     portfolio: {}, marketPrices: {}, marketHistory: {}, nextMarketTickAt: 0,
@@ -1573,6 +1573,7 @@ import type * as ThreeNamespace from 'three';
       + '<div class="mission-phone-meta">$150 flat fare</div>'
       + '<div class="mission-phone-body"><p>' + escapeHtml(taxiStatus) + '</p></div>'
       + '<div class="btn-row"><button class="mini-btn" data-taxi-dispatch ' + (taxiBlocked ? 'disabled' : '') + '>Dispatch taxi</button></div></div>'
+      + towCard()
       + '<div class="section-eyebrow" style="margin-top:18px;">People</div>'
       + (missionContacts.length
         ? missionContacts.map(function(contact){
@@ -1645,6 +1646,40 @@ import type * as ThreeNamespace from 'three';
       body:"<p class='flavor'>The investor says the trade group is interested because you negotiated like someone who understands ownership. They will watch your legitimate income before they put their name beside yours.</p><p>Your reduced permanent income cut is the price of keeping that door open.</p>",
       buttons:[{ label:'Keep the line open' }],
     });
+  }
+  // LEGAL: Windhaven Towing finds your car wherever you left it and brings it back to the garage, for a
+  // LEGAL: fee that grows with how far they have to go.
+  function towFee(): number {
+    const door = garageDoorPoint();
+    return Math.round((80 + Math.hypot(state.parkedCar.x - door.x, state.parkedCar.y - door.y) / 30) / 10) * 10;
+  }
+  function towStatus(): { ok: boolean; text: string } {
+    const car = getEquippedCar();
+    if(!car) return { ok:false, text:"You don't have a car to tow." };
+    if(state.inVehicle) return { ok:false, text:"You're in it." };
+    const door = garageDoorPoint();
+    if(Math.hypot(state.parkedCar.x - door.x, state.parkedCar.y - door.y) < 160) return { ok:false, text:`Your ${car.name} is already at the garage.` };
+    const fee = towFee();
+    if(state.cash < fee) return { ok:false, text:`They want ${formatMoney(fee)} up front.` };
+    return { ok:true, text:`They'll find your ${car.name} and have it back at the garage for ${formatMoney(fee)}.` };
+  }
+  function towCard(): string {
+    const status = towStatus();
+    return '<div class="mission-phone-card"><div class="mission-phone-title">Windhaven Towing</div>'
+      + '<div class="mission-phone-meta">Your car, back at the garage</div>'
+      + '<div class="mission-phone-body"><p>' + escapeHtml(status.text) + '</p></div>'
+      + '<div class="btn-row"><button class="mini-btn" data-tow ' + (status.ok ? '' : 'disabled') + '>Call the tow truck</button></div></div>';
+  }
+  function towCarHome(): void {
+    if(!towStatus().ok) return;
+    const fee = towFee();
+    state.cash -= fee;
+    state.parkedCar = garageDoorPoint();
+    state.carParkedAt = null;
+    updateParkedCarMesh();
+    log(`<i aria-hidden="true" class="ph-duotone ph-truck"></i> The tow truck brings your ${getEquippedCar()!.name} back to the garage: ${formatMoney(fee)}.`);
+    renderAll();
+    scheduleSave();
   }
   function dispatchTaxi(): void {
     const waypoint = currentWaypoint();
@@ -2033,7 +2068,7 @@ import type * as ThreeNamespace from 'three';
         state.equippedCar = car.id;
         // LEGAL: Switching cars in the garage puts the new one at the door, not wherever the
         // LEGAL: old one happened to be parked across the map.
-        state.parkedCarPos.devlin = garageDoorPoint();
+        state.parkedCar = garageDoorPoint();
         state.carParkedAt = null;
         log(`<i aria-hidden="true" class="ph-duotone ph-key"></i> You take the ${car.name} out of the garage.`);
         updateParkedCarMesh(); refreshPlayerModel(); renderAll();
@@ -2375,7 +2410,7 @@ import type * as ThreeNamespace from 'three';
     player.vx = 0; player.vy = 0;
     player.x = stand.x; player.y = stand.y;
     player.facing = Math.PI/2;
-    state.parkedCarPos.devlin = spot;
+    state.parkedCar = spot;
     // LEGAL: No return-to-garage clock: it is already in the garage.
     state.carParkedAt = null;
     refreshPlayerModel(); updateParkedCarMesh();
@@ -2387,10 +2422,7 @@ import type * as ThreeNamespace from 'three';
     if(!shouldReturnToGarage(state.carParkedAt, state.playSeconds)) return;
     state.carParkedAt = null;
     const door = garageDoorPoint();
-    state.parkedCarPos.devlin = door;
-    PARKING_DISTRICT_IDS.filter(id => id !== 'devlin').forEach(function(id){
-      state.parkedCarPos[id] = carSpawnPositionForDistrict(id);
-    });
+    state.parkedCar = door;
     log('<i aria-hidden="true" class="ph-duotone ph-garage"></i> Your car has been taken back to the garage in Devlin.');
     updateParkedCarMesh();
   }
@@ -4382,6 +4414,7 @@ import type * as ThreeNamespace from 'three';
   byId('contacts-panel').addEventListener('click', function(e){
     const target = e.target as HTMLElement;
     if(target.closest('[data-taxi-dispatch]')) dispatchTaxi();
+    if(target.closest('[data-tow]')) towCarHome();
     if(target.closest('[data-contact-action="dock-status"]')){
       openDockContactStatus();
       return;
@@ -5017,7 +5050,7 @@ import type * as ThreeNamespace from 'three';
     if(!state.inVehicle) return;
     state.inVehicle = false;
     player.vx=0; player.vy=0;
-    state.parkedCarPos[state.currentDistrict] = { x:player.x, y:player.y };
+    state.parkedCar = { x:player.x, y:player.y };
     // LEGAL: Start the return-to-garage clock. The car stays exactly here for a few
     // LEGAL: minutes, then goes home so you can never strand your only car.
     state.carParkedAt = state.playSeconds;
@@ -5277,7 +5310,7 @@ import type * as ThreeNamespace from 'three';
     }
     const car = getEquippedCar();
     if(car){
-      const parked = parkedCarPositionForDistrict(state.parkedCarPos, state.currentDistrict);
+      const parked = state.parkedCar;
       const d = Math.hypot(player.x-parked.x, player.y-parked.y);
       // LEGAL: The car takes a contested press only when it is CLEARLY the nearer thing. With no
       // LEGAL: door in reach there is no contest, and the margin used to leave the car unreachable.
@@ -6343,7 +6376,7 @@ import type * as ThreeNamespace from 'three';
     if(parkedCarMesh){ worldGroup.remove(parkedCarMesh); parkedCarMesh.traverse(disposeObj); parkedCarMesh=null; }
     const car = getEquippedCar();
     if(car && !state.inVehicle){
-      const pos = parkedCarPositionForDistrict(state.parkedCarPos, state.currentDistrict);
+      const pos = state.parkedCar;
       parkedCarMesh = buildCarModel(car, false);
       parkedCarMesh.position.set(pos.x,0,pos.y);
       parkedCarMesh.name = 'vehicle:parked';
@@ -6571,6 +6604,7 @@ import type * as ThreeNamespace from 'three';
         corners, assignDealer, fireDealer,
         startMission: startMissionFromOffer,
         income: incomeNow, businesses,
+        refreshParkedCar: updateParkedCarMesh,
         resolveMission: resolveMissionAtObjective,
         declineMission: declineMissionOffer,
         enterBuilding,
@@ -6610,7 +6644,11 @@ import type * as ThreeNamespace from 'three';
     return mapObjects.filter(ownsPropertyPlace);
   }
 
-  function currentWaypoint(): Point | null {
+  // LEGAL: Where your car is, for the maps: nothing while you're in it or have no car.
+  function parkedCarMarker(): Point | null {
+    return getEquippedCar() && !state.inVehicle ? state.parkedCar : null;
+  }
+    function currentWaypoint(): Point | null {
     return state.waypoints.global || null;
   }
   function setGlobalWaypoint(point: Point | null): void {
@@ -6670,6 +6708,7 @@ import type * as ThreeNamespace from 'three';
       landmarks,
       waypoint:currentWaypoint(),
       route:currentWaypoint() ? waypointRoute : null,
+      car:parkedCarMarker(),
       scale:MINIMAP_SCALE * minimapZoom,
     });
     updateMinimapTurf();
@@ -6867,6 +6906,7 @@ import type * as ThreeNamespace from 'three';
       player, mapObjects:cityVisibleMapObjects(), districtOffsets:DISTRICT_OFFSETS, buildings:cityLotFootprints(),
       worldWidth:WORLD_W, worldHeight:WORLD_H, landmass:WINDHAVEN_LANDMASS, landmarks,
       waypoint:currentWaypoint(),
+      car:parkedCarMarker(),
       // LEGAL: Same territory data as the minimap, but the full map has room for block
       // LEGAL: names, so it turns labels on.
       territory: cityTerritoryShown ? currentHoldings() : null,
@@ -7650,7 +7690,7 @@ import type * as ThreeNamespace from 'three';
       nextCampaignAt: state.nextCampaignAt, nextWarAt: state.nextWarAt,
       politicians: politicians.map(p=> ({ id:p.id, favor:p.favor, pocketed:p.pocketed })),
       gangRecruits: gangRecruits.map(g=> ({ id:g.id, inducted:g.inducted })),
-      inVehicle: state.inVehicle, waypoints: state.waypoints, parkedCarPos: state.parkedCarPos,
+      inVehicle: state.inVehicle, waypoints: state.waypoints, parkedCar: state.parkedCar,
       marketPrices: state.marketPrices, portfolio: state.portfolio, marketHistory: state.marketHistory,
       financeView: state.financeView, activeStock: state.activeStock,
       currentNews: state.currentNews, newsQueue: state.newsQueue, nextNewsAt: state.nextNewsAt,
@@ -7741,7 +7781,7 @@ import type * as ThreeNamespace from 'three';
         (d.gangRecruits||[]).forEach((sg: any)=>{ const g=gangRecruits.find(x=>x.id===sg.id); if(g) g.inducted=sg.inducted; });
         state.inVehicle = d.inVehicle||false;
         state.waypoints = Object.assign({devlin:null,westside:null,hub:null,global:null}, d.waypoints||{});
-        state.parkedCarPos = Object.assign(defaultParkedCarPositions(), d.parkedCarPos||{});
+        state.parkedCar = parkedCarFromSave(d);
         state.marketPrices = d.marketPrices || {};
         state.portfolio = d.portfolio || {};
         state.marketHistory = d.marketHistory || {};

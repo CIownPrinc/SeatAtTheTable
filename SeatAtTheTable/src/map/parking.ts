@@ -1,28 +1,23 @@
 import type { Point } from '../config/types';
 import { spawnPoints } from './world';
 
-export type ParkingDistrictId = keyof typeof spawnPoints;
-
-export const PARKING_DISTRICT_IDS: ParkingDistrictId[] = ['devlin', 'westside', 'hub'];
-
 export function carSpawnPositionForDistrict(districtId: string): Point {
   const spawn = spawnPoints[districtId] ?? spawnPoints.devlin;
   return { x:spawn.x + 70, y:spawn.y };
 }
 
-export function defaultParkedCarPositions(): Record<ParkingDistrictId, Point> {
-  return PARKING_DISTRICT_IDS.reduce<Record<ParkingDistrictId, Point>>(function(positions, districtId): Record<ParkingDistrictId, Point> {
-    positions[districtId] = carSpawnPositionForDistrict(districtId);
-    return positions;
-  }, {
-    devlin: carSpawnPositionForDistrict('devlin'),
-    westside: carSpawnPositionForDistrict('westside'),
-    hub: carSpawnPositionForDistrict('hub'),
-  });
-}
-
-export function parkedCarPositionForDistrict(parkedCarPos: Record<string, Point>, districtId: string): Point {
-  return parkedCarPos[districtId] ?? carSpawnPositionForDistrict(districtId);
+// LEGAL: Where your car is. There's one of it, so one point. It used to be kept per district, left
+// LEGAL: over from when the districts were separate maps: walk from Devlin into West Side and the car
+// LEGAL: you'd parked vanished and another appeared at West Side's spawn, so you couldn't find it.
+// LEGAL: Older saves held a point per district; the one for the district you were in is the real one.
+export function parkedCarFromSave(saved: { parkedCar?: unknown; parkedCarPos?: unknown; currentDistrict?: unknown }): Point {
+  const point = (value: unknown): Point | null => {
+    const p = value as Partial<Point> | null | undefined;
+    return p && typeof p.x === 'number' && typeof p.y === 'number' ? { x:p.x, y:p.y } : null;
+  };
+  const legacy = saved.parkedCarPos as Record<string, unknown> | undefined;
+  const district = typeof saved.currentDistrict === 'string' ? saved.currentDistrict : 'devlin';
+  return point(saved.parkedCar) ?? point(legacy?.[district]) ?? carSpawnPositionForDistrict('devlin');
 }
 
 // LEGAL: ---- Return to garage (world expansion stage 6) ----

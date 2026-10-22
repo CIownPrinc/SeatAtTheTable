@@ -1,19 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { spawnPoints } from './world';
-import { carSpawnPositionForDistrict, defaultParkedCarPositions, parkedCarPositionForDistrict } from './parking';
+import { carSpawnPositionForDistrict, parkedCarFromSave } from './parking';
 
 describe('map parking positions', function () {
-  it('spawns cars beside each district spawn instead of on top of the player', function () {
-    const defaults = defaultParkedCarPositions();
-
-    expect(defaults.devlin).toEqual({ x:spawnPoints.devlin.x + 70, y:spawnPoints.devlin.y });
-    expect(defaults.westside).toEqual({ x:spawnPoints.westside.x + 70, y:spawnPoints.westside.y });
-    expect(defaults.hub).toEqual({ x:spawnPoints.hub.x + 70, y:spawnPoints.hub.y });
+  it('spawns a car beside the spawn point instead of on top of the player', function () {
+    expect(carSpawnPositionForDistrict('devlin')).toEqual({ x:spawnPoints.devlin.x + 70, y:spawnPoints.devlin.y });
   });
 
-  it('uses a saved parked point when one exists and a spawn fallback otherwise', function () {
-    expect(parkedCarPositionForDistrict({ devlin:{ x:712, y:612 } }, 'devlin')).toEqual({ x:712, y:612 });
-    expect(parkedCarPositionForDistrict({}, 'hub')).toEqual(carSpawnPositionForDistrict('hub'));
-    expect(parkedCarPositionForDistrict({}, 'unknown')).toEqual(carSpawnPositionForDistrict('devlin'));
+  it('keeps one parked point, and reads the real one out of an older per-district save', function () {
+    expect(parkedCarFromSave({ parkedCar:{ x:712, y:612 } })).toEqual({ x:712, y:612 });
+    expect(parkedCarFromSave({ parkedCarPos:{ devlin:{ x:1, y:1 }, westside:{ x:900, y:400 } }, currentDistrict:'westside' })).toEqual({ x:900, y:400 });
+    expect(parkedCarFromSave({})).toEqual(carSpawnPositionForDistrict('devlin'));
   });
 });

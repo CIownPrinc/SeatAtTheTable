@@ -170,6 +170,7 @@ export const MAP_LEGEND: Array<{ icon: string; label: string; color: string; ph:
   { icon:'gang',     label:'Gang recruit',            color:'#f0efe8', ph:'ph-users-three' },
   { icon:'estate',   label:'Your property',           color:'#5fbf8f', ph:'ph-house' },
   { icon:'landmark', label:'Landmark',                color:'#e0c860', ph:'ph-star' },
+  { icon:'car',      label:'Your car',                color:'#ff8c2a', ph:'ph-car' },
   { icon:'you',      label:'You',                     color:'#e8e6de', ph:'ph-navigation-arrow' },
   { icon:'waypoint', label:'Waypoint and route',      color:'#35e0ff', ph:'ph-crosshair' },
 ];

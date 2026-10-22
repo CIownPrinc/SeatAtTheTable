@@ -26,7 +26,7 @@ async function waitForScene(page: Page): Promise<void> {
 
 interface SeatHook {
   player: { x: number; y: number; vx: number; vy: number };
-  state: { inVehicle: boolean; carParkedAt: number | null; parkedCarPos: Record<string, { x: number; y: number }> };
+  state: { inVehicle: boolean; carParkedAt: number | null; parkedCar: { x: number; y: number } };
   mapObjects: { kind: string; id: string; x: number; y: number }[];
   canWalk: (x: number, y: number) => boolean;
 }
@@ -90,7 +90,7 @@ test.describe('the drive-in garage', function () {
           requestAnimationFrame(function(){
             resolve({
               inVehicle: seat.state.inVehicle,
-              parked: seat.state.parkedCarPos.devlin,
+              parked: seat.state.parkedCar,
               player: { x: seat.player.x, y: seat.player.y },
               carParkedAt: seat.state.carParkedAt,
             });
