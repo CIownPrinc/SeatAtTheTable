@@ -194,7 +194,8 @@ Status: **DONE** shipped and verified · **PART** partly done (what's left is no
    with the batch that makes missions and rooms real: mission scenes (125, 122), interiors that differ
    and only interactive where useful (126, 127), the copy pass (128) and simpler heat with fines
    (123, 140). Missions come from phone calls, fewer and bigger, with real outcomes and numbers
-   (141, 145, 146, 148).
+   (141, 145, 146, 148). All of this is planned first as one mission overhaul (151), designed on
+   paper before it's built, with mission cutscenes (157) and the phone redesign (156).
 4. Then the tycoon and street side: a bike as the first asset (135), office perks (133), Dice and the
    smaller gangs (134, 124), drug sales (130), choices that matter (137), the new characters (138) and
    the funny side content (132), crew shown on ventures (139), your property on the map (142), the
@@ -202,7 +203,8 @@ Status: **DONE** shipped and verified · **PART** partly done (what's left is no
 5. Then the rest: mobile tests (60), the test review (105), NPCs and traffic (64, 73-75, 96), the dealer
    upgrade (69), the wardrobe (59), the race (90), the phone and tycoon audit (102), the docs audit (67).
 6. Last, the big map rebuild (80-87, 108-109), done in one planned pass, not piecemeal, with the
-   neighbourhoods that unlock as you go (131) built into it.
+   neighbourhoods that unlock as you go (131) built into it, the new mission locations (153) and
+   rough, natural edges everywhere (154).
 Each item is checked in the running game before it's marked done.
 V1 stays feature-frozen everywhere else; this list is the exception the player asked for.
 Most of the open items will be built in the new map engine (section 11), not patched into the
@@ -687,10 +689,60 @@ or split, with the more advanced part in V2.
 149. A taxi on the phone that drives you to the waypoint for a set fare (user, 2026-10-21). V1.
      Today the phone's taxi takes $150 and moves you to the waypoint instantly. Make a cab pull up,
      you get in, and it drives the real roads, with a skip that pays the fare and jumps there (city
-     only, as decided). Hailing a passing cab stays in V2.
+     only, as decided). Hailing a passing cab stays in V2. The user stressed (2026-10-21) that today
+     it's only paid fast travel: no cab on the map, nothing to get into, no ride. The V1 version must
+     be a real cab: it drives to you, Arjun gets in the back, the camera rides along, the meter runs,
+     and you can skip. Owning the Windhaven Cab Co. venture makes it cheaper.
 150. Animations for Arjun: opening doors, walking, getting in and out of cars and onto bikes, and so
      on (user, 2026-10-21). Split. V1: a door push when entering, getting into and out of cars and
      onto and off bikes, and a phone-out pose. V2: a full animation set.
+
+**Batch of 2026-10-21 (fourth list: the mission brief).** The player shared an older mission brief
+as a suggestion to build on. Much of its first version is already in the game: all eleven of its
+events exist (the Herald interview, the rival capo, Kowalski, Amit at the bus station, Miller,
+the hustler, the investor, the cart fire, the missing cargo, the alderman's bagman and the turf
+war), missions set the GPS to their objective, and repeats are counted (`eventRepeats`). What's
+missing is the depth the brief asks for: most have two choices and one modal per stage.
+
+151. The mission overhaul: choose your own adventure throughout the game (user, 2026-10-21). V1 for
+     the overhaul, V2 for a fully branching story (137). What the player asked for:
+     - Almost every popup becomes a real mission, conversation or branching scenario, with varying
+       size: some short, some several stages, some unlocking parts of the game or new missions.
+     - The interview as the model: a named reporter calls; declining loses it (or it comes back
+       differently later); accepting means driving to the Herald, walking into the studio, and
+       answering several questions in different tones (professional, funny, controversial, evasive,
+       inspiring). Lana reacts to each answer, and the ending varies: reputation, new fans,
+       criticism from some groups, new contacts or side missions, sponsorships, or bad press.
+     - Choices leave lasting marks on reputation, relationships, which missions come, future events
+       and parts of the story, so a second playthrough could go differently. Hidden standings (like
+       family loyalty) can track this.
+     - More variety, and each popup appears once per playthrough. When something does repeat, it
+       comes back with a new context, new lines, new choices and new outcomes, and remembers what you
+       did last time (Kowalski back with a higher price unless you blackmailed him; Amit's mistake if
+       you hired him).
+     How: first, a written design for every one of the current 26 events in
+     `SeatAtTheTable/docs/mission-designs.md`, taking the brief's ideas as a start and going further:
+     stages, places, the people in them, choices with their numbers (148), lasting effects, and what
+     each unlocks. The player reviews it before any of it is built. Then build it on the existing
+     mission engine (stages and objectives in `core/missions.ts`), with the scenes from 125 and 146.
+152. The GPS should set the waypoint to the mission on its own (user, 2026-10-21). V1. It already
+     does for a mission objective. Check that every stage of every mission does, including phone
+     ones and the ones that move to a second place, and that it clears when the mission ends. Add it
+     to the mission e2e tests.
+153. New buildings and places for these missions (user, 2026-10-21). V1, in the map rebuild. Each
+     needs a proper shape, collision, an interior, a GPS route and a label, as the location rule in
+     `SEATATTHETABLE2.md` says. The list comes from the design in 151.
+154. The map is too geometric and square: it should be rough at the edges like a real map, with
+     GTA-like unique spots inside a city grid (user, 2026-10-21). V1, in the map rebuild, with 108-109
+     (natural water). The coast, the district edges and the map border all get irregular outlines,
+     and the grid gets bends, odd blocks and landmarks. Moves the "irregular coast" idea out of V2.
+155. (merged into 149, the taxi).
+156. The phone's icons, the contacts icon, and its layout and design could be much better (user,
+     2026-10-21). V1. A redesign of the home screen, app icons and the contacts app, done with 141
+     (calling contacts), and checked on mobile (60).
+157. Cutscenes for missions, played in the world (user, 2026-10-21). Split. V1: short scenes in the
+     map at a mission's start and end: the camera moves in close (the close-up camera), letterbox
+     bars, the people in it moving and talking, and a skip. V2: full cinematics.
 51. **DONE** The cars are too small (user, 2026-10-20: "the cars are so tiny bro"). They were drawn at life
     size next to people drawn 1.2x life, under a high camera. Worse, traffic was a bug: merging each
     car into one mesh transformed its quantized Blender geometry in place, which clamped every car to

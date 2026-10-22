@@ -96,7 +96,7 @@ docs already worked out how it should play.
 | Lane-aware traffic and smarter pedestrians | Idea | Includes police patrols, roadblocks, delivery routes, taxis and crew transport using the car models. |
 | Hail a taxi (V1 TODO 149 does the phone cab) | Requested | GTA-style. Call or flag down a cab, pick a destination (a waypoint, a place, or a mission objective), and ride while it drives you there on the real roads. You can skip the ride for a fare, but within the city only, per the "drive is part of the fun" rule. Should pair with the Windhaven Cab Co. venture: owning it could make rides cheaper or let your own drivers move crew. |
 | More 3D props | Idea | Street furniture, parking, docks, roof clutter and pedestrian variety. V1 has unused CC0 asset packs (listed in `V1: SeatAtTheTable/docs/map-asset-usage-audit.md`). Only add assets that feed something visible. |
-| Irregular coast and edge landmarks | Idea | Make the city read less like a rectangular board. |
+| Irregular coast and edge landmarks | Moved to V1 | Now V1 TODO 154, in the map rebuild. |
 | Visual regression tests for the 3D canvas | Idea | Compare screenshots across changes. |
 
 ### Missions and story
@@ -114,6 +114,7 @@ docs already worked out how it should play.
 | First person and shooting (V1 TODO 147) | Requested | Combat, aiming, cover and police responses designed together. It changes the whole game's controls and tone, so decide it before building the engine. |
 | Swimming, diving and boats (V1 TODO 144) | Requested | V1 lets you swim slowly in calm water. |
 | A full animation set for Arjun (V1 TODO 150) | Requested | V1 does doors, getting in and out of vehicles, and the phone. |
+| Full mission cinematics (V1 TODO 157) | Requested | V1 does short in-world scenes at a mission's start and end. |
 | A branching story (V1 TODO 137) | Requested | V1 makes the big choices change visible things. V2 branches the story. |
 | More comic encounters | Requested | Each should use a different mechanic, location and reward. V1 ships three or four (TODO 132), like a hallucination, a plant that turns you into an animal, or a sewage truck. |
 | More phone contacts | Partly built | V1 has Dockmaster Bell, Lana Vance, Amit and a sponsor lead. Each contact only offers actions that fit their story role, and a reporter must not become a universal menu. |
