@@ -122,6 +122,7 @@ import { freezeStaticScenery } from '../map/staticScenery';
 import { mergeLooseByPrefix, mergeMeshesWithin, type MergeGeometries } from '../map/mergeScenery';
 import { choiceDelta, describeMissionLedger, foldMissionLedger, openMissionLedger, rebaseMissionLedger, reconcileResultText, type MissionLedger, type OutcomeSnapshot } from './missionLedger';
 import { getOnboardingSteps, type OnboardingMissionSnapshot, type OnboardingPanelTarget } from './onboarding';
+import { incomeBreakdown, type IncomeBreakdown } from './income';
 import { MISSION_CONFIG as PHASE2_MISSION_CONFIG, OUTSKIRT_VENUE_CONFIG, missionEventPool, type MissionEventDefinition } from '../config/missions';
 import type * as ThreeNamespace from 'three';
 
@@ -488,7 +489,7 @@ import type * as ThreeNamespace from 'three';
     const office = serviceBuildings.find(s => s.brandId === property.brand);
     const officePlace = office ? mapObjects.find(o => o.kind === 'service' && (o.ref as ServiceBuilding).id === office.id) : null;
     const body = owned
-      ? `<p class="flavor">Yours. The keys are on your ring and the rent comes in on time.</p>${briefRow('Pays', formatMoneyRate(propertyIncomeFor(property)))}`
+      ? `<p class="flavor">Yours. The keys are on your ring and the rent comes in on time.</p>${briefRow('Pays', formatMoneyRate(incomeNow().properties[property.id] ?? 0))}`
       : `<p class="flavor">${brand ? `Listed with ${brand.name}.` : 'On the market.'} ${property.online ? 'You can close on it from the phone.' : 'You have to see the agent in person.'}</p>`
         + briefRow('Price', formatMoney(property.cost)) + briefRow('Would pay', formatMoneyRate(property.incomePerSec));
     const buttons: ModalOptions['buttons'] = [];
@@ -579,11 +580,7 @@ import type * as ThreeNamespace from 'three';
     const extortFronts = localBusinesses.filter(b=>b.extorted).length;
     return street + cornerFronts + extortFronts;
   }
-  function illegalIncomePerSec(){
-    const streetLow = state.layingLow ? 0.4 : 1;
-    const street = businesses.filter(b=>b.category==='street').reduce((s,b)=> s+incomeFor(b), 0) * streetLow;
-    return (street * globalIncomeMult()) + cornerIncomePerSec() * (state.layingLow?0.4:1) + localBizIncome() * (state.layingLow?0.4:1);
-  }
+  function illegalIncomePerSec(){ return incomeNow().illegal; }
   function topStreetVenture(){ return businesses.filter(b=>b.category==='street' && b.level>0).sort((a,b)=>b.level-a.level)[0] || null; }
   function flagshipLegit(){ return businesses.filter(b=>b.category==='legit' && b.level>0).sort((a,b)=>incomeFor(b)-incomeFor(a))[0] || null; }
   function districtDisplayName(id: string){ const d = districts.find(x=>x.id===id); return d ? d.name : 'the city'; }
@@ -664,7 +661,6 @@ import type * as ThreeNamespace from 'three';
   const EXTORT_MULT = [0, 1, 2, 3.2];
   function extortLevel(b: LocalBusiness){ return b.extorted ? Math.max(1, Math.min(3, b.extortTier ?? 1)) : 0; }
   function extortMult(b: LocalBusiness){ return EXTORT_MULT[extortLevel(b)]; }
-  function localBizIncome(){ return localBusinesses.filter(b=>b.extorted).reduce((s,b)=> s + b.extortIncome*extortMult(b), 0); }
   function blackMarketTradeIncome(){ return state.worldMemory.blackMarketTrade ? PHASE2_MISSION_CONFIG.blackMarketIncome : 0; }
   function blackMarketTradeHeat(){ return state.worldMemory.blackMarketTrade ? PHASE2_MISSION_CONFIG.blackMarketHeat : 0; }
   function activeCorners(){ return corners.filter(c=> c.dealer && !c.busted); }
@@ -686,15 +682,22 @@ import type * as ThreeNamespace from 'three';
   function labCost(){ return Math.ceil(400 * Math.pow(1.22, state.productLevel) * discountMult()); }
   function productCap(){ return 200 + state.productLevel*20; }
   function electedOfficeIncome(){ return state.electedOffice ? (5 + Math.min(state.prestigeCount, familyTiers.length)*2) : 0; }
-  function rawTotalIncome(){
-    // LEGAL: While laying low, the illegal side (street ventures, corners, extortion)
-    // LEGAL: runs at a fraction; the legit empire and rents are unaffected.
-    const low = state.layingLow ? 0.4 : 1;
-    const venturesIncome = businesses.reduce((s,b)=> s + incomeFor(b) * (b.category==='street' ? low : 1), 0) * devlinIncomeBonus();
-    return (venturesIncome + propertiesIncome() + localBizIncome()*low + cornerIncomePerSec()*low + blackMarketTradeIncome()*low + electedOfficeIncome()) * globalIncomeMult();
+  // LEGAL: Every income line, with the bonuses it's really paid with (core/income.ts). The loop pays
+  // LEGAL: `net`; cards read their own line, so what they show is what arrives.
+  function incomeNow(): IncomeBreakdown {
+    const reinvesting = deepakActive();
+    return incomeBreakdown({
+      ventures:businesses.map(b => ({ id:b.id, perSec:incomeFor(b), street:b.category === 'street', reinvests:reinvesting && !!b.manager && b.level > 0 })),
+      properties:ownedPropertyList().map(p => ({ id:p.id, perSec:propertyIncomeFor(p) })),
+      extortion:localBusinesses.filter(b => b.extorted).map(b => ({ id:b.id, perSec:b.extortIncome * extortMult(b) })),
+      corners:cornerIncomePerSec(), blackMarket:blackMarketTradeIncome(), office:electedOfficeIncome(),
+      layingLow:state.layingLow, homeTurfMult:devlinIncomeBonus(), globalMult:globalIncomeMult(), bribeOn:state.bribeOn,
+    });
   }
-  function bribeUpkeep(){ return state.bribeOn ? rawTotalIncome()*0.12 : 0; }
-  function netIncome(){ return rawTotalIncome() - bribeUpkeep(); }
+  function rawTotalIncome(){ return incomeNow().gross; }
+  function netIncome(){ return incomeNow().net; }
+  // LEGAL: What a venture pays you now, bonuses included (0 until it's open).
+  function ventureIncomeNow(b: Business){ return incomeNow().ventures[b.id] ?? 0; }
   function respectPerSec(){ const car=getEquippedCar(); return (state.muscleCount*0.6 + (car?car.respectPerSec:0) + propertyRespect()) * (grandmotherActive()?1.25:1); }
   // LEGAL: Full heat accounting — the single source of truth for both generation and
   // LEGAL: the HUD "Details" breakdown. Sources are summed, then scaled by the shared
@@ -1888,7 +1891,7 @@ import type * as ThreeNamespace from 'three';
       const rc = researchCostFor(b);
       buttons.push({ label:`Research (${formatMoney(rc)})`, onClick:function(){ if(state.cash>=rc){ state.cash-=rc; b.researched=true; log(`<i aria-hidden="true" class="ph-duotone ph-flask"></i> You research ${b.name}.`);} renderAll(); }});
     } else {
-      bodyHtml += `<p class="flavor">Level ${b.level} · ${incomeFor(b).toFixed(1)}/s · Efficiency ${Math.round(efficiency(b)*100)}%</p>`;
+      bodyHtml += `<p class="flavor">Level ${b.level} · ${ventureIncomeNow(b).toFixed(1)}/s · Efficiency ${Math.round(efficiency(b)*100)}%</p>`;
       const cost = costForLevel(b);
       buttons.push({ label:`${b.level===0?'Open':'Expand'} (${formatMoney(cost)})`, onClick:function(){ if(state.cash>=cost){ state.cash-=cost; b.level+=1; if(b.category==='street') state.respect+=1; if(b.level===1){ if(b.id==='restaurant') triggerMilestone('chaat_house'); if(b.id==='syndicate_logistics') triggerMilestone('docks'); } } renderAll(); }});
       if(!b.manager){
@@ -2695,7 +2698,7 @@ import type * as ThreeNamespace from 'three';
       const tier = extortLevel(biz);
       const res = Math.round(biz.resentment ?? 0);
       body = `<p>${biz.owner} is on the hook — <strong>${EXTORT_TIER_NAME[tier]}</strong>.</p>`
-        + `<p class="flavor">Paying +${(biz.extortIncome*extortMult(biz)).toFixed(1)}/s, +${(biz.extortHeat*extortMult(biz)).toFixed(2)} heat/s.</p>`
+        + `<p class="flavor">Paying +${(incomeNow().extortion[biz.id] ?? 0).toFixed(1)}/s, +${(biz.extortHeat*extortMult(biz)).toFixed(2)} heat/s.</p>`
         + `<div class="control-track" title="Resentment"><div class="control-fill" style="width:${res}%; background:${res>66?'var(--red)':(res>33?'var(--gold)':'var(--green)')};"></div></div>`
         + `<p class="flavor">Resentment ${res}%. At 100% they stop paying and drop a dime on you.</p>`;
       if(tier < 3){
@@ -2772,12 +2775,12 @@ import type * as ThreeNamespace from 'three';
         <div class="data-main">
           <div class="col-id">${ICONS.bld2}</div>
           <div class="col-name">${p.name}</div>
-          <div class="col-inc">+${(owned ? propertyIncomeFor(p) : p.incomePerSec).toFixed(1)}/s</div>
+          <div class="col-inc">+${(owned ? incomeNow().properties[p.id] ?? 0 : p.incomePerSec * globalIncomeMult()).toFixed(1)}/s</div>
           <div class="col-status">${owned?'ACTIVE':'SALE'}</div>
         </div>
         <div class="data-expanded">
           ${brand ? `<div class="flavor-note" style="color:var(--gold);">${brand.name}${brand.caveat?` — <span style="color:var(--text-faint);">${brand.caveat}</span>`:''}</div>` : ''}
-          <div class="flavor-note">${owned ? `Owned — earning ${propertyIncomeFor(p).toFixed(1)}/s, no crew needed${appreciationMult(brandById(p.brand), propertyHeldSeconds(p.id)) > 1 ? ` (appreciated from ${p.incomePerSec}/s)` : ''}` : `Passive rental income: ${p.incomePerSec}/s, no crew needed`}</div>
+          <div class="flavor-note">${owned ? `Owned — earning ${(incomeNow().properties[p.id] ?? 0).toFixed(1)}/s, no crew needed${appreciationMult(brandById(p.brand), propertyHeldSeconds(p.id)) > 1 ? ` (appreciated from ${p.incomePerSec}/s)` : ''}` : `Passive rental income: ${p.incomePerSec}/s, no crew needed`}</div>
           ${btns}
         </div>
       </div>`;
@@ -3652,7 +3655,7 @@ import type * as ThreeNamespace from 'three';
     
     main += `
       <div class="col-lvl">${b.level}</div>
-      <div class="col-inc">${incomeFor(b).toFixed(1)}/s</div>
+      <div class="col-inc">${ventureIncomeNow(b).toFixed(1)}/s</div>
       <div class="col-crew">${b.crew}/${need+2}</div>
       ${heatStr}
       <div class="col-status">${b.manager ? 'MANAGED' : (b.level===0 ? 'CLOSED' : 'ACTIVE')}</div>
@@ -4093,7 +4096,7 @@ import type * as ThreeNamespace from 'three';
           <div class="col-id">${ICONS.diamond}</div>
           <div class="col-name">The Trade</div>
           <div class="col-stat">DEALERS: ${activeCorners().length}/${corners.length}</div>
-          <div class="col-stat">INCOME: +${cornerIncomePerSec().toFixed(1)}/s</div>
+          <div class="col-stat">INCOME: +${incomeNow().corners.toFixed(1)}/s</div>
           <div class="col-status">${corners.some(c=>c.dealer && !c.busted)?'ACTIVE':'NO DEALERS'}</div>
         </div>
         <div class="data-expanded">
@@ -4105,7 +4108,7 @@ import type * as ThreeNamespace from 'three';
         <div class="data-main">
           <div class="col-id">${ICONS.box}</div>
           <div class="col-name">Black Market Trade</div>
-          <div class="col-stat">INCOME: +${formatMoney(blackMarketTradeIncome())}/s</div>
+          <div class="col-stat">INCOME: +${formatMoney(incomeNow().blackMarket)}/s</div>
           <div class="col-stat">HEAT: +${blackMarketTradeHeat().toFixed(2)}/s</div>
           <div class="col-status">ACTIVE</div>
         </div>
@@ -4270,7 +4273,7 @@ import type * as ThreeNamespace from 'three';
     const tradeEl = byIdOrNull('trade-summary');
     if(tradeEl){
       const active = activeCorners().length;
-      tradeEl.textContent = `${state.product.toFixed(0)}/${productCap()} product · ${active}/${corners.length} corners staffed · ${cornerIncomePerSec().toFixed(1)}/s`;
+      tradeEl.textContent = `${state.product.toFixed(0)}/${productCap()} product · ${active}/${corners.length} corners staffed · ${incomeNow().corners.toFixed(1)}/s`;
     }
   }
 
@@ -6553,6 +6556,7 @@ import type * as ThreeNamespace from 'three';
         breakDownCar: function(){ const car = getEquippedCar(); if(car) breakDownCar(car); },
         corners, assignDealer, fireDealer,
         startMission: startMissionFromOffer,
+        income: incomeNow, businesses,
         resolveMission: resolveMissionAtObjective,
         declineMission: declineMissionOffer,
         enterBuilding,
@@ -7769,13 +7773,13 @@ import type * as ThreeNamespace from 'three';
     syncTonicVision();
     deliverDelayedFollowUp();
 
-    state.cash += netIncome()*dt;
-    if(deepakActive()){
+    const income = incomeNow();
+    state.cash += income.net*dt;
+    if(income.reinvestedTotal > 0){
       businesses.forEach(b=>{
-        if(!b.manager || b.level<=0) return;
-        const reinvestment = incomeFor(b) * globalIncomeMult() * 0.1 * dt;
-        state.cash = Math.max(0, state.cash-reinvestment);
-        b.reinvestedIncome += reinvestment;
+        const share = income.reinvested[b.id];
+        if(!share) return;
+        b.reinvestedIncome += share * dt;
         let levelsAdded = 0;
         while(levelsAdded < 25 && b.reinvestedIncome >= costForLevel(b)){
           b.reinvestedIncome -= costForLevel(b);
@@ -7893,7 +7897,9 @@ import type * as ThreeNamespace from 'three';
     const away = (Date.now() - fromTime)/1000;
     if(away <= 25) return false;
     const capped = Math.min(away, 7200);
-    const earned = netIncome() * capped;
+    // LEGAL: Away, nothing levels up, so Deepak's reinvested share is paid out as cash instead.
+    const away$ = incomeNow();
+    const earned = (away$.net + away$.reinvestedTotal) * capped;
     state.cash += earned;
     const mins = Math.max(1, Math.round(capped/60));
     showModal({ eyebrow:'Business Report', title:"WHILE YOU WERE OUT",

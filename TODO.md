@@ -632,9 +632,15 @@ or split, with the more advanced part in V2.
      make it scenery. Add a test that every hotspot has an action with a game effect.
 128. Too many corny, unnecessary lines left from the old model, clearly written by an AI, in popups and
      elsewhere (user, 2026-10-21). V1. A copy pass over every string the player sees: rewrite or cut.
-129. The tycoon income maths is a little off (user, 2026-10-21). V1, bug. Check the shown income
-     against what actually arrives each second, for every source (ventures, properties, corners,
-     extortion, black market and the multipliers), and add tests that the display and the payout agree.
+129. **DONE** The tycoon income maths is a little off (user, 2026-10-21). V1, bug. Three things were
+     off. The venture, property, corner and extortion cards showed base rates, while the payout
+     multiplied in bonuses they never showed: a hidden 6% progression boost, the brother's 1.5x, the
+     Devlin home-turf bonus and laying low. So the cards never added up to the header. Deepak's
+     reinvestment took 10% of managed ventures' takings out of cash every second without the header
+     showing it. And the illegal-income figure (which prices the lawyer) skipped the home-turf bonus.
+     All income is now worked out in one place (`core/income.ts`, with tests): the loop pays its net,
+     the header shows it, and every card reads its own line. `e2e/income.e2e.ts` checks the header
+     against the cash that actually arrives.
 130. Expand the drug sales (user, 2026-10-21). Split, kept tasteful. V1: more than one product grade,
      buyers who differ by area, a supply you have to restock, and a bust or robbery chance that fits
      the new heat. V2: a supply chain across districts, and rival dealers who undercut you.
@@ -675,7 +681,8 @@ or split, with the more advanced part in V2.
      with 117. A Contacts app: each contact shows whether they have work. Calling them plays a short
      call and offers it, and accepting puts the meeting on the map. Contacts reach out only for
      story beats, with one short text, not a stack of messages.
-142. You should be able to see the real estate you own on the map (user, 2026-10-21). V1. Owned
+142. You should be able to see the real estate you own on the map (user, 2026-10-21). V1. (The minimap
+     already marks only the property you own; check it's clear enough, then do the rest.) Owned
      properties get your gold marker on the minimap and the city map, a "yours" sign on the building,
      and a filter in the map legend.
 143. **DONE** Only one mission accepted at a time (user, 2026-10-21). V1, bug. The cap only stopped new
