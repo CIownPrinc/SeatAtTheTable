@@ -186,16 +186,19 @@ Every request the player made while playing, word for word in intent, so none ge
 Status: **DONE** shipped and verified · **PART** partly done (what's left is noted) · open.
 
 **Order of work for the open items (set 2026-10-21, after "don't work hastily"):**
-1. Bugs and crashes first (111, 116, then 119, 120, 121, 129).
+1. Bugs and crashes first (111, 116, then 119, 120, 121, 129, 143).
 2. Then put right what was done hastily before: Central Park (112), the beaches (113), the railyard
    and placement and proportion everywhere (91, 95, 110), the alleys (68). Placement, proportions and
    the inside matching the outside are standing checks for every place, new or old (110).
 3. Then the half-finished interior work (57-63), mission joining (117) and the camera (118), together
    with the batch that makes missions and rooms real: mission scenes (125, 122), interiors that differ
-   and only interactive where useful (126, 127), the copy pass (128) and simpler heat (123).
+   and only interactive where useful (126, 127), the copy pass (128) and simpler heat with fines
+   (123, 140). Missions come from phone calls, fewer and bigger, with real outcomes and numbers
+   (141, 145, 146, 148).
 4. Then the tycoon and street side: a bike as the first asset (135), office perks (133), Dice and the
    smaller gangs (134, 124), drug sales (130), choices that matter (137), the new characters (138) and
-   the funny side content (132).
+   the funny side content (132), crew shown on ventures (139), your property on the map (142), the
+   taxi ride (149), swimming (144) and Arjun's animations (150).
 5. Then the rest: mobile tests (60), the test review (105), NPCs and traffic (64, 73-75, 96), the dealer
    upgrade (69), the wardrobe (59), the race (90), the phone and tycoon audit (102), the docs audit (67).
 6. Last, the big map rebuild (80-87, 108-109), done in one planned pass, not piecemeal, with the
@@ -649,6 +652,45 @@ or split, with the more advanced part in V2.
      business council, the Dice gang leader, a politician, Sanjay, gang members and a biker gang (user,
      2026-10-21). V1 for most. Sanjay and Dice are already in; they get their own models and places.
      The biker gang builds on the Outlaw Riders brand. The others each come with a mission or a job.
+
+**Batch of 2026-10-21 (third list).**
+
+139. A venture doesn't say how many crew are on it (user, 2026-10-21). V1. The card shows a bare
+     "2/4"; say it in words ("Crew: 2 of 4, needs 2 to run well") on the card and in the venture's room.
+140. Heat doesn't make sense, and should start with fines rather than going straight to seizing things
+     (user, 2026-10-21). V1, part of 123. Low wanted levels cost a fine sized to what you did, paid or
+     owed. Seizures and raids only at the top levels, and the game says why each one happened.
+141. Call contacts from the phone for missions, like GTA (user, 2026-10-21; Claude decides how). V1,
+     with 117. A Contacts app: each contact shows whether they have work. Calling them plays a short
+     call and offers it, and accepting puts the meeting on the map. Contacts reach out only for
+     story beats, with one short text, not a stack of messages.
+142. You should be able to see the real estate you own on the map (user, 2026-10-21). V1. Owned
+     properties get your gold marker on the minimap and the city map, a "yours" sign on the building,
+     and a filter in the map legend.
+143. Only one mission accepted at a time (user, 2026-10-21). V1, bug. There is a one-mission cap
+     (`activeMissionCap`), so some path gets round it. Find it, and test every way a mission can
+     start (popup, phone, walking up to a contact).
+144. Swimming where it makes sense (user, 2026-10-21). Split. V1: wading into the lake, canal or sea
+     swims instead of hitting a wall, slow, with no phone and no vehicles, and you climb out at banks
+     and beaches. Water that's deep or fast stays off limits. V2: diving and boats.
+145. Mission outcomes need to be more developed (user, 2026-10-21). V1, with 122 and 137. Each ending
+     shows what happened in a short scene and changes something that lasts: a contact, a place, a
+     price, a follow-up.
+146. Less vagueness in the interview and other missions: not just "get there, answer a popup, leave".
+     More answers, more outcomes, more immersion (user, 2026-10-21). V1, with 125. The main missions
+     get several steps, answers that lead to different places, and the scene played as a close-up.
+147. Eventually, first person and shooting (user, 2026-10-21). V2. Both change the whole game's
+     tone and controls and need combat, aim, cover and police responses designed together.
+148. Missions come too fast and should feel like a bigger deal. And the consequences only say what
+     changes, not by how much (user, 2026-10-21). V1. Fewer missions, spaced further apart, each
+     announced properly. Every choice shows its numbers ("-$1,200 cash, wanted +1, Lana's trust up").
+149. A taxi on the phone that drives you to the waypoint for a set fare (user, 2026-10-21). V1.
+     Today the phone's taxi takes $150 and moves you to the waypoint instantly. Make a cab pull up,
+     you get in, and it drives the real roads, with a skip that pays the fare and jumps there (city
+     only, as decided). Hailing a passing cab stays in V2.
+150. Animations for Arjun: opening doors, walking, getting in and out of cars and onto bikes, and so
+     on (user, 2026-10-21). Split. V1: a door push when entering, getting into and out of cars and
+     onto and off bikes, and a phone-out pose. V2: a full animation set.
 51. **DONE** The cars are too small (user, 2026-10-20: "the cars are so tiny bro"). They were drawn at life
     size next to people drawn 1.2x life, under a high camera. Worse, traffic was a bug: merging each
     car into one mesh transformed its quantized Blender geometry in place, which clamped every car to

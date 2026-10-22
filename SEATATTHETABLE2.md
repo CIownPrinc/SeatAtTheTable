@@ -94,7 +94,7 @@ docs already worked out how it should play.
 | Lakeridge Country Club | Designed | Where cash becomes standing. Build it as part of in-person politics, not beside it. |
 | Non-grid roads with curves | Idea | V1 avoided this because of hand-placed anchors. V2 can design placement to allow it from the start. |
 | Lane-aware traffic and smarter pedestrians | Idea | Includes police patrols, roadblocks, delivery routes, taxis and crew transport using the car models. |
-| Hail a taxi | Requested | GTA-style. Call or flag down a cab, pick a destination (a waypoint, a place, or a mission objective), and ride while it drives you there on the real roads. You can skip the ride for a fare, but within the city only, per the "drive is part of the fun" rule. Should pair with the Windhaven Cab Co. venture: owning it could make rides cheaper or let your own drivers move crew. |
+| Hail a taxi (V1 TODO 149 does the phone cab) | Requested | GTA-style. Call or flag down a cab, pick a destination (a waypoint, a place, or a mission objective), and ride while it drives you there on the real roads. You can skip the ride for a fare, but within the city only, per the "drive is part of the fun" rule. Should pair with the Windhaven Cab Co. venture: owning it could make rides cheaper or let your own drivers move crew. |
 | More 3D props | Idea | Street furniture, parking, docks, roof clutter and pedestrian variety. V1 has unused CC0 asset packs (listed in `V1: SeatAtTheTable/docs/map-asset-usage-audit.md`). Only add assets that feed something visible. |
 | Irregular coast and edge landmarks | Idea | Make the city read less like a rectangular board. |
 | Visual regression tests for the 3D canvas | Idea | Compare screenshots across changes. |
@@ -111,6 +111,9 @@ docs already worked out how it should play.
 | Drug supply chain (V1 TODO 130) | Requested | Supply across districts, and rival dealers who undercut you. Kept tasteful. |
 | More unlockable neighbourhoods (V1 TODO 131) | Requested | V1 opens Chinatown and Little Italy as you progress. |
 | Delhi (V1 TODO 136) | Requested | A later-game trip to Delhi: buy a plane, and a story arc gets you there. Needs a second map. |
+| First person and shooting (V1 TODO 147) | Requested | Combat, aiming, cover and police responses designed together. It changes the whole game's controls and tone, so decide it before building the engine. |
+| Swimming, diving and boats (V1 TODO 144) | Requested | V1 lets you swim slowly in calm water. |
+| A full animation set for Arjun (V1 TODO 150) | Requested | V1 does doors, getting in and out of vehicles, and the phone. |
 | A branching story (V1 TODO 137) | Requested | V1 makes the big choices change visible things. V2 branches the story. |
 | More comic encounters | Requested | Each should use a different mechanic, location and reward. V1 ships three or four (TODO 132), like a hallucination, a plant that turns you into an animal, or a sewage truck. |
 | More phone contacts | Partly built | V1 has Dockmaster Bell, Lana Vance, Amit and a sponsor lead. Each contact only offers actions that fit their story role, and a reporter must not become a universal menu. |
