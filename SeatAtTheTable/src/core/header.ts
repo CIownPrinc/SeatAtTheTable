@@ -117,7 +117,7 @@ import { DISTRICT_OFFSETS, OUTSKIRT_PLACE_LOTS, VIEW_H, VIEW_W, WORLD_H, WORLD_W
 import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
 import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/viewport';
 import { INTERIOR_SCALE, buildInteriorRoom3d, spotKey, type InteriorView } from '../map/interiorRoom3d';
-import { activeMissionCount, advanceMissionStage, canOfferRepeatableEvent, canOfferUniqueEvent, completeMission, declineMission, delayedMissionReady, missionCompleted, missionSaveDefaults, recordEventOffer, scheduleDelayedMission, startMission } from './missions';
+import { activeMissionCount, advanceMissionStage, canOfferRepeatableEvent, canOfferUniqueEvent, completeMission, declineMission, delayedMissionReady, missionCompleted, missionSaveDefaults, pendingOfferCount, recordEventOffer, scheduleDelayedMission, startMission, UNIQUE_EVENT_OFFERS } from './missions';
 import { freezeStaticScenery } from '../map/staticScenery';
 import { mergeLooseByPrefix, mergeMeshesWithin, type MergeGeometries } from '../map/mergeScenery';
 import { choiceDelta, describeMissionLedger, foldMissionLedger, openMissionLedger, rebaseMissionLedger, reconcileResultText, type MissionLedger, type OutcomeSnapshot } from './missionLedger';
@@ -1056,6 +1056,13 @@ import type * as ThreeNamespace from 'three';
     const definition = missionDefinition(id);
     const objective = objectiveForMission(id);
     if(!definition || !objective) return;
+    // LEGAL: One mission at a time, however it was offered: a message can wait while you finish one.
+    if(activeMissionCount(missionSaveState()) >= PHASE2_MISSION_CONFIG.activeMissionCap){
+      const running = activeMissionEntries()[0];
+      log(`<i aria-hidden="true" class="ph-duotone ph-hourglass"></i> Finish ${running ? missionDefinition(running.id)?.title ?? 'the mission you are on' : 'the mission you are on'} first.`);
+      renderAll();
+      return;
+    }
     missionLedgers.set(id, openMissionLedger(currentOutcomeSnapshot()));
     if(id === 'home_safe_robbery'){
       const loss = Math.round(state.cash * PHASE2_MISSION_CONFIG.homeSafeRobberyLossPct);
@@ -1523,11 +1530,12 @@ import type * as ThreeNamespace from 'three';
     if(!wrap) return;
     const active = activeMissionEntries();
     const messages = missionEventPool.filter(function(event){ return state.eventHistory[event.id] === 'offered' && !state.activeMissions[event.id]; });
+    const busy = activeMissionCount(missionSaveState()) >= PHASE2_MISSION_CONFIG.activeMissionCap;
     const completed = Object.values(state.completedMissions).slice(-4).reverse();
     wrap.innerHTML = `
       <div class="section-eyebrow">Messages</div>
       ${messages.length ? messages.map(function(event){
-        return `<div class="mission-phone-card unread"><div class="mission-phone-title">${escapeHtml(event.title)}</div><div class="mission-phone-meta">${escapeHtml(event.sender)}</div><div class="mission-phone-body">${event.body}<div class="mission-consequence">${escapeHtml(event.consequence)}</div></div><div class="btn-row"><button class="mini-btn" data-mission-start="${escapeHtml(event.id)}">${escapeHtml(event.acceptLabel)}</button><button class="mini-btn secondary" data-mission-decline="${escapeHtml(event.id)}">${escapeHtml(event.declineLabel)}</button></div></div>`;
+        return `<div class="mission-phone-card unread"><div class="mission-phone-title">${escapeHtml(event.title)}</div><div class="mission-phone-meta">${escapeHtml(event.sender)}</div><div class="mission-phone-body">${event.body}${lastOfferNote(event)}<div class="mission-consequence">${escapeHtml(event.consequence)}</div>${busy ? '<div class="mission-consequence">Finish the mission you are on before starting this one.</div>' : ''}</div><div class="btn-row"><button class="mini-btn" data-mission-start="${escapeHtml(event.id)}" ${busy ? 'disabled' : ''}>${escapeHtml(event.acceptLabel)}</button><button class="mini-btn secondary" data-mission-decline="${escapeHtml(event.id)}">${escapeHtml(event.declineLabel)}</button></div></div>`;
       }).join('') : '<div class="mission-phone-empty">No unanswered messages.</div>'}
       <div class="section-eyebrow" style="margin-top:18px;">Active Missions</div>
       ${active.length ? active.map(function(mission){
@@ -1670,6 +1678,7 @@ import type * as ThreeNamespace from 'three';
   }
   function availableMissionEvents(): MissionEventDefinition[] {
     if(activeMissionCount(missionSaveState()) >= PHASE2_MISSION_CONFIG.activeMissionCap) return [];
+    if(pendingOfferCount(missionSaveState()) > 0) return [];
     return missionEventPool.filter(function(event){
       if(state.activeMissions[event.id]) return false;
       if(event.id === 'inspector' && state.worldMemory.kowalskiBlackmailed) return false;
@@ -1686,6 +1695,10 @@ import type * as ThreeNamespace from 'three';
       return true;
     });
   }
+  // LEGAL: The second and last time a one-off mission is offered, it says so.
+  function lastOfferNote(event: MissionEventDefinition): string {
+    return event.unique && (state.eventRepeats[event.id] ?? 0) >= UNIQUE_EVENT_OFFERS ? `<p class="flavor">${escapeHtml(event.sender)} is asking again. Turn it down this time and it won't come up again.</p>` : '';
+  }
   function showMissionOffer(event: MissionEventDefinition): void {
     recordEventOffer(missionSaveState(), event.id);
     if(event.entry === 'phone'){
@@ -1698,7 +1711,7 @@ import type * as ThreeNamespace from 'three';
     showModal({
       eyebrow:event.sender,
       title:event.title,
-      body:event.body + `<p><strong>Possible consequences:</strong> ${escapeHtml(event.consequence)}</p>`,
+      body:event.body + lastOfferNote(event) + `<p><strong>Possible consequences:</strong> ${escapeHtml(event.consequence)}</p>`,
       buttons:[
         { label:event.acceptLabel, onClick:function(){ startMissionFromOffer(event.id); } },
         { label:event.declineLabel, secondary:true, onClick:function(){ declineMissionOffer(event.id); } },

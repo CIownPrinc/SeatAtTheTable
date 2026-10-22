@@ -573,3 +573,26 @@ test.describe('mission flow', function () {
     await expect(page.locator('#modal-overlay')).toContainText('Turf War started');
   });
 });
+
+// LEGAL: Messages that arrived earlier could all be accepted from the phone, putting several missions
+// LEGAL: on at once. Accepting one now stops the others starting until it's finished.
+test('only one mission runs at a time, however many messages are waiting', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.goto('/');
+  await page.getByRole('button', { name:'Start', exact:true }).click();
+  await page.locator('.tab-btn[data-tab="map"]').click();
+  await page.waitForFunction(function(){ return !!(window as unknown as { __seat?: MissionTestHook }).__seat; });
+  await page.evaluate(function(){
+    const state = (window as unknown as { __seat: MissionTestHook & { state: { eventHistory: Record<string, string>; nextEventAt: number } } }).__seat.state;
+    state.nextEventAt = 1e12;
+    state.eventHistory.tribune = 'offered';
+    state.eventHistory.investor = 'offered';
+  });
+  await page.locator('#phone-btn').click();
+  await page.locator('.device-app[data-app="missions"]').click();
+  await page.locator('#missions-panel [data-mission-start="tribune"]').click();
+  await expect(page.locator('#missions-panel [data-mission-start="investor"]')).toBeDisabled();
+  await page.evaluate(function(){ (window as unknown as { __seat: MissionTestHook }).__seat.startMission('investor'); });
+  const running = await page.evaluate(function(){ return Object.keys((window as unknown as { __seat: MissionTestHook }).__seat.state.activeMissions); });
+  expect(running).toEqual(['tribune']);
+});

@@ -9,6 +9,7 @@ import {
   declineMission,
   missionCompleted,
   missionSaveDefaults,
+  pendingOfferCount,
   recordEventOffer,
   scheduleDelayedMission,
   startMission,
@@ -43,8 +44,28 @@ describe('mission state helpers', function () {
     completeMission(save, 'tribune', 'professional', 20);
     expect(canOfferUniqueEvent(save, 'tribune')).toBe(false);
 
+    recordEventOffer(save, 'investor');
     declineMission(save, 'investor');
     expect(canOfferUniqueEvent(save, 'investor')).toBe(true);
+  });
+
+  it('offers a declined one-off mission once more, then never again', function () {
+    const save = missionSaveDefaults();
+    recordEventOffer(save, 'tribune');
+    declineMission(save, 'tribune');
+    expect(canOfferUniqueEvent(save, 'tribune')).toBe(true);
+    recordEventOffer(save, 'tribune');
+    declineMission(save, 'tribune');
+    expect(canOfferUniqueEvent(save, 'tribune')).toBe(false);
+  });
+
+  it('counts the phone messages still waiting for an answer', function () {
+    const save = missionSaveDefaults();
+    expect(pendingOfferCount(save)).toBe(0);
+    recordEventOffer(save, 'tribune');
+    expect(pendingOfferCount(save)).toBe(1);
+    startMission(save, { id:'tribune', stageId:'travel', status:'active', startedAt:1, updatedAt:1, objective:null });
+    expect(pendingOfferCount(save)).toBe(0);
   });
 
   it('tracks repeat counts for repeatable event variants', function () {

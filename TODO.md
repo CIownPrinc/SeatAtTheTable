@@ -576,7 +576,7 @@ old one.
      kerbs that start only where the bank is dry. Checked by screenshot.
 116. The GPS breaks in the countryside, when flying, or off the streets; it could cover more places.
      And the place categories on the minimap are muddled (user, 2026-10-20).
-117. Missions are cumbersome to find and join: make joining natural and less dependent on lots of
+117. **PART** (one waiting message at a time, from 143) Missions are cumbersome to find and join: make joining natural and less dependent on lots of
      phone messages, and cut down the flood of mission messages on the phone (user, 2026-10-21).
 118. For the "camera follows Arjun" setting: make it first person if that's not too hard; otherwise a
      lower angle and the camera a little closer to Arjun (user, 2026-10-21).
@@ -598,9 +598,10 @@ or split, with the more advanced part in V2.
      while checking: every regular in every room was drawn inside a wooden post (the fallback prop for
      a hotspot with no furniture landed right on them), so they looked like barrels with heads. Talk
      spots and stairs no longer get a prop, with a test. Checked in the garage and the casino.
-121. Missions sometimes repeat (user, 2026-10-21). V1, bug. Find which ones re-fire (one-off missions
-     should be guarded by the mission ledger) and add a test that no one-off mission can be offered
-     twice, including across a save and reload.
+121. **DONE** Missions sometimes repeat (user, 2026-10-21). V1, bug. A one-off mission you turned down
+     counted as "free to offer again", so it came back with the same words every time you declined.
+     Now it comes back once, saying it's the last time, and after a second no it's gone
+     (`canOfferUniqueEvent`, with tests). Varied wording for a mission that returns is part of 151.
 122. Too many missions are one and done, and too many are just a text box with choices (user,
      2026-10-21). Split. V1: every mission gets something to see or do in the world (see 125), and a few
      become repeatable side jobs with variety (deliveries, corner pickups, the fire brigade style call
@@ -677,9 +678,11 @@ or split, with the more advanced part in V2.
 142. You should be able to see the real estate you own on the map (user, 2026-10-21). V1. Owned
      properties get your gold marker on the minimap and the city map, a "yours" sign on the building,
      and a filter in the map legend.
-143. Only one mission accepted at a time (user, 2026-10-21). V1, bug. There is a one-mission cap
-     (`activeMissionCap`), so some path gets round it. Find it, and test every way a mission can
-     start (popup, phone, walking up to a contact).
+143. **DONE** Only one mission accepted at a time (user, 2026-10-21). V1, bug. The cap only stopped new
+     offers being made; accepting never checked it, so messages that had piled up on the phone could
+     all be accepted at once. Accepting now checks it, the phone greys out the other messages while a
+     mission is on, and only one message waits for an answer at a time (which also cuts the phone
+     spam in 117). `e2e/missions.e2e.ts` puts two messages on the phone and checks only one starts.
 144. Swimming where it makes sense (user, 2026-10-21). Split. V1: wading into the lake, canal or sea
      swims instead of hitting a wall, slow, with no phone and no vehicles, and you climb out at banks
      and beaches. Water that's deep or fast stays off limits. V2: diving and boats.

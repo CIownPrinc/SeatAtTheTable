@@ -17,9 +17,18 @@ export function recordEventOffer(save: MissionSaveState, eventId: string): numbe
   return nextCount;
 }
 
+// LEGAL: A one-off mission is offered once, and if you turn it down, once more; after a second no
+// LEGAL: it's gone. It used to come back with the same words every time you declined it.
+export const UNIQUE_EVENT_OFFERS = 2;
 export function canOfferUniqueEvent(save: MissionSaveState, eventId: string): boolean {
   const status = save.eventHistory[eventId];
-  return !status || status === 'declined' || status === 'failed';
+  if(!status) return true;
+  return (status === 'declined' || status === 'failed') && (save.eventRepeats[eventId] ?? 0) < UNIQUE_EVENT_OFFERS;
+}
+
+// LEGAL: Phone messages waiting for an answer. Only one waits at a time, so the phone doesn't fill up.
+export function pendingOfferCount(save: MissionSaveState): number {
+  return Object.entries(save.eventHistory).filter(([id, status]) => status === 'offered' && !save.activeMissions[id]).length;
 }
 
 export function canOfferRepeatableEvent(save: MissionSaveState, eventId: string, maxRepeats?: number): boolean {
