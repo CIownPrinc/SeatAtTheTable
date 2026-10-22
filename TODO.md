@@ -186,14 +186,20 @@ Every request the player made while playing, word for word in intent, so none ge
 Status: **DONE** shipped and verified · **PART** partly done (what's left is noted) · open.
 
 **Order of work for the open items (set 2026-10-21, after "don't work hastily"):**
-1. Bugs and crashes first (111, 114, 115, 116).
+1. Bugs and crashes first (111, 116, then 119, 120, 121, 129).
 2. Then put right what was done hastily before: Central Park (112), the beaches (113), the railyard
    and placement and proportion everywhere (91, 95, 110), the alleys (68). Placement, proportions and
    the inside matching the outside are standing checks for every place, new or old (110).
-3. Then the half-finished interior work (57-63), mission joining (117) and the camera (118).
-4. Then the rest: mobile tests (60), the test review (105), NPCs and traffic (64, 73-75, 96), the dealer
+3. Then the half-finished interior work (57-63), mission joining (117) and the camera (118), together
+   with the batch that makes missions and rooms real: mission scenes (125, 122), interiors that differ
+   and only interactive where useful (126, 127), the copy pass (128) and simpler heat (123).
+4. Then the tycoon and street side: a bike as the first asset (135), office perks (133), Dice and the
+   smaller gangs (134, 124), drug sales (130), choices that matter (137), the new characters (138) and
+   the funny side content (132).
+5. Then the rest: mobile tests (60), the test review (105), NPCs and traffic (64, 73-75, 96), the dealer
    upgrade (69), the wardrobe (59), the race (90), the phone and tycoon audit (102), the docs audit (67).
-5. Last, the big map rebuild (80-87, 108-109), done in one planned pass, not piecemeal.
+6. Last, the big map rebuild (80-87, 108-109), done in one planned pass, not piecemeal, with the
+   neighbourhoods that unlock as you go (131) built into it.
 Each item is checked in the running game before it's marked done.
 V1 stays feature-frozen everywhere else; this list is the exception the player asked for.
 Most of the open items will be built in the new map engine (section 11), not patched into the
@@ -569,6 +575,80 @@ old one.
      phone messages, and cut down the flood of mission messages on the phone (user, 2026-10-21).
 118. For the "camera follows Arjun" setting: make it first person if that's not too hard; otherwise a
      lower angle and the camera a little closer to Arjun (user, 2026-10-21).
+
+**Batch of 2026-10-21 (second list).** Each says where it goes: V1 here, V2 in `SEATATTHETABLE2.md`,
+or split, with the more advanced part in V2.
+
+119. Amenity games are broken and don't work in full screen (user, 2026-10-21). V1, bug. The minigame
+     canvas and its overlay are sized for the windowed page; size them from the real viewport and the
+     fullscreen element, and add a fullscreen run to `e2e/amenity-games.e2e.ts`.
+120. The garage interior has random cars in it (user, 2026-10-21). V1, bug. The garage theme puts a
+     showroom car in by default. The garage should show only the cars Arjun owns, one per bay, and be
+     empty bays when he owns none.
+121. Missions sometimes repeat (user, 2026-10-21). V1, bug. Find which ones re-fire (one-off missions
+     should be guarded by the mission ledger) and add a test that no one-off mission can be offered
+     twice, including across a save and reload.
+122. Too many missions are one and done, and too many are just a text box with choices (user,
+     2026-10-21). Split. V1: every mission gets something to see or do in the world (see 125), and a few
+     become repeatable side jobs with variety (deliveries, corner pickups, the fire brigade style call
+     outs). V2: whole chains that run over days.
+123. Heat is too complicated; make it simpler, like GTA's stars but not a copy (user, 2026-10-21). V1.
+     Today heat is a 0-100 meter fed by seven sources and four multipliers, plus a separate
+     investigation meter and five named tiers. Plan: one wanted level of 0-5 badges. Doing crimes in the
+     open raises it, laying low or getting out of sight lowers it, and each level says plainly what
+     happens (cops notice, cops chase, raids). The tycoon side keeps a slow background "attention" that
+     only nudges the starting level. The investigation meter folds into it.
+124. Gang wars and the dealer system have a lot of potential: do what fits now and leave the rest to
+     V2 (user, 2026-10-21). Split. V1: finish 69 (dealers pulling up, cops on a bust, the gang text),
+     plus gang wars as a short in-person fight at a block you're taking, not just a modal. V2: wars that
+     spread block by block, gangs that retake turf, crews you command on the map.
+125. Mission characters are always the same man with a briefcase in a corner; each mission should
+     have its own scene (user, 2026-10-21). V1 for the main ones. Kailash's cart fire becomes a real
+     fire you put out with an extinguisher. Lana's interview becomes a talk, then questions on camera in
+     front of a crew. These play as close-ups, like the room interactions. Every mission contact gets a
+     look and a place that fit them. The rest of the missions get the same treatment in V2.
+     Also: when you interact with something inside, the popup moves to the side so you can see what
+     you're facing (V1, part of the close-ups).
+126. Interiors are still too alike: most are some mix of a bulletin board, a desk and a workbench
+     (user, 2026-10-21). V1, finishes 57. Each theme gets its own main piece and its own hotspot
+     (a florist's cold room, a gym's ring, a pawn counter's case), and the stock board, desk and bench
+     come out where they don't belong.
+127. Every interaction inside must do something useful; otherwise keep it as decoration and stop it
+     being clickable (user, 2026-10-21). V1. Audit every hotspot and either give it a real effect or
+     make it scenery. Add a test that every hotspot has an action with a game effect.
+128. Too many corny, unnecessary lines left from the old model, clearly written by an AI, in popups and
+     elsewhere (user, 2026-10-21). V1. A copy pass over every string the player sees: rewrite or cut.
+129. The tycoon income maths is a little off (user, 2026-10-21). V1, bug. Check the shown income
+     against what actually arrives each second, for every source (ventures, properties, corners,
+     extortion, black market and the multipliers), and add tests that the display and the payout agree.
+130. Expand the drug sales (user, 2026-10-21). Split, kept tasteful. V1: more than one product grade,
+     buyers who differ by area, a supply you have to restock, and a bust or robbery chance that fits
+     the new heat. V2: a supply chain across districts, and rival dealers who undercut you.
+131. The map should slowly unlock places like Chinatown and Little Italy (user, 2026-10-21). V1,
+     built into the map rebuild (80-87). The two new neighbourhoods, each with its own gang (134), and
+     opened by story progress, shown on the map as closed until then. More unlockable areas go in V2.
+132. Funny side content to break up the grim parts, like GTA's alien hallucination mission, the
+     plants that turn you into an animal, or Saints Row's sewage truck (user, 2026-10-21). Split. V1:
+     three or four, each with its own mechanic, starting with the pothead (138). V2: many more.
+133. Holding office should give extra perks and features you can't get any other way (user,
+     2026-10-21). V1. For example, police patrols kept off your blocks, city contracts for your
+     ventures, permits that open locked places, and a lower wanted level after a crime.
+134. Dice should be the main rival, with smaller gangs to fight, compete with or ally with over
+     territory, like a Chinatown gang or an Italian mob (user, 2026-10-21). Split. V1: Dice leads the
+     main rival crew. Today the game says Dice runs West Side, but `rivals.ts` gives West Side to the
+     Cicero Firm, so that gets put right. Add the two smaller gangs with the new neighbourhoods (131),
+     with a simple ally or fight choice. V2: real diplomacy and shifting alliances.
+135. A bike as the first and cheapest thing you can buy (user, 2026-10-21). V1. There is already a
+     rideable bike (`bikeRider.ts`); add it to the shop below the Karolla's $800.
+136. Delhi, later in the game: you need to buy a plane, and some story has to happen (user,
+     2026-10-21). V2. It needs a second map, a plane and a story arc. In V1 it stays as backstory.
+137. The choose-your-own-adventure side isn't complex enough and barely changes what happens (user,
+     2026-10-21). Split. V1: the big choices change visible things (who shows up, who calls, prices,
+     which missions come next, how a gang treats you). V2: a fully branching story.
+138. Characters to add: a random pothead, a rich businessman, an annoying apprentice, the local
+     business council, the Dice gang leader, a politician, Sanjay, gang members and a biker gang (user,
+     2026-10-21). V1 for most. Sanjay and Dice are already in; they get their own models and places.
+     The biker gang builds on the Outlaw Riders brand. The others each come with a mission or a job.
 51. **DONE** The cars are too small (user, 2026-10-20: "the cars are so tiny bro"). They were drawn at life
     size next to people drawn 1.2x life, under a high camera. Worse, traffic was a bug: merging each
     car into one mesh transformed its quantized Blender geometry in place, which clamped every car to

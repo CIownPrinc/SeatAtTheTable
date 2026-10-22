@@ -105,7 +105,14 @@ docs already worked out how it should play.
 | --- | --- | --- |
 | Deeper main chains | Designed | Early and late choices in the five chains (home safe robbery, stolen shipment, alderman fixer, turf war, first heist) should change later dialogue, contacts, offers or city conditions, not just stats. |
 | Deeper follow-ups | Designed | Second and third beats for Amit's mistake, the arsonist, the Black Market investigation and the hostile press story. |
-| More comic encounters | Idea | Each should use a different mechanic, location and reward. |
+| Missions as chains over days (V1 TODO 122) | Requested | V1 gives each mission a scene and makes a few side jobs repeatable. V2 makes them chains. |
+| Every mission played as a scene (V1 TODO 125) | Requested | V1 does the main ones (the cart fire, the interview). V2 does the rest. |
+| Gang wars on the map (V1 TODO 124, 134) | Requested | Wars that spread block by block, gangs that retake turf, crews you command, real diplomacy and shifting alliances between Dice and the smaller gangs. |
+| Drug supply chain (V1 TODO 130) | Requested | Supply across districts, and rival dealers who undercut you. Kept tasteful. |
+| More unlockable neighbourhoods (V1 TODO 131) | Requested | V1 opens Chinatown and Little Italy as you progress. |
+| Delhi (V1 TODO 136) | Requested | A later-game trip to Delhi: buy a plane, and a story arc gets you there. Needs a second map. |
+| A branching story (V1 TODO 137) | Requested | V1 makes the big choices change visible things. V2 branches the story. |
+| More comic encounters | Requested | Each should use a different mechanic, location and reward. V1 ships three or four (TODO 132), like a hallucination, a plant that turns you into an animal, or a sewage truck. |
 | More phone contacts | Partly built | V1 has Dockmaster Bell, Lana Vance, Amit and a sponsor lead. Each contact only offers actions that fit their story role, and a reporter must not become a universal menu. |
 | Location capacity rule | Designed | Before adding a chain that needs a new place, that place needs an honest shape, collision, scene-audit coverage, an interior interaction, a GPS route and a map label. |
 
