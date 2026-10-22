@@ -180,9 +180,11 @@ export function buildInteriorRoom3d(THREE: typeof ThreeNamespace, build: Interio
   // LEGAL: by it, cars share their geometry), so they're kept apart from what this room disposes.
   const people = new THREE.Group();
   people.name = 'interior:people';
+  // LEGAL: A bay with no car in it (your garage when the car is out) leaves no solid behind.
+  const emptyBays: InteriorCar[] = [];
   layout.cars.forEach(function(car){
     const model = build.makeCar(car);
-    if(!model) return;
+    if(!model){ emptyBays.push(car); return; }
     model.position.set(car.x * s, car.use === 'showroom' ? 4 * s : 0, car.z * s);
     model.rotation.y = -car.heading;
     people.add(model);
@@ -242,7 +244,7 @@ export function buildInteriorRoom3d(THREE: typeof ThreeNamespace, build: Interio
 
   return {
     root,
-    solids:layout.solids,
+    solids:layout.solids.filter(solid => !emptyBays.some(car => car.x === solid.x && car.z === solid.y)),
     setHighlight(keyName, time){
       rings.forEach(function(ring, name){
         const on = name === keyName;

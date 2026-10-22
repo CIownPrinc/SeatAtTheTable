@@ -83,3 +83,14 @@ describe('the mall', function () {
     }
   });
 });
+
+// LEGAL: A regular's talk spot is 20 in front of them, and the old pedestal fallback stood 20 behind
+// LEGAL: its spot: right on the person, so every regular looked like a barrel with a head.
+describe('talk and stairs spots', () => {
+  it('build nothing where the regular stands or on the stairs', () => {
+    const layout = interiorLayout('playerGarage', 'playerGarage', ROOM, [spot('talk:mechanic', 154, 221, 'Priya'), spot('stairs-up', 56, 194, 'Stairs up')]);
+    const near = (x: number, z: number) => [...layout.pieces, ...layout.fixtures.flatMap(f => f.fallback)].some(p => Math.abs(p.x - x) < 14 && Math.abs(p.z - z) < 14);
+    expect(near(154, 201)).toBe(false);
+    expect(near(56, 174)).toBe(false);
+  });
+});

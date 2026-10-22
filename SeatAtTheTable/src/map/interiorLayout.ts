@@ -237,6 +237,9 @@ function pedestalProp(spot: InteriorSpot, look: Look): Prop {
 }
 
 function propFor(spot: InteriorSpot, kind: string, refId: string, look: Look): Prop {
+  // LEGAL: Talking to a regular and taking the stairs need nothing built: the person and the stairs
+  // LEGAL: are already there. The pedestal fallback used to land right on top of the regular.
+  if(spot.id.startsWith('talk:') || spot.id.startsWith('stairs-')) return { pieces:[], people:[], solids:[] };
   if(kind === 'mall') return mallSpotProp(spot, refId) ?? pedestalProp(spot, look);
   switch(spot.id){
     case 'counter': case 'register': case 'clerk': case 'frontdesk':
@@ -321,7 +324,7 @@ function decorFor(kind: string, room: RoomSize, look: Look): Prop {
       pieces.push(box(w - 16, 10, 8, 8, 6, '#8a939c', WALL_HEIGHT - 14), { shape:'sphere', x:w - 16, z:15, w:3, d:3, h:3, y:WALL_HEIGHT - 12, color:'#000000', emissive:'#ff3030' });
       break;
     case 'playerGarage':
-      cars.push({ x:70, z:160, heading:Math.PI / 2, color:'#3e6b8a', use:'garage' }); solids.push(solidOf(70, 160, 44, 80));
+      cars.push({ x:70, z:160, heading:0, color:'#3e6b8a', use:'garage', bay:0 }); solids.push(solidOf(70, 160, 44, 80));
       for(let i = 0; i < 4; i++) place(fixture('tool-chest', w - 120 + i * 26, 12, [box(w - 120 + i * 26, 12, 24, 20, 40, '#a82a22')]));
       place(tyres(w - 30, h - 34));
       break;

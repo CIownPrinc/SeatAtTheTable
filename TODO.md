@@ -591,9 +591,13 @@ or split, with the more advanced part in V2.
      screens. The hover tooltip had the same problem and is raised too. `e2e/amenity-games.e2e.ts`
      plays the court in full screen and checks the Shoot button is the topmost thing (it fails on the
      old code).
-120. The garage interior has random cars in it (user, 2026-10-21). V1, bug. The garage theme puts a
-     showroom car in by default. The garage should show only the cars Arjun owns, one per bay, and be
-     empty bays when he owns none.
+120. **DONE** The garage interior has random cars in it (user, 2026-10-21). V1, bug. Arjun's garage
+     drew the car he was driving, the same one parked outside on the street, so it was in two places
+     at once, and it was turned sideways across the floor. Now the garage has two bays that hold the
+     cars he owns and isn't out in, facing the door, and an empty bay leaves no invisible wall. Found
+     while checking: every regular in every room was drawn inside a wooden post (the fallback prop for
+     a hotspot with no furniture landed right on them), so they looked like barrels with heads. Talk
+     spots and stairs no longer get a prop, with a test. Checked in the garage and the casino.
 121. Missions sometimes repeat (user, 2026-10-21). V1, bug. Find which ones re-fire (one-off missions
      should be guarded by the mission ledger) and add a test that no one-off mission can be offered
      twice, including across a save and reload.

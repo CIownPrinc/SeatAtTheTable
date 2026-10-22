@@ -289,7 +289,11 @@ const THEMES: Partial<Record<RoomTheme, ThemeBuild>> = {
       put(b, 'tv-wall', w * 0.2, 0, 60, 14, 14, '#1a1c20', { solid:false });
       return;
     }
-    b.cars.push({ x:w * 0.7, z:h * 0.58, heading:Math.PI / 2, color:'#3e6b8a', use:'garage' }); b.solids.push(solidOf(w * 0.7, h * 0.58, 44, 80));
+    // LEGAL: Two bays for the cars Arjun owns that he isn't out in; the one he drives is parked outside.
+    [0.57, 0.72].forEach((at, bay) => {
+      b.cars.push({ x:w * at, z:h * 0.58, heading:0, color:'#3e6b8a', use:'garage', bay });
+      b.solids.push(solidOf(w * at, h * 0.58, 44, 80));
+    });
     for(let i = 0; i < 3; i++) put(b, 'tool-chest', w - 100 + i * 26, 12, 24, 20, 40, '#a82a22');
     put(b, 'tyre-stack', w - 30, h - 34, 28, 28, 20, '#1b1e23');
   },

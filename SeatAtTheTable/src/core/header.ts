@@ -7020,9 +7020,14 @@ import type * as ThreeNamespace from 'three';
     if(playerGroup) playerGroup.visible = true;
     byId('scene3d-container').classList.remove('indoors');
   }
-  // LEGAL: Your own car stands in your garage; a showroom or paint bay shows one in the room's colour.
+  // LEGAL: The cars you own that aren't out with you, in the order you bought them. The one you're
+  // LEGAL: driving is parked on the street, so it isn't in here as well.
+  function garagedCars(): Car[] {
+    return state.ownedCars.filter(id => id !== state.equippedCar).map(id => cars.find(c => c.id === id)).filter((c): c is Car => !!c && !isFlyingVehicle(c.id));
+  }
+  // LEGAL: Your garage's bays hold your other cars; a showroom or paint bay shows one in the room's colour.
   function interiorCarModel(spec: InteriorCar): ThreeNamespace.Object3D | null {
-    if(spec.use === 'garage'){ const car = getEquippedCar(); return car && !isFlyingVehicle(car.id) ? buildCarModel(car, false) : null; }
+    if(spec.use === 'garage'){ const car = garagedCars()[spec.bay ?? 0]; return car ? buildCarModel(car, false) : null; }
     return vehicleLibrary ? vehicleLibrary.create(spec.cls ?? (spec.use === 'showroom' ? 'supercar' : 'sedan'), spec.color, 29, 15) : null;
   }
   // LEGAL: The first room you walked into stalled for a couple of hundred milliseconds on a fast GPU
@@ -7054,7 +7059,7 @@ import type * as ThreeNamespace from 'three';
     const interior = state.currentInterior;
     if(!interior || !characterLibrary) return;
     const spots = hotspotsFor(interior);
-    const key = `${interior.kind}|${interior.refId}|${interior.floor ?? 0}|${spots.map(h => `${h.id}@${h.x},${h.y}`).join(';')}`;
+    const key = `${interior.kind}|${interior.refId}|${interior.floor ?? 0}|${spots.map(h => `${h.id}@${h.x},${h.y}`).join(';')}|${interior.kind === 'playerGarage' ? garagedCars().map(c => c.id).join(',') : ''}`;
     if(!interiorScene3d){
       interiorScene3d = new THREE.Scene();
       interiorScene3d.background = new THREE.Color('#0d0e13');
