@@ -402,7 +402,9 @@ old one.
     inside, and a second look at each theme in play.
 58. Add a nightclub and a police station (user, 2026-10-20).
 59. Character customisation is janky: the selection carousel is broken, hair clips through the head,
-    and there isn't much to choose from (user, 2026-10-20).
+    and there isn't much to choose from (user, 2026-10-20). Again 2026-10-21: "this hair in the wardrobe
+    looks so primitive, please I'm begging you fix it ... a ton of the wardrobe things are primitive".
+    Moved up: hair and clothing pieces rebuilt in Blender, with the characters (93).
 60. Set up tests for mobile gameplay so nothing breaks on phones (user, 2026-10-20).
 61. **PART** Stairs in some buildings that you use to go up to the next floor (user, 2026-10-20). The
     casino and the mall definitely need upper floors, with stairs, lifts or escalators where they fit.
@@ -487,6 +489,11 @@ old one.
 90. The street race isn't fun enough: a longer course with more turns and jumps, drifting, and a small
     fading popup at the start that shows the keys (and the touch controls on phones) (user, 2026-10-20).
 91. Countryside homes are out of proportion; recheck proportions across the map (user, 2026-10-20).
+    Again 2026-10-21: "why is Arjun the height of the homes and why is the car the same height if not
+    bigger than the houses". Measured in the game (10.5 units a metre): people 2.3 m, a sedan 2.3 m tall
+    and 6.4 m long, suburb houses 4.4 m, farm buildings 5.3 m. Cars are drawn at twice life (set after
+    "the cars are so tiny", which was mostly the merge bug shrinking them to specks), people at 1.2x,
+    and the suburb and farm models at about half height. Fix: one real scale for all of them.
 92. Some amenities, buildings and interactions freeze for a while before they open (user, 2026-10-20).
     Measured: amenity panels ~20 ms; the first room 226 ms and a minigame 200 ms on a fast GPU (much
     worse on slow ones), both first-time shader and WebGL-context costs. Rooms now compile in the
@@ -589,8 +596,13 @@ old one.
      People. Tests in `viewport.test.ts` and `garage.test.ts`.
 117. **PART** (one waiting message at a time, from 143) Missions are cumbersome to find and join: make joining natural and less dependent on lots of
      phone messages, and cut down the flood of mission messages on the phone (user, 2026-10-21).
-118. For the "camera follows Arjun" setting: make it first person if that's not too hard; otherwise a
-     lower angle and the camera a little closer to Arjun (user, 2026-10-21).
+118. **DONE** For the "camera follows Arjun" setting: make it first person if that's not too hard; otherwise a
+     lower angle and the camera a little closer to Arjun (user, 2026-10-21; asked again the same day).
+     It's now a chase camera: behind Arjun, closer (150 on foot, 240 driving, from 235 and 380), 32
+     degrees down instead of 58, and aimed ahead of him so the street in front fills the screen. It
+     pulls in when a tower is between it and him. 22 degrees was tried and put shops and trees between
+     the camera and Arjun. First person isn't done: the city is built to be seen from above (backs of
+     buildings, the fog edge, culled faces), so it goes with first person and shooting in V2 (147).
 
 **Batch of 2026-10-21 (second list).** Each says where it goes: V1 here, V2 in `SEATATTHETABLE2.md`,
 or split, with the more advanced part in V2.
@@ -772,6 +784,12 @@ missing is the depth the brief asks for: most have two choices and one modal per
 157. Cutscenes for missions, played in the world (user, 2026-10-21). Split. V1: short scenes in the
      map at a mission's start and end: the camera moves in close (the close-up camera), letterbox
      bars, the people in it moving and talking, and a skip. V2: full cinematics.
+158. Sleep to save (user, 2026-10-21). V1. Sleep in Arjun's bed in the flat above the garage: the night
+     passes (the clock jumps to morning), the game saves, and it says so. The bed is already there.
+159. Stairs down look like stairs up (user, 2026-10-21). V1, bug. On an upper floor the same rising
+     staircase is drawn; it should be an opening in the floor with a railing and steps going down.
+160. I can't find my car on the map: give it an important marker like the garage and Arjun's, and a fee
+     to have it found and towed back to the garage (user, 2026-10-21). V1.
 51. **DONE** The cars are too small (user, 2026-10-20: "the cars are so tiny bro"). They were drawn at life
     size next to people drawn 1.2x life, under a high camera. Worse, traffic was a bug: merging each
     car into one mesh transformed its quantized Blender geometry in place, which clamped every car to

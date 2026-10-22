@@ -45,6 +45,18 @@ const NORTH_UP = -Math.PI / 2;
 // LEGAL: it doesn't spin when Arjun stops or turns on the spot.
 const TURN_RATE = 1.8;
 const TURN_MIN_SPEED = 30;
+// LEGAL: The following camera is a chase camera: behind Arjun, closer and flatter than the map view
+// LEGAL: and aimed ahead of him, so you see the street in front rather than his roof. 32 degrees down,
+// LEGAL: not 58. Lower than this (22 was tried) put shops and trees between the camera and him.
+const CHASE_PITCH = 32 * Math.PI / 180;
+const CHASE_WALK_DISTANCE = 150;
+const CHASE_DRIVE_DISTANCE = 240;
+const CHASE_PULLBACK = 0.12;
+const CHASE_AIM_HEIGHT = 30;
+// LEGAL: How far ahead of him the chase camera looks, so the street ahead fills the screen.
+const CHASE_LOOK_AHEAD = 50;
+// LEGAL: How fast the camera tips between the two views when the setting is switched.
+const PITCH_RATE = 3;
 
 export function createCameraRig(): CameraRig {
   let fresh = true;
@@ -52,6 +64,8 @@ export function createCameraRig(): CameraRig {
   const lead = { x: 0, z: 0 };
   let distance = WALK_DISTANCE;
   let heading = NORTH_UP;
+  let pitch = PITCH;
+  let aimHeight = AIM_HEIGHT;
 
   return {
     snap(){ fresh = true; },
@@ -60,7 +74,12 @@ export function createCameraRig(): CameraRig {
       const ahead = Math.min(MAX_LOOK_AHEAD, speed * LOOK_AHEAD_SECONDS);
       const wantLeadX = speed > 0 ? input.vx / speed * ahead : 0;
       const wantLeadZ = speed > 0 ? input.vy / speed * ahead : 0;
-      const wantDistance = (input.inVehicle ? DRIVE_DISTANCE : WALK_DISTANCE) + Math.min(MAX_PULLBACK, speed * SPEED_PULLBACK);
+      const chase = !!input.followHeading;
+      const wantDistance = chase
+        ? (input.inVehicle ? CHASE_DRIVE_DISTANCE : CHASE_WALK_DISTANCE) + Math.min(MAX_PULLBACK, speed * CHASE_PULLBACK)
+        : (input.inVehicle ? DRIVE_DISTANCE : WALK_DISTANCE) + Math.min(MAX_PULLBACK, speed * SPEED_PULLBACK);
+      const wantPitch = chase ? CHASE_PITCH : PITCH;
+      const wantAim = chase ? CHASE_AIM_HEIGHT : AIM_HEIGHT;
       // LEGAL: A taxi, the garage or a door moves the player hundreds of units in one frame;
       // LEGAL: easing across that would sweep the camera over half the city.
       if(Math.hypot(input.x - focus.x, input.y - focus.z) > TELEPORT_DISTANCE) fresh = true;
@@ -68,6 +87,7 @@ export function createCameraRig(): CameraRig {
         focus.x = input.x; focus.z = input.y;
         lead.x = wantLeadX; lead.z = wantLeadZ;
         distance = wantDistance;
+        pitch = wantPitch; aimHeight = wantAim;
         fresh = false;
       } else {
         // LEGAL: Frame-rate independent exponential smoothing: the same feel at 30 and 144 fps.
@@ -79,16 +99,20 @@ export function createCameraRig(): CameraRig {
         lead.x += (wantLeadX - lead.x) * leadEase;
         lead.z += (wantLeadZ - lead.z) * leadEase;
         distance += (wantDistance - distance) * zoomEase;
+        const tip = 1 - Math.exp(-PITCH_RATE * input.dt);
+        pitch += (wantPitch - pitch) * tip;
+        aimHeight += (wantAim - aimHeight) * tip;
       }
       const wantHeading = !input.followHeading ? NORTH_UP : speed > TURN_MIN_SPEED ? Math.atan2(input.vy, input.vx) : heading;
       const turn = Math.atan2(Math.sin(wantHeading - heading), Math.cos(wantHeading - heading));
       heading += turn * (1 - Math.exp(-TURN_RATE * input.dt));
-      const target = { x: focus.x + lead.x, y: AIM_HEIGHT, z: focus.z + lead.z };
-      const back = Math.cos(PITCH) * distance;
+      const ahead2 = chase ? CHASE_LOOK_AHEAD : 0;
+      const target = { x: focus.x + lead.x + Math.cos(heading) * ahead2, y: aimHeight, z: focus.z + lead.z + Math.sin(heading) * ahead2 };
+      const back = Math.cos(pitch) * (distance + ahead2);
       return {
         target,
         heading,
-        eye: { x: target.x - Math.cos(heading) * back, y: target.y + Math.sin(PITCH) * distance, z: target.z - Math.sin(heading) * back },
+        eye: { x: target.x - Math.cos(heading) * back, y: target.y + Math.sin(pitch) * (distance + ahead2), z: target.z - Math.sin(heading) * back },
       };
     },
   };

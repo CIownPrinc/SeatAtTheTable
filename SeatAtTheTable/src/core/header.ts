@@ -7342,10 +7342,36 @@ import type * as ThreeNamespace from 'three';
     try{ window.localStorage.setItem(CAMERA_FOLLOW_KEY, cameraFollows ? '1' : '0'); }catch(err){}
   });
   function aimCamera(dt: number): void {
-    const view = cameraRig.update({ x:player.x, y:player.y, vx:player.vx, vy:player.vy, inVehicle:state.inVehicle, dt, followHeading:cameraFollows && !state.currentInterior });
+    const chase = cameraFollows && !state.currentInterior;
+    const view = cameraRig.update({ x:player.x, y:player.y, vx:player.vx, vy:player.vy, inVehicle:state.inVehicle, dt, followHeading:chase });
     cameraHeading = view.heading;
-    camera3d.position.set(view.eye.x, view.eye.y, view.eye.z);
+    // LEGAL: The low chase camera sat inside whatever building was behind Arjun, so you saw a wall and
+    // LEGAL: not him. It pulls in to just short of the first roof between him and it, quickly when
+    // LEGAL: something gets in the way and slowly back out once it's clear.
+    const wantClear = chase ? chaseClearance(view.target, view.eye) : 1;
+    chaseClear += (wantClear - chaseClear) * (1 - Math.exp(-(wantClear < chaseClear ? 14 : 2.5) * dt));
+    const eye = {
+      x:view.target.x + (view.eye.x - view.target.x) * chaseClear,
+      y:view.target.y + (view.eye.y - view.target.y) * chaseClear,
+      z:view.target.z + (view.eye.z - view.target.z) * chaseClear,
+    };
+    camera3d.position.set(eye.x, eye.y, eye.z);
     camera3d.lookAt(view.target.x, view.target.y, view.target.z);
+  }
+
+  let chaseClear = 1;
+  // LEGAL: How far out along the line from Arjun to the camera is clear of buildings: 1 is all of it.
+  function chaseClearance(target: { x: number; y: number; z: number }, eye: { x: number; y: number; z: number }): number {
+    const lots = cityLots();
+    const STEPS = 16;
+    for(let i = 1; i <= STEPS; i++){
+      const t = i / STEPS;
+      const x = target.x + (eye.x - target.x) * t, y = target.y + (eye.y - target.y) * t, z = target.z + (eye.z - target.z) * t;
+      for(const lot of lots){
+        if(lot.h > y - 4 && Math.abs(x - lot.x) < lot.w / 2 + 4 && Math.abs(z - lot.y) < lot.d / 2 + 4) return Math.max(0.2, (i - 1) / STEPS);
+      }
+    }
+    return 1;
   }
 
   // LEGAL: ================= MAIN LOOP =================
