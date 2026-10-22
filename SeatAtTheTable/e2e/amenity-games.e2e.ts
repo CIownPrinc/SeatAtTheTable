@@ -51,3 +51,29 @@ test('the court and the chess tables play to the end without breaking the map', 
   expect(frames).toBeGreaterThan(20);
   expect(errors).toEqual([]);
 });
+
+// LEGAL: In the map's full-screen mode the map covers the page at z-index 9999; the game used to open
+// LEGAL: underneath it, so it couldn't be seen or played. The game's buttons must be the topmost thing.
+test('the court plays in full screen, on top of the map', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Start', exact: true }).click();
+  await page.locator('.tab-btn[data-tab="map"]').click();
+  await page.waitForFunction(() => !!(window as unknown as { __seat?: unknown }).__seat, undefined, { timeout: 45_000 });
+  await page.evaluate(() => { (window as unknown as { __seat: Seat }).__seat.state.nextEventAt = 1e12; });
+  await page.locator('#fullscreen-btn').click();
+  await expect(page.locator('#scene3d-container')).toHaveClass(/fullscreen/);
+  await walkUpAndPlay(page, 'devlin-court');
+  const shoot = page.locator('.mg-overlay button', { hasText: 'Shoot' });
+  const onTop = await shoot.evaluate(button => {
+    const box = button.getBoundingClientRect();
+    const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+    return !!hit && (hit === button || button.contains(hit));
+  });
+  expect(onTop).toBe(true);
+  for(let shot = 0; shot < 5; shot++){
+    await shoot.click();
+    await page.waitForTimeout(2400);
+  }
+  await expect(page.locator('#modal-title')).toHaveText(/of 5/);
+});

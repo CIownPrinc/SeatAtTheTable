@@ -584,9 +584,13 @@ old one.
 **Batch of 2026-10-21 (second list).** Each says where it goes: V1 here, V2 in `SEATATTHETABLE2.md`,
 or split, with the more advanced part in V2.
 
-119. Amenity games are broken and don't work in full screen (user, 2026-10-21). V1, bug. The minigame
-     canvas and its overlay are sized for the windowed page; size them from the real viewport and the
-     fullscreen element, and add a fullscreen run to `e2e/amenity-games.e2e.ts`.
+119. **DONE** Amenity games are broken and don't work in full screen (user, 2026-10-21). V1, bug. The
+     map's full-screen mode covers the page at z-index 9999, and the game's window sat at 60, so it
+     opened hidden behind the map: nothing to see and nothing to click. It now sits above the map and
+     the phone, and the panel grows with the screen while keeping its buttons in view on short
+     screens. The hover tooltip had the same problem and is raised too. `e2e/amenity-games.e2e.ts`
+     plays the court in full screen and checks the Shoot button is the topmost thing (it fails on the
+     old code).
 120. The garage interior has random cars in it (user, 2026-10-21). V1, bug. The garage theme puts a
      showroom car in by default. The garage should show only the cars Arjun owns, one per bay, and be
      empty bays when he owns none.

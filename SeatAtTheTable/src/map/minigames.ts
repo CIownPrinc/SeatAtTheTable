@@ -63,12 +63,15 @@ export function isFireRoadBest(previousSeconds: number, elapsedSeconds: number):
 let styleInjected = false;
 let activeOverlay: HTMLElement | null = null;
 
+// LEGAL: The overlay sits above the full-screen map (z-index 9999) and the phone (10000); below
+// LEGAL: that it opened hidden behind the map. The panel grows with the screen but keeps the court
+// LEGAL: view and its buttons inside the window on short screens.
 function injectStyles(): void {
   if(styleInjected) return;
   styleInjected = true;
   const css = `
-  .mg-overlay{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(6,7,10,0.72);backdrop-filter:blur(2px);font-family:var(--font-mono,'IBM Plex Mono',monospace);}
-  .mg-panel{width:min(640px,94vw);background:#171922;border:1px solid var(--gold,#d4a017);border-radius:10px;padding:18px 18px 16px;box-shadow:0 24px 60px rgba(0,0,0,0.55);}
+  .mg-overlay{position:fixed;inset:0;z-index:10020;display:flex;align-items:center;justify-content:center;background:rgba(6,7,10,0.72);backdrop-filter:blur(2px);font-family:var(--font-mono,'IBM Plex Mono',monospace);}
+  .mg-panel{width:min(860px,94vw,calc((92dvh - 210px) * 1.765 + 36px));min-width:min(320px,94vw);max-height:96dvh;overflow:auto;background:#171922;border:1px solid var(--gold,#d4a017);border-radius:10px;padding:18px 18px 16px;box-shadow:0 24px 60px rgba(0,0,0,0.55);}
   .mg-eyebrow{font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--gold,#d4a017);opacity:0.85;}
   .mg-title{font-family:var(--font-display,inherit);font-size:19px;font-weight:600;color:#f0efe8;margin:2px 0 2px;}
   .mg-prompt{font-size:12px;color:#aab0c0;line-height:1.5;min-height:32px;}
