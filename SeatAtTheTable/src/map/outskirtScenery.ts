@@ -2,7 +2,7 @@ import { COUNTRY_ROADS } from './countryRoads';
 import { distancePointToSegment } from './layout';
 import type { Point } from '../config/types';
 import { circleInsidePolygon, boundsForPoints, isPointInWater } from './geometry';
-import { OUTSKIRT_PLACE_LOTS, OUTSKIRT_REGIONS, type OutskirtRegion } from './world';
+import { OUTSKIRT_PLACE_LOTS, OUTSKIRT_REGIONS, freightLinePath, type OutskirtRegion } from './world';
 import { mallKeepClear } from './mall';
 import { centralParkKeepClear } from './centralPark';
 import { suburbKeepClear } from './suburb';
@@ -39,8 +39,11 @@ function countForKind(kind: OutskirtRegion['kind']): Record<OutskirtSceneryKind,
   return { farmhouse:0, barn:0, silo:0, tree:6, suburbHouse:0, shed:10, tank:4 };
 }
 
-// LEGAL: Keeps trees, barns and houses off the dirt lanes, verge included.
+// LEGAL: Keeps trees, barns and houses off the dirt lanes, verge included, and off the freight line
+// LEGAL: where it runs through the countryside.
 function nearCountryRoad(point: Point, radius: number): boolean {
+  const rail = freightLinePath();
+  if(distancePointToSegment(point.x, point.y, rail[0].x, rail[0].y, rail[1].x, rail[1].y) < 20 + 12 + radius) return true;
   return COUNTRY_ROADS.some(function(road){
     const clearance = road.width / 2 + 9 + radius;
     return road.path.slice(0, -1).some(function(a, i){

@@ -65,7 +65,7 @@ import { GARAGE_OFFICE, bayParkSpot, bayStandSpot, garageBay, garageOfficeCenter
 import { allRegions, regionNameAt } from '../map/regions';
 import { propertyPlaces, type PropertyPlace } from '../map/propertyPlaces';
 import { createMapPlaceRecords, mapPlaceCategoryLabel, type MapPlaceCategory, type MapPlaceRecord } from '../map/places';
-import { activeTrainSnapshot, bridgeAtPoint, mapPointContext, nearestPlaceAtPoint, placesByCategory, routeHintBetween, routeSummary, trainCrossingBlockAtPoint } from '../map/queries';
+import { activeTrainSnapshot, bridgeAtPoint, mapPointContext, nearestPlaceAtPoint, placesByCategory, routeHintBetween, routeSummary, trainCrossingBlockAtPoint, railHeightAt } from '../map/queries';
 import { createOutskirtSceneryLayout } from '../map/outskirtScenery';
 import { rotatedHalfExtents } from '../map/layout';
 import { outskirtPlaceLabel } from '../map/outskirts';
@@ -6226,6 +6226,9 @@ import type * as ThreeNamespace from 'three';
     if(!snapshot) return;
     trainGroup.position.x = snapshot.point.x;
     trainGroup.position.z = snapshot.point.y;
+    // LEGAL: Up on the lake bridge and its approaches.
+    const rail = windhavenMapModel.railLines[0];
+    trainGroup.position.y = railHeightAt(rail, Math.hypot(snapshot.point.x - rail.path[0].x, snapshot.point.y - rail.path[0].y));
   }
 
   // LEGAL: Dealers walking onto or off a corner. Each walk goes from (sx, sy) to (tx, ty); a dealer

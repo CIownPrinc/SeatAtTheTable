@@ -16,7 +16,7 @@ import { mapTerrainTheme, mapTransportTheme } from './renderTheme';
 import { addInstancedMesh, createMapSceneMaterials, type MapSceneMaterialCache, type SceneInstance } from './scenePerformance';
 import type { Point, Solid } from '../config/types';
 import type * as ThreeNamespace from 'three';
-import { onAnyRoad, railCrossingSpans, railOpenSpans } from './queries';
+import { RAIL_BRIDGE_HEIGHT, RAIL_BRIDGE_RAMP, onAnyRoad, railCrossingSpans, railOpenSpans, railWaterSpans } from './queries';
 
 export interface RoadNetworkRenderData {
   vertical: VerticalRoad[];
@@ -185,17 +185,22 @@ export function buildCanalWater(options: BaseSceneOptions): void {
     let cursor = channel.top + CANAL_WALL_START;
     gaps.forEach(function(gap){ if(gap.from > cursor) runs.push({ from:cursor, to:gap.from }); cursor = Math.max(cursor, gap.to); });
     runs.push({ from:cursor, to:channel.bottom });
-    [channel.x+8, channel.x+channel.width-8].forEach(function(x){
+    // LEGAL: A low kerb along each bank, starting where the bank is dry: a 4-high slab used to stand on
+    // LEGAL: its own at the canal's mouth after the shore moved, like a plank floating by the rails.
+    [channel.x+3, channel.x+channel.width-3].forEach(function(x){
       runs.forEach(function(run){
-        const wall = new THREE.Mesh(new THREE.BoxGeometry(12, 4, run.to - run.from), bankMat);
-        wall.position.set(x, 2, (run.from + run.to) / 2);
+        let from = run.from;
+        while(from < run.to && isPointInWater({ x:x + (x < channel.x + channel.width / 2 ? -8 : 8), y:from }, 2)) from += 6;
+        if(run.to - from < 12) return;
+        const wall = new THREE.Mesh(new THREE.BoxGeometry(5, 1.4, run.to - from), bankMat);
+        wall.position.set(x, 0.7, (from + run.to) / 2);
         wall.receiveShadow = true;
         wall.name = `canal-wall:${channel.name}`;
         worldGroup.add(wall);
       });
     });
-    const endWall = new THREE.Mesh(new THREE.BoxGeometry(channel.width, 4, 12), bankMat);
-    endWall.position.set(channel.x + channel.width/2, 2, channel.bottom + 6);
+    const endWall = new THREE.Mesh(new THREE.BoxGeometry(channel.width, 1.4, 5), bankMat);
+    endWall.position.set(channel.x + channel.width/2, 0.7, channel.bottom + 3);
     endWall.name = `canal-wall:${channel.name}`;
     worldGroup.add(endWall);
   });
@@ -700,6 +705,46 @@ export function buildRailAndRiver(options: BaseSceneOptions): void {
         flush.position.set(p.x, 0.16, p.z); flush.rotation.y = turn;
         worldGroup.add(flush);
       });
+    });
+    // LEGAL: Over the lake: a steel trestle bridge, its approaches ramping up from the ballast, piers
+    // LEGAL: down into the water, the track on a deck with handrails. Nobody walks out onto it: the
+    // LEGAL: water stops you before the deck does.
+    const girderMat = materials.standard('transport:rail-bridge', { color:'#5c6470', roughness:0.55, metalness:0.5 });
+    const deckMat = materials.standard('transport:rail-bridge-deck', { color:'#4a4038', roughness:0.85 });
+    railWaterSpans(line).forEach(function(span){
+      const from = span.from - RAIL_BRIDGE_RAMP, to = span.to + RAIL_BRIDGE_RAMP;
+      const piece = (a: number, b: number, yA: number, yB: number) => {
+        const mid = (a + b) / 2, len = b - a, centre = at(mid);
+        const tilt = Math.atan2(yB - yA, len);
+        const deck = new THREE.Mesh(new THREE.BoxGeometry(line.width + 4, 2.4, Math.hypot(len, yB - yA)), deckMat);
+        deck.position.set(centre.x, (yA + yB) / 2 - 1.2, centre.z); deck.rotation.set(-tilt, turn, 0, 'YXZ'); deck.castShadow = true; worldGroup.add(deck);
+        [-9, 9].forEach(function(offset){
+          const p = at(mid, offset);
+          const steel = new THREE.Mesh(new THREE.BoxGeometry(3, 3, Math.hypot(len, yB - yA)), steelMat);
+          steel.position.set(p.x, (yA + yB) / 2 + 1.5, p.z); steel.rotation.set(-tilt, turn, 0, 'YXZ'); worldGroup.add(steel);
+        });
+        [-(line.width / 2 + 1), line.width / 2 + 1].forEach(function(offset){
+          const p = at(mid, offset);
+          const girder = new THREE.Mesh(new THREE.BoxGeometry(2, 4, Math.hypot(len, yB - yA)), girderMat);
+          girder.position.set(p.x, (yA + yB) / 2 + 1, p.z); girder.rotation.set(-tilt, turn, 0, 'YXZ'); girder.castShadow = true; worldGroup.add(girder);
+        });
+      };
+      piece(from, span.from, 0, RAIL_BRIDGE_HEIGHT);
+      piece(span.from, span.to, RAIL_BRIDGE_HEIGHT, RAIL_BRIDGE_HEIGHT);
+      piece(span.to, to, RAIL_BRIDGE_HEIGHT, 0);
+      for(let d = span.from + 20; d < span.to; d += 46){
+        [-12, 12].forEach(function(offset){
+          const p = at(d, offset);
+          const pier = new THREE.Mesh(new THREE.BoxGeometry(4, RAIL_BRIDGE_HEIGHT + 8, 4), girderMat);
+          pier.position.set(p.x, (RAIL_BRIDGE_HEIGHT - 8) / 2 - 1, p.z); pier.rotation.y = turn; worldGroup.add(pier);
+        });
+        const brace = new THREE.Mesh(new THREE.BoxGeometry(26, 1.6, 1.6), girderMat);
+        const p = at(d); brace.position.set(p.x, RAIL_BRIDGE_HEIGHT - 4, p.z); brace.rotation.y = turn; worldGroup.add(brace);
+      }
+      for(let d = from + 6; d < to - 4; d += 13){
+        const along = d < span.from ? (d - from) / RAIL_BRIDGE_RAMP : d > span.to ? 1 - (d - span.to) / RAIL_BRIDGE_RAMP : 1;
+        const p = at(d); ties.push({ x:p.x, y:Math.max(0, Math.min(1, along)) * RAIL_BRIDGE_HEIGHT + 0.6, z:p.z, rotationY:turn });
+      }
     });
     addInstancedMesh(THREE, worldGroup, new THREE.BoxGeometry(line.width-4,2,4), materials.standard('transport:rail-tie', {color:'#3a3530', roughness:0.85, metalness:0.05}), ties, { cast:true, receive:true });
   });

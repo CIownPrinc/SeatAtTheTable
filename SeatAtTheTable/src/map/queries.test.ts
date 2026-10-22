@@ -93,11 +93,15 @@ describe('map gameplay queries', function () {
 
   it('reports train positions and crossing blocks from the shared rail timing', function () {
     const rail = windhavenMapModel.railLines[0];
-    const crossingCycle = rail.activeWindow.start + 0.5 * (rail.activeWindow.end - rail.activeWindow.start);
+    // LEGAL: When the train is at Roosevelt Road, wherever that falls along the line.
+    const along = (600 - rail.path[0].y) / (rail.path[rail.path.length - 1].y - rail.path[0].y);
+    const crossingCycle = rail.activeWindow.start + along * (rail.activeWindow.end - rail.activeWindow.start);
     const crossingTime = crossingCycle * rail.trainCycleMs;
     const inactiveTime = (rail.activeWindow.start / 2) * rail.trainCycleMs;
 
-    expect(activeTrainSnapshot(crossingTime, rail)?.point).toEqual({ x:wx(3470), y:600 });
+    const at = activeTrainSnapshot(crossingTime, rail)!.point;
+    expect(at.x).toBeCloseTo(wx(3470), 6);
+    expect(at.y).toBeCloseTo(600, 6);
     expect(activeTrainSnapshot(inactiveTime, rail)).toBeNull();
     expect(trainCrossingBlockAtPoint({ x:wx(3470), y:600 }, crossingTime)?.road.name).toBe('Roosevelt Road');
     expect(trainCrossingBlockAtPoint({ x:wx(3470), y:600 }, inactiveTime)).toBeNull();

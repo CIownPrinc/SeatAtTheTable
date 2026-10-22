@@ -556,8 +556,13 @@ old one.
      people, sandcastles, random placement and stalls, and a shoreline with curves and edges, not a
      straight strip (user, 2026-10-20).
 114. The railway runs through water, which is impossible: give it a bridge, one the player can't walk
-     onto (user, 2026-10-20).
-115. A random floating plank-like rectangle on the right of the railway (user, 2026-10-20).
+     onto (user, 2026-10-20). **DONE** (2026-10-21): the freight line now crosses the lake on a raised
+     trestle bridge (7 up, ramped over 60), built wherever the line is over water. The train rides up onto
+     it, and the deck has no walkable solid. The line also now runs the full length of the map. Checked
+     by screenshot.
+115. **DONE** A random floating plank-like rectangle on the right of the railway (user, 2026-10-20). It
+     was a canal wall standing up out of the water where the bank was shallow. The canal walls are now low
+     kerbs that start only where the bank is dry. Checked by screenshot.
 116. The GPS breaks in the countryside, when flying, or off the streets; it could cover more places.
      And the place categories on the minimap are muddled (user, 2026-10-20).
 117. Missions are cumbersome to find and join: make joining natural and less dependent on lots of

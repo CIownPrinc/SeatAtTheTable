@@ -133,7 +133,7 @@ describe('map viewport and geometry model', function () {
     expect(windhavenMapModel.bridges).toHaveLength(CANAL_CHANNELS.length * roadNetwork.horizontal.length);
     expect(windhavenMapModel.railLines[0]).toMatchObject({
       id: 'cicero-freight-line',
-      trainCycleMs: 38000,
+      trainCycleMs: 93000,
       activeWindow: { start: 0.12, end: 0.92 },
     });
     expect(windhavenMapModel.roadPaths.find(road => road.name === 'Roosevelt Road')?.roadClass).toBe('arterial');

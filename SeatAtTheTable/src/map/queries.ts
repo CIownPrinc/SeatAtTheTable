@@ -314,13 +314,46 @@ export function railCrossingSpans(rail: RailLineRecord, model: WindhavenMapModel
   });
   return merged;
 }
-// LEGAL: The rest of the line: where the raised track runs.
+// LEGAL: Where the line crosses water, as distances along it: there it runs on a trestle bridge
+// LEGAL: (RAIL_BRIDGE_HEIGHT up, with BRIDGE_RAMP-long approaches either side) instead of on ballast.
+export const RAIL_BRIDGE_HEIGHT = 7;
+export const RAIL_BRIDGE_RAMP = 60;
+const waterSpanCache = new WeakMap<RailLineRecord, RailSpan[]>();
+export function railWaterSpans(rail: RailLineRecord): RailSpan[] {
+  const cached = waterSpanCache.get(rail);
+  if(cached) return cached;
+  const a = rail.path[0], b = rail.path[rail.path.length - 1];
+  const length = Math.hypot(b.x - a.x, b.y - a.y);
+  const spans: RailSpan[] = [];
+  let start: number | null = null;
+  for(let d = 0; d <= length; d += 5){
+    const wet = isPointInWater({ x:a.x + (b.x - a.x) * d / length, y:a.y + (b.y - a.y) * d / length }, rail.width / 2);
+    if(wet && start === null) start = d;
+    if(!wet && start !== null){ spans.push({ from:start, to:d }); start = null; }
+  }
+  if(start !== null) spans.push({ from:start, to:length });
+  waterSpanCache.set(rail, spans);
+  return spans;
+}
+// LEGAL: How high the track is at a distance along the line: up on the bridge, ramping up to it.
+export function railHeightAt(rail: RailLineRecord, along: number): number {
+  let height = 0;
+  railWaterSpans(rail).forEach(function(span){
+    if(along >= span.from && along <= span.to) height = RAIL_BRIDGE_HEIGHT;
+    else if(along > span.from - RAIL_BRIDGE_RAMP && along < span.from) height = Math.max(height, RAIL_BRIDGE_HEIGHT * (1 - (span.from - along) / RAIL_BRIDGE_RAMP));
+    else if(along > span.to && along < span.to + RAIL_BRIDGE_RAMP) height = Math.max(height, RAIL_BRIDGE_HEIGHT * (1 - (along - span.to) / RAIL_BRIDGE_RAMP));
+  });
+  return height;
+}
+
+// LEGAL: The rest of the line on dry ground: where the raised track runs on its ballast.
 export function railOpenSpans(rail: RailLineRecord, model: WindhavenMapModel = windhavenMapModel): RailSpan[] {
   const a = rail.path[0], b = rail.path[rail.path.length - 1];
   const length = Math.hypot(b.x - a.x, b.y - a.y);
   const open: RailSpan[] = [];
   let at = 0;
-  railCrossingSpans(rail, model).forEach(function(span){
+  const breaks = [...railCrossingSpans(rail, model), ...railWaterSpans(rail).map(span => ({ from:span.from - RAIL_BRIDGE_RAMP, to:span.to + RAIL_BRIDGE_RAMP }))].sort((p, q) => p.from - q.from);
+  breaks.forEach(function(span){
     if(span.from > at) open.push({ from:at, to:Math.min(span.from, length) });
     at = Math.max(at, span.to);
   });

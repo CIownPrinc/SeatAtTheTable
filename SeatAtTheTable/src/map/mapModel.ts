@@ -1,6 +1,6 @@
 import { COUNTRY_ROADS, smoothPath } from './countryRoads';
 import type { Point } from '../config/types';
-import { CANAL_CHANNELS, DISTRICT_OFFSETS, DISTRICT_W, LAKEFRONT_BEACH, WINDHAVEN_LAKE, WINDHAVEN_LANDMASS, WORLD_H, WORLD_W, districtParkSlots, landmarks, roadNetwork, widenAuthoredX } from './world';
+import { CANAL_CHANNELS, DISTRICT_OFFSETS, DISTRICT_W, LAKEFRONT_BEACH, WINDHAVEN_LAKE, WINDHAVEN_LANDMASS, WORLD_H, WORLD_W, districtParkSlots, freightLinePath, landmarks, roadNetwork, widenAuthoredX } from './world';
 import { boundsForPoints, isPointInWater, pointInPolygon, type Bounds } from './geometry';
 import { buildableBands, distancePointToSegment } from './layout';
 
@@ -138,8 +138,9 @@ const railLines: RailLineRecord[] = [
     // LEGAL: Authored to run down the eastern edge of the West Side. Roads and bridges
     // LEGAL: derive from already-widened data, but this literal does not — without
     // LEGAL: widening it the line drifts into the middle of the district.
-    path: [{ x: widenAuthoredX(3470), y: 0 }, { x: widenAuthoredX(3470), y: WORLD_H }],
-    trainCycleMs: 38000,
+    path: freightLinePath(),
+    // LEGAL: The same speed as when the line was 1200 long and the cycle 38 seconds.
+    trainCycleMs: 93000,
     activeWindow: { start: 0.12, end: 0.92 },
   },
 ];

@@ -95,6 +95,14 @@ const WIDENED_BREAKPOINTS = [
 ];
 const DISTRICT_SCALE = DISTRICT_W / AUTHORED_DISTRICT_W;
 
+// LEGAL: The freight line's route, shared by the map model and the countryside scenery (which keeps
+// LEGAL: clear of it). It ran from the lake's edge to the city's south edge, so it started in the
+// LEGAL: water and stopped dead in a field. It now comes in from the north shore over a trestle
+// LEGAL: bridge across the lake and runs on south past the ring road.
+export function freightLinePath(): Point[] {
+  return [{ x:widenAuthoredX(3470), y:-1150 }, { x:widenAuthoredX(3470), y:1800 }];
+}
+
 export function widenAuthoredX(x: number): number {
   const first = AUTHORED_BREAKPOINTS[0];
   if(x <= first) return WIDENED_BREAKPOINTS[0] + (x - first) * DISTRICT_SCALE;
