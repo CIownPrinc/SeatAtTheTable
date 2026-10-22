@@ -5,6 +5,7 @@ import { serviceBuildings } from '../config/serviceBuildings';
 import { businesses } from '../config/ventures';
 import { interiorLayout, type InteriorSpot } from './interiorLayout';
 import { interiorPlanFor, stairsLanding } from './interiorPlans';
+import { MALL_SPOTS, MALL_UPPER_SPOTS } from './mallInterior';
 
 // LEGAL: Nobody inside a room may stand inside a piece of furniture. Every regular was once drawn
 // LEGAL: inside a wooden post (the fallback prop for a hotspot with nothing of its own), so they
@@ -22,9 +23,12 @@ describe('people in rooms', () => {
     plan.floors.forEach((floor, index) => {
       it(`stand clear of furniture in ${place.refId} (${floor.id})`, () => {
         const { w, h } = plan;
-        const spots: InteriorSpot[] = index === 0
-          ? [{ id:'counter', x:w / 2, y:80, label:'Counter', icon:'' }, { id:'backoffice', x:w * 0.85, y:h * 0.55, label:'Back office', icon:'' }]
-          : [];
+        const named = (spots: Record<string, unknown>): InteriorSpot[] => Object.entries(spots).filter((entry): entry is [string, { x: number; y: number }] => typeof (entry[1] as { x?: unknown }).x === 'number').map(([id, at]) => ({ id, x:at.x, y:at.y, label:id, icon:'' }));
+        const spots: InteriorSpot[] = place.kind === 'mall'
+          ? named(index === 0 ? MALL_SPOTS : MALL_UPPER_SPOTS)
+          : index === 0
+            ? [{ id:'counter', x:w / 2, y:80, label:'Counter', icon:'' }, { id:'backoffice', x:w * 0.85, y:h * 0.55, label:'Back office', icon:'' }]
+            : [];
         const landing = stairsLanding(plan);
         if(landing) spots.push({ id:index === 0 ? 'stairs-up' : 'stairs-down', x:landing.x, y:landing.y, label:'Stairs', icon:'' });
         plan.regulars.filter(r => r.floor === index).forEach(r => spots.push({ id:`talk:${r.id}`, x:r.x, y:r.z + 20, label:r.name, icon:'' }));

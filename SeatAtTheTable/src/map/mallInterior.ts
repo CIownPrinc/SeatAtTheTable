@@ -104,8 +104,10 @@ function shopProp(shop: MallShop, cx: number, refId: string): Prop {
 export function mallSpotProp(spot: InteriorSpot, refId: string): Prop | null {
   const shop = MALL_SHOPS.find(s => spot.id === `shop:${s.id}`);
   if(shop) return shopProp(shop, spot.x, refId);
-  // LEGAL: The kiosks, food court and playground are part of the hall itself (mallDecor).
-  if(['perfume', 'icecream', 'foodcourt', 'playground'].includes(spot.id)) return { pieces:[], people:[], solids:[] };
+  // LEGAL: The kiosks, food court and playground are part of the hall itself (mallDecor), and the
+  // LEGAL: arcade and cinema upstairs are part of mallUpperDecor. Without this they got the fallback
+  // LEGAL: wooden post, which stood right where the arcade attendant does.
+  if(['perfume', 'icecream', 'foodcourt', 'playground', 'arcade', 'cinema'].includes(spot.id)) return { pieces:[], people:[], solids:[] };
   return null;
 }
 

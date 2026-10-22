@@ -416,7 +416,11 @@ export function interiorLayout(kind: string, refId: string, room: RoomSize, spot
   const look = themed ? { ...lookFor(kind), ...plan.look } : lookFor(kind);
   let decor = themed ? withWindows(themeDecor(plan, refId, floor), plan.theme, room, look) : decorFor(kind, room, look);
   if(kind === 'mall' && floor === 1) decor = mallUpperDecor();
-  else if(kind === 'mall' && plan?.stairs) decor = { ...decor, fixtures:[...(decor.fixtures ?? []), ...(themeDecor({ ...plan, regulars:[] }, refId, floor).fixtures ?? [])] };
+  // LEGAL: The mall's escalator: rising on the ground floor, the way down on the upper one.
+  if(kind === 'mall' && plan?.stairs){
+    const stairs = themeDecor({ ...plan, regulars:[] }, refId, floor);
+    decor = { ...decor, pieces:[...decor.pieces, ...stairs.pieces], solids:[...decor.solids, ...stairs.solids], fixtures:[...(decor.fixtures ?? []), ...(stairs.fixtures ?? [])] };
+  }
   const props = spots.map(spot => propFor(spot, kind, refId, look));
   return {
     floor:look.floor, floorColor:look.floorColor, wallColor:look.wallColor, trimColor:look.trimColor,

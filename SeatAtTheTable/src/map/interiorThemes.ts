@@ -370,12 +370,43 @@ const THEMES: Partial<Record<RoomTheme, ThemeBuild>> = {
 };
 
 // LEGAL: The stairs, escalator or lift between floors, on every floor that has them.
-function stairsFor(b: Builder, plan: InteriorPlan): void {
+function stairsFor(b: Builder, plan: InteriorPlan, floor: number): void {
   if(!plan.stairs) return;
   const { x, z, kind } = plan.stairs;
   if(kind === 'lift'){ put(b, 'lift', x, 0, 34, 6, 56, '#5c6470', { solid:false }); b.solids.push(solidOf(x, 3, 34, 6)); return; }
+  if(floor > 0){ stairwellDown(b, x, z, kind === 'escalator' ? 30 : 32, kind === 'escalator' ? 100 : 84, kind === 'escalator' ? '#8a929c' : '#6b4a2c'); return; }
   if(kind === 'escalator') put(b, 'escalator', x, z, 30, 100, 80, '#5c6470');
   else put(b, 'staircase', x, z, 32, 84, 80, '#6b4a2c');
+}
+
+// LEGAL: Upstairs, the way down: an opening in the floor where the stairs drop away from the landing,
+// LEGAL: each step darker than the one above it, railed on three sides and open where you step on.
+// LEGAL: It used to be the same rising staircase as downstairs, so "stairs down" looked like stairs up.
+function stairwellDown(b: Builder, x: number, z: number, w: number, d: number, tread: string): void {
+  const STEPS = 7;
+  b.pieces.push(box(x, z, w + 4, d + 4, 0.25, '#0b0907', 0.05));
+  for(let i = 0; i < STEPS; i++){
+    const depth = d / STEPS;
+    const cz = z + d / 2 - depth * (i + 0.5);
+    b.pieces.push(box(x, cz, w - 2, depth - 1.2, 0.3, shade(tread, 1 - i / STEPS * 0.85), 0.3));
+    b.pieces.push(box(x, cz + depth / 2 - 0.8, w - 2, 1.2, 0.35, shade('#d8d0c0', 1 - i / STEPS * 0.8), 0.3));
+  }
+  const rail = '#2a2420', top = 26;
+  for(const side of [-1, 1]){
+    const rx = x + side * (w / 2 + 2);
+    for(let pz = z - d / 2; pz <= z + d / 2 - 6; pz += 14) b.pieces.push(box(rx, pz, 1.6, 1.6, top, rail));
+    b.pieces.push(box(rx, z - 3, 2.2, d - 6, 2, rail, top));
+  }
+  for(let px = x - w / 2; px <= x + w / 2; px += 10) b.pieces.push(box(px, z - d / 2 - 2, 1.6, 1.6, top, rail));
+  b.pieces.push(box(x, z - d / 2 - 2, w + 6, 2.2, 2, rail, top));
+  b.solids.push(solidOf(x, z, w + 6, d));
+}
+
+// LEGAL: A colour darkened toward black by `amount` (1 keeps it, 0 is black).
+function shade(hex: string, amount: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const channel = (shift: number) => Math.round(((n >> shift) & 255) * Math.max(0, Math.min(1, amount))).toString(16).padStart(2, '0');
+  return `#${channel(16)}${channel(8)}${channel(0)}`;
 }
 
 // LEGAL: Whether a theme builds its own decor (the rest keep interiorLayout's older per-kind rooms).
@@ -384,7 +415,7 @@ export function themeHasDecor(theme: RoomTheme): boolean { return !!THEMES[theme
 export function themeDecor(plan: InteriorPlan, refId: string, floor: number): Prop {
   const b = builder();
   THEMES[plan.theme]?.(b, plan.w, plan.h, plan.look, refId, floor);
-  stairsFor(b, plan);
+  stairsFor(b, plan, floor);
   plan.regulars.filter(r => r.floor === floor).forEach(r => staff(b, r.x, r.z - 2, r.id, r.coat));
   return { pieces:b.pieces, fixtures:b.fixtures, solids:b.solids, people:b.people, walkers:b.walkers, cars:b.cars };
 }

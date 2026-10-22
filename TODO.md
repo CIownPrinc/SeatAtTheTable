@@ -786,8 +786,12 @@ missing is the depth the brief asks for: most have two choices and one modal per
      bars, the people in it moving and talking, and a skip. V2: full cinematics.
 158. Sleep to save (user, 2026-10-21). V1. Sleep in Arjun's bed in the flat above the garage: the night
      passes (the clock jumps to morning), the game saves, and it says so. The bed is already there.
-159. Stairs down look like stairs up (user, 2026-10-21). V1, bug. On an upper floor the same rising
+159. **DONE** Stairs down look like stairs up (user, 2026-10-21). V1, bug. On an upper floor the same rising
      staircase is drawn; it should be an opening in the floor with a railing and steps going down.
+     Upstairs now shows a railed opening with steps darkening as they drop away from the landing, in
+     every building with stairs, and the mall's upper floor has its escalator down (it had none).
+     Checked in the garage flat and the mall. Also found there: the arcade and cinema hotspots upstairs
+     in the mall got the fallback wooden post, standing where the arcade attendant is; removed.
 160. **DONE** I can't find my car on the map: give it an important marker like the garage and Arjun's, and a fee
      to have it found and towed back to the garage (user, 2026-10-21). V1. The real bug: the parked car
      was stored per district (left over from separate district maps), so walking from Devlin into West
