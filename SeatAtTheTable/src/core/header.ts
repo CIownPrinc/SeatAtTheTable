@@ -64,8 +64,8 @@ import { archetypeExtraSolids, archetypeSilhouette, localArchetype, serviceArche
 import { GARAGE_OFFICE, bayParkSpot, bayStandSpot, garageBay, garageOfficeCenter, garageOfficeDoor, isCarInBay, shouldParkInBay, type Bay } from '../map/driveIn';
 import { allRegions, regionNameAt } from '../map/regions';
 import { propertyPlaces, type PropertyPlace } from '../map/propertyPlaces';
-import { createMapPlaceRecords, mapPlaceCategoryLabel, type MapPlaceCategory, type MapPlaceRecord } from '../map/places';
-import { activeTrainSnapshot, bridgeAtPoint, mapPointContext, nearestPlaceAtPoint, placesByCategory, routeHintBetween, routeSummary, trainCrossingBlockAtPoint, railHeightAt } from '../map/queries';
+import { createMapPlaceRecords, MAP_LEGEND, MAP_PLACE_GROUPS, mapPlaceCategoryLabel, mapPlaceGroups, type MapPlaceGroup, type MapPlaceRecord, type OwnedPlaces } from '../map/places';
+import { activeTrainSnapshot, bridgeAtPoint, mapPointContext, nearestPlaceAtPoint, routeHintBetween, routeSummary, trainCrossingBlockAtPoint, railHeightAt } from '../map/queries';
 import { createOutskirtSceneryLayout } from '../map/outskirtScenery';
 import { rotatedHalfExtents } from '../map/layout';
 import { outskirtPlaceLabel } from '../map/outskirts';
@@ -3437,20 +3437,12 @@ import type * as ThreeNamespace from 'three';
       return `<button class="district-btn ${here?'active':''}" data-travel="${d.id}" ${here?'disabled':''}><span class="pin-dot"></span>${here?'You\'re in ':''}${d.name}</button>`;
     }).join('');
   }
+  // LEGAL: The strip under the map: the same legend as the City Map, so the two can't disagree.
   function renderLegend(){
-    const wrap = byId('map-legend');
+    const wrap = byIdOrNull('map-legend');
     if(!wrap) return;
-    wrap.innerHTML = `
-      <span class="legend-item"><span class="legend-swatch" style="background:#3e6b78;border:1px solid #6fa6b5;"></span>Your Ventures</span>
-      <span class="legend-item"><span class="legend-swatch" style="background:#7c3540;border:1px solid #b85c6b;"></span>Street Ventures</span>
-      <span class="legend-item"><span class="legend-swatch" style="background:#7a5f1a;border:1px solid #c9a227;"></span>Bank / Garage / City Hall</span>
-      <span class="legend-item"><span class="legend-swatch" style="border:1px dashed #7a6fb0;"></span>Local Business</span>
-      <span class="legend-item"><span class="legend-swatch pin" style="background:#d4a017;"></span>Corner (staffed)</span>
-      <span class="legend-item"><span class="legend-swatch pin" style="background:transparent;border:2px solid #a8394a;"></span>Corner (open)</span>
-      <span class="legend-item"><span class="legend-swatch" style="background:#d4a017;border-radius:50%;"></span>Person</span>
-      <span class="legend-item"><span class="legend-swatch" style="background:#e8e6de;border-radius:50%;border:2px solid #d4a017;"></span>You</span>
-      <span class="legend-item">Walk into any building's door to go inside</span>
-    `;
+    wrap.innerHTML = MAP_LEGEND.map(item => `<span class="legend-item"><i aria-hidden="true" class="ph-duotone ${item.ph}" style="color:${item.color}"></i>${escapeHtml(item.label)}</span>`).join('')
+      + '<span class="legend-item">Walk into any building&rsquo;s door to go inside</span>';
   }
 
 
@@ -4550,16 +4542,19 @@ import type * as ThreeNamespace from 'three';
   function playerDistrict(){
     return districtIdAtPlayablePoint({ x: player.x, y: player.y }, actorRadius(state.inVehicle));
   }
-  function currentRoadLabel(): string {
+  // LEGAL: Where you are, for the status line: on a road, off one, or in the air. It used to say
+  // LEGAL: "Driving on Cermak Road" while you flew over a field half a mile from it.
+  function whereLabel(): string {
     const road = nearestRoadAtPoint({ x: player.x, y: player.y });
-    // LEGAL: Ask where you ARE, not which district you were last in. state.currentDistrict
-    // LEGAL: only ever holds one of the three city districts, so out in the belts the HUD
-    // LEGAL: used to keep announcing the district you had driven out of — half the landmass
-    // LEGAL: reporting somewhere you could see you were not.
-    const region = regionNameAt({ x: player.x, y: player.y })
-      ?? districts.find(function(d){return d.id===state.currentDistrict;})?.name
-      ?? 'Windhaven';
-    return `${road.road.name}, ${region}`;
+    const region = placeRegionName({ x: player.x, y: player.y }, state.currentDistrict);
+    if(isFlying()) return `Flying over ${region}`;
+    const onRoad = road.distance <= road.road.width / 2 + 24;
+    if(!onRoad) return `${state.inVehicle ? 'Driving' : 'Walking'} in ${region}, off the road`;
+    return `${state.inVehicle ? 'Driving' : 'Walking'} on ${road.road.name}, ${region}`;
+  }
+  // LEGAL: The region a point is in (a city district or a stretch of countryside).
+  function placeRegionName(point: Point, district: string): string {
+    return regionNameAt(point) ?? districts.find(d => d.id === district)?.name ?? 'Windhaven';
   }
   // LEGAL: The minimap and City Map draw every lot's footprint.
   let lotFootprints: Solid[] | null = null;
@@ -6416,8 +6411,27 @@ import type * as ThreeNamespace from 'three';
   function guideHeightAt(point: Point): number {
     return bridgeAtPoint(point, 6) ? BRIDGE_DECK_TOP : 0.15;
   }
+  // LEGAL: The way to the waypoint: along the roads, or straight there when you're flying, since a
+  // LEGAL: helicopter following the streets made no sense. Kept for the minimap's route line.
+  let waypointRoute: Point[] | null = null;
+  function waypointPath(px: number, py: number, wx: number, wy: number): Point[] {
+    if(isFlying()) return [{ x:px, y:py }, { x:wx, y:wy }];
+    return routeHintBetween({ x:px, y:py }, { x:wx, y:wy }).waypoints;
+  }
   function computeRoadGuide(px: number, py: number, wx: number, wy: number): Point[] {
-    return sampleRouteGuide(routeHintBetween({ x:px, y:py }, { x:wx, y:wy }).waypoints, 55);
+    waypointRoute = waypointPath(px, py, wx, wy);
+    return sampleRouteGuide(waypointRoute, 55);
+  }
+  // LEGAL: How far the waypoint is along the route, on the Clear GPS button under the minimap.
+  let gpsDistanceText = '';
+  function updateGpsDistance(): void {
+    const route = currentWaypoint() ? waypointRoute : null;
+    let metres = 0;
+    if(route) for(let i = 1; i < route.length; i++) metres += Math.hypot(route[i].x - route[i-1].x, route[i].y - route[i-1].y);
+    const text = route ? `${metres >= 1000 ? `${(metres / 1000).toFixed(1)} km` : `${Math.round(metres / 10) * 10} m`} · ✕ Clear GPS` : '✕ Clear GPS';
+    if(text === gpsDistanceText) return;
+    gpsDistanceText = text;
+    byId('minimap-clear').textContent = text;
   }
   // LEGAL: The guide dots are computed from the player's position, so a beacon built once
   // LEGAL: at set-time goes stale the moment you drive off — the trail pointed back at
@@ -6655,10 +6669,12 @@ import type * as ThreeNamespace from 'three';
       landmass:WINDHAVEN_LANDMASS,
       landmarks,
       waypoint:currentWaypoint(),
+      route:currentWaypoint() ? waypointRoute : null,
       scale:MINIMAP_SCALE * minimapZoom,
     });
     updateMinimapTurf();
     refreshWaypointGuide();
+    updateGpsDistance();
     if(cityMapOpen) drawCityMap();
   }
 
@@ -6797,7 +6813,11 @@ import type * as ThreeNamespace from 'three';
   const cityViewport = createMapViewport(CITY_W, CITY_H, windhavenMapModel.landmass);
   let cityMapOpen = false;
   let cityMapHoverPlace: MapPlaceRecord | null = null;
-  let cityMapFilter: MapPlaceCategory | 'all' = 'all';
+  let cityMapFilter: MapPlaceGroup | 'all' = 'all';
+  function ownedPlaces(): OwnedPlaces {
+    return { ventures:new Set(businesses.filter(b => b.level > 0).map(b => b.id)), properties:new Set(state.ownedProperties) };
+  }
+  function placeLabel(place: MapPlaceRecord): string { return mapPlaceCategoryLabel(place, ownedPlaces()); }
   let cityMapSearchTerm = '';
   function escapeHtml(value: string): string {
     return value.replace(/[&<>"']/g, function(char): string {
@@ -6805,38 +6825,7 @@ import type * as ThreeNamespace from 'three';
     });
   }
 
-  const cityLegend: Array<{ icon: string; label: string; color: string; ph?: string }> = [
-    { icon:'legal',    label:'Owned business',          color:'#3e7c8c', ph:'ph-storefront' },
-    { icon:'illegal',  label:'Underground business',    color:'#a8394a', ph:'ph-mask-happy' },
-    { icon:'bank',     label:'Bank',                    color:'#d4a017', ph:'ph-bank' },
-    // LEGAL: These are shops that SELL you things, not anywhere you keep things. Labelled
-    // LEGAL: "Garage" they read as the player's own garage, which does not exist yet.
-    { icon:'garage',   label:'Car dealership',          color:'#2a87ff', ph:'ph-car-profile' },
-    { icon:'realty',   label:'Realty office',           color:'#7a6fb0', ph:'ph-house-line' },
-    { icon:'cityhall', label:'City Hall',               color:'#f0efe8', ph:'ph-buildings' },
-    { icon:'heist',    label:'Heist target',            color:'#f04848', ph:'ph-lock-key' },
-    { icon:'shop',     label:'Local shop',              color:'#7a6fb0', ph:'ph-t-shirt' },
-    { icon:'bar',      label:'Bar / club',              color:'#a385ff', ph:'ph-martini' },
-    { icon:'corner',   label:'Street corner',           color:'#d4a017', ph:'ph-map-pin' },
-    { icon:'amenity',  label:'Amenity',                 color:'#5fbf8f', ph:'ph-basketball' },
-    { icon:'person',   label:'Person',                  color:'#f0efe8', ph:'ph-user' },
-    { icon:'gang',     label:'Gang recruit',            color:'#f0efe8', ph:'ph-users-three' },
-    { icon:'estate',   label:'Real estate you own',      color:'#5fbf8f', ph:'ph-house' },
-    { icon:'landmark', label:'Landmark — incl. The Potato', color:'#e0c860', ph:'ph-star' },
-    { icon:'you',      label:'You',                     color:'#e8e6de', ph:'ph-navigation-arrow' },
-    { icon:'waypoint', label:'Waypoint',                color:'#d4a017', ph:'ph-crosshair' },
-  ];
-  const cityMapFiltersList: Array<{ id: MapPlaceCategory | 'all'; label: string }> = [
-    { id:'all', label:'All' },
-    { id:'service', label:'Services' },
-    { id:'local', label:'Shops' },
-    { id:'business', label:'Businesses' },
-    { id:'corner', label:'Corners' },
-    { id:'person', label:'People' },
-    { id:'gang', label:'Gang' },
-    { id:'amenity', label:'Amenities' },
-    { id:'landmark', label:'Landmarks' },
-  ];
+  const cityMapFiltersList: Array<{ id: MapPlaceGroup | 'all'; label: string }> = [{ id:'all', label:'All' }, ...MAP_PLACE_GROUPS];
   // LEGAL: Search and the results list only offer real estate you actually own, matching
   // LEGAL: what the map shows — otherwise searching "lofts" finds a building that is not
   // LEGAL: yours and drops a waypoint on it.
@@ -6844,11 +6833,13 @@ import type * as ThreeNamespace from 'three';
     return cityFilteredPlacesAll().filter(place => !place.sourceObject || ownsPropertyPlace(place.sourceObject));
   }
   function cityFilteredPlacesAll(): MapPlaceRecord[] {
-    const filteredByCategory = cityMapFilter === 'all' ? mapPlaces : placesByCategory(mapPlaces, cityMapFilter);
+    const owned = ownedPlaces();
+    const group = cityMapFilter;
+    const filteredByCategory = group === 'all' ? mapPlaces : mapPlaces.filter(place => mapPlaceGroups(place, owned).includes(group));
     const search = cityMapSearchTerm.trim().toLowerCase();
     if(!search) return filteredByCategory;
     return filteredByCategory.filter(function(place){
-      return place.name.toLowerCase().includes(search) || mapPlaceCategoryLabel(place).toLowerCase().includes(search) || place.district.toLowerCase().includes(search);
+      return place.name.toLowerCase().includes(search) || mapPlaceCategoryLabel(place, owned).toLowerCase().includes(search) || place.district.toLowerCase().includes(search);
     });
   }
   function cityVisibleMapObjects(): MapObject[] {
@@ -6866,8 +6857,8 @@ import type * as ThreeNamespace from 'three';
     cityMapResults.innerHTML = results.length ? results.map(function(place){
       const active = place.id === cityMapHoverPlace?.id ? ' active' : '';
       const icon = place.icon && place.icon !== 'landmark' ? place.icon : 'landmark';
-      const category = mapPlaceCategoryLabel(place);
-      return `<button class="citymap-result${active}" data-citymap-place="${escapeHtml(place.id)}" type="button"><span class="lg-ico lg-${escapeHtml(icon)}" style="--c:#d4a017"></span><span><span class="citymap-result-name">${escapeHtml(place.name)}</span><span class="citymap-result-meta">${escapeHtml(category)} - ${escapeHtml(districtDisplayName(place.district))}</span></span><span class="citymap-result-waypoint" data-citymap-waypoint="${escapeHtml(place.id)}" title="Set waypoint"><i aria-hidden="true" class="ph-duotone ph-crosshair"></i></span></button>`;
+      const category = placeLabel(place);
+      return `<button class="citymap-result${active}" data-citymap-place="${escapeHtml(place.id)}" type="button"><span class="lg-ico lg-${escapeHtml(icon)}" style="--c:#d4a017"></span><span><span class="citymap-result-name">${escapeHtml(place.name)}</span><span class="citymap-result-meta">${escapeHtml(category)} - ${escapeHtml(placeRegionName(place, place.district))}</span></span><span class="citymap-result-waypoint" data-citymap-waypoint="${escapeHtml(place.id)}" title="Set waypoint"><i aria-hidden="true" class="ph-duotone ph-crosshair"></i></span></button>`;
     }).join('') : '<div class="citymap-result-empty">No places match that search.</div>';
   }
   function drawCityMap(){
@@ -6894,7 +6885,7 @@ import type * as ThreeNamespace from 'three';
     cityMapOpen = true;
     const overlay = byId('citymap-overlay');
     const el = byIdOrNull('citymap-legend');
-    if(el) el.innerHTML = `<div class="citymap-legend-title">Legend</div>` + cityLegend.map(function(item){
+    if(el) el.innerHTML = `<div class="citymap-legend-title">Legend</div>` + MAP_LEGEND.map(function(item){
       const iconHtml = item.ph ? `<i aria-hidden="true" class="ph-duotone ${item.ph} lg-ph" style="color:${item.color}"></i>` : `<span class="lg-ico lg-${item.icon}" style="--c:${item.color}"></span>`;
       return `<div class="citymap-legend-row">${iconHtml}${escapeHtml(item.label)}</div>`;
     }).join('');
@@ -6921,7 +6912,7 @@ import type * as ThreeNamespace from 'three';
   cityMapFilters.addEventListener('click', function(e){
     const btn = (e.target as HTMLElement).closest('[data-citymap-filter]');
     if(!btn) return;
-    cityMapFilter = btn.getAttribute('data-citymap-filter') as MapPlaceCategory | 'all';
+    cityMapFilter = btn.getAttribute('data-citymap-filter') as MapPlaceGroup | 'all';
     cityMapHoverPlace = cityFilteredPlaces()[0] ?? null;
     renderCityMapSearch();
     drawCityMap();
@@ -6937,10 +6928,10 @@ import type * as ThreeNamespace from 'three';
       setGlobalWaypoint({ x:place.x, y:place.y });
       rebuildWaypointBeacon();
       byId('minimap-clear').classList.add('show');
-      cityMapHint.textContent = `${districtDisplayName(place.district)} - ${place.name} - ${mapPlaceCategoryLabel(place)} - ${waypointRouteLabel(place)}`;
+      cityMapHint.textContent = `${placeRegionName(place, place.district)} - ${place.name} - ${placeLabel(place)} - ${waypointRouteLabel(place)}`;
       scheduleSave();
     } else {
-      cityMapHint.textContent = `${districtDisplayName(place.district)} - ${place.name} - ${mapPlaceCategoryLabel(place)}`;
+      cityMapHint.textContent = `${placeRegionName(place, place.district)} - ${place.name} - ${placeLabel(place)}`;
     }
     renderCityMapSearch();
     drawCityMap();
@@ -6968,7 +6959,7 @@ import type * as ThreeNamespace from 'three';
       drawCityMap();
       return;
     }
-    cityMapHint.textContent = place ? `${dist.name} - ${place.name} - ${mapPlaceCategoryLabel(place)}` : `${dist.name} - Click to set waypoint`;
+    cityMapHint.textContent = place ? `${dist.name} - ${place.name} - ${placeLabel(place)}` : `${dist.name} - Click to set waypoint`;
     renderCityMapSearch();
     drawCityMap();
   });
@@ -7479,7 +7470,7 @@ import type * as ThreeNamespace from 'three';
 
     const near = nearestMarker();
     const hintEl = byId('map-hint');
-    const outdoorStatus = (state.inVehicle ? 'Driving on ' : 'Walking on ') + currentRoadLabel() + ' | ' + mapClockLabel();
+    const outdoorStatus = whereLabel() + ' | ' + mapClockLabel();
     const wp = currentWaypoint();
     if(wp && !state.currentInterior && Math.hypot(player.x-wp.x, player.y-wp.y) < (state.inVehicle ? 42 : 28)){
       setGlobalWaypoint(null);

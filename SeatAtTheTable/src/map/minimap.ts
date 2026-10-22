@@ -59,6 +59,8 @@ export interface MinimapRenderOptions {
   landmass: Point[];
   landmarks: Array<{ x: number; y: number; name?: string }>;
   waypoint: Point | null;
+  // LEGAL: The GPS route to the waypoint, along the roads (or straight, when flying).
+  route?: Point[] | null;
   // LEGAL: Optional overrides. Defaults render the small 150px follow-cam minimap; the
   // LEGAL: full City Map passes viewW/viewH/scale/center to frame the whole world at once.
   size?: number;
@@ -128,6 +130,9 @@ export function minimapStaticLayerCacheKey(options: MinimapRenderOptions): strin
   ].join(':');
 }
 
+// LEGAL: The GPS colour, the same cyan as the route dots in the 3D view (not the road-marking yellow).
+const GPS_COLOR = '#35e0ff';
+
 function isOnMap(point: Point, w: number, h: number): boolean {
   const m = 8;
   return point.x >= -m && point.x <= w + m && point.y >= -m && point.y <= h + m;
@@ -186,6 +191,15 @@ export function drawGlyph(ctx: CanvasRenderingContext2D, p: Point, icon: Minimap
     case 'bar':
       ctx.beginPath(); ctx.moveTo(p.x - s*0.9, p.y - s*0.9); ctx.lineTo(p.x + s*0.9, p.y - s*0.9); ctx.lineTo(p.x + s*0.38, p.y - s*0.08); ctx.quadraticCurveTo(p.x, p.y + s*0.18, p.x - s*0.38, p.y - s*0.08); ctx.closePath(); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(p.x, p.y + s*0.18); ctx.lineTo(p.x, p.y + s*0.86); ctx.moveTo(p.x - s*0.5, p.y + s*0.86); ctx.lineTo(p.x + s*0.5, p.y + s*0.86); ctx.stroke();
+      break;
+    case 'home':
+      ctx.beginPath(); ctx.moveTo(p.x - s*1.15, p.y - s*0.1); ctx.lineTo(p.x, p.y - s*1.15); ctx.lineTo(p.x + s*1.15, p.y - s*0.1); ctx.closePath(); ctx.fill();
+      ctx.fillRect(p.x - s*0.8, p.y - s*0.15, s*1.6, s*1.05);
+      ctx.fillStyle = '#10131a'; ctx.fillRect(p.x - s*0.22, p.y + s*0.3, s*0.44, s*0.6);
+      break;
+    case 'destination':
+      ctx.beginPath(); ctx.moveTo(p.x - s*0.6, p.y + s*1.1); ctx.lineTo(p.x - s*0.6, p.y - s*1.1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(p.x - s*0.6, p.y - s*1.1); ctx.lineTo(p.x + s*0.95, p.y - s*0.7); ctx.lineTo(p.x - s*0.6, p.y - s*0.25); ctx.closePath(); ctx.fill();
       break;
     case 'service':
       ctx.beginPath(); ctx.arc(p.x, p.y, s*0.75, 0, Math.PI*2); ctx.fill();
@@ -535,10 +549,40 @@ function drawDynamicMinimapLayer(mctx: CanvasRenderingContext2D, options: Minima
     mctx.restore();
   }
 
+  // LEGAL: The route as a line, and if the waypoint is beyond the minimap's edge, an arrow on the rim
+  // LEGAL: pointing at it. Out in the countryside the waypoint is usually off the minimap, and before
+  // LEGAL: this nothing on it said which way to go.
+  if(options.route && options.route.length > 1){
+    mctx.save();
+    mctx.strokeStyle = GPS_COLOR; mctx.lineWidth = Math.max(2.5, 2.2*glyphScale); mctx.lineJoin = 'round'; mctx.lineCap = 'round';
+    mctx.globalAlpha = 0.85;
+    mctx.beginPath();
+    options.route.forEach(function(point, index){ const p = proj(point.x, point.y); if(index === 0) mctx.moveTo(p.x, p.y); else mctx.lineTo(p.x, p.y); });
+    mctx.stroke();
+    mctx.restore();
+  }
+  if(options.waypoint && glyphScale < 1.5){
+    const wp = proj(options.waypoint.x, options.waypoint.y);
+    const rim = Math.min(viewW, viewH) / 2 - 9;
+    const dx = wp.x - viewW/2, dy = wp.y - viewH/2;
+    const away = Math.hypot(dx, dy);
+    if(away > rim){
+      const ux = dx / away, uy = dy / away;
+      const tip = { x:viewW/2 + ux*rim, y:viewH/2 + uy*rim };
+      mctx.save();
+      mctx.fillStyle = GPS_COLOR; mctx.strokeStyle = '#08090d'; mctx.lineWidth = 1.5;
+      mctx.beginPath();
+      mctx.moveTo(tip.x + ux*6, tip.y + uy*6);
+      mctx.lineTo(tip.x - ux*6 - uy*6, tip.y - uy*6 + ux*6);
+      mctx.lineTo(tip.x - ux*6 + uy*6, tip.y - uy*6 - ux*6);
+      mctx.closePath(); mctx.fill(); mctx.stroke();
+      mctx.restore();
+    }
+  }
   const drawWaypoint = function(wp: Point): void {
     const p = proj(wp.x, wp.y);
     const r = 6*glyphScale;
-    mctx.strokeStyle='#d4a017';
+    mctx.strokeStyle=GPS_COLOR;
     mctx.lineWidth=2;
     mctx.beginPath(); mctx.moveTo(p.x-r,p.y); mctx.lineTo(p.x+r,p.y); mctx.moveTo(p.x,p.y-r); mctx.lineTo(p.x,p.y+r); mctx.stroke();
     mctx.beginPath(); mctx.arc(p.x,p.y,r+1,0,Math.PI*2); mctx.stroke();

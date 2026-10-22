@@ -15,10 +15,24 @@ export interface MapPlaceRecord extends Point {
   interactRadius: number;
 }
 
+// LEGAL: The places beyond the city worth the drive. They used to share the plain "service" dot
+// LEGAL: with the newsroom and the bus station, so the map couldn't tell a casino from a back alley.
+export const OUT_OF_TOWN = new Set(['airfieldKettle', 'lodgeRidgewood', 'driveInBoundary', 'motelSunset', 'fireRoadKestrel', 'mallLakeridge', 'casinoLakeridge']);
+
+// LEGAL: What each named place is, in a word or two, for its map label.
+const PLACE_LABELS: Record<string, string> = {
+  playerGarage:'Your garage', heraldHq:'Newspaper', hubBusStation:'Bus station', devlinAlley:'Back alley',
+  docksDockmaster:'Docks', railyard:'Railyard', marigoldLounge:'Nightclub', airfieldKettle:'Airfield',
+  lodgeRidgewood:'Lodge', driveInBoundary:'Drive-in cinema', motelSunset:'Motel', fireRoadKestrel:'Fire road',
+  mallLakeridge:'Shopping mall', casinoLakeridge:'Casino', resprayShop:'Paint shop',
+  patel:'Corner shop', pawn:'Pawn shop', herbalist:'Herbalist', liquor:'Liquor store', bar:'Bar', marlowe:'Bar',
+  chopshop:'Chop shop', jewelers:'Jeweller',
+};
+
 export function minimapIconForService(service: ServiceBuilding): MinimapIcon {
   if(service.kind === 'bankHome') return 'bank';
-  // LEGAL: The player's own garage shares the garage glyph but is labelled distinctly.
-  if(service.kind === 'playerGarage') return 'garage';
+  if(service.kind === 'playerGarage') return 'home';
+  if(OUT_OF_TOWN.has(service.id)) return 'destination';
   // LEGAL: Branded shops reuse the established garage / realty glyphs so the minimap
   // LEGAL: legend, search, and place labels keep working unchanged.
   if(service.kind === 'garage' || service.kind === 'dealership') return 'garage';
@@ -35,8 +49,17 @@ export function minimapIconForLocalBusiness(business: LocalBusiness): MinimapIco
   return 'shop';
 }
 
-export function mapPlaceCategoryLabel(place: Pick<MapPlaceRecord, 'category' | 'icon' | 'sourceKind'>): string {
-  if(place.icon === 'estate') return 'Real estate';
+// LEGAL: What you own, for the labels and the "Yours" filter.
+export interface OwnedPlaces { ventures: ReadonlySet<string>; properties: ReadonlySet<string> }
+
+export function mapPlaceCategoryLabel(place: Pick<MapPlaceRecord, 'category' | 'icon' | 'sourceKind'> & { id?: string }, owned?: OwnedPlaces): string {
+  if(place.id && PLACE_LABELS[place.id]) return PLACE_LABELS[place.id];
+  if(place.category === 'business'){
+    const yours = !!place.id && !!owned?.ventures.has(place.id);
+    if(place.icon === 'illegal') return yours ? 'Your underground business' : 'Underground business, not yours yet';
+    return yours ? 'Your business' : 'Business, not yours yet';
+  }
+  if(place.icon === 'estate') return 'Your property';
   if(place.icon === 'bank') return 'Bank';
   // LEGAL: "Garage" implied the player's own garage — these are dealerships that sell cars.
   if(place.icon === 'garage') return 'Car dealership';
@@ -45,7 +68,6 @@ export function mapPlaceCategoryLabel(place: Pick<MapPlaceRecord, 'category' | '
   if(place.icon === 'heist') return 'Heist target';
   if(place.icon === 'bar') return 'Bar / club';
   if(place.icon === 'shop') return 'Local shop';
-  if(place.category === 'business') return 'Owned business';
   if(place.category === 'service') return 'Service';
   if(place.category === 'amenity') return 'Amenity';
   if(place.category === 'corner') return 'Street corner';
@@ -98,6 +120,60 @@ export function placeRecordFromLandmark(landmark: Landmark): MapPlaceRecord {
     interactRadius: 58,
   };
 }
+
+// LEGAL: The groups the City Map filters by, in order. One table, so the filter buttons, the labels
+// LEGAL: and the legend can't disagree, which is how they had drifted apart.
+export type MapPlaceGroup = 'yours' | 'business' | 'service' | 'shop' | 'outoftown' | 'amenity' | 'corner' | 'people' | 'landmark';
+export const MAP_PLACE_GROUPS: Array<{ id: MapPlaceGroup; label: string }> = [
+  { id:'yours', label:'Yours' }, { id:'business', label:'Businesses' }, { id:'service', label:'Services' },
+  { id:'shop', label:'Shops & bars' }, { id:'outoftown', label:'Out of town' }, { id:'amenity', label:'Amenities' },
+  { id:'corner', label:'Corners' }, { id:'people', label:'People' }, { id:'landmark', label:'Landmarks' },
+];
+
+export function mapPlaceGroups(place: MapPlaceRecord, owned: OwnedPlaces): MapPlaceGroup[] {
+  const groups: MapPlaceGroup[] = [];
+  const yours = (place.category === 'business' && owned.ventures.has(place.id)) || place.id === 'playerGarage'
+    || (place.category === 'property' && !!place.sourceObject && owned.properties.has(propertyIdOf(place.sourceObject)));
+  if(yours) groups.push('yours');
+  if(place.category === 'business') groups.push('business');
+  else if(place.category === 'service') groups.push(OUT_OF_TOWN.has(place.id) ? 'outoftown' : 'service');
+  else if(place.category === 'local') groups.push('shop');
+  else if(place.category === 'amenity') groups.push('amenity');
+  else if(place.category === 'corner') groups.push('corner');
+  else if(place.category === 'person' || place.category === 'gang') groups.push('people');
+  else if(place.category === 'landmark') groups.push('landmark');
+  return groups;
+}
+
+function propertyIdOf(object: MapObject): string {
+  return 'property' in object.ref ? object.ref.property.id : object.id;
+}
+
+// LEGAL: The one legend, used by the City Map and the strip under the map, in the same words as the
+// LEGAL: place labels above.
+export const MAP_LEGEND: Array<{ icon: string; label: string; color: string; ph: string }> = [
+  { icon:'legal',    label:'Business',                color:'#3e7c8c', ph:'ph-storefront' },
+  { icon:'illegal',  label:'Underground business',    color:'#a8394a', ph:'ph-mask-happy' },
+  { icon:'home',     label:'Your garage',             color:'#d4a017', ph:'ph-house-simple' },
+  { icon:'bank',     label:'Bank',                    color:'#d4a017', ph:'ph-bank' },
+  { icon:'garage',   label:'Car dealership',          color:'#2a87ff', ph:'ph-car-profile' },
+  { icon:'realty',   label:'Realty office',           color:'#7a6fb0', ph:'ph-house-line' },
+  { icon:'cityhall', label:'City Hall',               color:'#f0efe8', ph:'ph-buildings' },
+  { icon:'heist',    label:'Heist target',            color:'#f04848', ph:'ph-lock-key' },
+  { icon:'shop',     label:'Shop',                    color:'#7a6fb0', ph:'ph-t-shirt' },
+  { icon:'bar',      label:'Bar',                     color:'#a385ff', ph:'ph-martini' },
+  { icon:'service',  label:'Other place to go',       color:'#d4a017', ph:'ph-map-pin-simple' },
+  { icon:'destination', label:'Out of town',          color:'#4fc3c8', ph:'ph-flag' },
+  { icon:'corner',   label:'Street corner',           color:'#d4a017', ph:'ph-map-pin' },
+  { icon:'amenity',  label:'Amenity',                 color:'#5fbf8f', ph:'ph-basketball' },
+  { icon:'person',   label:'Person',                  color:'#f0efe8', ph:'ph-user' },
+  { icon:'gang',     label:'Gang recruit',            color:'#f0efe8', ph:'ph-users-three' },
+  { icon:'estate',   label:'Your property',           color:'#5fbf8f', ph:'ph-house' },
+  { icon:'landmark', label:'Landmark',                color:'#e0c860', ph:'ph-star' },
+  { icon:'you',      label:'You',                     color:'#e8e6de', ph:'ph-navigation-arrow' },
+  { icon:'waypoint', label:'Waypoint and route',      color:'#35e0ff', ph:'ph-crosshair' },
+];
+
 
 export function createMapPlaceRecords(objects: MapObject[], landmarks: Landmark[]): MapPlaceRecord[] {
   return [

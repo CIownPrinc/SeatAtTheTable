@@ -574,8 +574,19 @@ old one.
 115. **DONE** A random floating plank-like rectangle on the right of the railway (user, 2026-10-20). It
      was a canal wall standing up out of the water where the bank was shallow. The canal walls are now low
      kerbs that start only where the bank is dry. Checked by screenshot.
-116. The GPS breaks in the countryside, when flying, or off the streets; it could cover more places.
-     And the place categories on the minimap are muddled (user, 2026-10-20).
+116. **DONE** The GPS breaks in the countryside, when flying, or off the streets; it could cover more places.
+     And the place categories on the minimap are muddled (user, 2026-10-20). The road routes themselves
+     were sound (checked from the city to every place, there and back). What failed was what you saw:
+     the minimap drew no route at all, and nothing when the waypoint was past its edge, which out in
+     the countryside it nearly always is. Now the minimap draws the route in cyan, an arrow on its rim
+     points at a waypoint beyond it, and the Clear GPS button shows the distance. Flying routes go
+     straight there instead of along the roads. The status line says "Flying over..." or "off the road"
+     instead of naming a road half a mile away. Categories: one table (`map/places.ts`) now drives the
+     City Map's filters, the labels and both legends. Your garage, the jeweller, the chop shop and 14
+     places that were all "Service" have real labels; ventures say whether they're yours; the casino,
+     mall, lodge, airfield, motel, drive-in and fire road are "Out of town" with a flag on the map and
+     the right region name (they all said "The Hub"); there's a "Yours" filter; gang recruits sit under
+     People. Tests in `viewport.test.ts` and `garage.test.ts`.
 117. **PART** (one waiting message at a time, from 143) Missions are cumbersome to find and join: make joining natural and less dependent on lots of
      phone messages, and cut down the flood of mission messages on the phone (user, 2026-10-21).
 118. For the "camera follows Arjun" setting: make it first person if that's not too hard; otherwise a

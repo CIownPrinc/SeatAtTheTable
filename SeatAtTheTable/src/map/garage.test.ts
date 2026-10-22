@@ -24,8 +24,9 @@ describe('player garage', function () {
     expect(garage.w).not.toBe(dealership.w);
   });
 
-  it('still uses the garage glyph on the minimap', function () {
-    expect(minimapIconForService({ id:'playerGarage', kind:'playerGarage', name:'Your Garage', icon:'', district:'devlin', x:0, y:0 })).toBe('garage');
+  // LEGAL: It used to share the dealership glyph and was labelled "Car dealership" on the City Map.
+  it('has its own home glyph on the minimap, not the dealership one', function () {
+    expect(minimapIconForService({ id:'playerGarage', kind:'playerGarage', name:'Your Garage', icon:'', district:'devlin', x:0, y:0 })).toBe('home');
   });
 
   it('leaves a parked car where you left it until the timer runs out', function () {

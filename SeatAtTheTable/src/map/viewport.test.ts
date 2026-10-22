@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { COUNTRY_ROADS } from './countryRoads';
 import { boundsForPoints, isPointInWater, isPointOnBridge, isPointOnWindhavenLand, pointInPolygon } from './geometry';
 import { districtIdAtPlayablePoint, districtIdAtPoint, nearestRoadAtPoint, roadLandSegments, windhavenMapModel } from './mapModel';
-import { createMapPlaceRecords, mapPlaceCategoryLabel, minimapIconForLocalBusiness, minimapIconForService, nearestMapPlace, placeRecordFromMapObject } from './places';
+import { createMapPlaceRecords, mapPlaceCategoryLabel, mapPlaceGroups, minimapIconForLocalBusiness, minimapIconForService, nearestMapPlace, placeRecordFromMapObject } from './places';
 import type { MapObject } from './objects';
 import type { MapNpc } from './markers';
 import { clampPointToBounds, createMapViewport, screenToWorld, worldToScreen } from './viewport';
@@ -201,5 +201,31 @@ describe('map viewport and geometry model', function () {
     expect(kinds).toEqual(new Set(['building', 'service', 'local', 'amenity', 'corner', 'npc', 'gangnpc']));
     expect(objects.find(object => object.id === 'cart')?.x).toBe(mapBuildings.find(building => building.id === 'cart')?.x);
     expect(objects.find(object => object.id === 'bankHome')?.minimapIcon).toBe('bank');
+  });
+});
+
+// LEGAL: The City Map's categories had drifted: the jeweller was a "Realty office", the player's garage a
+// LEGAL: "Car dealership", every venture "Owned business" whether it was or not, and the casino, the
+// LEGAL: newsroom and a back alley all just "Service".
+describe('map place labels and groups', function () {
+  const owned = { ventures:new Set(['cart']), properties:new Set<string>() };
+  const objects = buildMapObjects({ mapBuildings:createMapBuildings(businesses), serviceBuildings, localBusinesses, amenities:mapAmenities, corners, npcs:mapNpcs, gangRecruits });
+  const places = createMapPlaceRecords(objects, windhavenMapModel.landmarks);
+  const place = (id: string) => places.find(p => p.id === id)!;
+
+  it('names each place for what it is', function () {
+    expect(mapPlaceCategoryLabel(place('jewelers'), owned)).toBe('Jeweller');
+    expect(mapPlaceCategoryLabel(place('playerGarage'), owned)).toBe('Your garage');
+    expect(mapPlaceCategoryLabel(place('casinoLakeridge'), owned)).toBe('Casino');
+    expect(mapPlaceCategoryLabel(place('cart'), owned)).toBe('Your business');
+    expect(mapPlaceCategoryLabel(place('restaurant'), owned)).toBe('Business, not yours yet');
+  });
+
+  it('puts every place in a filter group, and what you own under Yours', function () {
+    places.forEach(p => expect(mapPlaceGroups(p, owned).length, p.id).toBeGreaterThan(0));
+    expect(mapPlaceGroups(place('cart'), owned)).toEqual(['yours', 'business']);
+    expect(mapPlaceGroups(place('playerGarage'), owned)).toContain('yours');
+    expect(mapPlaceGroups(place('casinoLakeridge'), owned)).toEqual(['outoftown']);
+    expect(mapPlaceGroups(place('chino'), owned)).toEqual(['people']);
   });
 });

@@ -7,7 +7,8 @@ export type MapObjectKind = 'building' | 'service' | 'local' | 'amenity' | 'corn
 // LEGAL: Icon category for the minimap / city map, so each thing on the map reads with
 // LEGAL: a consistent GTA-style symbol (square = legal business, triangle = illegal
 // LEGAL: venture, house = home/local shop, etc.) explained by the on-screen legend.
-export type MinimapIcon = 'legal' | 'illegal' | 'bank' | 'garage' | 'realty' | 'cityhall' | 'heist' | 'shop' | 'bar' | 'service' | 'amenity' | 'corner' | 'person' | 'gang' | 'estate';
+// LEGAL: 'home' is Arjun's own garage; 'destination' a place out of town worth the drive.
+export type MinimapIcon = 'legal' | 'illegal' | 'bank' | 'garage' | 'realty' | 'cityhall' | 'heist' | 'shop' | 'bar' | 'service' | 'amenity' | 'corner' | 'person' | 'gang' | 'estate' | 'home' | 'destination';
 
 export type MapObjectRef = MapBuilding | ServiceBuilding | LocalBusiness | MapAmenity | Corner | MapNpc | GangRecruit | PropertyPlace;
 

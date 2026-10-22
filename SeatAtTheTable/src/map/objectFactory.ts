@@ -64,7 +64,7 @@ export function buildMapObjects(input: MapObjectFactoryInput): MapObject[] {
       // LEGAL: you clipped into the wide dealerships and hit an invisible wall about 30
       // LEGAL: units short of the small ones.
       const shape = serviceBuildingSilhouette(m);
-      return { kind:'service', id:m.id, district:m.district, x:m.x, y:m.y, bounds:archetypeBounds(serviceArchetype(m),m.x,m.y,shape.w,shape.d), interactRadius:Math.max(46, shape.w*0.62), minimapColor:'#d4a017', minimapSize:3, minimapIcon:minimapIconForService(m), ref:m };
+      return { kind:'service', id:m.id, district:m.district, x:m.x, y:m.y, bounds:archetypeBounds(serviceArchetype(m),m.x,m.y,shape.w,shape.d), interactRadius:Math.max(46, shape.w*0.62), minimapColor:minimapIconForService(m) === 'destination' ? '#4fc3c8' : '#d4a017', minimapSize:3, minimapIcon:minimapIconForService(m), ref:m };
     }),
     // LEGAL: Real estate you can own. Always in the world (a walk-up exists whether or not
     // LEGAL: you hold the deed); header filters the minimap to the ones you actually own.
