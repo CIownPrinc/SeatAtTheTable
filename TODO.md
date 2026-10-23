@@ -413,8 +413,10 @@ old one.
     and moves in on the head while you choose hair, a hat, glasses or a hair colour. The five hats
     are sculpted too (`art/blender/hats.py`): a fedora with a snap brim and a bowed band, a newsboy
     flat cap pulled forward over its peak, a six-panel baseball cap with an arched bill, a bucket hat
-    with a sloping brim, and a ribbed beanie with a turned-up cuff. Left: glasses, the chain, the
-    watch and the other pieces in Blender, the carousel, and more to choose from.
+    with a sloping brim, and a ribbed beanie with a turned-up cuff. The accessories too
+    (`art/blender/extras.py`): rounded glasses frames and lenses, a curb chain of real links with a
+    coin pendant, a watch with a bezel and crown. The carousel cycles correctly now (checked).
+    Left: more to choose from (tops, trousers, shoes), with the mall's clothes shops.
 60. Set up tests for mobile gameplay so nothing breaks on phones (user, 2026-10-20).
 61. **PART** Stairs in some buildings that you use to go up to the next floor (user, 2026-10-20). The
     casino and the mall definitely need upper floors, with stairs, lifts or escalators where they fit.
