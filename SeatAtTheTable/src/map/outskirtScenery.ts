@@ -5,7 +5,8 @@ import { circleInsidePolygon, boundsForPoints, isPointInWater } from './geometry
 import { OUTSKIRT_PLACE_LOTS, OUTSKIRT_REGIONS, freightLinePath, type OutskirtRegion } from './world';
 import { mallKeepClear } from './mall';
 import { centralParkKeepClear } from './centralPark';
-import { suburbKeepClear } from './suburb';
+import { HOUSE, suburbKeepClear } from './suburb';
+import { RURAL_BUILDING_SCALE } from './scale';
 import { TRAIL_WIDTH, distanceToTrails } from './trails';
 
 export type OutskirtSceneryKind = 'farmhouse' | 'barn' | 'silo' | 'tree' | 'suburbHouse' | 'shed' | 'tank';
@@ -56,16 +57,24 @@ function nearCountryRoad(point: Point, radius: number): boolean {
 // LEGAL: Half the clear square round each countryside place: its building, yard and frontage.
 const PLACE_CLEARANCE = 95;
 
+// LEGAL: Each building's walls (not its porch or yard), for collision.
+// LEGAL: Authored at the old size and grown by RURAL_BUILDING_SCALE, as the models are.
+const S = RURAL_BUILDING_SCALE;
+const FOOTPRINTS: Record<Exclude<OutskirtSceneryKind, 'tree'>, { w: number; d: number }> = {
+  farmhouse:{ w:36 * S, d:26 * S }, barn:{ w:52 * S, d:36 * S }, silo:{ w:18 * S, d:18 * S }, shed:{ w:40 * S, d:30 * S }, tank:{ w:24 * S, d:24 * S },
+  suburbHouse:{ w:HOUSE.w + HOUSE.garageW, d:HOUSE.d },
+};
+export function countryFootprint(kind: Exclude<OutskirtSceneryKind, 'tree'>): { w: number; d: number } { return FOOTPRINTS[kind]; }
+
 // LEGAL: How far each kind reaches from its centre, which is what keeps it off the lanes and apart
-// LEGAL: from its neighbours. Buildings were all 22, smaller than most of them (a barn is 52 x 36, a
-// LEGAL: family house 60 wide with its lawn and fence 45 out in front), so some stood on the Ring Road.
+// LEGAL: from its neighbours: half its footprint's diagonal, worked out from the footprints above so
+// LEGAL: it can't fall behind when the buildings change size (it did, and a barn stood on the Ring
+// LEGAL: Road). A house reaches further, its lawn and fence out in front.
 export function radiusForKind(kind: OutskirtSceneryKind): number {
   if(kind === 'tree') return 10;
-  if(kind === 'silo') return 12;
-  if(kind === 'tank') return 14;
-  if(kind === 'suburbHouse') return 50;
-  if(kind === 'barn') return 34;
-  return 26;
+  const { w, d } = countryFootprint(kind);
+  if(kind === 'suburbHouse') return w / 2 + 12;
+  return Math.hypot(w, d) / 2;
 }
 
 function samplesInRegion(region: OutskirtRegion, count: number, radius: number, random: () => number): Point[] {

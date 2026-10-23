@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SIGNAL_ALL_RED_SECONDS, SIGNAL_GREEN_SECONDS, axisOf, blockerPace, followingPace, signalGreen, signalPace } from './trafficRules';
+import { MIN_GAP, SIGNAL_ALL_RED_SECONDS, SIGNAL_GREEN_SECONDS, STOP_LINE, axisOf, blockerPace, followingPace, signalGreen, signalPace } from './trafficRules';
 
 const junction = { x: 1000, y: 500 };
 const EAST = 0, SOUTH = Math.PI / 2;
@@ -25,13 +25,13 @@ describe('traffic lights', function () {
 
   it('stops a car at the line on red, and lets it through on green', function () {
     const red = timeWhen('ew', false);
-    const atLine = { id: 'a', x: junction.x - 74, y: junction.y + 18, facing: EAST };
+    const atLine = { id: 'a', x: junction.x - STOP_LINE, y: junction.y + 18, facing: EAST };
     expect(signalPace(atLine, [junction], red)).toBe(0);
     expect(signalPace(atLine, [junction], timeWhen('ew', true))).toBe(1);
   });
 
   it('starts braking before the line rather than stopping dead', function () {
-    const car = { id: 'a', x: junction.x - 100, y: junction.y + 18, facing: EAST };
+    const car = { id: 'a', x: junction.x - STOP_LINE - 26, y: junction.y + 18, facing: EAST };
     const pace = signalPace(car, [junction], timeWhen('ew', false));
     expect(pace).toBeGreaterThan(0);
     expect(pace).toBeLessThan(1);
@@ -52,7 +52,7 @@ describe('following', function () {
   const car = { id: 'me', x: 0, y: 0, facing: EAST };
 
   it('stops behind a car close in front in the same lane', function () {
-    expect(followingPace(car, [{ id: 'front', x: 68, y: 0, facing: EAST }])).toBe(0);
+    expect(followingPace(car, [{ id: 'front', x: MIN_GAP, y: 0, facing: EAST }])).toBe(0);
   });
 
   it('ignores cars behind, in the other lane, or crossing', function () {

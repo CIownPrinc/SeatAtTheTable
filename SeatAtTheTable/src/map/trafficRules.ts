@@ -15,11 +15,11 @@ const CYCLE = (SIGNAL_GREEN_SECONDS + SIGNAL_ALL_RED_SECONDS) * 2;
 // LEGAL: which is half a 74-wide road.
 const HALF_CAR = 32 * VEHICLE_SCALE / 2;
 const HALF_WIDTH = 15 * VEHICLE_SCALE / 2;
-const STOP_LINE = 37 + HALF_CAR + 3;
+export const STOP_LINE = 37 + HALF_CAR + 3;
 // LEGAL: How far before the line a car starts braking.
 const BRAKING = 48;
 // LEGAL: Centre to centre, bumper to bumper is two half-lengths; cars keep a little more than that.
-const MIN_GAP = HALF_CAR * 2 + 6;
+export const MIN_GAP = HALF_CAR * 2 + 6;
 const FOLLOW = 46;
 
 export type Axis = 'ns' | 'ew';

@@ -3,7 +3,7 @@ import type { Point, Solid } from '../config/types';
 import { COUNTRY_ROADS } from './countryRoads';
 import { rotatedHalfExtents } from './layout';
 import type { MapSceneMaterialCache } from './scenePerformance';
-import { TREE_SCALE } from './scale';
+import { RURAL_BUILDING_SCALE, TREE_SCALE } from './scale';
 import { addPlaceModel, placeModel } from './placeModels';
 import { treeShape } from './treeModels';
 
@@ -13,10 +13,15 @@ import { treeShape } from './treeModels';
 export interface HouseLot { x: number; y: number; facing: number; side: 1 | -1; variant: number }
 
 const LANE = COUNTRY_ROADS.find(road => road.id === 'road-country-lakeridge')!;
-const FROM_Y = 1290, TO_Y = 1690, SPACING = 72;
+// LEGAL: A lot is about 15 m wide, a front lawn about 4.5 m deep, the house about 8 by 6 m with a
+// LEGAL: 4 m garage (they were a third of that, a family house the size of a shed).
+const FROM_Y = 1270, TO_Y = 1600, SPACING = 150;
 // LEGAL: From the lane's centre line: half the lane, its verge, then the front lawn.
-const LANE_HALF = 22, VERGE = 9, LAWN = 30;
-export const HOUSE = { w:40, d:30, garageW:20 };
+const LANE_HALF = 22, VERGE = 9, LAWN = 46;
+const S = RURAL_BUILDING_SCALE;
+export const HOUSE = { w:40 * S, d:30 * S, garageW:20 * S };
+// LEGAL: The front door's x, where the front path runs to the lane.
+const DOOR_X = -16 * S;
 const FOOTPRINT_W = HOUSE.w + HOUSE.garageW;
 
 function laneAt(y: number): { point: Point; tangent: Point } {
@@ -53,7 +58,7 @@ export function suburbLots(): HouseLot[] {
 // LEGAL: The house and garage, and the two runs of picket fence along the front (the gaps between
 // LEGAL: them are the front path and the drive). Fence runs are in the house's own frame, x across
 // LEGAL: and z toward the lane, matching buildHouseModel and art/blender/places.py.
-const FENCE_RUNS: Array<[number, number]> = [[-36, -19], [-13, 8]];
+const FENCE_RUNS: Array<[number, number]> = [[-(HOUSE.w + HOUSE.garageW) / 2 - 6, DOOR_X - 6], [DOOR_X + 6, HOUSE.w / 2 - HOUSE.garageW / 2 - 2]];
 export function suburbSolids(): Solid[] {
   const fenceZ = HOUSE.d / 2 + LAWN - 1;
   return suburbLots().flatMap(function(lot){
@@ -98,7 +103,10 @@ export function buildHouseModel(THREE: typeof ThreeNamespace, materials: MapScen
   const model = placeModel('house');
   if(model) addPlaceModel(THREE, g, model, materials, 'suburb:house', { siding, roof, door, shutter:door, mailbox:DOORS[(v + 1) % DOORS.length] });
   else buildSimpleHouse();
+  // LEGAL: The plain-shapes stand-in for when the model hasn't loaded: walls and roofs at the old
+  // LEGAL: heights, stretched up to the house's real height. No fence or mailbox.
   function buildSimpleHouse(): void {
+    const first = g.children.length;
     add(new THREE.BoxGeometry(w, wallH, d), siding, hx, wallH / 2, 0);
     const gable = new THREE.Shape();
     gable.moveTo(-d / 2 - 2, 0); gable.lineTo(d / 2 + 2, 0); gable.lineTo(0, 15); gable.closePath();
@@ -117,14 +125,10 @@ export function buildHouseModel(THREE: typeof ThreeNamespace, materials: MapScen
     add(new THREE.BoxGeometry(garageW, 18, d - 4), siding, gx, 9, 2);
     add(new THREE.BoxGeometry(garageW + 2, 1.6, d - 2), roof, gx, 18.8, 2, undefined, `suburb:${roof}:roof`);
     add(new THREE.BoxGeometry(garageW - 5, 13, 0.6), '#e8e4d8', gx, 6.5, d / 2 + 0.3);
-    const fenceZ = d / 2 + LAWN - 1;
-    const fenceSpans: Array<[number, number]> = [[-(w + garageW) / 2 - 6, hx - 9], [hx - 3, gx - garageW / 2 - 2]];
-    for(const [x0, x1] of fenceSpans){
-      add(new THREE.BoxGeometry(x1 - x0, 1, 0.8), '#f4f2ea', (x0 + x1) / 2, 6, fenceZ);
-      for(let x = x0 + 1.5; x < x1; x += 3.5) add(new THREE.BoxGeometry(1.4, 8, 0.6), '#f4f2ea', x, 4, fenceZ);
-  }
-  add(new THREE.BoxGeometry(1, 8, 1), '#3a3d44', gx + garageW / 2 + 3, 4, fenceZ + 1);
-  add(new THREE.BoxGeometry(3, 3, 5), DOORS[(v + 1) % DOORS.length], gx + garageW / 2 + 3, 9, fenceZ + 1);
+    const body = new THREE.Group();
+    body.scale.y = S;
+    body.add(...g.children.slice(first));
+    g.add(body);
   }
   // LEGAL: Driveway and front path out to the verge, the lawn and a tree on it. The picket fence, with
   // LEGAL: gaps for both, and the mailbox at the end of the drive come with the house.
@@ -135,7 +139,7 @@ export function buildHouseModel(THREE: typeof ThreeNamespace, materials: MapScen
   };
   flat(w + garageW + 14, LAWN + 2, '#4f8a42', 0, lawnZ, 0.15, 'terrain:park-suburb-lawn');
   flat(garageW - 2, LAWN + VERGE, '#b5b0a4', gx, d / 2 + (LAWN + VERGE) / 2, 0.2, 'path:#b5b0a4:drive');
-  flat(4, LAWN, '#b5b0a4', hx - 6, lawnZ, 0.2, 'path:#b5b0a4:drive');
+  flat(8, LAWN, '#b5b0a4', DOOR_X, lawnZ, 0.2, 'path:#b5b0a4:drive');
   const broadleaf = treeShape('broadleaf');
   if(v % 3 !== 1 && broadleaf){
     // LEGAL: The Blender broadleaf on the front lawn (map/treeModels).

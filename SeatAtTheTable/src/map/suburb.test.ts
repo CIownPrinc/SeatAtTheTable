@@ -6,9 +6,11 @@ import { isPointInWater } from './geometry';
 import { suburbLots, suburbSolids } from './suburb';
 
 describe('Lakeridge suburb', function () {
+  // LEGAL: Six real-sized houses, not twelve the size of sheds (2026-10-22); more suburb streets come
+  // LEGAL: with the bigger map.
   it('lines both sides of Lakeridge Lane with houses', function () {
     const lots = suburbLots();
-    expect(lots.length).toBeGreaterThanOrEqual(10);
+    expect(lots.length).toBeGreaterThanOrEqual(6);
     expect(lots.filter(lot => lot.side === -1).length).toBe(lots.filter(lot => lot.side === 1).length);
   });
 

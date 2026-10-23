@@ -33,6 +33,22 @@ def lit(name="lit-glass", color="#ffcf70"):
 
 # --- The suburb's family house (map/suburb.ts HOUSE: 40 x 30, garage 20, lawn 30) -----------------
 
+# The suburb's and the farms' buildings were modelled about 2.2x too small all round (a family house
+# 3.8 m wide with a 1.2 m front door). They're modelled at the old numbers and grown by this, which is
+# RURAL_BUILDING_SCALE in src/map/scale.ts. A fence or a mailbox stays its real size.
+RURAL = 2.2
+
+
+def grow(scale):
+    """Scale everything built so far about the origin."""
+    from mathutils import Matrix
+    for obj in bpy.data.objects:
+        if obj.type != "MESH":
+            continue
+        obj.data.transform(Matrix.Scale(scale, 4))
+        obj.location = obj.location * scale
+
+
 def house():
     siding, roof, trim = m("siding", "#d8c7a6", 0.85), m("roof", "#5a4a42", 0.9), m("trim", "#f4f2ea", 0.6)
     door, shutter, brick, stone = m("door", "#7a2630", 0.6), m("shutter", "#7a2630", 0.7), m("brick", "#7a4a3a", 0.95), m("stone", "#b8b0a0", 0.95)
@@ -70,22 +86,25 @@ def house():
     box("garage-gap", gw - 5, 13, 0.4, gx, 7.5, front + 0.4, m("garage-gap", "#4a4a48", 0.9))
     for i in range(4):
         box("garage-door", gw - 5.4, 2.9, 0.5, gx, 2.6 + i * 3.25, front + 0.6, m("garage-door", "#e8e4d8", 0.6))
-    # Picket fence along the front with gaps for the path and the drive, and the mailbox.
-    lawn = 30
+    grow(RURAL)
+    # Picket fence along the front, a metre high, with gaps for the path and the drive; the mailbox.
+    # The same numbers as FENCE_RUNS and LAWN in src/map/suburb.ts.
+    W, GW, front, gx, door_x = w * RURAL, gw * RURAL, front * RURAL, gx * RURAL, (hx - 6) * RURAL
+    lawn = 46
     fence_z = front + lawn - 1
-    for x0, x1 in ((-(w + gw) / 2 - 6, hx - 9), (hx - 3, gx - gw / 2 - 2)):
-        for rail_y in (2.6, 6.2):
-            box("fence-rail", x1 - x0, 0.9, 0.5, (x0 + x1) / 2, rail_y, fence_z - 0.5, trim)
-        x = x0 + 1.2
+    for x0, x1 in ((-(W + GW) / 2 - 6, door_x - 6), (door_x + 6, gx - GW / 2 - 2)):
+        for rail_y in (3.4, 7.6):
+            box("fence-rail", x1 - x0, 1, 0.6, (x0 + x1) / 2, rail_y, fence_z - 0.5, trim)
+        x = x0 + 1.4
         while x < x1:
-            box("picket", 1.3, 7, 0.5, x, 3.5, fence_z, trim)
-            kit.tapered_box("picket-top", (1.3, 0.5), (0.15, 0.5), 1.4, (x, -fence_z, 7.0), trim)
-            x += 3.2
-    mx = gx + gw / 2 + 3
-    box("mail-post", 1, 8.5, 1, mx, 4.25, fence_z + 1, m("post", "#3a3d44", 0.7))
-    box("mailbox", 3, 2.6, 5, mx, 9.6, fence_z + 1, m("mailbox", "#2f4a6a", 0.5, 0.3))
-    log("mailbox-top", 1.5, 5, mx, 10.9, fence_z + 1, m("mailbox", "#2f4a6a"), along="z", vertices=12)
-    box("mail-flag", 0.3, 2.6, 0.8, mx + 1.7, 11.4, fence_z, m("flag", "#c0392b", 0.5))
+            box("picket", 1.5, 9, 0.6, x, 4.5, fence_z, trim)
+            kit.tapered_box("picket-top", (1.5, 0.6), (0.2, 0.6), 1.6, (x, -fence_z, 9.0), trim)
+            x += 3.8
+    mx = gx + GW / 2 + 4
+    box("mail-post", 1.2, 11, 1.2, mx, 5.5, fence_z + 1, m("post", "#3a3d44", 0.7))
+    box("mailbox", 3.4, 3, 5.6, mx, 12.4, fence_z + 1, m("mailbox", "#2f4a6a", 0.5, 0.3))
+    log("mailbox-top", 1.7, 5.6, mx, 13.9, fence_z + 1, m("mailbox", "#2f4a6a"), along="z", vertices=12)
+    box("mail-flag", 0.3, 3, 0.9, mx + 1.9, 14.4, fence_z, m("flag", "#c0392b", 0.5))
 
 
 # --- The countryside (map/countryBuildings.ts) -------------------------------------------------------
@@ -645,6 +664,8 @@ for name, build in MODELS.items():
     kit.reset()
     kit._materials.clear()
     build()
+    if name in ("farmhouse", "barn", "silo", "shed", "tank"):
+        grow(RURAL)
     if out_dir:
         kit.export(os.path.join(out_dir, f"{name}.glb"))
     if preview_dir:

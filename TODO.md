@@ -494,6 +494,15 @@ old one.
     and 6.4 m long, suburb houses 4.4 m, farm buildings 5.3 m. Cars are drawn at twice life (set after
     "the cars are so tiny", which was mostly the merge bug shrinking them to specks), people at 1.2x,
     and the suburb and farm models at about half height. Fix: one real scale for all of them.
+    **PART** (2026-10-22): people are 1.8 m (PERSON_HEIGHT 22 -> 19). Cars are slightly smaller
+    (VEHICLE_SCALE 2.0 -> 1.75, the player asked for only a slight decrease) and drawn a little lower
+    (VEHICLE_HEIGHT), so a sedan no longer stands as tall as a person. The suburb houses and the farm
+    buildings (farmhouse, barn, silo, shed, tank) are 2.2x bigger all round (RURAL_BUILDING_SCALE),
+    rebuilt in Blender with the picket fence and mailbox kept at real size: a house is now about 8 by
+    6 m and two storeys, with a front door you could walk through. Lakeridge Lane holds six real
+    houses instead of twelve shed-sized ones; more suburb streets come with the bigger map (80-87).
+    The amenity crash (111) is parked at the player's request. Left: the city's own buildings against
+    the new person height, and the countryside homes in the hand-placed places.
 92. Some amenities, buildings and interactions freeze for a while before they open (user, 2026-10-20).
     Measured: amenity panels ~20 ms; the first room 226 ms and a minigame 200 ms on a fast GPU (much
     worse on slow ones), both first-time shader and WebGL-context costs. Rooms now compile in the
@@ -560,7 +569,7 @@ old one.
      lakes here and there (user, 2026-10-20).
 110. The railyard isn't to scale and isn't near the rails. Standing rule for every new place and every
      old one reviewed: placement, proportions, and the inside matching the outside (user, 2026-10-20).
-111. **PART** Playing any amenity game crashes the game (user, 2026-10-20). Couldn't reproduce a
+111. **PARKED** (player, 2026-10-22: "ignore amenity crash for now") Playing any amenity game crashes the game (user, 2026-10-20). Couldn't reproduce a
      crash, headless or in a real Chrome: both games play through cleanly and the map keeps running.
      What did happen: when a game ended its window vanished with no result (the line was too minor for
      the street log), which reads like a crash. It now shows the score and what you won, a game that

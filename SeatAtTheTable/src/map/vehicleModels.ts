@@ -1,5 +1,5 @@
 import type * as ThreeNamespace from 'three';
-import { BIKE_SCALE, VEHICLE_SCALE } from './scale';
+import { BIKE_SCALE, VEHICLE_HEIGHT, VEHICLE_SCALE } from './scale';
 
 // LEGAL: The Blender vehicle catalog (art/blender/vehicles.py). Every car used to be the same
 // LEGAL: procedural body in a different paint; each now has a model that looks like what it is.
@@ -110,7 +110,8 @@ export async function loadVehicleLibrary(THREE: typeof ThreeNamespace): Promise<
       turned.add(clone);
       const wrapper = new THREE.Group();
       wrapper.name = `vehicle:${cls}`;
-      wrapper.scale.setScalar(cls === 'chopper' || cls === 'sportbike' ? BIKE_SCALE : VEHICLE_SCALE);
+      if(cls === 'chopper' || cls === 'sportbike') wrapper.scale.setScalar(BIKE_SCALE);
+      else wrapper.scale.set(VEHICLE_SCALE, VEHICLE_HEIGHT, VEHICLE_SCALE);
       wrapper.add(turned);
       return wrapper;
     },

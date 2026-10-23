@@ -3,6 +3,7 @@ import type { OutskirtSceneryKind } from './outskirtScenery';
 import type { MapSceneMaterialCache } from './scenePerformance';
 import { addPlaceModel, placeModel } from './placeModels';
 import { buildHouseModel } from './suburb';
+import { RURAL_BUILDING_SCALE } from './scale';
 
 // LEGAL: The countryside's buildings, each built to look like what it is. They were a box with a
 // LEGAL: pyramid on top, whatever they were. Each is centred on the origin at ground level; the
@@ -106,11 +107,6 @@ const tank: Builder = function(THREE, materials){
   return g;
 };
 
-// LEGAL: Each building's walls (not its porch or yard), for collision.
-const FOOTPRINTS: Record<Exclude<OutskirtSceneryKind, 'tree'>, { w: number; d: number }> = {
-  farmhouse:{ w:36, d:26 }, barn:{ w:52, d:36 }, silo:{ w:18, d:18 }, shed:{ w:40, d:30 }, tank:{ w:24, d:24 }, suburbHouse:{ w:60, d:30 },
-};
-export function countryFootprint(kind: Exclude<OutskirtSceneryKind, 'tree'>): { w: number; d: number } { return FOOTPRINTS[kind]; }
 
 const BUILDERS: Record<Exclude<OutskirtSceneryKind, 'tree'>, Builder> = {
   farmhouse, barn, silo, shed, tank,
@@ -121,7 +117,11 @@ const BUILDERS: Record<Exclude<OutskirtSceneryKind, 'tree'>, Builder> = {
 // LEGAL: shed's cladding in this one's colour; otherwise the builders above.
 export function buildCountryBuilding(THREE: typeof ThreeNamespace, materials: MapSceneMaterialCache, kind: Exclude<OutskirtSceneryKind, 'tree'>, variant: number): ThreeNamespace.Group {
   const model = kind === 'suburbHouse' ? null : placeModel(kind);
-  if(!model) return BUILDERS[kind](THREE, materials, variant);
+  if(!model){
+    const built = BUILDERS[kind](THREE, materials, variant);
+    if(kind !== 'suburbHouse') built.scale.setScalar(RURAL_BUILDING_SCALE);
+    return built;
+  }
   const g = new THREE.Group();
   addPlaceModel(THREE, g, model, materials, `country:${kind}`, { walls:FARMHOUSE_WALLS[variant % 3], cladding:SHED_CLADDING[variant % 3] });
   return g;
