@@ -57,7 +57,7 @@ export function openWardrobe(THREE: typeof ThreeNamespace, start: PersonLook, on
   overlay.innerHTML = `<div class="wardrobe-panel">
     <div class="wardrobe-head">${options.title} <span>${options.subtitle}</span></div>
     <div class="wardrobe-body">
-      <canvas class="wardrobe-preview" width="240" height="300"></canvas>
+      <canvas class="wardrobe-preview" width="300" height="380"></canvas>
       <div class="wardrobe-controls"></div>
     </div>
     ${options.footnote ? `<div class="wardrobe-footnote">${options.footnote}</div>` : ''}
@@ -95,8 +95,14 @@ export function openWardrobe(THREE: typeof ThreeNamespace, start: PersonLook, on
   sun.position.set(40, 80, 90);
   scene.add(sun);
   const camera = new THREE.PerspectiveCamera(30, canvas.width / canvas.height, 1, 1000);
-  camera.position.set(0, 26, 92);
-  camera.lookAt(0, 19, 0);
+  // LEGAL: The whole figure, or close on the head while you're choosing hair, a hat, glasses or a hair
+  // LEGAL: colour: from the full-length view the head was too small to see what you'd picked.
+  const FULL = { eye:{ x:0, y:26, z:92 }, look:19 };
+  const HEAD = { eye:{ x:0, y:35, z:62 }, look:30 };
+  let shot = FULL;
+  const view = { y:FULL.eye.y, z:FULL.eye.z, look:FULL.look };
+  function aim(): void { camera.position.set(0, view.y, view.z); camera.lookAt(0, view.look, 0); }
+  aim();
   const parts = createPersonParts(THREE);
   let person = buildPerson(THREE, parts, look).root;
   scene.add(person);
@@ -111,6 +117,10 @@ export function openWardrobe(THREE: typeof ThreeNamespace, start: PersonLook, on
   function frame(): void {
     if(!running) return;
     person.rotation.y += 0.012;
+    view.y += (shot.eye.y - view.y) * 0.12;
+    view.z += (shot.eye.z - view.z) * 0.12;
+    view.look += (shot.look - view.look) * 0.12;
+    aim();
     renderer.render(scene, camera);
     requestAnimationFrame(frame);
   }
@@ -122,8 +132,10 @@ export function openWardrobe(THREE: typeof ThreeNamespace, start: PersonLook, on
     const slot = button.dataset.slot as Slot | undefined;
     if(slot){
       look = { ...look, [slot]:cycleOption(slot, look[slot], Number(button.dataset.dir) as 1 | -1, options.offer?.(slot)) };
+      shot = slot === 'hair' || slot === 'hat' || slot === 'extra' ? HEAD : FULL;
     } else if(button.dataset.colour){
       look = { ...look, [button.dataset.colour]:button.dataset.hex };
+      shot = button.dataset.colour === 'hairColor' ? HEAD : FULL;
     } else return;
     renderControls();
     rebuild();

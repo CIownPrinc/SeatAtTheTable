@@ -241,6 +241,14 @@ export function buildPerson(THREE: typeof ThreeNamespace, parts: PersonParts, lo
     hair.name = 'hair';
     hair.position.y = HEAD_Y;
     upper.add(hair);
+    // LEGAL: The sculpted style from Blender (art/blender/hair.py: a real hairline, the style's own
+    // LEGAL: shape and strands) when it has loaded; the shapes below are the stand-in until then.
+    const sculpted = sculptedParts?.get(`hair:${look.hair}`);
+    if(sculpted) mesh('hair-style', `hair:${look.hair}`, () => sculpted, hairMat, hair, 0, 0, 0);
+    else buildStandInHair();
+  }
+  function buildStandInHair(): void {
+    const hair = upper.getObjectByName('hair') as ThreeNamespace.Group;
     const capTheta = look.hair === 'buzz' ? 0.42 : 0.5;
     const capKey = look.hair === 'buzz' ? 'buzz' : 'full';
     const cap = mesh('hair-cap', `hair:cap-${capKey}`, () => new THREE.SphereGeometry(HEAD_R + (look.hair === 'buzz' ? 0.2 : 0.55), 18, 10, 0, Math.PI * 2, 0, Math.PI * capTheta), hairMat, hair, 0, 0.35, 0);

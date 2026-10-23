@@ -405,6 +405,13 @@ old one.
     and there isn't much to choose from (user, 2026-10-20). Again 2026-10-21: "this hair in the wardrobe
     looks so primitive, please I'm begging you fix it ... a ton of the wardrobe things are primitive".
     Moved up: hair and clothing pieces rebuilt in Blender, with the characters (93).
+    **PART** (2026-10-22): the eight hairstyles are sculpted in Blender (`art/blender/hair.py`): each
+    grown from the head to a real hairline (high at the forehead, past the temples, low at the
+    nape), with its own shape (swept back, a lifted quiff, a side parting, a fall of long hair, tight
+    curls, a tied ponytail) and strand grooves, and thinning out at the edge instead of ending in a
+    ledge. The old shapes stay as a stand-in until the model loads. The wardrobe's preview is bigger
+    and moves in on the head while you choose hair, a hat, glasses or a hair colour. Left: hats and
+    the other wardrobe pieces in Blender, the carousel and more to choose from.
 60. Set up tests for mobile gameplay so nothing breaks on phones (user, 2026-10-20).
 61. **PART** Stairs in some buildings that you use to go up to the next floor (user, 2026-10-20). The
     casino and the mall definitely need upper floors, with stairs, lifts or escalators where they fit.

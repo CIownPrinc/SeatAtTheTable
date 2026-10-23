@@ -14,7 +14,9 @@ import bmesh
 import bpy
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "lib"))
+sys.path.append(os.path.dirname(__file__))
 import kit  # noqa: E402
+import hair  # noqa: E402
 
 FRONT = -1  # Blender Y of the figure's front.
 
@@ -147,6 +149,9 @@ def build(m):
     bm.to_mesh(crown.data)
     bm.free()
     join([crown], "hat:fedora-crown")
+
+    # The hairstyles (hair.py), one sculpted part per style.
+    hair.build(m)
 
 
 out_dir, preview_dir = kit.args()
