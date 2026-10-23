@@ -185,6 +185,13 @@ every test. Locally, `.tmp-assets/` (ignored Kenney zips) can be deleted by hand
 Every request the player made while playing, word for word in intent, so none get lost.
 Status: **DONE** shipped and verified · **PART** partly done (what's left is noted) · open.
 
+**Pick up here (end of 2026-10-22):** everything is committed and pushed; the working tree is clean.
+Next, in order: the railyard beside the freight line at real size (110), then parking lots and
+pedestrian and traffic pathfinding (163), then the order below. The amenity crash (111) is parked
+by the player. Player's guidance from this session: work faster without dropping the checks (run
+slow e2e in the background, check in batches, shorter updates); cars only slightly smaller than
+before; keep every request in this list or `SEATATTHETABLE2.md`.
+
 **Order of work for the open items (set 2026-10-21, after "don't work hastily"):**
 1. Bugs and crashes first (111, 116, then 119, 120, 121, 129, 143).
 2. Then put right what was done hastily before: Central Park (112), the beaches (113), the railyard

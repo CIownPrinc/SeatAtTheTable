@@ -1,7 +1,32 @@
 # What's changed since the last play-through
 
 Covers everything since the full play-through on 2026-10-18, when every note went into TODO §10.
-The newest items, from today (2026-10-20), are first.
+The newest items are first.
+
+## New on 2026-10-21 and 22
+
+- **Your properties:** an owned property's panel has "Go inside". Each has its own room (a walk-up's
+  hallway with tenants, shop units, an apartment lobby with a doorman, a warehouse, or a home). Rent
+  now fills each building's rent book, up to 15 minutes' worth, for you to collect in person, or hand
+  the building to the agent for a 15% cut. What you already owned starts under the agent.
+- **Homes:** the penthouse, lofts and brownstones have a kitchen, a fire, a sofa, a bed and a wardrobe.
+- **Sleep to save:** the bed upstairs at the garage (and in the homes) moves the clock to 7 AM and saves.
+- **Real proportions:** people are 1.8 m, cars a little smaller and lower, and the suburb houses and
+  farm buildings full size (a house about 8 by 6 m, two storeys). Lakeridge Lane has six real houses.
+- **Hair, hats and accessories rebuilt in Blender:** eight sculpted hairstyles, five hats, glasses, a
+  chain of real links, a watch. The wardrobe preview is bigger and zooms in on the head.
+- **Your car:** it stays where you parked it (it used to vanish when you crossed into another
+  district), has an orange marker on the minimap and City Map, and the phone's Contacts has a tow
+  truck to bring it home.
+- **Traffic stops for your car** instead of driving through it. On foot you can still be run over.
+- **Stairs down** upstairs are a railed opening going down, and the mall has its escalator down.
+- **The "camera follows Arjun" setting** is a chase camera: behind him, closer, looking ahead.
+- **GPS:** the minimap draws the route and points at a waypoint off its edge, with the distance;
+  flying routes go straight. The City Map's categories are fixed (Yours, Out of town, real labels).
+- **Fixes:** amenity games work in full screen; the garage shows the cars you aren't driving;
+  missions no longer repeat or stack (one at a time); the income on the cards, the header and your
+  cash now agree; the rail crosses the lake on a bridge; the floating plank by the canal is gone;
+  regulars no longer stand inside wooden posts.
 
 ## New today, from your notes this session
 
