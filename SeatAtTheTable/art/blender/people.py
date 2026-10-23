@@ -17,6 +17,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "lib"))
 sys.path.append(os.path.dirname(__file__))
 import kit  # noqa: E402
 import hair  # noqa: E402
+import hats  # noqa: E402
 
 FRONT = -1  # Blender Y of the figure's front.
 
@@ -152,6 +153,8 @@ def build(m):
 
     # The hairstyles (hair.py), one sculpted part per style.
     hair.build(m)
+    # The hats (hats.py), one sculpted part per hat key.
+    hats.build(m)
 
 
 out_dir, preview_dir = kit.args()

@@ -410,8 +410,11 @@ old one.
     nape), with its own shape (swept back, a lifted quiff, a side parting, a fall of long hair, tight
     curls, a tied ponytail) and strand grooves, and thinning out at the edge instead of ending in a
     ledge. The old shapes stay as a stand-in until the model loads. The wardrobe's preview is bigger
-    and moves in on the head while you choose hair, a hat, glasses or a hair colour. Left: hats and
-    the other wardrobe pieces in Blender, the carousel and more to choose from.
+    and moves in on the head while you choose hair, a hat, glasses or a hair colour. The five hats
+    are sculpted too (`art/blender/hats.py`): a fedora with a snap brim and a bowed band, a newsboy
+    flat cap pulled forward over its peak, a six-panel baseball cap with an arched bill, a bucket hat
+    with a sloping brim, and a ribbed beanie with a turned-up cuff. Left: glasses, the chain, the
+    watch and the other pieces in Blender, the carousel, and more to choose from.
 60. Set up tests for mobile gameplay so nothing breaks on phones (user, 2026-10-20).
 61. **PART** Stairs in some buildings that you use to go up to the next floor (user, 2026-10-20). The
     casino and the mall definitely need upper floors, with stairs, lifts or escalators where they fit.
