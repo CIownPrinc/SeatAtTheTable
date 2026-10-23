@@ -793,8 +793,12 @@ missing is the depth the brief asks for: most have two choices and one modal per
 157. Cutscenes for missions, played in the world (user, 2026-10-21). Split. V1: short scenes in the
      map at a mission's start and end: the camera moves in close (the close-up camera), letterbox
      bars, the people in it moving and talking, and a skip. V2: full cinematics.
-158. Sleep to save (user, 2026-10-21). V1. Sleep in Arjun's bed in the flat above the garage: the night
+158. **DONE** Sleep to save (user, 2026-10-21). V1. Sleep in Arjun's bed in the flat above the garage: the night
      passes (the clock jumps to morning), the game saves, and it says so. The bed is already there.
+     A "Sleep" spot at the foot of the bed asks first, then moves the clock to 7 AM, saves and says
+     so. Only the clock moves (no free income for the skipped hours). The clock's offset is now saved,
+     so the morning survives a reload (it, and the time cheats, used to snap back).
+     `e2e/home.e2e.ts` sleeps, checks 7 AM, reloads and checks again.
 159. **DONE** Stairs down look like stairs up (user, 2026-10-21). V1, bug. On an upper floor the same rising
      staircase is drawn; it should be an opening in the floor with a railing and steps going down.
      Upstairs now shows a railed opening with steps darkening as they drop away from the landing, in

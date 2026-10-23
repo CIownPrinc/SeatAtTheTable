@@ -4918,6 +4918,21 @@ import type * as ThreeNamespace from 'three';
     return spots;
   }
   // LEGAL: What's on the upper floors.
+  // LEGAL: Sleep in your own bed: the night passes (the clock goes to seven the next morning) and the
+  // LEGAL: game saves, the way GTA saves at a safehouse. Only the clock moves; the businesses don't earn
+  // LEGAL: for the hours skipped.
+  const WAKE_HOUR = 7;
+  function offerSleep(): void {
+    showModal({ eyebrow:"Arjun's flat", title:'Get some sleep?', body:`<p class="flavor">It's ${mapClockLabel()}. Sleep until morning and save your game.</p>`, buttons:[
+      { label:'Sleep until morning', onClick:sleepUntilMorning },
+      { label:'Not yet', secondary:true },
+    ] });
+  }
+  function sleepUntilMorning(): void {
+    clockOffsetSeconds += secondsUntilHour(WAKE_HOUR);
+    void saveGame(true);
+    showModal({ eyebrow:"Arjun's flat", title:'Morning', body:`<p class="flavor">You sleep right through. It's ${mapClockLabel()}, and your game is saved.</p>`, buttons:[{ label:'Get up' }] });
+  }
   function upperSpotsFor(interior: InteriorState, plan: InteriorPlan, floor: number): HotSpot[] {
     const { w:W, h:H } = roomSizeFor(interior);
     const room = plan.floors[floor]?.name ?? '';
@@ -4925,6 +4940,7 @@ import type * as ThreeNamespace from 'three';
       case 'garageHome': return [
         { id:'wardrobe', x:W*0.3, y:H*0.45, label:'Wardrobe', icon:'👔', action:openWardrobeSpot },
         { id:'vault', x:W*0.62, y:H*0.45, label:'Vault', icon:'🔒', action:openVault },
+        { id:'bed', x:W*0.82, y:100, label:'Sleep', icon:'🛏️', action:offerSleep },
       ];
       case 'civic': return [{ id:'council', x:W/2, y:H*0.44 + 34, label:'Council Table', icon:'🏛️', action:()=>
         showRoomBrief(room, interior.name, 'Twelve chairs, one gavel, and a seating plan that tells you who owes whom.', briefRow('Your influence', formatCount(state.influence)) + briefRow('Elected office', state.electedOffice ? 'Yours' : 'Not yet')) }];
@@ -6604,6 +6620,7 @@ import type * as ThreeNamespace from 'three';
         startMission: startMissionFromOffer,
         income: incomeNow, businesses,
         refreshParkedCar: updateParkedCarMesh,
+        clock: mapClockLabel,
         resolveMission: resolveMissionAtObjective,
         declineMission: declineMissionOffer,
         enterBuilding,
@@ -7706,7 +7723,7 @@ import type * as ThreeNamespace from 'three';
       marketPrices: state.marketPrices, portfolio: state.portfolio, marketHistory: state.marketHistory,
       financeView: state.financeView, activeStock: state.activeStock,
       currentNews: state.currentNews, newsQueue: state.newsQueue, nextNewsAt: state.nextNewsAt,
-      cityNews: state.cityNews, nextCityNewsAt: state.nextCityNewsAt,
+      cityNews: state.cityNews, nextCityNewsAt: state.nextCityNewsAt, clockOffset: clockOffsetSeconds,
       investigation: state.investigation, layingLow: state.layingLow,
       crackdownUntil: state.crackdownUntil, nextCrackdownAt: state.nextCrackdownAt,
       eventRepeats: state.eventRepeats, eventHistory: state.eventHistory, nextEventAt: state.nextEventAt,
@@ -7804,6 +7821,9 @@ import type * as ThreeNamespace from 'three';
         state.nextNewsAt = d.nextNewsAt || 0;
         state.cityNews = d.cityNews || [];
         state.nextCityNewsAt = d.nextCityNewsAt || (state.playSeconds + 90);
+        // LEGAL: How far the clock has been moved on (by sleeping, or the time cheats), so the morning
+        // LEGAL: you woke up to is still morning after a reload.
+        clockOffsetSeconds = Number(d.clockOffset) || 0;
         state.investigation = Math.max(0, Math.min(100, Number(d.investigation)||0));
         state.layingLow = !!d.layingLow;
         state.crackdownUntil = Number(d.crackdownUntil)||0;

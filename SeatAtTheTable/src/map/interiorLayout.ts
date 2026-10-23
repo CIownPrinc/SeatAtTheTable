@@ -237,9 +237,9 @@ function pedestalProp(spot: InteriorSpot, look: Look): Prop {
 }
 
 function propFor(spot: InteriorSpot, kind: string, refId: string, look: Look): Prop {
-  // LEGAL: Talking to a regular and taking the stairs need nothing built: the person and the stairs
-  // LEGAL: are already there. The pedestal fallback used to land right on top of the regular.
-  if(spot.id.startsWith('talk:') || spot.id.startsWith('stairs-')) return { pieces:[], people:[], solids:[] };
+  // LEGAL: Talking to a regular, taking the stairs and sleeping need nothing built: the person, the
+  // LEGAL: stairs and the bed are already there. The pedestal fallback used to land right on top of the regular.
+  if(spot.id.startsWith('talk:') || spot.id.startsWith('stairs-') || spot.id === 'bed') return { pieces:[], people:[], solids:[] };
   if(kind === 'mall') return mallSpotProp(spot, refId) ?? pedestalProp(spot, look);
   switch(spot.id){
     case 'counter': case 'register': case 'clerk': case 'frontdesk':
