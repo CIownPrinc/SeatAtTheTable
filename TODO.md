@@ -825,8 +825,18 @@ missing is the depth the brief asks for: most have two choices and one modal per
      it's out of view) and on the City Map, with "Your car" in the legend. The phone's Contacts has
      Windhaven Towing: it brings the car back to the garage for $80 plus distance.
      `e2e/parked-car.e2e.ts` walks into another district, checks the car is still there, and tows it.
-161. Properties you own should be places you can enter and explore, where you collect the rent in
-     person, maybe with a flat of your own in one (user, 2026-10-21). V1. Each owned property gets an
+161. **PART** Properties you own should be places you can enter and explore, where you collect the rent in
+     person, maybe with a flat of your own in one (user, 2026-10-21). Done (2026-10-22): an owned
+     property's panel has "Go inside". Each has a room fitting the building: a walk-up's hallway with
+     numbered doors, mailboxes, stairs and tenants (two-flat, three-flat, canal walk-up); the back of a
+     row of shop units (retail strip, storefronts); an apartment lobby with a doorman, mailboxes and a
+     lift (apartments, marina block, harbour tower); a home with a kitchen, a table, a fire, a sofa and a
+     bed (penthouse, with a piano; lofts; brownstones); a warehouse (depot, cold store). Rent now goes
+     into each building's rent book, which you empty in person; it stops filling at 15 minutes of rent.
+     Or hand the building to the agent, who pays it straight in less a 15% cut. Properties owned in
+     older saves start under the agent, so nobody's income drops. The homes have a wardrobe and a bed
+     to sleep and save in. `e2e/rent.e2e.ts` lets rent build up, walks in and collects it. Left:
+     exterior doors you walk through (it's a button for now), and more to do in the homes. V1. Each owned property gets an
      interior matched to its building (a two-flat, a walk-up, lofts, a tower lobby), tenants, a rent
      book to collect from (rent piles up until you collect, or the manager banks it), and the bigger
      homes (penthouse, lofts, brownstones) can be your flat: a bed to sleep and save in (158), a

@@ -9,11 +9,14 @@ export const LAYING_LOW_SHARE = 0.4;
 export const BRIBE_SHARE = 0.12;
 // LEGAL: With Deepak in, each managed venture puts this share of its takings back into itself.
 export const REINVEST_SHARE = 0.1;
+// LEGAL: A property under the agent's management pays its rent straight in, less the agent's cut.
+// LEGAL: One you collect yourself fills its rent book instead, which you empty in person.
+export const MANAGEMENT_SHARE = 0.15;
 
 export interface IncomeInputs {
   // LEGAL: `perSec` is the venture's own rate (level, efficiency, any boost), before the bonuses below.
   ventures: Array<{ id: string; perSec: number; street: boolean; reinvests: boolean }>;
-  properties: Array<{ id: string; perSec: number }>;
+  properties: Array<{ id: string; perSec: number; managed: boolean }>;
   extortion: Array<{ id: string; perSec: number }>;
   corners: number;
   blackMarket: number;
@@ -29,6 +32,8 @@ export interface IncomeInputs {
 export interface IncomeBreakdown {
   ventures: Record<string, number>;
   properties: Record<string, number>;
+  // LEGAL: Rent going into each self-collected property's rent book, not into your cash.
+  rentAccruing: Record<string, number>;
   extortion: Record<string, number>;
   corners: number;
   blackMarket: number;
@@ -57,7 +62,11 @@ export function incomeBreakdown(input: IncomeInputs): IncomeBreakdown {
     if(v.reinvests) reinvested[v.id] = amount * REINVEST_SHARE;
   });
   const properties: Record<string, number> = {};
-  input.properties.forEach(p => { properties[p.id] = p.perSec * g; });
+  const rentAccruing: Record<string, number> = {};
+  input.properties.forEach(p => {
+    if(p.managed) properties[p.id] = p.perSec * g * (1 - MANAGEMENT_SHARE);
+    else { properties[p.id] = 0; rentAccruing[p.id] = p.perSec * g; }
+  });
   const extortion: Record<string, number> = {};
   input.extortion.forEach(e => { extortion[e.id] = e.perSec * low * g; });
   const corners = input.corners * low * g;
@@ -68,5 +77,5 @@ export function incomeBreakdown(input: IncomeInputs): IncomeBreakdown {
   const gross = sum(ventures) + sum(properties) + sum(extortion) + corners + blackMarket + office;
   const bribe = input.bribeOn ? gross * BRIBE_SHARE : 0;
   const reinvestedTotal = sum(reinvested);
-  return { ventures, properties, extortion, corners, blackMarket, office, gross, bribe, reinvested, reinvestedTotal, net:gross - bribe - reinvestedTotal, illegal };
+  return { ventures, properties, rentAccruing, extortion, corners, blackMarket, office, gross, bribe, reinvested, reinvestedTotal, net:gross - bribe - reinvestedTotal, illegal };
 }

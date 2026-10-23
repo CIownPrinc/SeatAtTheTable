@@ -395,6 +395,10 @@ export interface GameState {
   ownedCars: string[];
   equippedCar: string | null;
   ownedProperties: string[];
+  // LEGAL: Rent waiting in each self-collected property's rent book, and the properties left to the
+  // LEGAL: agent's management instead (they pay straight in, less a cut).
+  rentPots: Record<string, number>;
+  managedProperties: string[];
   // LEGAL: playSeconds at purchase, per property id — drives waterfront appreciation.
   propertyOwnedAt: Record<string, number>;
   // LEGAL: Used cars that have broken down and need paying to repair before they drive.

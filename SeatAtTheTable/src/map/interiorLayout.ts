@@ -250,7 +250,8 @@ function propFor(spot: InteriorSpot, kind: string, refId: string, look: Look): P
       return deskProp(spot, look, refId, 110, [...posts, box(spot.x, spot.y - 32, 84, 1, 2, '#c9b26b', 61)]);
     }
     case 'owner': return personProp(spot, refId, look);
-    case 'board': case 'notices': case 'manifest': return boardProp(spot, look);
+    case 'board': case 'notices': case 'manifest': case 'tenants': return boardProp(spot, look);
+    case 'rentbook': return officeDeskProp(spot, look);
     case 'vault': return kind === 'heist' ? vaultDoorProp(spot, look) : safeProp(spot);
     case 'wardrobe': return wardrobeProp(spot, look);
     case 'bench': return benchProp(spot, look);

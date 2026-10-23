@@ -109,7 +109,7 @@ import { loadStreetModels } from '../world/assets/street';
 import { loadPlaceModels } from '../world/assets/places';
 import { usePlaceModels } from '../map/placeModels';
 import { LIGHT_SKINS, closeUpFor, type CloseUp } from '../map/closeUps';
-import { interiorPlanFor, stairsLanding, type InteriorPlan } from '../map/interiorPlans';
+import { interiorPlanFor, propertyIsHome, stairsLanding, type InteriorPlan } from '../map/interiorPlans';
 import type { InteriorCar } from '../map/interiorPieces';
 import { VEHICLE_HEIGHT, VEHICLE_SCALE } from '../map/scale';
 import { DISTRICT_OFFSETS, OUTSKIRT_PLACE_LOTS, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
@@ -121,7 +121,7 @@ import { freezeStaticScenery } from '../map/staticScenery';
 import { mergeLooseByPrefix, mergeMeshesWithin, type MergeGeometries } from '../map/mergeScenery';
 import { choiceDelta, describeMissionLedger, foldMissionLedger, openMissionLedger, rebaseMissionLedger, reconcileResultText, type MissionLedger, type OutcomeSnapshot } from './missionLedger';
 import { getOnboardingSteps, type OnboardingMissionSnapshot, type OnboardingPanelTarget } from './onboarding';
-import { incomeBreakdown, type IncomeBreakdown } from './income';
+import { incomeBreakdown, MANAGEMENT_SHARE, type IncomeBreakdown } from './income';
 import { MISSION_CONFIG as PHASE2_MISSION_CONFIG, OUTSKIRT_VENUE_CONFIG, missionEventPool, type MissionEventDefinition } from '../config/missions';
 import type * as ThreeNamespace from 'three';
 
@@ -481,6 +481,43 @@ import type * as ThreeNamespace from 'three';
 
   // LEGAL: A building you can own, seen from the street: whose it is, what it pays, and where to buy
   // LEGAL: it. Walking up to one used to fall through to the stranger popup with a random name.
+  // LEGAL: ---- Rent books ----
+  // LEGAL: A property you collect yourself fills its rent book; walk in and empty it. It stops filling
+  // LEGAL: at RENT_BOOK_SECONDS of rent, so a building you never visit pays you less. Or hand it to the
+  // LEGAL: agent: they collect for you and keep a cut (core/income MANAGEMENT_SHARE).
+  const RENT_BOOK_SECONDS = 900;
+  function fillRentBooks(income: IncomeBreakdown, seconds: number): void {
+    Object.entries(income.rentAccruing).forEach(function([id, rate]){
+      state.rentPots[id] = Math.min(rate * RENT_BOOK_SECONDS, (state.rentPots[id] ?? 0) + rate * seconds);
+    });
+  }
+  function openRentBook(property: Property): void {
+    const managed = state.managedProperties.includes(property.id);
+    const waiting = Math.floor(state.rentPots[property.id] ?? 0);
+    const rate = incomeNow().rentAccruing[property.id] ?? 0;
+    const full = rate > 0 && waiting >= rate * RENT_BOOK_SECONDS - 1;
+    const cut = Math.round(MANAGEMENT_SHARE * 100);
+    const body = managed
+      ? `<p class="flavor">The agent collects here and pays it straight in, keeping ${cut}%.</p>${briefRow('Paying you', formatMoneyRate(incomeNow().properties[property.id] ?? 0))}`
+      : `<p class="flavor">${full ? 'The book is full: the tenants have stopped leaving rent until someone collects it.' : 'The tenants leave the rent here for you.'}</p>${briefRow('Waiting', formatMoney(waiting))}${briefRow('Coming in', formatMoneyRate(rate))}${briefRow('Holds up to', formatMoney(Math.round(rate * RENT_BOOK_SECONDS)))}`;
+    const buttons: ModalOptions['buttons'] = [];
+    if(!managed && waiting > 0) buttons.push({ label:`Collect ${formatMoney(waiting)}`, onClick:function(){
+      state.cash += waiting;
+      state.rentPots[property.id] = (state.rentPots[property.id] ?? 0) - waiting;
+      log(`<i aria-hidden="true" class="ph-duotone ph-notebook"></i> You collect ${formatMoney(waiting)} in rent at ${property.name}.`);
+      renderAll(); scheduleSave();
+    } });
+    buttons.push(managed
+      ? { label:'Collect it myself from now on', secondary:true, onClick:function(){ state.managedProperties = state.managedProperties.filter(id => id !== property.id); renderAll(); scheduleSave(); } }
+      : { label:`Hand it to the agent (${cut}% cut)`, secondary:true, onClick:function(){
+        state.cash += waiting; delete state.rentPots[property.id];
+        state.managedProperties = [...state.managedProperties, property.id];
+        renderAll(); scheduleSave();
+      } });
+    buttons.push({ label:'Close', secondary:true });
+    showModal({ eyebrow:'Rent book', title:property.name, body, buttons });
+  }
+
   function openPropertyPlace(place: PropertyPlace): void {
     const property = place.property;
     const brand = brandById(property.brand);
@@ -488,11 +525,14 @@ import type * as ThreeNamespace from 'three';
     const office = serviceBuildings.find(s => s.brandId === property.brand);
     const officePlace = office ? mapObjects.find(o => o.kind === 'service' && (o.ref as ServiceBuilding).id === office.id) : null;
     const body = owned
-      ? `<p class="flavor">Yours. The keys are on your ring and the rent comes in on time.</p>${briefRow('Pays', formatMoneyRate(incomeNow().properties[property.id] ?? 0))}`
+      ? (state.managedProperties.includes(property.id)
+        ? `<p class="flavor">Yours, and the agent's to run: the rent comes in on time, less their cut.</p>${briefRow('Pays', formatMoneyRate(incomeNow().properties[property.id] ?? 0))}`
+        : `<p class="flavor">Yours. The rent's left in the book inside for you to collect.</p>${briefRow('Waiting', formatMoney(Math.floor(state.rentPots[property.id] ?? 0)))}`)
       : `<p class="flavor">${brand ? `Listed with ${brand.name}.` : 'On the market.'} ${property.online ? 'You can close on it from the phone.' : 'You have to see the agent in person.'}</p>`
         + briefRow('Price', formatMoney(property.cost)) + briefRow('Would pay', formatMoneyRate(property.incomePerSec));
     const buttons: ModalOptions['buttons'] = [];
     if(!owned && officePlace) buttons.push({ label:`Mark ${office!.name} on the GPS`, onClick:function(){ setGlobalWaypoint({ x:officePlace.x, y:officePlace.y }); log(`<i aria-hidden="true" class="ph-duotone ph-map-pin"></i> GPS set to ${office!.name}.`); renderAll(); } });
+    if(owned) buttons.push({ label:'Go inside', onClick:function(){ enterBuilding('property', property.id, place.name); } });
     buttons.push({ label:'Walk on', secondary:buttons.length > 0 });
     showModal({ eyebrow:owned ? 'Your property' : 'For sale', title:place.name, body, buttons });
   }
@@ -509,7 +549,7 @@ import type * as ThreeNamespace from 'three';
     playSeconds: 0, investorPenalty: 0, appearance: { ...DEFAULT_PLAYER_LOOK }, ownedWardrobe: [], vaultCash: 0,
     procNpc: generateNPC(),
     bankAccounts: {}, selectedBank: DEFAULT_BANK_ID, nextHeistAt: 0,
-    ownedCars: [], equippedCar: null, ownedProperties: [],
+    ownedCars: [], equippedCar: null, ownedProperties: [], rentPots: {}, managedProperties: [],
     // LEGAL: Phase 4 caveats: when each property was bought (waterfront rent appreciates
     // LEGAL: with how long you have held it) and which used cars are currently broken down.
     propertyOwnedAt: {}, brokenCars: [], carColors: {}, carDecals: {}, carParkedAt: null,
@@ -687,7 +727,7 @@ import type * as ThreeNamespace from 'three';
     const reinvesting = deepakActive();
     return incomeBreakdown({
       ventures:businesses.map(b => ({ id:b.id, perSec:incomeFor(b), street:b.category === 'street', reinvests:reinvesting && !!b.manager && b.level > 0 })),
-      properties:ownedPropertyList().map(p => ({ id:p.id, perSec:propertyIncomeFor(p) })),
+      properties:ownedPropertyList().map(p => ({ id:p.id, perSec:propertyIncomeFor(p), managed:state.managedProperties.includes(p.id) })),
       extortion:localBusinesses.filter(b => b.extorted).map(b => ({ id:b.id, perSec:b.extortIncome * extortMult(b) })),
       corners:cornerIncomePerSec(), blackMarket:blackMarketTradeIncome(), office:electedOfficeIncome(),
       layingLow:state.layingLow, homeTurfMult:devlinIncomeBonus(), globalMult:globalIncomeMult(), bribeOn:state.bribeOn,
@@ -2806,12 +2846,12 @@ import type * as ThreeNamespace from 'three';
         <div class="data-main">
           <div class="col-id">${ICONS.bld2}</div>
           <div class="col-name">${p.name}</div>
-          <div class="col-inc">+${(owned ? incomeNow().properties[p.id] ?? 0 : p.incomePerSec * globalIncomeMult()).toFixed(1)}/s</div>
+          <div class="col-inc">+${(owned ? (incomeNow().properties[p.id] || incomeNow().rentAccruing[p.id]) ?? 0 : p.incomePerSec * globalIncomeMult()).toFixed(1)}/s</div>
           <div class="col-status">${owned?'ACTIVE':'SALE'}</div>
         </div>
         <div class="data-expanded">
           ${brand ? `<div class="flavor-note" style="color:var(--gold);">${brand.name}${brand.caveat?` — <span style="color:var(--text-faint);">${brand.caveat}</span>`:''}</div>` : ''}
-          <div class="flavor-note">${owned ? `Owned — earning ${(incomeNow().properties[p.id] ?? 0).toFixed(1)}/s, no crew needed${appreciationMult(brandById(p.brand), propertyHeldSeconds(p.id)) > 1 ? ` (appreciated from ${p.incomePerSec}/s)` : ''}` : `Passive rental income: ${p.incomePerSec}/s, no crew needed`}</div>
+          <div class="flavor-note">${owned ? (state.managedProperties.includes(p.id) ? `Owned, run by the agent: paying ${(incomeNow().properties[p.id] ?? 0).toFixed(1)}/s after their cut` : `Owned: ${formatMoney(Math.floor(state.rentPots[p.id] ?? 0))} waiting in the rent book. Go in and collect it, or hand it to the agent`) + `${appreciationMult(brandById(p.brand), propertyHeldSeconds(p.id)) > 1 ? ` (appreciated from ${p.incomePerSec}/s)` : ''}` : `Passive rental income: ${p.incomePerSec}/s, no crew needed`}</div>
           ${btns}
         </div>
       </div>`;
@@ -3784,6 +3824,10 @@ import type * as ThreeNamespace from 'three';
       const id = btn.getAttribute('data-prop-sell')!; const p = properties.find(x=>x.id===id);
       if(!p) return;
       state.ownedProperties = state.ownedProperties.filter(x=>x!==id);
+      state.managedProperties = state.managedProperties.filter(x=>x!==id);
+      // LEGAL: Rent still in the book comes with you when you sell.
+      state.cash += Math.round(state.rentPots[id] ?? 0);
+      delete state.rentPots[id];
       // LEGAL: Selling resets the appreciation clock — buying back does not restore it.
       delete state.propertyOwnedAt[id];
       state.cash += Math.round(p.cost*0.6);
@@ -4881,6 +4925,19 @@ import type * as ThreeNamespace from 'three';
       spots.push({ id:'icecream', ...MALL_SPOTS.icecream, label:'Ice Cream', icon:'🍦', action:openIceCreamCart });
       spots.push({ id:'foodcourt', ...MALL_SPOTS.foodcourt, label:'Food Court', icon:'🍜', action:openFoodCourt });
       spots.push({ id:'playground', ...MALL_SPOTS.playground, label:'Play Area', icon:'🛝', action:openPlayArea });
+    } else if(kind==='property'){
+      // LEGAL: Your own building: the rent book at the desk, the tenants' board or, in a home, your
+      // LEGAL: wardrobe and bed.
+      const property = properties.find(p => p.id === interior.refId);
+      if(!property) return [];
+      spots.push({ id:'rentbook', x:ROOM_W/2, y:80, label:'Rent Book', icon:'📒', action:()=> openRentBook(property) });
+      if(propertyIsHome(property.id)){
+        spots.push({ id:'wardrobe', x:AMBIENT_X, y:AMBIENT_Y, label:'Wardrobe', icon:'👔', action:openWardrobeSpot });
+        spots.push({ id:'bed', x:ROOM_W*0.82, y:100, label:'Sleep', icon:'🛏️', action:offerSleep });
+      } else {
+        spots.push({ id:'tenants', x:AMBIENT_X, y:AMBIENT_Y, label:'Tenants', icon:'📋', action:()=>
+          showRoomBrief('Tenants', property.name, 'Names on the board, a few notes about the boiler, and who is behind this month.', briefRow('Pays', formatMoneyRate(property.incomePerSec * globalIncomeMult()))) });
+      }
     } else if(kind==='missionOffice'){
       const missionId = activeMissionForServiceId(interior.refId);
       spots.push({ id:'mission', x:ROOM_W/2, y:80, label:missionId ? 'Mission Contact' : 'Front Desk', icon:'📋', action:function(){
@@ -7708,7 +7765,7 @@ import type * as ThreeNamespace from 'three';
       delhi: document.body.classList.contains('theme-delhi'),
       businesses: businesses.map(b=> ({ id:b.id, level:b.level, crew:b.crew, manager:b.manager, researched:b.researched, reinvestedIncome:b.reinvestedIncome })),
       bankAccounts: state.bankAccounts, selectedBank: state.selectedBank, nextHeistAt: state.nextHeistAt,
-      ownedCars: state.ownedCars, equippedCar: state.equippedCar, ownedProperties: state.ownedProperties,
+      ownedCars: state.ownedCars, equippedCar: state.equippedCar, ownedProperties: state.ownedProperties, rentPots: state.rentPots, managedProperties: state.managedProperties,
       propertyOwnedAt: state.propertyOwnedAt, brokenCars: state.brokenCars, carColors: state.carColors, carDecals: state.carDecals, carParkedAt: state.carParkedAt,
       localBusinesses: localBusinesses.map(b=> ({ id:b.id, extorted:b.extorted, extortTier:b.extortTier??0, resentment:b.resentment??0, nextRobAt:b.nextRobAt })),
       currentDistrict: state.currentDistrict, product: state.product, productLevel: state.productLevel,
@@ -7787,6 +7844,10 @@ import type * as ThreeNamespace from 'three';
         state.selectedBank = banks.some(b=>b.id===d.selectedBank) ? d.selectedBank : DEFAULT_BANK_ID;
         state.nextHeistAt = d.nextHeistAt||0;
         state.ownedCars = d.ownedCars||[]; state.equippedCar = d.equippedCar||null; state.ownedProperties = d.ownedProperties||[];
+        state.rentPots = d.rentPots || {};
+        // LEGAL: Saves from before rent books: what you already owned stays under management, so its
+        // LEGAL: rent keeps arriving as it did rather than suddenly waiting for you to collect it.
+        state.managedProperties = Array.isArray(d.managedProperties) ? d.managedProperties : [...state.ownedProperties];
         // LEGAL: Saves from before the brand caveats have neither field. Properties owned
         // LEGAL: back then start their appreciation clock now rather than claiming credit
         // LEGAL: for time held before the mechanic existed, and no car starts broken.
@@ -7864,6 +7925,7 @@ import type * as ThreeNamespace from 'three';
 
     const income = incomeNow();
     state.cash += income.net*dt;
+    fillRentBooks(income, dt);
     if(income.reinvestedTotal > 0){
       businesses.forEach(b=>{
         const share = income.reinvested[b.id];
@@ -7989,6 +8051,7 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: Away, nothing levels up, so Deepak's reinvested share is paid out as cash instead.
     const away$ = incomeNow();
     const earned = (away$.net + away$.reinvestedTotal) * capped;
+    fillRentBooks(away$, capped);
     state.cash += earned;
     const mins = Math.max(1, Math.round(capped/60));
     showModal({ eyebrow:'Business Report', title:"WHILE YOU WERE OUT",

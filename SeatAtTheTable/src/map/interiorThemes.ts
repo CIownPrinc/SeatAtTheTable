@@ -147,6 +147,50 @@ const THEMES: Partial<Record<RoomTheme, ThemeBuild>> = {
     put(b, 'bench-row', w * 0.3, h * 0.82, 72, 14, 20, '#3a6a9a', { turn:Math.PI });
     staff(b, w * 0.18, 40, 'depot:dispatcher', '#d4a017');
   },
+  // LEGAL: The properties you own (kind 'property'). The rent book's desk comes from the hotspot.
+  tenement(b, w, h, look){
+    // LEGAL: The flats' front doors along the back wall, numbered, the mailboxes by the entrance and the
+    // LEGAL: stairs up to the other floors.
+    [60, 140, w - 140, w - 60].forEach(function(x, i){
+      b.pieces.push(box(x, 3, 24, 4, 52, look.wood), box(x, 5.2, 6, 0.6, 3, '#c9a227', 40), box(x + 8, 5.2, 1.4, 0.8, 1.4, '#c9a227', 26));
+      b.pieces.push(box(x, 5.4, 4, 0.4, 2, ['#1a1a1a', '#1a1a1a', '#1a1a1a', '#1a1a1a'][i], 40.4));
+    });
+    put(b, 'lockers', 14, h * 0.62, 70, 18, 44, '#8a7a52', { turn:Math.PI / 2, recolour:{ steel:'#8a7a52' } });
+    put(b, 'staircase', 30, h * 0.3, 32, 84, 80, look.wood);
+    b.pieces.push(box(w * 0.5, h - 30, 40, 6, 14, '#b8b0a0'), box(w * 0.5, h - 30, 44, 7, 1, '#6a645a', 14));
+    plantAt(b, 30, h - 30);
+  },
+  shopUnits(b, w, h, look){
+    // LEGAL: The back of three shop units: each a shelf of stock, a till and the shutter's rail.
+    [w * 0.14, w * 0.86].forEach(x => put(b, 'shop-shelf', x, 14, 90, 18, 56, look.wood, { recolour:{ wood:look.wood, accent:look.accent } }));
+    b.pieces.push(box(w / 2, 2, w - 20, 3, 4, '#3a3d44', 70));
+    put(b, 'crate-stack', w * 0.12, h * 0.78, 42, 22, 38, '#8a6a42');
+    put(b, 'drinks-fridge', w - 18, h * 0.32, 22, 34, 60, '#e8e8e8', { turn:-Math.PI / 2 });
+    plantAt(b, w - 30, h - 30);
+  },
+  lobby(b, w, h, look){
+    // LEGAL: The doorman's desk, the residents' mailboxes, the lift, and somewhere to wait.
+    put(b, 'counter', w * 0.22, h * 0.5, 80, 24, 30, look.wood, { recolour:{ wood:look.wood, top:'#e8e2d6' } });
+    put(b, 'lockers', 14, h * 0.28, 80, 18, 44, '#c9a227', { turn:Math.PI / 2, recolour:{ steel:'#b89a4a' } });
+    put(b, 'lift', w * 0.78, 0, 34, 6, 56, '#5c6470', { solid:false });
+    b.solids.push(solidOf(w * 0.78, 3, 34, 6));
+    put(b, 'sofa', w * 0.56, h * 0.3, 60, 22, 30, '#4a3a5a', { recolour:{ upholstery:'#5a2a3a' } });
+    put(b, 'coffee-table', w * 0.56, h * 0.42, 36, 20, 12, look.wood);
+    columnAt(b, w * 0.36, h * 0.28, '#d8d0c0');
+    plantAt(b, 30, h - 30); plantAt(b, w - 30, h - 30);
+  },
+  homeFlat(b, w, h, look, refId){
+    // LEGAL: A home: kitchen at the back, the table, a sofa by the fire, the bed in the corner. The
+    // LEGAL: penthouse has a piano.
+    put(b, 'kitchenette', w * 0.22, 14, 80, 22, 24, '#e8e4d8');
+    put(b, 'dining-set', w * 0.28, h * 0.48, 56, 56, 26, look.wood, { recolour:{ wood:look.wood } });
+    put(b, 'fireplace', 14, h * 0.7, 56, 16, 46, '#8a7a6a', { turn:Math.PI / 2 });
+    put(b, 'sofa', w * 0.4, h * 0.68, 60, 22, 30, '#4a5a7a', { turn:-Math.PI / 2, recolour:{ upholstery:'#2f6b8a' } });
+    put(b, 'coffee-table', w * 0.3, h * 0.7, 20, 36, 12, look.wood, { turn:Math.PI / 2 });
+    put(b, 'bed', w * 0.82, 40, 50, 72, 18, '#2f4a6a', { solid:true });
+    if(refId === 'penthouse') put(b, 'piano', w * 0.62, h * 0.3, 50, 40, 42, '#111114');
+    plantAt(b, w - 30, h - 30);
+  },
   warehouse(b, w, h){
     put(b, 'pallet-rack', 16, h * 0.42, 26, 100, 72, '#d4692a', { turn:Math.PI / 2 });
     put(b, 'pallet-rack', w - 16, h * 0.42, 26, 100, 72, '#d4692a', { turn:-Math.PI / 2 });

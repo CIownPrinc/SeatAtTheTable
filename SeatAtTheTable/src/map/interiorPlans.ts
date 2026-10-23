@@ -13,7 +13,8 @@ export type RoomTheme =
   | 'pawn' | 'herbalist' | 'jeweler'
   | 'usedLot' | 'luxuryShowroom' | 'bikeShop' | 'ruggedShowroom' | 'trailheadShowroom' | 'evShowroom'
   | 'brokerCheap' | 'brokerLuxury' | 'brokerCommercial' | 'brokerWaterfront'
-  | 'garageHome' | 'casino' | 'mall' | 'lodge' | 'motel' | 'yardOffice' | 'hangar' | 'dockOffice' | 'snackBar' | 'alley';
+  | 'garageHome' | 'casino' | 'mall' | 'lodge' | 'motel' | 'yardOffice' | 'hangar' | 'dockOffice' | 'snackBar' | 'alley'
+  | 'tenement' | 'shopUnits' | 'lobby' | 'homeFlat';
 
 export interface ThemeLook { floor: FloorPattern; floorColor: string; wallColor: string; trimColor: string; accent: string; wood: string }
 
@@ -82,6 +83,11 @@ const LOOKS: Record<RoomTheme, ThemeLook> = {
   dockOffice:       { floor:'wood',     floorColor:'#6a5a44', wallColor:'#8a9aa4', trimColor:'#2f4a6a', accent:'#d4692a', wood:'#5c4330' },
   snackBar:         { floor:'tile',     floorColor:'#e8e2d2', wallColor:'#c0392b', trimColor:'#f0efe8', accent:'#f0c040', wood:'#6b4a2c' },
   alley:            { floor:'concrete', floorColor:'#3a3a3e', wallColor:'#3d3a38', trimColor:'#1a1a1a', accent:'#c0392b', wood:'#4a3a2a' },
+  // LEGAL: The properties you own: a walk-up's hallway, a row of shop units, an apartment lobby, a home.
+  tenement:         { floor:'tile',     floorColor:'#8a7e6a', wallColor:'#a89a7c', trimColor:'#4a3a2a', accent:'#7a2630', wood:'#5a4030' },
+  shopUnits:        { floor:'tile',     floorColor:'#b8b4a8', wallColor:'#d8d0c0', trimColor:'#2f4a6a', accent:'#d4692a', wood:'#6b4a2c' },
+  lobby:            { floor:'marble',   floorColor:'#d8d2c6', wallColor:'#c8bfae', trimColor:'#3a3226', accent:'#c9a227', wood:'#4a3424' },
+  homeFlat:         { floor:'wood',     floorColor:'#8a6a4a', wallColor:'#e8e2d6', trimColor:'#2a2420', accent:'#2f6b8a', wood:'#5a3e26' },
 };
 
 // LEGAL: The room's size follows its building: a narrow shopfront is a narrow room, a civic hall or
@@ -93,6 +99,7 @@ const SIZES: Partial<Record<RoomTheme, [number, number]>> = {
   civic:[640, 360], bank:[580, 330], bankPrestige:[620, 350], vaultBank:[580, 330], busStation:[640, 340],
   usedLot:[520, 300], luxuryShowroom:[640, 360], bikeShop:[540, 310], ruggedShowroom:[600, 340], trailheadShowroom:[520, 300], evShowroom:[620, 350],
   casino:[900, 560], mall:[1000, 640], garageHome:[480, 280], lodge:[560, 320], hangar:[640, 360],
+  tenement:[460, 270], shopUnits:[540, 300], lobby:[580, 330], homeFlat:[580, 330],
 };
 
 const FLOORS: Partial<Record<RoomTheme, FloorPlan[]>> = {
@@ -113,6 +120,17 @@ const VENTURES: Record<string, RoomTheme> = {
 const LOCALS: Record<string, RoomTheme> = {
   patel:'grocery', pawn:'pawn', herbalist:'herbalist', bar:'pub', liquor:'liquor', jewelers:'jeweler', marlowe:'club', chopshop:'chopshop',
 };
+// LEGAL: Each property you can buy, by what kind of building it is.
+const PROPERTIES: Record<string, RoomTheme> = {
+  twoflat:'tenement', vacantflat:'tenement', canal_walkup:'tenement',
+  retailstrip:'shopUnits', corner_store_block:'shopUnits',
+  aptbuilding:'lobby', marina_block:'lobby', harbour_tower:'lobby',
+  penthouse:'homeFlat', loft:'homeFlat', brownstone_row:'homeFlat',
+  freight_depot:'warehouse', coldstore:'warehouse',
+};
+// LEGAL: The properties that are homes: you can live in them, sleep there and keep clothes there.
+export function propertyIsHome(id: string): boolean { return PROPERTIES[id] === 'homeFlat'; }
+
 const SERVICES: Record<string, RoomTheme> = {
   bankHome:'bank', bankFirstWindhaven:'bank', bankLakeside:'bankPrestige', heistTarget:'vaultBank', cityhall:'civic',
   hubBusStation:'busStation', heraldHq:'newsroom', marigoldLounge:'lounge', playerGarage:'garageHome', devlinAlley:'alley',
@@ -127,6 +145,7 @@ const BROKER_THEMES: Record<string, RoomTheme> = { cheap:'brokerCheap', luxury:'
 export function themeFor(kind: string, refId: string, brandCategory?: string): RoomTheme {
   if(kind === 'venture') return VENTURES[refId] ?? 'office';
   if(kind === 'local') return LOCALS[refId] ?? 'convenience';
+  if(kind === 'property') return PROPERTIES[refId] ?? 'tenement';
   if(SERVICES[refId]) return SERVICES[refId];
   if(kind === 'dealership') return DEALERSHIP_THEMES[brandCategory ?? ''] ?? 'usedLot';
   if(kind === 'brokerage' || kind === 'realty') return BROKER_THEMES[brandCategory ?? ''] ?? 'brokerCheap';
@@ -148,6 +167,15 @@ function nameFor(seed: string, n: number): string {
 
 interface RegularSeed { role: string; coat: string; at: [number, number]; floor?: number; lines: string[] }
 const REGULARS: Partial<Record<RoomTheme, RegularSeed[]>> = {
+  tenement:[
+    { role:'Tenant, 2B', coat:'#5a6a7a', at:[0.3, 0.66], lines:["Rent's in the envelope. The hot water isn't, if you're asking.", "Somebody keeps leaving a bike on the landing. Not me.", "Quiet building. I like it quiet."] },
+    { role:'Tenant, 1A', coat:'#8a5a3a', at:[0.68, 0.7], lines:["The lock on the front door sticks. You have to lift it.", "You're the new owner? Huh. Thought you'd be older."] },
+  ],
+  shopUnits:[{ role:'Shopkeeper', coat:'#2f6b8a', at:[0.3, 0.68], lines:["Footfall's up since the bakery opened two doors down.", "Lease is up in spring. Be kind to me, I'm a good tenant.", "If the shutter jams again I'm calling you, not the agent."] }],
+  lobby:[
+    { role:'Doorman', coat:'#2a2a3a', at:[0.22, 0.66], lines:['Evening. Packages are behind the desk.', "Twelfth floor's complaining about the lift again.", "Nobody gets past me without a name."] },
+    { role:'Resident', coat:'#7a2a3a', at:[0.68, 0.7], lines:["Lovely building. The view's worth the rent. Mostly.", "Is it true you own the whole place now?"] },
+  ],
   diner:[{ role:'Waitress', coat:'#c0392b', at:[0.3, 0.62], lines:["Sit anywhere, hon. The chaat's fresh, the coffee's not.", 'Table four tips in quarters. Every time.', "Kitchen closes when the cook says it closes."] }],
   laundromat:[{ role:'Regular', coat:'#5a7c8a', at:[0.4, 0.66], lines:['Machine six eats quarters. Everybody knows. Nobody fixes it.', "I come here for the quiet. And the dryers. Mostly the quiet."] }],
   grocery:[{ role:'Shopper', coat:'#7c9a3a', at:[0.5, 0.62], lines:['Mr Patel keeps the good rice in the back if you ask nice.', 'Prices went up again. Everything goes up.'] }],

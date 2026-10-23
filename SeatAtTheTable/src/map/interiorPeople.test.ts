@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { brandById } from '../config/brands';
 import { localBusinesses } from '../config/localBusinesses';
+import { properties } from '../config/assets';
 import { serviceBuildings } from '../config/serviceBuildings';
 import { businesses } from '../config/ventures';
 import { interiorLayout, type InteriorSpot } from './interiorLayout';
@@ -15,6 +16,7 @@ const places: Array<{ kind: string; refId: string; brand?: string }> = [
   ...businesses.map(b => ({ kind:'venture', refId:b.id })),
   ...localBusinesses.map(b => ({ kind:'local', refId:b.id })),
   ...serviceBuildings.map(s => ({ kind:s.kind, refId:s.id, brand:brandById(s.brandId)?.category })),
+  ...properties.map(p => ({ kind:'property', refId:p.id })),
 ];
 
 describe('people in rooms', () => {
