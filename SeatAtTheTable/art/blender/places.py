@@ -517,42 +517,84 @@ def docks():
     box("load", 22, 9.6, 8.6, 30, 15, -20, m("container-1", "#2f6bb0"))
 
 
-def railyard():
-    flat("ballast", 118, 86, 0, 0, 0.14, m("ballast", "#5a5248", 0.95))
-    sleeper, steel = m("sleeper", "#4a3a2a", 0.95), m("steel", "#8f949c", 0.4, 0.7)
-    for z in (-36, -22, -8):
-        box("bed", 116, 0.4, 11, 0, 0.3, z, m("bed", "#6a6258", 0.95))
-        for x in range(-56, 57, 4):
-            box("sleeper", 1.6, 0.6, 9, x, 0.6, z, sleeper)
+# --- The railyard (src/map/railyard.ts, src/map/rollingStock.ts) -----------------------------------
+# Real size, in game units (10.5 to the metre). The game fits each car to its size in rollingStock.ts,
+# so these only need the right proportions; the office matches YARD_OFFICE (12.4 x 7.6 x 4 m).
+
+def yard_office():
+    w, d, h = 80, 130, 42
+    walls, trim = m("walls", "#8a7a62", 0.9), m("trim", "#e8e4d8", 0.6)
+    box("walls", w, h, d, 0, h / 2, 0, walls)
+    box("plinth", w + 1, 3, d + 1, 0, 1.5, 0, m("plinth", "#5a5248", 0.95))
+    gable_roof("roof-office", d + 4, w, 12, 0, h, 0, m("roof", "#4a4038", 0.9), walls, along="z")
+    box("door", 11, 22, 0.6, -18, 11, d / 2 + 0.3, m("door", "#4a3a2a", 0.8))
+    box("step", 18, 1.6, 8, -18, 0.8, d / 2 + 4, m("plinth", "#5a5248", 0.95))
+    box("lamp", 3, 2, 2, -18, 26, d / 2 + 1.2, m("lamp", "#000000", 0.4, emission="#ffe2a0", strength=1.0))
+    window("window-front", 24, 14, 16, 26, d / 2, lit(), trim, facing="z", sill=True)
+    for z in (-36, 0, 36):
+        window("window-side", 18, 12, w / 2, 26, z, lit(), trim, facing="x", sill=True)
+        window("window-side", 18, 12, -w / 2, 26, z, lit(), trim, facing="-x", sill=True)
+    post("stovepipe", 1.2, 14, 22, h + 12, -30, m("iron", "#2a2a2a", 0.5, 0.5), vertices=8)
+
+
+def bogie(z, axles, gauge=9):
+    frame = m("bogie", "#1e1e20", 0.6, 0.4)
+    box("bogie", 24, 6, 10 + axles * 11, 0, 6, z, frame)
+    for i in range(axles):
+        az = z + (i - (axles - 1) / 2) * 11
+        log("axle", 1.2, gauge * 2 + 4, 0, 4.5, az, frame, along="x", vertices=8)
+        for x in (-gauge, gauge):
+            log("wheel", 4.5, 2.4, x, 4.5, az, m("wheel", "#2a2a2a", 0.5, 0.6), along="x", vertices=16)
+
+
+def freight_wagon():
+    length, width, height = 152, 31.5, 44
+    deck = 14
+    dark = m("underframe", "#2a2a2a", 0.6, 0.4)
+    for z in (-1, 1):
+        bogie(z * (length / 2 - 26), 2)
+        box("coupler", 3, 3, 4, 0, 11, z * (length / 2 - 2), dark)
+    box("underframe", width * 0.9, 3, length - 4, 0, deck - 1.5, 0, dark)
+    body = m("body", "#7a3b2a", 0.8, 0.2)
+    box("body", width, height - deck - 1.2, length - 6, 0, (height + deck - 1.2) / 2, 0, body)
+    for side in (-1, 1):
+        for z in range(-66, 67, 12):
+            box("rib", 0.6, height - deck - 1.2, 1.2, side * (width / 2 + 0.3), (height + deck - 1.2) / 2, z, body)
+        box("wagon-door", 0.5, 26, 30, side * (width / 2 + 0.6), deck + 14, 0, m("wagon-door", "#5a3a2a", 0.8))
+        box("door-rail", 0.8, 1, 64, side * (width / 2 + 0.6), deck + 27.5, 0, dark)
+    box("roof-wagon", width + 0.6, 1.2, length - 5, 0, height - 0.6, 0, m("roof-wagon", "#3a3a3a", 0.7, 0.3))
+    for z in (-1, 1):
+        for i in range(6):
+            box("ladder", 4, 0.5, 0.5, width / 2 - 4, deck + 4 + i * 4.4, z * (length / 2 - 3.2), dark)
+
+
+def locomotive():
+    length, width, height = 200, 32.5, 48
+    deck = 15
+    frame, hood, cab = m("frame", "#1e1e20", 0.6, 0.4), m("hood", "#c8a028", 0.6, 0.2), m("cab", "#2f4a6a", 0.6, 0.2)
+    for z in (-1, 1):
+        bogie(z * (length / 2 - 34), 3)
+        box("coupler", 3, 3, 4, 0, 11, z * (length / 2 - 2), frame)
+        box("pilot", width * 0.9, 6, 2, 0, 10, z * (length / 2 - 5), m("pilot", "#d4a017", 0.6))
+    box("deck", width, 3, length - 8, 0, deck - 1.5, 0, frame)
+    box("fuel-tank", width * 0.6, 8, 60, 0, 7, 0, frame)
+    front = length / 2 - 6
+    box("short-hood", width * 0.72, 18, 22, 0, deck + 9, front - 11, hood)
+    box("cab", width, height - deck, 34, 0, (height + deck) / 2, front - 22 - 17, cab)
+    box("roof-cab", width + 1, 1.4, 36, 0, height + 0.2, front - 39, frame)
+    box("cab-glass", width * 0.8, 9, 0.4, 0, height - 9, front - 21.8, glass())
+    for side in (-1, 1):
+        box("cab-glass", 0.4, 9, 14, side * (width / 2 + 0.2), height - 9, front - 39, glass())
+    long_front, long_back = front - 56, -length / 2 + 6
+    box("long-hood", width * 0.72, height - deck - 6, long_front - long_back, 0, (height + deck - 6) / 2, (long_front + long_back) / 2, hood)
+    box("roof-hood", width * 0.72 + 0.6, 1, long_front - long_back, 0, height - 6.5, (long_front + long_back) / 2, frame)
+    box("stripe", width * 0.72 + 0.2, 2.4, long_front - long_back, 0, deck + 8, (long_front + long_back) / 2, cab)
+    for z in range(-80, 30, 22):
         for side in (-1, 1):
-            box("rail", 116, 0.8, 0.5, 0, 1.2, z + side * 3, steel)
-            box("rail-foot", 116, 0.2, 1.2, 0, 0.9, z + side * 3, steel)
-    # A rake of freight wagons on the back track: a body on a chassis, bogies with wheels, couplers.
-    for i, color in enumerate(["#7a3b2a", "#3e5a6a", "#7a3b2a", "#5a5a3a"]):
-        x = -40 + i * 22
-        c = m(f"wagon-{i % 3}", color, 0.8, 0.2)
-        box("chassis", 20, 1.2, 8, x, 3.6, -22, m("chassis", "#2a2a2a", 0.6, 0.4))
-        box("wagon", 20, 10, 8.6, x, 9.2, -22, c)
-        for xx in range(-8, 9, 4):
-            box("wagon-rib", 0.4, 10, 8.9, x + xx, 9.2, -22, c)
-        box("wagon-roof", 20.4, 0.8, 9, x, 14.6, -22, m("chassis", "#2a2a2a"))
-        box("wagon-door", 6, 8, 0.3, x, 8.6, -17.6, m("wagon-door", "#5a3a2a", 0.8))
-        for dx in (-6, 6):
-            box("bogie", 6, 1.6, 7, x + dx, 2.4, -22, m("chassis", "#2a2a2a"))
-            for ddx in (-1.8, 1.8):
-                log("wheel", 1.6, 9.6, x + dx + ddx, 1.6, -22, m("wheel", "#1a1a1a", 0.6, 0.6), along="z", vertices=12)
-        box("coupler", 2, 0.8, 0.8, x + 10.6, 3.6, -22, m("chassis", "#2a2a2a"))
-    # The signal hut with its window and a stovepipe, and the signal on its post.
-    box("hut", 14, 12, 12, 44, 6, 30, m("hut", "#8a7a62", 0.9))
-    box("roof-hut", 16, 1.4, 14, 44, 12.7, 30, m("roof", "#4a4038", 0.9))
-    window("hut-window", 5, 4, 44, 7, 36, lit(), m("trim", "#e8e4d8", 0.6), facing="z", sill=True)
-    box("hut-door", 4, 9, 0.4, 38.5, 4.5, 36.2, m("hut-door", "#4a3a2a", 0.8))
-    post("stovepipe", 0.6, 6, 48, 16, 27, m("chassis", "#2a2a2a"), vertices=8)
-    post("signal-post", 0.5, 18, 28, 9, 16, m("chassis", "#2a2a2a"), vertices=8)
-    box("signal-head", 2.4, 5, 2, 28, 18, 16, m("chassis", "#2a2a2a"))
-    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.8, segments=10, ring_count=6, location=(28, -17.1, 19.4))
-    bpy.context.active_object.data.materials.append(m("signal-red", "#000000", 0.4, emission="#ff2020", strength=1.0))
-    box("signal-hood", 2.0, 0.3, 1.4, 28, 20.4, 17.4, m("chassis", "#2a2a2a"))
+            box("grille", 0.4, 8, 12, side * (width * 0.36 + 0.2), height - 16, z, frame)
+    box("headlight", 6, 3, 1, 0, deck + 15, front, m("headlight", "#000000", 0.4, emission="#fff4d0", strength=1.0))
+    for side in (-1, 1):
+        box("handrail", 0.6, 0.6, length - 70, side * (width / 2 - 0.5), deck + 9, -30, m("rail", "#d8d8d4", 0.5, 0.4))
 
 
 def drive_in():
@@ -653,7 +695,8 @@ MODELS = {
     "house": house, "farmhouse": farmhouse, "barn": barn, "silo": silo, "shed": shed, "tank": tank,
     "site-cabin": site_cabin, "site-toilet": site_toilet, "crane-mast": crane_mast, "crane-jib": crane_jib, "crane-head": crane_head,
     "mall": mall, "mall-garage": mall_garage,
-    "airfield": airfield, "docks": docks, "railyard": railyard, "drive-in": drive_in, "lodge": lodge, "motel": motel,
+    "airfield": airfield, "docks": docks, "drive-in": drive_in, "lodge": lodge, "motel": motel,
+    "yard-office": yard_office, "freight-wagon": freight_wagon, "locomotive": locomotive,
 }
 
 out_dir, preview_dir = kit.args()
@@ -669,5 +712,5 @@ for name, build in MODELS.items():
     if out_dir:
         kit.export(os.path.join(out_dir, f"{name}.glb"))
     if preview_dir:
-        big = name in ("mall", "mall-garage", "airfield", "docks", "railyard", "drive-in")
+        big = name in ("mall", "mall-garage", "airfield", "docks", "drive-in", "yard-office", "freight-wagon", "locomotive")
         kit.preview(os.path.join(preview_dir, f"place-{name}.png"), target=(0, 0, 12 if not big else 30), distance=110 if not big else 330, height=50 if not big else 160, angle=-60)

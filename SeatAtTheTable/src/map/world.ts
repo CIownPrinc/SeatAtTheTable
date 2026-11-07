@@ -1,5 +1,6 @@
 import type { MapZoneType, Point } from '../config/types';
 import { MALL_ENTRANCE } from './mall';
+import { RAILYARD_GATE } from './railyard';
 
 export interface VerticalRoad {
   x: number;
@@ -440,6 +441,8 @@ export const OUTSKIRT_PLACE_LOTS: Record<string, Point> = {
   motelSunset: { x: widenAuthoredX(1100), y: -790 },
   fireRoadKestrel: { x: widenAuthoredX(3300), y: -830 },
   mudsterTrailhead: { x: widenAuthoredX(4186), y: -820 },
+  // LEGAL: Beside the freight line south of the West Side, its gate on the Ring Road (map/railyard).
+  railyard: RAILYARD_GATE,
 };
 
 export const namedBuildingLots: Record<string, Point> = {

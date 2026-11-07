@@ -3,6 +3,15 @@
 Covers everything since the full play-through on 2026-10-18, when every note went into TODO §10.
 The newest items are first.
 
+## New on 2026-11-07
+
+- **The railyard** is now beside the freight line, south of the West Side, with its gate on the Ring
+  Road next to Ridgewood Lodge. It is a real yard: a lead track off the line, three sidings, a
+  switching engine and wagons at full size, a loading dock, containers, floodlights, a fence, and the
+  yard office by the gate. It was an 11 by 8 m patch somewhere in the West Side with toy wagons.
+- **The freight train** is a locomotive and four full-size wagons. It used to be shorter than Arjun.
+  Level crossings now stay shut until the last wagon has passed.
+
 ## New on 2026-10-21 and 22
 
 - **Your properties:** an owned property's panel has "Go inside". Each has its own room (a walk-up's

@@ -3,6 +3,7 @@ import { isPointInWater, isPointOnWindhavenLand } from './geometry';
 import { distancePointToSegment } from './layout';
 import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel, type BridgeRecord, type MapDistrictRecord, type RailLineRecord, type RoadPath, type WindhavenMapModel, roadLandSegments } from './mapModel';
 import { nearestMapPlace, type MapPlaceCategory, type MapPlaceRecord } from './places';
+import { TRAIN_HALF_LENGTH } from './rollingStock';
 
 export interface MapPointContext {
   point: Point;
@@ -202,7 +203,8 @@ export function trainCrossingBlockAtPoint(point: Point, timeMs: number, radius =
     });
   });
   return candidates.find(function(candidate): boolean {
-    const trainNearCrossing = Math.abs(candidate.train.point.y - candidate.point.y) <= Math.max(96, candidate.rail.width * 2);
+    // LEGAL: Anywhere along the train, not just near its middle: the back wagons block the road too.
+    const trainNearCrossing = Math.abs(candidate.train.point.y - candidate.point.y) <= TRAIN_HALF_LENGTH + candidate.rail.width;
     return trainNearCrossing && candidate.distance <= radius + candidate.rail.width / 2 + candidate.road.width / 2;
   }) ?? null;
 }

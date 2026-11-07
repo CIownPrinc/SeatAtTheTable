@@ -4,6 +4,7 @@ import type { MapNpc } from './markers';
 import { createMapPlaceRecords } from './places';
 import { activeTrainSnapshot, bridgeAtPoint, isPointOnPlayableLand, mapPointContext, nearestPlaceAtPoint, placesByCategory, projectPointToRoad, routeHintBetween, routeSummary, trainCrossingBlockAtPoint } from './queries';
 import { windhavenMapModel } from './mapModel';
+import { TRAIN_HALF_LENGTH } from './rollingStock';
 import { widenAuthoredX } from './world';
 
 // LEGAL: World x values here are authored against the original 1500-wide districts and
@@ -105,5 +106,16 @@ describe('map gameplay queries', function () {
     expect(activeTrainSnapshot(inactiveTime, rail)).toBeNull();
     expect(trainCrossingBlockAtPoint({ x:wx(3470), y:600 }, crossingTime)?.road.name).toBe('Roosevelt Road');
     expect(trainCrossingBlockAtPoint({ x:wx(3470), y:600 }, inactiveTime)).toBeNull();
+  });
+
+  // LEGAL: Only a stretch round the train's middle used to block a crossing, so you could drive
+  // LEGAL: through its last wagons.
+  it('keeps a crossing blocked until the last wagon has passed it', function () {
+    const rail = windhavenMapModel.railLines[0];
+    const lineLength = rail.path[rail.path.length - 1].y - rail.path[0].y;
+    const timeWithCentreAt = (y: number) => (rail.activeWindow.start + (y - rail.path[0].y) / lineLength * (rail.activeWindow.end - rail.activeWindow.start)) * rail.trainCycleMs;
+    const crossing = { x:wx(3470), y:600 };
+    expect(trainCrossingBlockAtPoint(crossing, timeWithCentreAt(600 + TRAIN_HALF_LENGTH - 10))?.road.name).toBe('Roosevelt Road');
+    expect(trainCrossingBlockAtPoint(crossing, timeWithCentreAt(600 + TRAIN_HALF_LENGTH + 200))).toBeNull();
   });
 });

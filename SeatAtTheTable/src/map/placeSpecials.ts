@@ -2,6 +2,7 @@ import type * as ThreeNamespace from 'three';
 import type { Solid } from '../config/types';
 import type { PlaceModelName } from '../world/assets/places';
 import { addPlaceModel, localMaterials, placeModel } from './placeModels';
+import { RAILYARD_GATE, buildRailyard, railyardSolids } from './railyard';
 
 // LEGAL: Places that are one of a kind and were drawn with a generic shell: the airfield, the docks
 // LEGAL: and the railyard all got the same fenced yard with a hut and two containers, the drive-in
@@ -71,31 +72,10 @@ const SPECIALS: Record<string, Special> = {
       return g;
     },
   },
-  // LEGAL: Three tracks with their sleepers, a rake of freight wagons and the signal hut.
+  // LEGAL: The railyard beside the freight line (map/railyard), round its gate.
   railyard:{
-    // LEGAL: The wagons stand on the back track, so the yard's middle stays open to walk into.
-    solids:[{ x:-10, y:-22, hw:44, hd:6 }, { x:44, y:30, hw:7, hd:6 }],
-    build(THREE){
-      const g = new THREE.Group(); const add = kit(THREE, g);
-      add(flat(THREE, 118, 86), '#5a5248', 0, 0.14, 0);
-      for(const z of [-36, -22, -8]){
-        for(let x = -56; x <= 56; x += 5) add(new THREE.BoxGeometry(1.4, 0.6, 9), '#4a3a2a', x, 0.3, z);
-        for(const side of [-1, 1]) add(new THREE.BoxGeometry(116, 0.7, 0.7), '#8f949c', 0, 0.9, z + side * 3);
-      }
-      const wagons = ['#7a3b2a', '#3e5a6a', '#7a3b2a', '#5a5a3a'];
-      wagons.forEach(function(color, i){
-        const x = -40 + i * 22;
-        add(new THREE.BoxGeometry(20, 11, 8.6), color, x, 7.8, -22);
-        add(new THREE.BoxGeometry(20.4, 0.8, 9), '#2a2a2a', x, 13.6, -22);
-        for(const dx of [-6, 6]) add(new THREE.CylinderGeometry(1.6, 1.6, 9.6, 10), '#1a1a1a', x + dx, 1.6, -22, { rot:[Math.PI / 2, 0, 0] });
-      });
-      add(new THREE.BoxGeometry(14, 12, 12), '#8a7a62', 44, 6, 30);
-      add(new THREE.BoxGeometry(16, 1.4, 14), '#4a4038', 44, 12.7, 30);
-      add(new THREE.CylinderGeometry(0.5, 0.5, 18, 6), '#2a2a2a', 28, 9, 16);
-      add(new THREE.BoxGeometry(2.4, 5, 2), '#1a1a1a', 28, 18, 16);
-      add(new THREE.SphereGeometry(0.8, 8, 6), '#ff3030', 28, 19.4, 17.1, { emissive:'#ff2020' });
-      return g;
-    },
+    solids:railyardSolids().map(s => ({ ...s, x:s.x - RAILYARD_GATE.x, y:s.y - RAILYARD_GATE.y })),
+    build:buildRailyard,
   },
   // LEGAL: The drive-in: a big screen on its frame facing rows of parking humps, the projection booth
   // LEGAL: in the middle and a snack bar to one side.
@@ -164,7 +144,7 @@ const SPECIALS: Record<string, Special> = {
 
 // LEGAL: Each place's Blender model (art/blender/places.py), which replaces its shapes above once loaded.
 const MODELS: Record<string, PlaceModelName> = {
-  airfieldKettle:'airfield', docksDockmaster:'docks', railyard:'railyard', driveInBoundary:'drive-in', lodgeRidgewood:'lodge', motelSunset:'motel',
+  airfieldKettle:'airfield', docksDockmaster:'docks', driveInBoundary:'drive-in', lodgeRidgewood:'lodge', motelSunset:'motel',
 };
 
 export function specialPlace(id: string): Special | null {

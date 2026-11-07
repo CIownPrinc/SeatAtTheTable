@@ -185,8 +185,8 @@ every test. Locally, `.tmp-assets/` (ignored Kenney zips) can be deleted by hand
 Every request the player made while playing, word for word in intent, so none get lost.
 Status: **DONE** shipped and verified · **PART** partly done (what's left is noted) · open.
 
-**Pick up here (end of 2026-10-22):** everything is committed and pushed; the working tree is clean.
-Next, in order: the railyard beside the freight line at real size (110), then parking lots and
+**Pick up here (2026-11-07):** the railyard is done (110). Next, in order: the rest of 110 (the
+countryside places at real size: motel, airfield, drive-in, docks, lodge), then parking lots and
 pedestrian and traffic pathfinding (163), then the order below. The amenity crash (111) is parked
 by the player. Player's guidance from this session: work faster without dropping the checks (run
 slow e2e in the background, check in batches, shorter updates); cars only slightly smaller than
@@ -588,6 +588,15 @@ old one.
      lakes here and there (user, 2026-10-20).
 110. The railyard isn't to scale and isn't near the rails. Standing rule for every new place and every
      old one reviewed: placement, proportions, and the inside matching the outside (user, 2026-10-20).
+     **PART** (2026-11-07): the railyard is DONE. It now sits beside the freight line south of the West
+     Side, gate on the Ring Road: a lead off the main line, three sidings with buffer stops, a switching
+     engine and wagons at real size (14.5 m by 4.2 m), a loading dock, containers, floodlights, a
+     fence, and a 12 by 8 m yard office sized for its room (map/railyard). The line's train was 1.7 m
+     tall; it's now a locomotive and four of the same wagons (map/rollingStock), and a level crossing
+     stays shut until its last wagon has passed (it only covered the train's middle). Still to do under
+     this rule: the other one-of-a-kind countryside places are built at the same old tiny scale. The
+     motel is 1.7 m tall, the airfield's hangar about 4 m across and the drive-in screen 4.4 m high,
+     and the docks and the lodge need the same check.
 111. **PARKED** (player, 2026-10-22: "ignore amenity crash for now") Playing any amenity game crashes the game (user, 2026-10-20). Couldn't reproduce a
      crash, headless or in a real Chrome: both games play through cleanly and the map keeps running.
      What did happen: when a game ended its window vanished with no result (the line was too minor for

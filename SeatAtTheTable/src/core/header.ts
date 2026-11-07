@@ -30,6 +30,7 @@ import { MALL_ROOM, MALL_SPOTS, MALL_UPPER_SPOTS } from '../map/mallInterior';
 import { MALL_BODY, buildMall, mallSolids } from '../map/mall';
 import { buildCentralPark, centralParkSolids } from '../map/centralPark';
 import { specialPlace, specialPlaceSolids } from '../map/placeSpecials';
+import { LINE_TRAIN, TRAIN_HALF_LENGTH, TRAIN_HALF_WIDTH, WAGON_COLOURS, buildCar, carOffsets } from '../map/rollingStock';
 import { buildSuburb, suburbSolids } from '../map/suburb';
 import { renderRoamingActors } from '../map/actorRendering';
 import { createAmenityModal, mapAmenities } from '../map/amenities';
@@ -6313,21 +6314,18 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: Transient "dealer pulling up" animation — a figure walks in from the street
   // LEGAL: to the corner over ~1.5s when you post a dealer. It is cleared on the next
   // LEGAL: scene rebuild, which re-adds the dealer as a permanent standing figure.
+  // LEGAL: A locomotive and four wagons at real size (map/rollingStock), the same wagons the railyard has.
+  const lineTrainOffsets = carOffsets(LINE_TRAIN);
   function buildTrain(): void {
     if(!worldGroup) return;
     if(trainGroup){ worldGroup.remove(trainGroup); trainGroup.traverse(disposeObj); }
     trainGroup = new THREE.Group();
     trainGroup.name = 'train:el';
-    const bodyMat = new THREE.MeshStandardMaterial({color:'#9b2f2f', roughness:0.62, metalness:0.12});
-    const roofMat = new THREE.MeshStandardMaterial({color:'#d8c078', roughness:0.45, metalness:0.18});
-    for(let i=0;i<4;i++){
-      const car = new THREE.Mesh(new THREE.BoxGeometry(28,18,58), bodyMat);
-      car.position.set(0,10,-96+i*64);
-      car.castShadow=true; car.receiveShadow=true; trainGroup.add(car);
-      const roof = new THREE.Mesh(new THREE.BoxGeometry(24,4,48), roofMat);
-      roof.position.set(0,21,-96+i*64);
-      roof.castShadow=true; trainGroup.add(roof);
-    }
+    LINE_TRAIN.forEach(function(kind, i){
+      const car = buildCar(THREE, kind, WAGON_COLOURS[i % WAGON_COLOURS.length]);
+      car.position.z = lineTrainOffsets[i];
+      trainGroup!.add(car);
+    });
     const rail = windhavenMapModel.railLines[0];
     trainGroup.position.set(rail.path[0].x,0,-260);
     worldGroup.add(trainGroup);
@@ -6342,9 +6340,11 @@ import type * as ThreeNamespace from 'three';
     if(!snapshot) return;
     trainGroup.position.x = snapshot.point.x;
     trainGroup.position.z = snapshot.point.y;
-    // LEGAL: Up on the lake bridge and its approaches.
+    // LEGAL: Each car up on the lake bridge and its approaches on its own, so a long train bends over
+    // LEGAL: the ramp instead of floating off it.
     const rail = windhavenMapModel.railLines[0];
-    trainGroup.position.y = railHeightAt(rail, Math.hypot(snapshot.point.x - rail.path[0].x, snapshot.point.y - rail.path[0].y));
+    const along = Math.hypot(snapshot.point.x - rail.path[0].x, snapshot.point.y - rail.path[0].y);
+    trainGroup.children.forEach(function(car, i){ car.position.y = railHeightAt(rail, along + lineTrainOffsets[i]); });
   }
 
   // LEGAL: Dealers walking onto or off a corner. Each walk goes from (sx, sy) to (tx, ty); a dealer
@@ -7239,8 +7239,6 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: ---- Moving solids: traffic and the train ----
   // LEGAL: Rebuilt once a frame. Each traffic car's velocity is measured from how far it moved,
   // LEGAL: so being run over depends on what the car actually did, not what it meant to do.
-  const TRAIN_HALF_LENGTH = 125;
-  const TRAIN_HALF_WIDTH = 15;
   let movingObstacles: Array<{ obstacle: Obstacle; velocity: { x: number; y: number } }> = [];
   const lastTrafficPosition = new Map<string, { x: number; y: number }>();
   function updateMovingObstacles(dt: number): void {
