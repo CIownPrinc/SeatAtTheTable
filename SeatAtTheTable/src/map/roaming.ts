@@ -1,5 +1,6 @@
-import { CITY_JUNCTIONS, trafficRoutes, walkerRoutes } from './traffic';
+import { CITY_JUNCTIONS, trafficRoutes, type RouteMark, type TrafficRoute } from './traffic';
 import { blockerPace, followingPace, signalPace, type RoadBlocker } from './trafficRules';
+import { nearestPavementNode, pavementGraph, pavementPath, safeToCross } from './pavements';
 
 // LEGAL: Enough that a street is rarely empty; few enough that phones keep their frame rate.
 const WALKER_COUNT = 36;
@@ -32,6 +33,17 @@ export interface RoamingActor {
   pace?: number;
   // LEGAL: Off duty: not drawn, not moving, and not in anyone's way (the snow plow between snowfalls).
   dormant?: boolean;
+  // LEGAL: What to do on the way to each point of the route (map/traffic RouteMark), by index.
+  marks?: Array<RouteMark | undefined>;
+  // LEGAL: Standing still until this time: parked in a bay, or waiting at the kerb.
+  waitUntil?: number;
+  // LEGAL: Out on a crossing, so cars stop for them.
+  crossing?: boolean;
+  // LEGAL: A walker finding its way along the pavements (map/pavements): the corner it's heading for,
+  // LEGAL: and how many trips it has made, to pick the next place to go.
+  pavement?: { goal: number; trips: number };
+  // LEGAL: When a walker found every way forward blocked.
+  boxedSince?: number;
 }
 
 export interface RoamingUpdateOptions {
@@ -52,7 +64,50 @@ function roamSeed(id: string): number {
   return seed;
 }
 
-export function createRoamingActors(mapObjects: MapObject[]): RoamingActor[] {
+// LEGAL: A fresh trip along the pavements from the corner nearest a walker to somewhere a few streets
+// LEGAL: away, chosen from its id and how many trips it has made, so it's the same every session.
+function planWalk(actor: RoamingActor): void {
+  const graph = pavementGraph();
+  const from = nearestPavementNode(graph, actor);
+  const trips = (actor.pavement?.trips ?? 0) + 1;
+  const rand = seededRandom(roamSeed(actor.id) + trips * 7919);
+  let steps = pavementPath(graph, from, from);
+  for(let i = 0; i < 6 && steps.length < 3; i++) steps = pavementPath(graph, from, Math.floor(rand() * graph.nodes.length));
+  if(steps.length === 0) steps = graph.links[from].map(e => graph.edges[e]).slice(0, 1).map(edge => ({ to:edge.a === from ? edge.b : edge.a, crossing:edge.crossing }));
+  const start = graph.nodes[from];
+  actor.route = [{ x:start.x, y:start.y }, ...steps.map(step => ({ x:graph.nodes[step.to].x, y:graph.nodes[step.to].y }))];
+  actor.marks = [undefined, ...steps.map(step => (step.crossing ? { crossing:step.crossing } : undefined))];
+  actor.routeIndex = 0;
+  actor.targetX = start.x; actor.targetY = start.y;
+  actor.pavement = { goal:steps.length ? steps[steps.length - 1].to : from, trips };
+}
+
+// LEGAL: A traffic car driving its route from the start.
+export function carActor(route: TrafficRoute): RoamingActor {
+  const start = route.route[0];
+  const target = route.route[1];
+  return {
+    id: route.id,
+    kind: 'car',
+    x: start.x,
+    y: start.y,
+    homeX: start.x,
+    homeY: start.y,
+    targetX: target.x,
+    targetY: target.y,
+    radius: 0,
+    speed: route.speed,
+    color: route.color,
+    facing: Math.atan2(target.y - start.y, target.x - start.x),
+    group: null,
+    route: route.route,
+    routeIndex: 1,
+    dormant: route.id.startsWith('snowplow'),
+    marks: route.marks,
+  };
+}
+
+export function createRoamingActors(mapObjects: MapObject[], errands: TrafficRoute[] = []): RoamingActor[] {
   const actors: RoamingActor[] = [];
   mapObjects.filter(o=>o.kind==='npc' || o.kind==='gangnpc').forEach(function(object){
     const isGang = object.kind === 'gangnpc';
@@ -78,36 +133,19 @@ export function createRoamingActors(mapObjects: MapObject[]): RoamingActor[] {
     });
   });
   // LEGAL: The background crowd: no name, no mission, just people walking round the block.
-  walkerRoutes(WALKER_COUNT).forEach(function(walker){
-    const start = walker.route[0], next = walker.route[1];
-    actors.push({
-      id: walker.id, kind: 'pedestrian', x: start.x, y: start.y, homeX: start.x, homeY: start.y,
-      targetX: next.x, targetY: next.y, radius: 0, speed: walker.speed, color: '', facing: Math.atan2(next.y - start.y, next.x - start.x),
-      group: null, route: walker.route, routeIndex: 1,
-    });
-  });
-  trafficRoutes().forEach(function(route){
-    const start = route.route[0];
-    const target = route.route[1];
-    actors.push({
-      id: route.id,
-      kind: 'car',
-      x: start.x,
-      y: start.y,
-      homeX: start.x,
-      homeY: start.y,
-      targetX: target.x,
-      targetY: target.y,
-      radius: 0,
-      speed: route.speed,
-      color: route.color,
-      facing: Math.atan2(target.y - start.y, target.x - start.x),
-      group: null,
-      route: route.route,
-      routeIndex: 1,
-      dormant: route.id.startsWith('snowplow'),
-    });
-  });
+  const graph = pavementGraph();
+  const crowd = seededRandom(9091);
+  for(let n = 0; n < WALKER_COUNT; n++){
+    const start = graph.nodes[Math.floor(crowd() * graph.nodes.length)];
+    const walker: RoamingActor = {
+      id: `walker-${n}`, kind: 'pedestrian', x: start.x, y: start.y, homeX: start.x, homeY: start.y,
+      targetX: start.x, targetY: start.y, radius: 0, speed: 22 + crowd() * 14, color: '', facing: 0,
+      group: null, routeIndex: 0, pavement: { goal:0, trips:0 },
+    };
+    planWalk(walker);
+    actors.push(walker);
+  }
+  [...trafficRoutes(), ...errands].forEach(route => actors.push(carActor(route)));
   return actors;
 }
 
@@ -168,11 +206,20 @@ function choosePedestrianTarget(actor: RoamingActor, playSeconds: number, canMov
 }
 
 function moveActorToward(actor: RoamingActor, options: RoamingUpdateOptions): void {
+  if(actor.waitUntil !== undefined){
+    if(options.playSeconds < actor.waitUntil) return;
+    actor.waitUntil = undefined;
+  }
   const dx = actor.targetX - actor.x;
   const dy = actor.targetY - actor.y;
   const dist = Math.hypot(dx, dy);
+  const mark = actor.marks?.[actor.routeIndex];
   if(dist < 5){
-    if(actor.route && actor.route.length > 1){
+    actor.crossing = false;
+    if(mark?.dwell) actor.waitUntil = options.playSeconds + mark.dwell;
+    if(actor.pavement && actor.route && actor.routeIndex >= actor.route.length - 1){
+      planWalk(actor);
+    } else if(actor.route && actor.route.length > 1){
       actor.routeIndex = (actor.routeIndex + 1) % actor.route.length;
       const next = actor.route[actor.routeIndex];
       actor.targetX = next.x;
@@ -182,10 +229,21 @@ function moveActorToward(actor: RoamingActor, options: RoamingUpdateOptions): vo
     }
     return;
   }
-  const step = Math.min(dist, actor.speed * (actor.pace ?? 1) * options.dt);
+  // LEGAL: At the kerb, a walker waits for the lights, facing the way it's going.
+  if(mark?.crossing && !actor.crossing){
+    actor.facing = Math.atan2(dy, dx);
+    if(!safeToCross(mark.crossing, options.playSeconds, dist / actor.speed)) return;
+    actor.crossing = true;
+  }
+  const step = Math.min(dist, actor.speed * (actor.pace ?? 1) * (mark?.slow ?? 1) * options.dt);
   const nx = actor.x + dx / dist * step;
   const ny = actor.y + dy / dist * step;
-  actor.facing = Math.atan2(dy, dx);
+  // LEGAL: Backing out of a bay: it moves toward the point with its nose the other way.
+  actor.facing = mark?.reverse ? Math.atan2(-dy, -dx) : Math.atan2(dy, dx);
+  if(actor.pavement){
+    stepAlongPavement(actor, dx / dist, dy / dist, step, options);
+    return;
+  }
   if(actor.kind === 'car' || options.canMove(nx, ny)){
     actor.x = nx;
     actor.y = ny;
@@ -205,6 +263,31 @@ function moveActorToward(actor: RoamingActor, options: RoamingUpdateOptions): vo
   }
 }
 
+// LEGAL: A walker on the pavement steers round what's in the way (a street tree's trunk, a bench)
+// LEGAL: by turning a little off its line, and finds another way if it's boxed in for a moment.
+const STEER = [0, 0.6, -0.6, 1.1, -1.1, 1.5, -1.5];
+const BOXED_IN_SECONDS = 1.5;
+function stepAlongPavement(actor: RoamingActor, ux: number, uy: number, step: number, options: RoamingUpdateOptions): void {
+  for(const turn of STEER){
+    const c = Math.cos(turn), s = Math.sin(turn);
+    const vx = ux * c - uy * s, vy = ux * s + uy * c;
+    const nx = actor.x + vx * step, ny = actor.y + vy * step;
+    // LEGAL: Out on the crossing there's nothing to steer round but traffic, which stops for them.
+    if(!actor.crossing && !options.canMove(nx, ny)) continue;
+    actor.x = nx; actor.y = ny;
+    actor.facing = Math.atan2(vy, vx);
+    actor.boxedSince = undefined;
+    return;
+  }
+  actor.boxedSince ??= options.playSeconds;
+  if(options.playSeconds - actor.boxedSince > BOXED_IN_SECONDS){
+    actor.boxedSince = undefined;
+    const free = options.rescue?.(actor.x, actor.y);
+    if(free){ actor.x = free.x; actor.y = free.y; }
+    planWalk(actor);
+  }
+}
+
 // LEGAL: Red lights and the car in front set how fast each car may go this frame.
 function updateCarPace(actors: RoamingActor[], options: RoamingUpdateOptions): void {
   const cars = actors.filter(actor => actor.kind === 'car' && !actor.dormant);
@@ -221,7 +304,9 @@ function updateCarPace(actors: RoamingActor[], options: RoamingUpdateOptions): v
 
 export function updateRoamingActors(actors: RoamingActor[], options: RoamingUpdateOptions): void {
   if(options.indoors) return;
-  updateCarPace(actors, options);
+  // LEGAL: Cars stop for anyone out on a crossing, as well as for you.
+  const walkers = actors.filter(actor => actor.crossing).map(actor => ({ x:actor.x, y:actor.y, radius:6 }));
+  updateCarPace(actors, walkers.length ? { ...options, blockers:[...(options.blockers ?? []), ...walkers] } : options);
   actors.forEach(function(actor){
     if(actor.group) actor.group.visible = !actor.dormant;
     if(actor.dormant) return;

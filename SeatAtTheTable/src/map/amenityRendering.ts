@@ -94,11 +94,25 @@ function buildNewsstand(THREE: typeof ThreeNamespace, amenity: MapAmenity, helpe
   return g;
 }
 
+function buildRunBoard(THREE: typeof ThreeNamespace, amenity: MapAmenity, helpers: AmenityRenderHelpers): ThreeNamespace.Group {
+  const g = new THREE.Group();
+  const add = (w: number, h: number, d: number, color: string, x: number, y: number, z: number) => { const m = helpers.box(w, h, d, color); m.position.set(x, y, z); g.add(m); return m; };
+  add(1.6, 16, 1.6, '#4a3624', -8, 8, 0);
+  add(1.6, 16, 1.6, '#4a3624', 8, 8, 0);
+  add(18, 10, 1, '#2b3a30', 0, 12, 0.4);
+  for(let i = 0; i < 4; i++) add(10 - i * 1.5, 0.6, 0.2, '#e8e6dc', -2 + i * 0.6, 15.5 - i * 2.2, 1);
+  helpers.addSign(g, amenity.name, 34, 6, 22, '#d8f0c8');
+  return g;
+}
+
 // LEGAL: Every amenity is built standing on the ground at its origin, so they all place the same way.
 export function buildAmenityModel(THREE: typeof ThreeNamespace, amenity: MapAmenity, helpers: AmenityRenderHelpers): ThreeNamespace.Group {
   if(amenity.kind === 'basketball') return buildBasketballCourt(THREE, amenity, helpers);
   if(amenity.kind === 'parkgame') return buildParkGameSpot(THREE, amenity, helpers);
   if(amenity.kind === 'shop') return buildNewsstand(THREE, amenity, helpers);
+  // LEGAL: The park draws its bandstand (map/centralPark); the loop gets a chalkboard of times.
+  if(amenity.kind === 'bandstand') return new THREE.Group();
+  if(amenity.kind === 'parkrun') return buildRunBoard(THREE, amenity, helpers);
   // LEGAL: The pet store is a shopfront like the other shops, with a green awning over the window.
   const g = new THREE.Group();
   const h = 22;

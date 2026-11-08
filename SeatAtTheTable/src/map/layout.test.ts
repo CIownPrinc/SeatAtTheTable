@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { businesses } from '../config/ventures';
-import { amenityHasSolidFootprint, mapAmenities } from './amenities';
+import { PARK_AMENITY_IDS, amenityHasSolidFootprint, mapAmenities } from './amenities';
 import { buildableBands, localXForDistrict, rectsOverlap, rotatedHalfExtents } from './layout';
 import { districtIdAtPlayablePoint } from './mapModel';
 import { isPointOnPlayableLand } from './queries';
@@ -50,7 +50,7 @@ describe('map layout helpers', function () {
     // LEGAL: The road grid only exists inside the districts, so a lot out in the outskirts
     // LEGAL: is not near a road by construction and the clearance check does not apply.
     // LEGAL: Those lots are covered instead by the land and overlap checks below.
-    const outskirtIds = new Set(Object.keys(OUTSKIRT_PLACE_LOTS));
+    const outskirtIds = new Set([...Object.keys(OUTSKIRT_PLACE_LOTS), ...PARK_AMENITY_IDS]);
     const lots = [
       ...Object.entries(namedBuildingLots).filter(([id]) => !outskirtIds.has(id)).map(([, lot]) => lot),
       ...Object.values(ventureLots).flat(),
@@ -171,7 +171,7 @@ describe('map layout helpers', function () {
     // LEGAL: makes them a drive rather than a stroll. They still have to be on solid ground,
     // LEGAL: which is the invariant that actually matters, so they are checked for that
     // LEGAL: instead of for district membership.
-    const outskirtIds = new Set(Object.keys(OUTSKIRT_PLACE_LOTS));
+    const outskirtIds = new Set([...Object.keys(OUTSKIRT_PLACE_LOTS), ...PARK_AMENITY_IDS]);
     [...serviceCopies, ...localCopies, ...cornerCopies, ...recruitCopies, ...mapAmenities].forEach(function(item){
       if(outskirtIds.has(item.id)){
         expect(isPointOnPlayableLand({ x:item.x, y:item.y }, 16), `${item.id} should stand on solid ground`).toBe(true);
@@ -214,7 +214,7 @@ describe('map layout helpers', function () {
     applyMapWorldCoordinates(localCopies, allocateServiceLots().placed);
 
     // LEGAL: Outskirt places sit beyond the district road grid; the roads do not reach them.
-    const outskirtIds = new Set(Object.keys(OUTSKIRT_PLACE_LOTS));
+    const outskirtIds = new Set([...Object.keys(OUTSKIRT_PLACE_LOTS), ...PARK_AMENITY_IDS]);
     [...serviceCopies, ...localCopies].filter(place => !outskirtIds.has(place.id)).forEach(function(place){
       roadNetwork.vertical.forEach(function(road){
         expect(Math.abs(place.x - road.x), `${place.id} sits on ${road.name}`).toBeGreaterThan(road.w / 2);
@@ -326,6 +326,6 @@ describe('map layout helpers', function () {
     const walkableKinds = new Set(mapAmenities.filter(a=>!amenityHasSolidFootprint(a.kind)).map(a=>a.kind));
 
     expect(solidKinds).toEqual(new Set(['petstore', 'shop']));
-    expect(walkableKinds).toEqual(new Set(['basketball', 'parkgame']));
+    expect(walkableKinds).toEqual(new Set(['basketball', 'parkgame', 'bandstand', 'parkrun']));
   });
 });

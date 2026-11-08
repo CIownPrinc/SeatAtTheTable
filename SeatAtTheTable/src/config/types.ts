@@ -145,7 +145,7 @@ export interface LocalBusiness {
   nextRobAt: number;
 }
 
-export type MapAmenityKind = 'basketball' | 'petstore' | 'shop' | 'parkgame';
+export type MapAmenityKind = 'basketball' | 'petstore' | 'shop' | 'parkgame' | 'bandstand' | 'parkrun';
 
 export interface MapAmenity {
   id: string;

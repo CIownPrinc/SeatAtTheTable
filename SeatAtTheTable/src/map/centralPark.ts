@@ -5,36 +5,49 @@ import { addInstancedMesh, type SceneInstance } from './scenePerformance';
 import { TREE_SCALE } from './scale';
 import { instancedTrees, treeShape } from './treeModels';
 
-// LEGAL: Central Park, where Cicero Avenue, Pulaski Road and Canal Yard Drive end on the city's
-// LEGAL: south edge. Ridgewood Lane runs down the middle of it, so it's two halves: the west one
-// LEGAL: round a big pond with a fountain, the east one a lawn with flower beds and a bandstand.
-// LEGAL: The layout is plain data so the drawing and the collision read the same trees.
+// LEGAL: Grunt Park (the city's Grant Park, with its Duckingham Fountain), at the south end of Canal
+// LEGAL: Yard Drive, west of Ridgewood Lane. It was two long strips either side of the lane, 1.3 km of
+// LEGAL: lawn with a path across the pond and water you could walk on (TODO 112). Now one park: the
+// LEGAL: pond and fountain in the west, the bandstand and the chess tables in the east, a loop round
+// LEGAL: the edge to run, and a path down the middle. The layout is plain data so the drawing and
+// LEGAL: the collision read the same trees. The code keeps the CENTRAL_PARK names it has always had.
 export interface ParkRect { x0: number; x1: number; y0: number; y1: number }
 export interface ParkTree { x: number; y: number; size: number }
 
-export const CENTRAL_PARK: ParkRect[] = [
-  { x0:2900, x1:3546, y0:1275, y1:1500 },
-  { x0:3624, x1:4250, y0:1275, y1:1500 },
-];
+export const PARK_NAME = 'Grunt Park';
+export const FOUNTAIN_NAME = 'Duckingham Fountain';
+export const CENTRAL_PARK: ParkRect[] = [{ x0:2900, x1:3546, y0:1275, y1:1530 }];
+const PARK = CENTRAL_PARK[0];
 const PATH_W = 12;
-export const CENTRAL_POND = { x:3200, y:1395, rx:150, ry:62 };
-export const BANDSTAND = { x:4030, y:1390, r:22 };
+const INSET = 16;
+export const CENTRAL_POND = { x:3115, y:1402, rx:150, ry:70 };
+export const BANDSTAND = { x:3440, y:1350, r:22 };
+// LEGAL: Where the chess tables and the run's start board stand (map/amenities).
+export const PARK_CHESS = { x:3440, y:1455 };
+export const PARK_RUN_BOARD = { x:3492, y:1322 };
+const MIDDLE_PATH_X = 3330;
 
-// LEGAL: The walks: one round each half and one across it, east to west.
 export function parkPaths(): ParkRect[] {
-  return CENTRAL_PARK.flatMap(function(p){
-    const i = 16;
-    return [
-      { x0:p.x0 + i, x1:p.x1 - i, y0:p.y0 + i, y1:p.y0 + i + PATH_W },
-      { x0:p.x0 + i, x1:p.x1 - i, y0:p.y1 - i - PATH_W, y1:p.y1 - i },
-      { x0:p.x0 + i, x1:p.x0 + i + PATH_W, y0:p.y0 + i, y1:p.y1 - i },
-      { x0:p.x1 - i - PATH_W, x1:p.x1 - i, y0:p.y0 + i, y1:p.y1 - i },
-      { x0:p.x0 + i, x1:p.x1 - i, y0:(p.y0 + p.y1) / 2 - PATH_W / 2, y1:(p.y0 + p.y1) / 2 + PATH_W / 2 },
-    ];
-  });
+  const p = PARK, i = INSET;
+  return [
+    { x0:p.x0 + i, x1:p.x1 - i, y0:p.y0 + i, y1:p.y0 + i + PATH_W },
+    { x0:p.x0 + i, x1:p.x1 - i, y0:p.y1 - i - PATH_W, y1:p.y1 - i },
+    { x0:p.x0 + i, x1:p.x0 + i + PATH_W, y0:p.y0 + i, y1:p.y1 - i },
+    { x0:p.x1 - i - PATH_W, x1:p.x1 - i, y0:p.y0 + i, y1:p.y1 - i },
+    { x0:MIDDLE_PATH_X - PATH_W / 2, x1:MIDDLE_PATH_X + PATH_W / 2, y0:p.y0 + i, y1:p.y1 - i },
+  ];
 }
 
-export const FLOWER_BEDS = [{ x:3800, y:1340, r:18 }, { x:3800, y:1440, r:18 }, { x:3700, y:1390, r:14 }];
+// LEGAL: The run: twice round the loop, touching each corner of it, starting from the board.
+export function parkRunCheckpoints(): Point[] {
+  const p = PARK, c = INSET + PATH_W / 2;
+  const corners = [{ x:p.x1 - c, y:p.y0 + c }, { x:p.x1 - c, y:p.y1 - c }, { x:p.x0 + c, y:p.y1 - c }, { x:p.x0 + c, y:p.y0 + c }];
+  return [...corners, ...corners, corners[0]];
+}
+export const PARK_RUN_RADIUS = 30;
+export const PARK_RUN_LIMIT = 34;
+
+export const FLOWER_BEDS = [{ x:3392, y:1402, r:14 }, { x:3490, y:1402, r:14 }, { x:3250, y:1300 + 22, r:10 }];
 
 function seeded(seed: number): () => number {
   let s = seed >>> 0;
@@ -50,45 +63,78 @@ export function inPond(point: Point, margin = 0): boolean {
   return dx * dx + dy * dy < 1;
 }
 
+export function inPark(point: Point): boolean {
+  return CENTRAL_PARK.some(r => nearRect(point, r, 0));
+}
+
+function clearOfFeatures(point: Point, margin: number): boolean {
+  if(inPond(point, margin)) return false;
+  // LEGAL: The bandstand and the chess tables stand in open lawn, to be seen from the paths.
+  if(Math.hypot(point.x - BANDSTAND.x, point.y - BANDSTAND.y) < BANDSTAND.r + margin + 30) return false;
+  if(FLOWER_BEDS.some(bed => Math.hypot(point.x - bed.x, point.y - bed.y) < bed.r + margin)) return false;
+  if(Math.abs(point.x - PARK_CHESS.x) < 29 + margin + 20 && Math.abs(point.y - PARK_CHESS.y) < 18 + margin + 20) return false;
+  return Math.hypot(point.x - PARK_RUN_BOARD.x, point.y - PARK_RUN_BOARD.y) > 12 + margin;
+}
+
 let cachedTrees: ParkTree[] | null = null;
 export function parkTrees(): ParkTree[] {
   if(cachedTrees) return cachedTrees;
   const random = seeded(7717);
   const paths = parkPaths();
   const trees: ParkTree[] = [];
-  CENTRAL_PARK.forEach(function(p){
-    for(let attempt = 0; attempt < 900 && trees.length < 90; attempt++){
-      const point = { x:p.x0 + 12 + random() * (p.x1 - p.x0 - 24), y:p.y0 + 12 + random() * (p.y1 - p.y0 - 24) };
-      if(paths.some(path => nearRect(point, path, 12))) continue;
-      if(inPond(point, 18)) continue;
-      if(Math.hypot(point.x - BANDSTAND.x, point.y - BANDSTAND.y) < BANDSTAND.r + 26) continue;
-      if(FLOWER_BEDS.some(bed => Math.hypot(point.x - bed.x, point.y - bed.y) < bed.r + 16)) continue;
-      if(trees.some(t => Math.hypot(t.x - point.x, t.y - point.y) < 30)) continue;
-      trees.push({ ...point, size:(0.85 + random() * 0.45) * TREE_SCALE });
-    }
-  });
+  const p = PARK;
+  for(let attempt = 0; attempt < 3000 && trees.length < 60; attempt++){
+    const point = { x:p.x0 + 10 + random() * (p.x1 - p.x0 - 20), y:p.y0 + 10 + random() * (p.y1 - p.y0 - 20) };
+    if(paths.some(path => nearRect(point, path, 10))) continue;
+    if(!clearOfFeatures(point, 14)) continue;
+    if(trees.some(t => Math.hypot(t.x - point.x, t.y - point.y) < 28)) continue;
+    trees.push({ ...point, size:(0.85 + random() * 0.45) * TREE_SCALE });
+  }
   cachedTrees = trees;
   return trees;
 }
 
 export function benchSpots(): Array<Point & { rot: number }> {
+  const north = PARK.y0 + INSET + PATH_W + 6, south = PARK.y1 - INSET - PATH_W - 6;
   return [
-    { x:3080, y:1312, rot:0 }, { x:3320, y:1312, rot:0 }, { x:3080, y:1462, rot:Math.PI }, { x:3320, y:1462, rot:Math.PI },
-    { x:3760, y:1374, rot:Math.PI }, { x:3900, y:1406, rot:0 }, { x:4120, y:1312, rot:0 }, { x:3700, y:1462, rot:Math.PI },
+    { x:3040, y:north, rot:0 }, { x:3190, y:north, rot:0 }, { x:3040, y:south, rot:Math.PI }, { x:3190, y:south, rot:Math.PI },
+    { x:MIDDLE_PATH_X + 16, y:1380, rot:-Math.PI / 2 }, { x:MIDDLE_PATH_X + 16, y:1424, rot:-Math.PI / 2 }, { x:3400, y:south, rot:Math.PI },
   ];
+}
+
+// LEGAL: The pond as strips of box, together covering all of the oval: the old single box sat inside
+// LEGAL: it, so you could walk out onto the water round its edge.
+const POND_STRIPS = 10;
+export function pondSolids(): Solid[] {
+  const { x, y, rx, ry } = CENTRAL_POND;
+  return Array.from({ length:POND_STRIPS }, function(_unused, k){
+    const a = -ry + (2 * ry * k) / POND_STRIPS, b = -ry + (2 * ry * (k + 1)) / POND_STRIPS;
+    const nearest = a <= 0 && b >= 0 ? 0 : Math.min(Math.abs(a), Math.abs(b));
+    const hw = rx * Math.sqrt(Math.max(0, 1 - (nearest / ry) ** 2));
+    return { x, y:y + (a + b) / 2, hw, hd:(b - a) / 2 };
+  });
 }
 
 export function centralParkSolids(): Solid[] {
   return [
     ...parkTrees().map(t => ({ x:t.x, y:t.y, hw:4, hd:4 })),
-    // LEGAL: The pond, as the box inside its ellipse, so you walk round the water, not into it.
-    { x:CENTRAL_POND.x, y:CENTRAL_POND.y, hw:CENTRAL_POND.rx * 0.78, hd:CENTRAL_POND.ry * 0.78 },
+    ...pondSolids(),
+    { x:BANDSTAND.x, y:BANDSTAND.y, hw:BANDSTAND.r * 0.7, hd:BANDSTAND.r * 0.7 },
   ];
 }
 
 // LEGAL: Where countryside scenery must not grow.
 export function centralParkKeepClear(): Solid[] {
   return CENTRAL_PARK.map(p => ({ x:(p.x0 + p.x1) / 2, y:(p.y0 + p.y1) / 2, hw:(p.x1 - p.x0) / 2 + 12, hd:(p.y1 - p.y0) / 2 + 12 }));
+}
+
+// LEGAL: The ducks on the pond, each a spot and a heading.
+export function pondDucks(): Array<Point & { rot: number }> {
+  const random = seeded(4410);
+  return Array.from({ length:9 }, function(){
+    const angle = random() * Math.PI * 2, reach = 0.35 + random() * 0.5;
+    return { x:CENTRAL_POND.x + Math.cos(angle) * CENTRAL_POND.rx * reach, y:CENTRAL_POND.y + Math.sin(angle) * CENTRAL_POND.ry * reach, rot:random() * Math.PI * 2 };
+  });
 }
 
 export function buildCentralPark(THREE: typeof ThreeNamespace, materials: MapSceneMaterialCache, addSign: (parent: ThreeNamespace.Object3D, text: string, w: number, h: number, y: number, color: string) => void): ThreeNamespace.Group {
@@ -103,7 +149,7 @@ export function buildCentralPark(THREE: typeof ThreeNamespace, materials: MapSce
   CENTRAL_PARK.forEach(p => flat(new THREE.PlaneGeometry(p.x1 - p.x0, p.y1 - p.y0), 'terrain:park-lawn', '#3f7a3c', (p.x0 + p.x1) / 2, 0.14, (p.y0 + p.y1) / 2));
   parkPaths().forEach(r => flat(new THREE.PlaneGeometry(r.x1 - r.x0, r.y1 - r.y0), 'park:path', '#c8bb98', (r.x0 + r.x1) / 2, 0.2, (r.y0 + r.y1) / 2));
 
-  // LEGAL: The pond: a stone rim, the water, and a fountain in the middle.
+  // LEGAL: The pond: a stone rim, the water, Duckingham Fountain in the middle, and its ducks.
   const rim = flat(new THREE.CircleGeometry(1, 48), 'park:pond-rim', '#9a958a', CENTRAL_POND.x, 0.24, CENTRAL_POND.y);
   rim.scale.set(CENTRAL_POND.rx + 5, CENTRAL_POND.ry + 5, 1);
   const water = new THREE.Mesh(new THREE.CircleGeometry(1, 48), materials.standard('park:pond-water', { color:'#3f7fa8', roughness:0.15, metalness:0.1 }));
@@ -111,13 +157,24 @@ export function buildCentralPark(THREE: typeof ThreeNamespace, materials: MapSce
   water.scale.set(CENTRAL_POND.rx, CENTRAL_POND.ry, 1);
   park.add(water);
   const stone = materials.standard('park:stone', { color:'#cfc9bb', roughness:0.8 });
-  const basin = new THREE.Mesh(new THREE.CylinderGeometry(16, 18, 5, 20), stone);
-  basin.position.set(CENTRAL_POND.x, 2.5, CENTRAL_POND.y);
-  const column = new THREE.Mesh(new THREE.CylinderGeometry(3, 4, 18, 10), stone);
-  column.position.set(CENTRAL_POND.x, 9, CENTRAL_POND.y);
+  // LEGAL: Three tiers like the real one, each basin smaller and higher.
+  [[30, 5, 2.5], [18, 4, 9], [9, 3, 15]].forEach(function([r, h, y]){
+    const basin = new THREE.Mesh(new THREE.CylinderGeometry(r, r + 2, h, 24), stone);
+    basin.position.set(CENTRAL_POND.x, y, CENTRAL_POND.y);
+    park.add(basin);
+  });
+  const column = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 3.5, 16, 10), stone);
+  column.position.set(CENTRAL_POND.x, 10, CENTRAL_POND.y);
   const spray = new THREE.Mesh(new THREE.SphereGeometry(8, 12, 8), materials.standard('park:spray-water', { color:'#d8eef8', roughness:0.1, transparent:true, opacity:0.7 }));
-  spray.scale.set(1, 0.7, 1); spray.position.set(CENTRAL_POND.x, 20, CENTRAL_POND.y);
-  park.add(basin, column, spray);
+  spray.scale.set(1, 1.3, 1); spray.position.set(CENTRAL_POND.x, 25, CENTRAL_POND.y);
+  park.add(column, spray);
+  const ducks = pondDucks();
+  const duckBody = materials.standard('park:duck', { color:'#f2efe6', roughness:0.8 });
+  const duckHead = materials.standard('park:duck-head', { color:'#2f6b3a', roughness:0.6 });
+  const duckBill = materials.standard('park:duck-bill', { color:'#e8a020', roughness:0.6 });
+  addInstancedMesh(THREE, park, new THREE.SphereGeometry(2.6, 8, 6).scale(1.5, 0.8, 1), duckBody, ducks.map(d => ({ x:d.x, y:1.6, z:d.y, rotationY:d.rot })));
+  addInstancedMesh(THREE, park, new THREE.SphereGeometry(1.5, 8, 6), duckHead, ducks.map(d => ({ x:d.x + Math.cos(d.rot) * 3.2, y:3.8, z:d.y - Math.sin(d.rot) * 3.2 })));
+  addInstancedMesh(THREE, park, new THREE.BoxGeometry(1.6, 0.5, 1), duckBill, ducks.map(d => ({ x:d.x + Math.cos(d.rot) * 4.8, y:3.6, z:d.y - Math.sin(d.rot) * 4.8, rotationY:d.rot })));
 
   // LEGAL: The bandstand: a round deck, white posts and a green roof.
   const deck = new THREE.Mesh(new THREE.CylinderGeometry(BANDSTAND.r, BANDSTAND.r + 2, 4, 8), stone);
@@ -139,8 +196,9 @@ export function buildCentralPark(THREE: typeof ThreeNamespace, materials: MapSce
   const bloomColours = Object.keys(blooms);
   FLOWER_BEDS.forEach(function(bed, b){
     flat(new THREE.CircleGeometry(bed.r, 24), 'park:soil', '#5a4632', bed.x, 0.26, bed.y);
-    for(let i = 0; i < 26; i++){
-      const a = i * 2.4, rr = Math.sqrt((i + 0.5) / 26) * (bed.r - 3);
+    const count = Math.round(bed.r * 1.6);
+    for(let i = 0; i < count; i++){
+      const a = i * 2.4, rr = Math.sqrt((i + 0.5) / count) * (bed.r - 3);
       blooms[bloomColours[(i + b) % 4]].push({ x:bed.x + Math.cos(a) * rr, y:2, z:bed.y + Math.sin(a) * rr });
     }
   });
@@ -162,7 +220,7 @@ export function buildCentralPark(THREE: typeof ThreeNamespace, materials: MapSce
     addInstancedMesh(THREE, park, new THREE.SphereGeometry(13, 12, 9), crown, crowns, { cast:true });
   }
 
-  // LEGAL: Benches along the walks, and lamps at the corners of each half.
+  // LEGAL: Benches along the walks, and lamps at the corners.
   const wood = materials.standard('park:bench', { color:'#6a4a32', roughness:0.8 });
   benchSpots().forEach(function(spot){
     const bench = new THREE.Group();
@@ -177,7 +235,7 @@ export function buildCentralPark(THREE: typeof ThreeNamespace, materials: MapSce
   const lampPost = materials.standard('park:lamp-post', { color:'#2f333c', roughness:0.5, metalness:0.5 });
   const lampGlass = materials.standard('park:lamp-glass', { color:'#ffe6a0', emissive:'#ffcf70', emissiveIntensity:0.6 });
   CENTRAL_PARK.forEach(function(p){
-    for(const [x, y] of [[p.x0 + 22, p.y0 + 22], [p.x1 - 22, p.y0 + 22], [p.x0 + 22, p.y1 - 22], [p.x1 - 22, p.y1 - 22]] as const){
+    for(const [x, y] of [[p.x0 + 10, p.y0 + 10], [p.x1 - 10, p.y0 + 10], [p.x0 + 10, p.y1 - 10], [p.x1 - 10, p.y1 - 10]] as const){
       const pole = new THREE.Mesh(new THREE.CylinderGeometry(1, 1.3, 26, 6), lampPost);
       pole.position.set(x, 13, y);
       const glass = new THREE.Mesh(new THREE.SphereGeometry(3, 8, 6), lampGlass);
@@ -185,9 +243,14 @@ export function buildCentralPark(THREE: typeof ThreeNamespace, materials: MapSce
       park.add(pole, glass);
     }
   });
-  const signPost = new THREE.Group();
-  signPost.position.set(3585, 0, 1268);
-  park.add(signPost);
-  addSign(signPost, 'CENTRAL PARK', 48, 10, 18, '#a8d0a8');
+  // LEGAL: The name over the gate by Ridgewood Lane, and the fountain's own plaque by the water.
+  const gate = new THREE.Group();
+  gate.position.set(PARK.x1 - 60, 0, PARK.y0 + 6);
+  park.add(gate);
+  addSign(gate, PARK_NAME.toUpperCase(), 48, 10, 18, '#a8d0a8');
+  const plaque = new THREE.Group();
+  plaque.position.set(CENTRAL_POND.x, 0, CENTRAL_POND.y - CENTRAL_POND.ry - 12);
+  park.add(plaque);
+  addSign(plaque, FOUNTAIN_NAME.toUpperCase(), 44, 6, 8, '#e8e0c8');
   return park;
 }

@@ -28,12 +28,12 @@ import { BIKE_SEATS, seatedRider, type BikeClass } from '../map/bikeRider';
 import { isItemOwned, itemKey, itemPrice, lookPrice, ownedWardrobe, type MallShop, type WardrobeSlot } from '../config/mallShops';
 import { MALL_ROOM, MALL_SPOTS, MALL_UPPER_SPOTS } from '../map/mallInterior';
 import { MALL_BODY, buildMall, mallSolids } from '../map/mall';
-import { buildCentralPark, centralParkSolids } from '../map/centralPark';
+import { PARK_NAME, PARK_RUN_LIMIT, PARK_RUN_RADIUS, buildCentralPark, centralParkSolids, inPark, parkRunCheckpoints } from '../map/centralPark';
 import { specialPlace, specialPlaceFootprint, specialPlaceSolids } from '../map/placeSpecials';
 import { LINE_TRAIN, TRAIN_HALF_LENGTH, TRAIN_HALF_WIDTH, WAGON_COLOURS, buildCar, carOffsets } from '../map/rollingStock';
 import { buildSuburb, suburbSolids } from '../map/suburb';
 import { renderRoamingActors } from '../map/actorRendering';
-import { createAmenityModal, mapAmenities } from '../map/amenities';
+import { CONCERT_COOLDOWN_SECONDS, CONCERT_COST, CONCERT_HEAT_OFF, CONCERT_RESPECT, createAmenityModal, mapAmenities } from '../map/amenities';
 import { isFireRoadBest, minigameOpen, playMinigame, type MinigameResult } from '../map/minigames';
 import { FIRE_ROAD_COURSE, advanceRacer, placings, pointAlong, progressAlong, racePrize, type RaceCourse, type Racer } from '../map/race';
 import { offRoadSpeedMultiplier } from '../map/offRoad';
@@ -71,7 +71,8 @@ import { countryFootprint, createOutskirtSceneryLayout } from '../map/outskirtSc
 import { rotatedHalfExtents } from '../map/layout';
 import { outskirtPlaceLabel } from '../map/outskirts';
 import { allocateServiceLots } from '../map/serviceLots';
-import { createRoamingActors, settleRoamingActors, updateRoamingActors } from '../map/roaming';
+import { carActor, createRoamingActors, settleRoamingActors, updateRoamingActors } from '../map/roaming';
+import { errandRoutes } from '../map/traffic';
 import {
   POKER_PAYOUTS,
   SLOT_PAYOUTS,
@@ -101,6 +102,8 @@ import { plowOut, snowSurfaceFor, snowWhiteness, stepPlowed, stepSnowCover } fro
 import { terrainSnow } from '../world/render/terrain';
 import { frontageClearance, generateLots, lotSolid, type Lot } from '../world/data/lots';
 import { buildCityLots } from '../world/render/lots';
+import { bayAt, carveParkingLots, nearestFreeBay, parkingLotAt, parkingSignSpot, parkingSolid, parkingSolids, type ParkingLot } from '../world/data/parkingLots';
+import { buildParkingLots } from '../world/render/parking';
 import { generateStreetProps, streetPropSolids, type StreetProp } from '../world/data/streetProps';
 import { loadPropLibrary, type PropLibrary } from '../world/assets/props';
 import { LANDMARK_MODELS, loadModelCatalog, type ModelCatalog } from '../world/assets/catalog';
@@ -4632,6 +4635,7 @@ import type * as ThreeNamespace from 'three';
   }
   // LEGAL: The region a point is in (a city district or a stretch of countryside).
   function placeRegionName(point: Point, district: string): string {
+    if(inPark(point)) return PARK_NAME;
     return regionNameAt(point) ?? districts.find(d => d.id === district)?.name ?? 'Windhaven';
   }
   // LEGAL: The minimap and City Map draw every lot's footprint.
@@ -4665,8 +4669,16 @@ import type * as ThreeNamespace from 'three';
     }
     landmarks.forEach(lm => taken.push({ x:lm.x, y:lm.y, hw:72, hd:72 }));
     Object.values(spawnPoints).forEach(p => taken.push({ x:p.x, y:p.y, hw:40, hd:40 }));
-    cityLotsCache = generateLots(taken);
+    const carved = carveParkingLots(generateLots(taken), taken);
+    cityParkingCache = carved.parking;
+    cityLotsCache = carved.lots;
     return cityLotsCache;
+  }
+  // LEGAL: The car parks (world/data/parkingLots), carved out of the lots above.
+  let cityParkingCache: ParkingLot[] = [];
+  function cityParking(): ParkingLot[] {
+    cityLots();
+    return cityParkingCache;
   }
   // LEGAL: Benches, bins, hydrants and shelters in front of the lots (world/data/streetProps).
   let cityPropsCache: StreetProp[] | null = null;
@@ -4723,6 +4735,7 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: Trees, barns and silos used to be walk-through. Trunks are small boxes; countryside
     // LEGAL: buildings take most of their drawn footprint.
     streetTreeSpots.forEach(spot => list.push({ x:spot.x, y:spot.y, hw:5, hd:5 }));
+    list.push(...parkingSolids(cityParking()), ...cityParking().map(lot => { const sign = parkingSignSpot(lot); return { x:sign.x, y:sign.y, hw:2, hd:2 }; }));
     list.push(...mallSolids(), ...centralParkSolids(), ...suburbSolids());
     const garage = serviceBuildings.find(s => s.id === 'playerGarage');
     if(garage){
@@ -4853,7 +4866,7 @@ import type * as ThreeNamespace from 'three';
         showRoomBrief('Work Bench', 'Your Garage', 'Oil, tools, and a radio nobody has retuned in years.',
           briefRow('Cars owned', String(state.ownedCars.length))
           + briefRow('Needing repair', String(state.brokenCars.length))
-          + briefRow('Car in the street', left === null ? 'No — it is here' : `Yes, returns in ${Math.ceil(left)}s`));
+          + briefRow('Your car', left !== null ? `In the street, returns in ${Math.ceil(left)}s` : (parkingLotAt(cityParking(), state.parkedCar)?.name.replace(/^the /, 'In the ') ?? 'Here')));
       } });
     } else if(kind==='casino'){
       spots.push({ id:'tables', x:ROOM_W/2, y:78, label:'The Floor', icon:'🂡', action:openCasinoFloor });
@@ -5133,11 +5146,25 @@ import type * as ThreeNamespace from 'three';
     state.inVehicle = false;
     player.vx=0; player.vy=0;
     state.parkedCar = { x:player.x, y:player.y };
+    // LEGAL: In a car park, the car goes into the nearest free bay and stays there; you get out beside it.
+    const lot = parkingLotAt(cityParking(), player);
+    const bay = lot ? nearestFreeBay(lot, player) : null;
+    if(lot && bay){
+      state.parkedCar = { x:bay.x, y:bay.y };
+      state.carParkedAt = null;
+      const beside = nearestFreePoint(bay.x - Math.cos(bay.facing) * 40, bay.y - Math.sin(bay.facing) * 40, currentSolids, false) ?? { x:lot.aisle.x, y:lot.aisle.y };
+      const stand = parkingLotAt(cityParking(), beside, 4) ? beside : lot.aisle;
+      player.x = stand.x; player.y = stand.y;
+      refreshPlayerModel(); updateParkedCarMesh();
+      log(`<i aria-hidden="true" class="ph-duotone ph-car"></i> You pull into a bay in ${lot.name} and get out. It stays here.`);
+      renderAll();
+      return;
+    }
     // LEGAL: Start the return-to-garage clock. The car stays exactly here for a few
     // LEGAL: minutes, then goes home so you can never strand your only car.
     state.carParkedAt = state.playSeconds;
     refreshPlayerModel(); updateParkedCarMesh();
-    log(`You park up and get out. It'll head back to the garage in about ${Math.round(GARAGE_RETURN_SECONDS/60)} minutes.`);
+    log(`You park up and get out. It'll head back to the garage in about ${Math.round(GARAGE_RETURN_SECONDS/60)} minutes, unless you leave it in a car park.`);
     renderAll();
   }
 
@@ -5171,7 +5198,80 @@ import type * as ThreeNamespace from 'three';
       log,
       renderAll,
       playGame:runAmenityMinigame,
+      holdConcert,
+      startParkRun,
+      parkRunBest:typeof state.worldMemory.parkRunBest === 'number' ? state.worldMemory.parkRunBest : null,
     }));
+  }
+  // LEGAL: ---- Grunt Park (map/centralPark) ----
+  // LEGAL: A free concert at the bandstand: respect and a little good press, then the bandstand is
+  // LEGAL: booked for a while.
+  function holdConcert(): boolean {
+    const last = typeof state.worldMemory.concertAt === 'number' ? state.worldMemory.concertAt : -Infinity;
+    if(state.playSeconds - last < CONCERT_COOLDOWN_SECONDS){ showMapToast('The bandstand is booked. Try again later.'); return false; }
+    if(state.cash < CONCERT_COST){ showMapToast(`A concert costs $${CONCERT_COST}.`); return false; }
+    state.cash -= CONCERT_COST;
+    state.respect += CONCERT_RESPECT;
+    state.heat = Math.max(0, state.heat - CONCERT_HEAT_OFF);
+    state.worldMemory.concertAt = state.playSeconds;
+    log(`<i aria-hidden="true" class="ph-duotone ph-music-notes"></i> Your name goes up on the banner and the brass band plays ${PARK_NAME} into a good mood: $${CONCERT_COST} spent, respect +${CONCERT_RESPECT}, heat -${CONCERT_HEAT_OFF}.`);
+    renderAll();
+    return true;
+  }
+  // LEGAL: The loop: twice round the park on foot, through a ring at every corner, against the clock.
+  interface ParkRun { next: number; startedAt: number; marker: ThreeNamespace.Object3D | null }
+  let parkRun: ParkRun | null = null;
+  function parkRunHud(): HTMLElement {
+    let hud = byIdOrNull('park-run-hud');
+    if(!hud){ hud = document.createElement('div'); hud.id = 'park-run-hud'; hud.className = 'race-hud'; byId('scene3d-container').appendChild(hud); }
+    return hud;
+  }
+  function startParkRun(): void {
+    if(parkRun || race || flight || !sceneInitialized) return;
+    if(state.inVehicle){ showMapToast('The loop is run on foot. Get out of the car.'); return; }
+    parkRun = { next:0, startedAt:state.playSeconds, marker:null };
+    placeParkRunMarker();
+    log(`<i aria-hidden="true" class="ph-duotone ph-person-simple-run"></i> You set off round the ${PARK_NAME} loop. Touch every corner, twice.`);
+  }
+  function placeParkRunMarker(): void {
+    if(!parkRun) return;
+    if(parkRun.marker){ worldGroup.remove(parkRun.marker); parkRun.marker.traverse(disposeObj); parkRun.marker = null; }
+    const target = parkRunCheckpoints()[parkRun.next];
+    const ring = new THREE.Mesh(new THREE.RingGeometry(PARK_RUN_RADIUS - 6, PARK_RUN_RADIUS, 36).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color:'#ffd23a', emissive:'#ffb800', emissiveIntensity:1.2, transparent:true, opacity:0.75 }));
+    ring.position.set(target.x, 1, target.y);
+    ring.name = 'park-run:mark';
+    worldGroup.add(ring);
+    parkRun.marker = ring;
+  }
+  function endParkRun(finished: boolean): void {
+    if(!parkRun) return;
+    const time = state.playSeconds - parkRun.startedAt;
+    if(parkRun.marker){ worldGroup.remove(parkRun.marker); parkRun.marker.traverse(disposeObj); }
+    parkRun = null;
+    byIdOrNull('park-run-hud')?.remove();
+    if(!finished){ showMapToast('Out of time. The joggers lap you with sympathy.'); return; }
+    const best = typeof state.worldMemory.parkRunBest === 'number' ? state.worldMemory.parkRunBest : null;
+    const respect = best === null ? 4 : time < best ? 1 : 0;
+    if(best === null || time < best) state.worldMemory.parkRunBest = Math.round(time * 10) / 10;
+    state.respect += respect;
+    const record = best === null ? 'Your first time on the board.' : time < best ? `A new best, by ${(best - time).toFixed(1)}s.` : `Your best is still ${best.toFixed(1)}s.`;
+    showModal({ eyebrow:PARK_NAME, title:`Round the loop in ${time.toFixed(1)}s`, body:`<p>${record}${respect ? ` Respect +${respect}.` : ''}</p>`, buttons:[{ label:'Catch your breath' }] });
+    renderAll();
+  }
+  function updateParkRun(): void {
+    if(!parkRun) return;
+    if(state.inVehicle || state.currentInterior){ endParkRun(false); return; }
+    const time = state.playSeconds - parkRun.startedAt;
+    if(time > PARK_RUN_LIMIT){ endParkRun(false); return; }
+    const checkpoints = parkRunCheckpoints();
+    const target = checkpoints[parkRun.next];
+    if(Math.hypot(player.x - target.x, player.y - target.y) < PARK_RUN_RADIUS){
+      parkRun.next += 1;
+      if(parkRun.next >= checkpoints.length){ endParkRun(true); return; }
+      placeParkRunMarker();
+    }
+    const lap = parkRun.next < 4 ? 1 : 2;
+    parkRunHud().innerHTML = `<div class="race-line"><strong>${PARK_NAME} loop</strong> · lap ${lap} of 2 · corner ${parkRun.next % 4 + 1} · ${Math.max(0, PARK_RUN_LIMIT - time).toFixed(1)}s left</div>`;
   }
 
   const CHEAT_CASH = 1_000_000_000;
@@ -5475,7 +5575,7 @@ import type * as ThreeNamespace from 'three';
   // LEGAL: and saved nothing measurable, so they stay as authored.
   // LEGAL: Static pieces built as hundreds of separate meshes, merged into one group each.
   const LOOSE_SCENERY_PREFIXES = ['road:', 'bridge:', 'sign:', 'tree:street', 'trail:'];
-  const MERGEABLE_SCENERY_PREFIXES = ['resort:', 'filler:construction:', 'crane:', 'suburb:', 'outskirt:'];
+  const MERGEABLE_SCENERY_PREFIXES = ['resort:', 'filler:construction:', 'crane:', 'suburb:', 'outskirt:', 'parking:'];
   let scene: ThreeNamespace.Scene, camera3d: ThreeNamespace.PerspectiveCamera, renderer: ThreeNamespace.WebGLRenderer, worldGroup: ThreeNamespace.Group, playerGroup: ThreeNamespace.Group, ambientLight: ThreeNamespace.HemisphereLight, sunLight: ThreeNamespace.DirectionalLight, moonLight: ThreeNamespace.DirectionalLight, waypointBeacon: ThreeNamespace.Group | null = null, missionObjectiveMarker: ThreeNamespace.Group | null = null, parkedCarMesh: ThreeNamespace.Group | null = null, trainGroup: ThreeNamespace.Group | null = null;
   let missionObjectiveMarkerKey = '';
   let streetLamps: LampHead[] = [];
@@ -6239,7 +6339,7 @@ import type * as ThreeNamespace from 'three';
     });
     timer.measure('street-trees', function(): void {
       streetTreeSpots.length = 0;
-      tagWorld('tree:street', function(){ buildStreetTrees({ ...baseScene, roadNetwork, districtOffsets:DISTRICT_OFFSETS, seededRandom, treeSpots:streetTreeSpots }); });
+      tagWorld('tree:street', function(){ buildStreetTrees({ ...baseScene, roadNetwork, districtOffsets:DISTRICT_OFFSETS, seededRandom, treeSpots:streetTreeSpots, keepClear:cityParking().map(parkingSolid) }); });
       tagWorld('outskirt:scenery', function(){ buildOutskirtScenery(baseScene); });
       // LEGAL: Street furniture in front of the lots, laid out once the street trees are known.
       cityPropsCache = null;
@@ -6261,6 +6361,8 @@ import type * as ThreeNamespace from 'three';
 
     timer.measure('actors', function(): void {
       tagWorld('actor:roaming', function(){
+        // LEGAL: The cars that park need the car parks, which need everything else placed first.
+        if(!roamingActors.some(actor => actor.id.startsWith('errand-'))) roamingActors.push(...errandRoutes(cityParking()).map(carActor));
         renderRoamingActors({ worldGroup, actors:roamingActors, helpers:{ buildTrafficCarModel, buildPedestrianModel, addSign } });
       });
     });
@@ -6273,6 +6375,7 @@ import type * as ThreeNamespace from 'three';
           mesh.name = `filler:lot@${Math.round(lot.x)},${Math.round(lot.y)}`;
           return mesh;
         }).forEach(part => worldGroup.add(part));
+        buildParkingLots(THREE, cityParking(), materials, buildTrafficCarModel).forEach(group => worldGroup.add(group));
       });
       tagWorld('landmark', function(){
         buildLandmarks({ THREE, worldGroup, worldWidth:WORLD_W, worldHeight:WORLD_H, landmarks, helpers:{ box, addSign }, buildPlaceModel, landmarkModel:name => landmarkCatalog?.create(name) ?? null });
@@ -6463,6 +6566,9 @@ import type * as ThreeNamespace from 'three';
       const pos = state.parkedCar;
       parkedCarMesh = buildCarModel(car, false);
       parkedCarMesh.position.set(pos.x,0,pos.y);
+      // LEGAL: In a bay it points into the bay, like the cars either side.
+      const bay = bayAt(cityParking(), pos);
+      if(bay) parkedCarMesh.rotation.y = Math.PI / 2 - bay.facing;
       parkedCarMesh.name = 'vehicle:parked';
       if(state.brokenCars.includes(car.id)) parkedCarMesh.add(buildSmokePlume());
     worldGroup.add(parkedCarMesh);
@@ -6694,7 +6800,9 @@ import type * as ThreeNamespace from 'three';
         declineMission: declineMissionOffer,
         enterBuilding,
         hotspots: function(){ return hotspotsFor(state.currentInterior); },
+        parkRun: function(){ return parkRun ? { next:parkRun.next, startedAt:parkRun.startedAt } : null; },
         flight: function(){ return flight ? { mode:flight.mode, airborne:flight.airborne, ring:flight.ring, zone:flight.zone, drop:flight.drop } : null; },
+        parking: function(){ return cityParking(); },
         interiorRoom: function(){ return interiorView?.root ?? null; },
         interiorCamera: function(){ return interiorCamera; },
         roadNetwork, districtOffsets: DISTRICT_OFFSETS,
@@ -6825,13 +6933,15 @@ import type * as ThreeNamespace from 'three';
     const block = blockAtPoint(territoryBlocks, { x:player.x, y:player.y });
     const holding = block ? holdingFor(block, districtControl(block.district)) : null;
     const owned = block ? ownedBlockCount(districtControl(block.district)) : 0;
-    const key = holding ? `${block!.id}:${holding.owner}:${owned}` : 'none';
+    // LEGAL: Off the turf map, the tag names where you are (Grunt Park, Kettle Flats) instead.
+    const region = holding ? '' : placeRegionName({ x:player.x, y:player.y }, state.currentDistrict);
+    const key = holding ? `${block!.id}:${holding.owner}:${owned}` : `none:${region}`;
     if(key === turfKey) return;
     turfKey = key;
     const label = byId('minimap-turf');
     const canvas = byId('minimap-canvas');
     if(!block || !holding){
-      label.textContent = 'Open ground';
+      label.textContent = region;
       canvas.style.borderColor = '';
       return;
     }
@@ -7841,6 +7951,7 @@ import type * as ThreeNamespace from 'three';
       updateSmokePlumes();
       updateRace(dt);
       updateFlight(dt);
+      updateParkRun();
       updateMovingObstacles(dt);
       checkRunOver();
       updateKnockdown(dt);

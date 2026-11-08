@@ -49,6 +49,8 @@ export interface TreeSceneOptions extends BaseSceneOptions {
   seededRandom: (seed: number) => () => number;
   // LEGAL: Filled with every tree's position, so collision can make the trunks solid.
   treeSpots: Point[];
+  // LEGAL: Ground that's paved over (the car parks), where no street tree grows.
+  keepClear?: Solid[];
 }
 
 export interface LandmarkSceneOptions extends BaseSceneOptions {
@@ -392,6 +394,10 @@ function onQuaysidePlace(x: number, y: number): boolean {
   });
 }
 
+function paved(options: TreeSceneOptions, x: number, y: number): boolean {
+  return (options.keepClear ?? []).some(s => Math.abs(x - s.x) < s.hw + 8 && Math.abs(y - s.y) < s.hd + 8);
+}
+
 export function buildStreetTrees(options: TreeSceneOptions): void {
   ['devlin','westside','hub'].forEach(function(distId){
     const off = options.districtOffsets[distId];
@@ -403,7 +409,7 @@ export function buildStreetTrees(options: TreeSceneOptions): void {
         const treeX = x + (rand()-0.5)*18;
         const treeY = r.y + side*58 + (rand()-0.5)*14;
         // LEGAL: Beside its own street, but never in another one (the curved Canal Bend Road crosses the grid).
-        if(districtIdAtPlayablePoint({ x:treeX, y:treeY }, 8) === distId && !onAnyRoad({ x:treeX, y:treeY }, 8) && !onQuaysidePlace(treeX, treeY)){ buildStreetTree(options, treeX, treeY, (0.78 + rand()*0.45) * TREE_SCALE); options.treeSpots.push({ x:treeX, y:treeY }); }
+        if(districtIdAtPlayablePoint({ x:treeX, y:treeY }, 8) === distId && !onAnyRoad({ x:treeX, y:treeY }, 8) && !onQuaysidePlace(treeX, treeY) && !paved(options, treeX, treeY)){ buildStreetTree(options, treeX, treeY, (0.78 + rand()*0.45) * TREE_SCALE); options.treeSpots.push({ x:treeX, y:treeY }); }
       }
     });
     options.roadNetwork.vertical.filter(v=>v.x>off && v.x<off+1500).forEach(function(v){
@@ -412,7 +418,7 @@ export function buildStreetTrees(options: TreeSceneOptions): void {
         const side = rand() > 0.5 ? -1 : 1;
         const treeX = v.x + side*50 + (rand()-0.5)*12;
         const treeY = y + (rand()-0.5)*18;
-        if(districtIdAtPlayablePoint({ x:treeX, y:treeY }, 8) === distId && !onAnyRoad({ x:treeX, y:treeY }, 8) && !onQuaysidePlace(treeX, treeY)){ buildStreetTree(options, treeX, treeY, (0.72 + rand()*0.38) * TREE_SCALE); options.treeSpots.push({ x:treeX, y:treeY }); }
+        if(districtIdAtPlayablePoint({ x:treeX, y:treeY }, 8) === distId && !onAnyRoad({ x:treeX, y:treeY }, 8) && !onQuaysidePlace(treeX, treeY) && !paved(options, treeX, treeY)){ buildStreetTree(options, treeX, treeY, (0.72 + rand()*0.38) * TREE_SCALE); options.treeSpots.push({ x:treeX, y:treeY }); }
       }
     });
   });

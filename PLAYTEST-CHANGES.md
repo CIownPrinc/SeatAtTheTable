@@ -5,6 +5,17 @@ The newest items are first.
 
 ## New on 2026-11-07
 
+- **Car parks:** ten across the city, on the shopping, office and industrial streets, with parked
+  cars and a blue P sign. Drive in and get out: your car goes into a free bay and stays there for
+  good. Left in the street, it still goes home after three minutes.
+- **Grunt Park** (was Central Park): one compact park instead of two long strips, with the
+  Duckingham Fountain and its ducks in a pond you can no longer walk on. Things to do: the chess
+  tables (moved here), a free concert at the bandstand ($400 for respect and a little less heat), and
+  the Grunt Park Loop, a timed run twice round the paths with your best time on the board.
+- **People walk somewhere now.** They used to circle one block forever. Each walks to somewhere a few
+  streets away along the pavements, waits at the kerb for the lights, and crosses when it's safe;
+  cars stop for anyone on a crossing. A few cars pull into a car park, park for a bit and drive off.
+
 - **The docks** are on the canal now, between Grand Avenue and Roosevelt Road, with the quay along the
   water and a dockmaster's office. They used to sit 26 m inland.
 - **The motel, the lodge and the drive-in** are full size (the motel was 1.7 m tall). You can't walk

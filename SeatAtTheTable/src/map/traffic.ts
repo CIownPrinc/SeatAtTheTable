@@ -1,14 +1,19 @@
 import type { Point } from '../config/types';
 import { COUNTRY_ROADS } from './countryRoads';
 import { routeHintBetween } from './queries';
-import { windhavenMapModel } from './mapModel';
 import { roadNetwork } from './world';
+import type { PavementCrossing } from './pavements';
+import type { ParkingLot } from '../world/data/parkingLots';
 
 // LEGAL: Traffic routes, built on the same road graph the GPS uses. They used to be hand-drawn
 // LEGAL: rectangles: three city cars down the middle of the road, and countryside vehicles cutting
 // LEGAL: straight across fields. Every route is now real directions between junctions, driven in
 // LEGAL: the right-hand lane with rounded corners.
-export interface TrafficRoute { id: string; color: string; speed: number; route: Point[] }
+export interface TrafficRoute { id: string; color: string; speed: number; route: Point[]; marks?: Array<RouteMark | undefined> }
+
+// LEGAL: What to do on the way to one point of a route: wait there (a car parked in a bay), back up
+// LEGAL: to it, go slower, or (for a walker) wait for the lights before a crossing.
+export interface RouteMark { dwell?: number; reverse?: boolean; slow?: number; crossing?: PavementCrossing }
 
 // LEGAL: Shifts a path to the driver's right. On this map +y is south, so the right of a car
 // LEGAL: heading east is +y.
@@ -107,52 +112,71 @@ export function trafficRoutes(): TrafficRoute[] {
   return cached;
 }
 
-// LEGAL: ---- Walkers ----
-// LEGAL: Unnamed people going about their day, so the streets aren't empty between the handful of
-// LEGAL: story characters. Each walks a loop round one city block on the pavement (42 units off
-// LEGAL: the road's centre line, inside the 37-48 pavement band), so they never cross traffic.
-const PAVEMENT = 42;
+// LEGAL: ---- Cars that park ----
+// LEGAL: A few cars do the rounds with a stop at a car park (world/data/parkingLots): down the street in
+// LEGAL: the lane on the car park's side, turn in, nose into the bay kept for them, sit there a while,
+// LEGAL: back out and drive off. Every lap of their loop they stop again.
+const LANE = 74 / 4;
+const PARKED_SECONDS = 24;
+const ERRAND_CARS = [
+  { id:'errand-wagon-1', color:'#5a6e4a', speed:72 },
+  { id:'errand-suv-1', color:'#8a2f2f', speed:76 },
+  { id:'errand-ev-1', color:'#2f5a8a', speed:74 },
+];
 
-export interface WalkerRoute { id: string; speed: number; route: Point[] }
+const dot = (a: Point, b: Point) => a.x * b.x + a.y * b.y;
+const plus = (a: Point, b: Point, k: number) => ({ x:a.x + b.x * k, y:a.y + b.y * k });
 
-// LEGAL: The diagonal streets cut through the middle of some blocks; a walk round one of those
-// LEGAL: would cross the diagonal's carriageway.
-function crossedByDiagonal(block: { x0: number; x1: number; y0: number; y1: number }): boolean {
-  return windhavenMapModel.roadPaths.filter(road => road.roadClass === 'diagonal').some(function(road){
-    return road.path.slice(0, -1).some(function(a, i){
-      const b = road.path[i + 1];
-      for(let t = 0; t <= 1; t += 0.05){
-        const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t;
-        if(x > block.x0 + 20 && x < block.x1 - 20 && y > block.y0 + 20 && y < block.y1 - 20) return true;
-      }
-      return false;
-    });
+export function errandRoute(id: string, color: string, speed: number, lot: ParkingLot, seed: number): TrafficRoute | null {
+  const bay = lot.bays.find(b => b.reserved);
+  if(!bay) return null;
+  // LEGAL: Driving with the car park on its right: that's the lane next to it.
+  const ahead = { x:-lot.out.y, y:lot.out.x };
+  const front = plus(bay, lot.out, dot({ x:lot.street.x - bay.x, y:lot.street.y - bay.y }, lot.out));
+  const lane = (u: number) => plus(plus(front, lot.out, -LANE), ahead, u);
+  const onStreet = CITY_JUNCTIONS.filter(j => Math.abs(dot({ x:j.x - front.x, y:j.y - front.y }, lot.out)) < 1);
+  const along = (p: Point) => dot({ x:p.x - front.x, y:p.y - front.y }, ahead);
+  const behind = onStreet.filter(j => along(j) < -120).sort((a, b) => along(b) - along(a))[0];
+  const next = onStreet.filter(j => along(j) > 120).sort((a, b) => along(a) - along(b))[0];
+  if(!behind || !next || along(next) - along(behind) > 800) return null;
+  const random = seeded(seed);
+  const nearby = CITY_JUNCTIONS.filter(j => j !== behind && j !== next && Math.abs(j.x - front.x) < 700);
+  const loop = loopThrough([behind, next, ...pick(nearby, 2, random)], 74);
+  // LEGAL: The stretch of the loop that runs past the car park in its lane; the stop goes in there.
+  const at = loop.findIndex(function(p, i){
+    const q = loop[i + 1];
+    if(!q) return false;
+    const inLane = (r: Point) => Math.abs(dot({ x:r.x - front.x, y:r.y - front.y }, lot.out) + LANE) < 6;
+    return inLane(p) && inLane(q) && along(p) < -80 && along(q) > 90;
   });
+  if(at < 0) return null;
+  const aisle = plus(bay, lot.out, dot({ x:lot.aisle.x - bay.x, y:lot.aisle.y - bay.y }, lot.out));
+  const stop: Array<{ point: Point; mark?: RouteMark }> = [
+    { point:lane(-70) },
+    { point:plus(aisle, ahead, -40), mark:{ slow:0.5 } },
+    { point:{ x:bay.x, y:bay.y }, mark:{ slow:0.35, dwell:PARKED_SECONDS } },
+    { point:aisle, mark:{ slow:0.3, reverse:true } },
+    { point:plus(aisle, ahead, 45), mark:{ slow:0.5 } },
+    { point:lane(80), mark:{ slow:0.7 } },
+  ];
+  const route = [...loop.slice(0, at + 1), ...stop.map(s => s.point), ...loop.slice(at + 1)];
+  const marks = [...loop.slice(0, at + 1).map(() => undefined), ...stop.map(s => s.mark), ...loop.slice(at + 1).map(() => undefined)];
+  return { id, color, speed, route, marks };
 }
 
-export function walkerRoutes(count: number): WalkerRoute[] {
-  const random = seeded(9091);
-  const xs = roadNetwork.vertical.map(v => v.x).sort((a, b) => a - b);
-  const ys = roadNetwork.horizontal.map(h => h.y).sort((a, b) => a - b);
-  // LEGAL: Only blocks inside one district: a pair of streets either side of a canal would send
-  // LEGAL: walkers along the bridge edge and over the water.
-  const blocks: Array<{ x0: number; x1: number; y0: number; y1: number }> = [];
-  for(let i = 0; i < xs.length - 1; i++){
-    if(xs[i + 1] - xs[i] > 800) continue;
-    for(let j = 0; j < ys.length - 1; j++){
-      const block = { x0:xs[i], x1:xs[i + 1], y0:ys[j], y1:ys[j + 1] };
-      if(!crossedByDiagonal(block)) blocks.push(block);
+export function errandRoutes(parking: readonly ParkingLot[]): TrafficRoute[] {
+  const routes: TrafficRoute[] = [];
+  const used = new Set<string>();
+  ERRAND_CARS.forEach(function(car, n){
+    for(let k = 0; k < parking.length; k++){
+      const lot = parking[(n * 3 + k) % parking.length];
+      if(used.has(lot.id)) continue;
+      const route = errandRoute(car.id, car.color, car.speed, lot, 5150 + n);
+      if(!route) continue;
+      used.add(lot.id);
+      routes.push(route);
+      return;
     }
-  }
-  return Array.from({ length:count }, function(_unused, n){
-    const b = blocks[Math.floor(random() * blocks.length)];
-    const corners = [
-      { x:b.x0 + PAVEMENT, y:b.y0 + PAVEMENT }, { x:b.x1 - PAVEMENT, y:b.y0 + PAVEMENT },
-      { x:b.x1 - PAVEMENT, y:b.y1 - PAVEMENT }, { x:b.x0 + PAVEMENT, y:b.y1 - PAVEMENT },
-    ];
-    // LEGAL: Half go clockwise, and each starts at a different corner, so they pass each other.
-    const loop = random() > 0.5 ? corners : [...corners].reverse();
-    const start = Math.floor(random() * 4);
-    return { id:`walker-${n}`, speed:22 + random() * 14, route:[...loop.slice(start), ...loop.slice(0, start)] };
   });
+  return routes;
 }

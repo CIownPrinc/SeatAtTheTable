@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { laneOffsetPath, roundCorners, trafficRoutes, walkerRoutes } from './traffic';
+import { errandRoutes, laneOffsetPath, roundCorners, trafficRoutes } from './traffic';
+import { generateLots } from '../world/data/lots';
+import { carveParkingLots } from '../world/data/parkingLots';
 import { roadLandSegments } from './mapModel';
 import { isPointInWater } from './geometry';
 
@@ -53,21 +55,33 @@ describe('trafficRoutes', function () {
   });
 });
 
-describe('walkerRoutes', function () {
-  const walkers = walkerRoutes(36);
+describe('errandRoutes', function () {
+  const { parking } = carveParkingLots(generateLots([]), []);
+  const errands = errandRoutes(parking);
 
-  it('fills the streets with a crowd of unnamed walkers', function () {
-    expect(walkers.length).toBe(36);
-    expect(new Set(walkers.map(w => w.id)).size).toBe(36);
+  it('sends a few cars to park, each in a different car park', function () {
+    expect(errands.length).toBeGreaterThanOrEqual(2);
+    expect(new Set(errands.map(e => e.id)).size).toBe(errands.length);
   });
 
-  it('keeps every walker on a pavement, beside the road but not in it', function () {
-    walkers.forEach(function(walker){
-      walker.route.forEach(function(p){
-        const nearest = Math.min(...SEGMENTS.filter(s => s.road.roadClass !== 'country').map(s => Math.min(...s.path.slice(0, -1).map((a, i) => distanceToSegment(p, a, s.path[i + 1])))));
-        expect(nearest, `${walker.id} at ${Math.round(p.x)},${Math.round(p.y)}`).toBeGreaterThan(36);
-        expect(nearest, `${walker.id} at ${Math.round(p.x)},${Math.round(p.y)}`).toBeLessThan(50);
-        expect(isPointInWater(p, 8)).toBe(false);
+  it("parks each one in its car park's kept bay for a while, then backs it out", function () {
+    errands.forEach(function(errand){
+      const marks = errand.marks!;
+      const stop = marks.findIndex(m => m?.dwell);
+      expect(stop, errand.id).toBeGreaterThan(0);
+      const point = errand.route[stop];
+      const bay = parking.flatMap(p => p.bays).find(b => Math.hypot(b.x - point.x, b.y - point.y) < 1);
+      expect(bay?.reserved, errand.id).toBe(true);
+      expect(marks[stop + 1]?.reverse).toBe(true);
+      expect(marks.length).toBe(errand.route.length);
+    });
+  });
+
+  it('drives on the road everywhere but the turn into the car park', function () {
+    errands.forEach(function(errand){
+      errand.route.forEach(function(p, i){
+        if(errand.marks![i] || errand.marks![i + 1]) return;
+        expect(onSomeRoad(p), `${errand.id} at ${Math.round(p.x)},${Math.round(p.y)}`).toBe(true);
       });
     });
   });

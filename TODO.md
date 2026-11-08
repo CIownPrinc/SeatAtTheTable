@@ -185,9 +185,9 @@ every test. Locally, `.tmp-assets/` (ignored Kenney zips) can be deleted by hand
 Every request the player made while playing, word for word in intent, so none get lost.
 Status: **DONE** shipped and verified · **PART** partly done (what's left is noted) · open.
 
-**Pick up here (2026-11-07):** the railyard and the countryside places (110) and the airfield (164)
-are done. Next, in order: then parking lots and
-pedestrian and traffic pathfinding (163), then the order below. The amenity crash (111) is parked
+**Pick up here (2026-11-07):** the railyard and the countryside places (110), the airfield (164),
+car parks with pathfinding (163) and Grunt Park (112) are done. Next: the beaches (113), then the
+order below. The amenity crash (111) is parked
 by the player. Player's guidance from this session: work faster without dropping the checks (run
 slow e2e in the background, check in batches, shorter updates); cars only slightly smaller than
 before; keep every request in this list or `SEATATTHETABLE2.md`.
@@ -610,10 +610,18 @@ old one.
      the street log), which reads like a crash. It now shows the score and what you won, a game that
      throws closes cleanly, and a lost GPU context is replaced. `e2e/amenity-games.e2e.ts` plays both
      to the end twice. Waiting on the user to confirm.
-112. Central Park is poor: longer than it needs to be, parts of its water can be walked on, it's short of
+112. **DONE** Central Park is poor: longer than it needs to be, parts of its water can be walked on, it's short of
      things to do, and it has no parody name. Fix the earlier hasty work properly before adding more
      (user, 2026-10-20: "dont work hastely ... set your priorities straight on the todo and fix the
-     mistakes you made in the past being hasty").
+     mistakes you made in the past being hasty"). Now **Grunt Park** (Chicago's Grant Park) with the
+     **Duckingham Fountain** (Buckingham): one 650 by 255 park west of Ridgewood Lane instead of two
+     strips 1.3 km long. The pond is solid all the way to its rim (strips covering the oval; the old
+     box sat inside it), no path runs under it, and it has a three-tier fountain and ducks. Things to
+     do: the chess tables moved here from a patch of Hub grass; the bandstand books a free concert
+     ($400: respect +6, heat -3, once every ten minutes); and the Grunt Park Loop, twice round the
+     paths through a ring at each corner inside 34 seconds (respect +4 the first time, +1 for a new
+     best, best time kept). The minimap tag names the park (and the countryside) instead of "Open
+     ground". Tests: `centralPark.test.ts`, `e2e/park.e2e.ts`; checked by screenshot.
 113. The beaches: trees and chairs are spaced too evenly to look real. Give them real beach terrain,
      people, sandcastles, random placement and stalls, and a shoreline with curves and edges, not a
      straight strip (user, 2026-10-20).
@@ -870,11 +878,19 @@ missing is the depth the brief asks for: most have two choices and one modal per
      ghosting. Traffic now brakes to a stop short of your car in its lane (`blockerPace`), and if a car
      does end up on you, you can always move away from it. On foot you can still be run over, as
      before. Tests in `trafficRules.test.ts` and `e2e/splat.e2e.ts` (fails without the braking).
-163. Parking lots are missing, and pathfinding for people and vehicles is lacking (user, 2026-10-21).
-     V1 for parking lots (surface lots and garages by shops, offices, the mall, with parked cars, and
-     a place to leave your own car), with the NPC and traffic items (64, 73-75) for the pathfinding:
-     people walk to places along pavements and crossings, cars follow lanes, turn at junctions and
-     park. Lane-aware traffic beyond that is in V2.
+163. **DONE** Parking lots are missing, and pathfinding for people and vehicles is lacking (user, 2026-10-21).
+     Car parks (`world/data/parkingLots.ts`): ten surface car parks on the shopping, office,
+     industrial and working streets, each in place of a run of buildings, with a row of nose-in bays,
+     parked cars (solid), and a P sign. The mall already had its garage. Leave your car in one and it
+     goes into the nearest free bay and stays there; left in the street it still goes home after three
+     minutes. Walkers find their way (`map/pavements.ts`): the pavements are a network of junction
+     corners joined along the pavement and by the crossings; each walker picks somewhere a few streets
+     away, takes the shortest way, waits at the kerb for the lights and crosses on a green that lasts,
+     and traffic stops for anyone on a crossing. Three cars do errands (`map/traffic.ts`
+     errandRoute): down the lane next to a car park, turn in, park in the bay kept for them for 24
+     seconds, back out and drive on. Tests: `parkingLots.test.ts`, `pavements.test.ts`,
+     `traffic.test.ts`, `e2e/parking.e2e.ts`. Left for 64 and V2: named characters still wander
+     round their spot; lane changes, overtaking and multi-storey garages.
 164. **DONE** Give the airplane hangar something to do: "a flight simulator or a mission or something"
      (user, 2026-11-07). Kettle Flats Airfield moved south of Cermak Lane, where it fits at real size:
      a 93 m runway, an apron, a 22 by 14 m hangar, a fuel tank and a windsock (`map/airfield.ts`).

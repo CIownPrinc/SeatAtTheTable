@@ -69,7 +69,7 @@ export function lotSolid(lot: Pick<Lot, 'x' | 'y' | 'w' | 'd' | 'rot'>): Solid {
   return { x:lot.x, y:lot.y, hw:(across ? lot.d : lot.w) / 2, hd:(across ? lot.w : lot.d) / 2 };
 }
 
-function buildable(solid: Solid, district: string): boolean {
+export function buildable(solid: Solid, district: string): boolean {
   const corners = [
     { x:solid.x - solid.hw, y:solid.y - solid.hd }, { x:solid.x + solid.hw, y:solid.y - solid.hd },
     { x:solid.x - solid.hw, y:solid.y + solid.hd }, { x:solid.x + solid.hw, y:solid.y + solid.hd }, { x:solid.x, y:solid.y },

@@ -1,5 +1,6 @@
 import type { MapAmenity, MapAmenityKind, ModalOptions } from '../config/types';
 import { widenAuthoredX } from './world';
+import { BANDSTAND, PARK_CHESS, PARK_NAME, PARK_RUN_BOARD, PARK_RUN_LIMIT } from './centralPark';
 
 // LEGAL: Amenities are authored in ABSOLUTE world x (unlike serviceBuildings and local
 // LEGAL: businesses, which use district-local x and go through applyMapWorldCoordinates).
@@ -11,8 +12,25 @@ export const mapAmenities: MapAmenity[] = ([
   { id:'cicero-court', kind:'basketball', name:'Cicero Rec Court', district:'westside', x:2480, y:1035, prompt:'Run a quick game' },
   { id:'pulaski-pets', kind:'petstore', name:'Pulaski Pet & Feed', district:'westside', x:2920, y:455, prompt:'Browse pets and supplies' },
   { id:'wicker-news', kind:'shop', name:'Wabash Newsstand', district:'hub', x:4120, y:455, prompt:'Buy a paper' },
-  { id:'millennium-chess', kind:'parkgame', name:'Park Chess Tables', district:'hub', x:4485, y:1035, prompt:'Play a fast game' },
-] as MapAmenity[]).map(a => ({ ...a, x: widenAuthoredX(a.x) }));
+] as MapAmenity[]).map(a => ({ ...a, x: widenAuthoredX(a.x) })).concat(PARK_AMENITIES());
+
+// LEGAL: What there is to do in Grunt Park (map/centralPark), placed in world coordinates by the park's
+// LEGAL: own layout. The chess tables moved here from a patch of grass in the Hub. The park is outside
+// LEGAL: the districts, south of the West Side.
+function PARK_AMENITIES(): MapAmenity[] {
+  return [
+    { id:'millennium-chess', kind:'parkgame', name:`${PARK_NAME} Chess Tables`, district:'westside', x:PARK_CHESS.x, y:PARK_CHESS.y, prompt:'Play a fast game' },
+    { id:'grunt-bandstand', kind:'bandstand', name:'The Bandstand', district:'westside', x:BANDSTAND.x, y:BANDSTAND.y + BANDSTAND.r + 12, prompt:'Book the bandstand' },
+    { id:'grunt-loop', kind:'parkrun', name:`The ${PARK_NAME} Loop`, district:'westside', x:PARK_RUN_BOARD.x, y:PARK_RUN_BOARD.y, prompt:'Run the loop' },
+  ];
+}
+export const PARK_AMENITY_IDS = new Set(['millennium-chess', 'grunt-bandstand', 'grunt-loop']);
+
+// LEGAL: A free concert: a lot of goodwill and a little good press, once in a while.
+export const CONCERT_COST = 400;
+export const CONCERT_RESPECT = 6;
+export const CONCERT_HEAT_OFF = 3;
+export const CONCERT_COOLDOWN_SECONDS = 600;
 
 export function amenityHasSolidFootprint(kind: MapAmenityKind): boolean {
   return kind === 'petstore' || kind === 'shop';
@@ -20,6 +38,11 @@ export function amenityHasSolidFootprint(kind: MapAmenityKind): boolean {
 
 export interface AmenityActionHandlers {
   addRespect: (amount: number) => void;
+  // LEGAL: Grunt Park: book a concert (false if the bandstand is still booked), and start the run.
+  holdConcert?: () => boolean;
+  startParkRun?: () => void;
+  // LEGAL: Your best time round the loop, in seconds, if you've finished it.
+  parkRunBest?: number | null;
   spendCash: (amount: number) => boolean;
   log: (message: string) => void;
   renderAll: () => void;
@@ -49,6 +72,19 @@ export function createAmenityModal(amenity: MapAmenity, actions: AmenityActionHa
     return { eyebrow:'Park Game', title:amenity.name, body:'<p>Old men argue over openings. Kids hover nearby pretending not to watch. Somebody slides a board your way.</p>', buttons:[
       { label:'Sit for a game', onClick:function(){ actions.playGame(amenity); } },
       { label:'Keep walking', secondary:true },
+    ] };
+  }
+  if(amenity.kind==='bandstand'){
+    return { eyebrow:PARK_NAME, title:amenity.name, body:`<p>A brass band rehearses to nobody on a Tuesday. The park office will let anyone with $${CONCERT_COST} put on a free concert, and put their name on the banner.</p><p class="flavor">Respect +${CONCERT_RESPECT} and heat -${CONCERT_HEAT_OFF}: it's hard to be a menace to society while sponsoring the oompah hour.</p>`, buttons:[
+      { label:`Put on a free concert ($${CONCERT_COST})`, onClick:function(){ actions.holdConcert?.(); } },
+      { label:'Just listen', secondary:true },
+    ] };
+  }
+  if(amenity.kind==='parkrun'){
+    const best = actions.parkRunBest;
+    return { eyebrow:PARK_NAME, title:amenity.name, body:`<p>Twice round the loop, touching every corner, inside ${PARK_RUN_LIMIT} seconds. The joggers have chalked their times on the board.</p><p class="flavor">${best ? `Your best: ${best.toFixed(1)}s. Beat it for a little respect.` : 'Finish it once for some respect from the regulars.'}</p>`, buttons:[
+      { label:'Run the loop', onClick:function(){ actions.startParkRun?.(); } },
+      { label:'Not today', secondary:true },
     ] };
   }
   if(amenity.kind==='petstore'){
