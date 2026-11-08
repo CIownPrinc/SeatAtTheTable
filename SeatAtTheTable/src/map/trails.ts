@@ -11,15 +11,15 @@ export const TRAIL_WIDTH = 12;
 
 const CONTROLS: Array<[string, Point[]]> = [
   // LEGAL: From Ridgewood Lane through the forest to the lodge's front door.
-  ['ridgewood-lodge', [{ x:3600, y:1620 }, { x:3760, y:1662 }, { x:3920, y:1632 }, { x:4050, y:1604 }]],
+  ['ridgewood-lodge', [{ x:3600, y:1620 }, { x:3760, y:1662 }, { x:3920, y:1640 }, { x:4060, y:1668 }]],
   // LEGAL: West from the lane into the trees, ending in a clearing.
   ['ridgewood-west', [{ x:3592, y:1560 }, { x:3420, y:1602 }, { x:3230, y:1662 }, { x:3060, y:1640 }, { x:2900, y:1680 }]],
   // LEGAL: From the Kestrel Woods trailhead east along the north woods.
   ['kestrel-woods', [{ x:4480, y:-800 }, { x:4650, y:-758 }, { x:4850, y:-800 }, { x:5050, y:-760 }, { x:5250, y:-792 }]],
   // LEGAL: A tractor track north off the ring road between the south fields.
   ['south-fields', [{ x:1600, y:1722 }, { x:1640, y:1600 }, { x:1580, y:1480 }, { x:1660, y:1380 }]],
-  // LEGAL: South off Kettle Flats Lane down the west farms.
-  ['west-farms', [{ x:-700, y:610 }, { x:-660, y:800 }, { x:-760, y:980 }, { x:-680, y:1150 }]],
+  // LEGAL: South off Kettle Flats Lane down the west farms to the airfield's car park.
+  ['west-farms', [{ x:-700, y:610 }, { x:-660, y:800 }, { x:-730, y:960 }, { x:-695, y:1030 }]],
 ];
 
 export const TRAILS: Trail[] = CONTROLS.map(([id, controls]) => ({ id, path:smoothPath(controls, 30) }));

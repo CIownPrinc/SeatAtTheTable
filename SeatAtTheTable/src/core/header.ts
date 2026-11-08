@@ -29,7 +29,7 @@ import { isItemOwned, itemKey, itemPrice, lookPrice, ownedWardrobe, type MallSho
 import { MALL_ROOM, MALL_SPOTS, MALL_UPPER_SPOTS } from '../map/mallInterior';
 import { MALL_BODY, buildMall, mallSolids } from '../map/mall';
 import { buildCentralPark, centralParkSolids } from '../map/centralPark';
-import { specialPlace, specialPlaceSolids } from '../map/placeSpecials';
+import { specialPlace, specialPlaceFootprint, specialPlaceSolids } from '../map/placeSpecials';
 import { LINE_TRAIN, TRAIN_HALF_LENGTH, TRAIN_HALF_WIDTH, WAGON_COLOURS, buildCar, carOffsets } from '../map/rollingStock';
 import { buildSuburb, suburbSolids } from '../map/suburb';
 import { renderRoamingActors } from '../map/actorRendering';
@@ -45,7 +45,8 @@ import { openWardrobe } from './wardrobe';
 import { createCameraRig, SHADOW_HALF_SIZE, sunShadowFrame } from '../map/cameraRig';
 import { waterClock } from '../map/waterShader';
 import { auditScene, flagIssues } from '../map/sceneAudit';
-import { CHEAT_VEHICLES, buildJetpack, isFlyingVehicle } from '../map/cheatVehicles';
+import { AIRFIELD_PLANE_ID, CHEAT_VEHICLES, buildJetpack, isFlyingVehicle } from '../map/cheatVehicles';
+import { AIRFIELD_PRICES, DROP_RADIUS, DROP_ZONES, LESSON_RINGS, PLANE_STAND, RING_RADIUS, RUNWAY, TAKEOFF_START, canTakeOff, cargoPay, dropResult, landingCheck, lessonTimeLimit, nextDropZone, onAirfield, ringPassed, type DropResult, type DropZone } from '../map/airfield';
 import { circleHitsObstacle, isRunOverBy, vehicleObstacle, type Obstacle } from '../map/obstacles';
 import { loadVehicleLibrary, spinWheels, trafficFootprint, vehicleClassForCar, vehicleClassForTraffic, type VehicleLibrary } from '../map/vehicleModels';
 import { buildingModelFor, loadBuildingLibrary, type BuildingLibrary } from '../map/buildingModels';
@@ -112,7 +113,7 @@ import { usePlaceModels } from '../map/placeModels';
 import { LIGHT_SKINS, closeUpFor, type CloseUp } from '../map/closeUps';
 import { interiorPlanFor, propertyIsHome, stairsLanding, type InteriorPlan } from '../map/interiorPlans';
 import type { InteriorCar } from '../map/interiorPieces';
-import { VEHICLE_HEIGHT, VEHICLE_SCALE } from '../map/scale';
+import { UNITS_PER_METRE, VEHICLE_HEIGHT, VEHICLE_SCALE } from '../map/scale';
 import { DISTRICT_OFFSETS, OUTSKIRT_PLACE_LOTS, VIEW_H, VIEW_W, WORLD_H, WORLD_W, WINDHAVEN_LANDMASS, landmarks, roadNetwork, spawnPoints } from '../map/world';
 import { districtIdAtPlayablePoint, nearestRoadAtPoint, windhavenMapModel } from '../map/mapModel';
 import { clampPointToBounds, createMapViewport, screenToWorld } from '../map/viewport';
@@ -4647,6 +4648,8 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: Open places (the garage's bay, yards, alleys) have no collision bounds, so they're
     // LEGAL: kept clear by the footprint they're drawn at.
     const places: Solid[] = mapObjects.flatMap(function(object): Solid[] {
+      const footprint = object.kind === 'service' ? specialPlaceFootprint(object.id, object.x, object.y) : null;
+      if(footprint) return [footprint];
       if(object.bounds) return [object.bounds];
       if(object.kind === 'service'){ const shape = serviceBuildingSilhouette(object.ref as ServiceBuilding); return [{ x:object.x, y:object.y, hw:shape.w / 2, hd:shape.d / 2 }]; }
       return [];
@@ -4913,6 +4916,11 @@ import type * as ThreeNamespace from 'three';
           { label:'Watch from the tailgate', onClick:function(){ state.respect += 3; state.playSeconds += 45; state.worldMemory.driveInNight = 'tailgate'; log('<i aria-hidden=\"true\" class=\"ph-duotone ph-film-strip\"></i> You stay for the second act and leave before the credits: respect +3; 45 seconds passed.'); renderAll(); scheduleSave(); } },
         ]});
       } });
+    } else if(interior.refId==='airfieldKettle'){
+      if(missionId) spots.push({ id:'mission', x:ROOM_W*0.5, y:ROOM_H*0.62, label:'Mission Contact', icon:'📋', action:function(){ resolveMissionAtObjective(missionId); } });
+      spots.push({ id:'flightschool', x:ROOM_W*0.18, y:80, label:'Flight School', icon:'🛩️', action:openFlightSchool });
+      spots.push({ id:'charter', x:ROOM_W/2, y:80, label:'Charter Desk', icon:'🗺️', action:openCharterDesk });
+      spots.push({ id:'cargo', x:ROOM_W*0.82, y:80, label:"Deke's Board", icon:'📦', action:openCargoBoard });
     } else if(interior.refId==='docksDockmaster'){
       if(missionId) spots.push({ id:'mission', x:ROOM_W*0.32, y:80, label:'Mission Contact', icon:'📋', action:function(){ resolveMissionAtObjective(missionId); } });
       spots.push({ id:'manifest', x:ROOM_W*0.68, y:80, label:'Manifest Board', icon:'🗃️', action:openDockManifest });
@@ -5121,6 +5129,7 @@ import type * as ThreeNamespace from 'three';
   }
   function exitVehicle(){
     if(!state.inVehicle) return;
+    if(flight){ planeAction(); return; }
     state.inVehicle = false;
     player.vx=0; player.vy=0;
     state.parkedCar = { x:player.x, y:player.y };
@@ -5194,7 +5203,7 @@ import type * as ThreeNamespace from 'three';
   let bigHeads = false;
   function isFlying(): boolean {
     if(state.currentInterior) return false;
-    return state.playSeconds < flyingUntil || (state.inVehicle && isFlyingVehicle(state.equippedCar));
+    return state.playSeconds < flyingUntil || (state.inVehicle && isFlyingVehicle(state.equippedCar)) || (inPlane() && !!flight?.airborne);
   }
   function isDrunk(): boolean { return state.playSeconds < drunkUntil; }
   function updateCheatEffects(dt: number): void {
@@ -5451,6 +5460,8 @@ import type * as ThreeNamespace from 'three';
       }
       return false;
     }
+    // LEGAL: The plane only taxis about the airfield until it's in the air.
+    if(inPlane() && !onAirfield({ x:nx, y:ny })) return false;
     return canMoveTo(nx, ny, solids, state.inVehicle);
   }
 
@@ -6273,6 +6284,7 @@ import type * as ThreeNamespace from 'three';
     });
     timer.measure('gameplay-overlays', function(): void {
       buildTrain();
+      parkedPlane = null; updateParkedPlane();
       currentSolids = buildAllSolids();
       // LEGAL: Block the landmark footprints so you can't walk through them.
       currentSolids.push(...landmarkSolids(landmarks));
@@ -6682,6 +6694,7 @@ import type * as ThreeNamespace from 'three';
         declineMission: declineMissionOffer,
         enterBuilding,
         hotspots: function(){ return hotspotsFor(state.currentInterior); },
+        flight: function(){ return flight ? { mode:flight.mode, airborne:flight.airborne, ring:flight.ring, zone:flight.zone, drop:flight.drop } : null; },
         interiorRoom: function(){ return interiorView?.root ?? null; },
         interiorCamera: function(){ return interiorCamera; },
         roadNetwork, districtOffsets: DISTRICT_OFFSETS,
@@ -7448,6 +7461,225 @@ import type * as ThreeNamespace from 'three';
     refreshPlayerModel(); updateParkedCarMesh(); renderAll(); scheduleSave();
   }
 
+  // LEGAL: ---- Kettle Flats Airfield: the flying lesson, charters and Deke's cargo runs (map/airfield) ----
+  // LEGAL: The crop-duster is lent like the race's car. On the ground it only taxis about the airfield;
+  // LEGAL: it lifts off once it's rolling fast down the runway, and in the air it keeps flying the way
+  // LEGAL: it's pointed. E lands it, back on the runway only, or drops Deke's crate over the mark.
+  type FlightMode = 'lesson' | 'charter' | 'cargo';
+  interface Flight {
+    mode: FlightMode;
+    airborne: boolean;
+    previousCar: string | null;
+    startedAt: number;
+    timeLimit: number;
+    ring: number;
+    zone: DropZone | null;
+    drop: DropResult | null;
+    marker: ThreeNamespace.Object3D | null;
+  }
+  let flight: Flight | null = null;
+  function hasPilotLicence(): boolean { return state.worldMemory.pilotLicence === true; }
+  function inPlane(): boolean { return !!flight && state.inVehicle; }
+  function flightHud(): HTMLElement {
+    let hud = byIdOrNull('flight-hud');
+    if(!hud){ hud = document.createElement('div'); hud.id = 'flight-hud'; hud.className = 'race-hud'; byId('scene3d-container').appendChild(hud); }
+    return hud;
+  }
+  function startFlight(mode: FlightMode): void {
+    if(flight || race || !sceneInitialized) return;
+    const fee = mode === 'lesson' ? AIRFIELD_PRICES.lessonFee : mode === 'charter' ? AIRFIELD_PRICES.charterFee : 0;
+    if(mode !== 'lesson' && !hasPilotLicence()){ showMapToast("You need a pilot's licence first. Take the lesson."); return; }
+    if(state.cash < fee){ showMapToast(`That's ${formatMoney(fee)}. You're short.`); return; }
+    state.cash -= fee;
+    if(state.currentInterior) exitBuilding();
+    const cruise = (CHEAT_VEHICLES.find(c => c.id === AIRFIELD_PLANE_ID)?.speedMult ?? 1) * 210;
+    const lastZone = typeof state.worldMemory.lastDropZone === 'string' ? state.worldMemory.lastDropZone : null;
+    flight = { mode, airborne:false, previousCar:state.equippedCar, startedAt:state.playSeconds, timeLimit:mode === 'lesson' ? lessonTimeLimit(cruise) : 0, ring:0,
+      zone:mode === 'cargo' ? nextDropZone(lastZone, Math.random()) : null, drop:null, marker:null };
+    state.equippedCar = AIRFIELD_PLANE_ID;
+    state.inVehicle = true;
+    flyingUntil = 0;
+    player.x = TAKEOFF_START.x; player.y = TAKEOFF_START.y; player.vx = 0; player.vy = 0;
+    player.facing = TAKEOFF_START.facing;
+    cameraRig.snap();
+    refreshPlayerModel(); updateParkedCarMesh(); updateParkedPlane();
+    placeFlightMarker();
+    const brief = mode === 'lesson' ? `Fly through all ${LESSON_RINGS.length} rings and land back here inside ${flight.timeLimit} seconds.`
+      : mode === 'cargo' ? `Deke's crate goes to ${flight.zone?.name ?? 'the mark'}. Press E over the mark to drop it, then land back here.`
+      : 'The plane is yours until you land it back here.';
+    showMapToast(`Hold forward down the runway to take off. ${brief}`);
+    log(`<i aria-hidden="true" class="ph-duotone ph-airplane-takeoff"></i> Kettle Flats: ${brief}`);
+    renderAll();
+  }
+  function placeFlightMarker(): void {
+    if(!flight) return;
+    if(flight.marker){ worldGroup.remove(flight.marker); flight.marker.traverse(disposeObj); flight.marker = null; }
+    const material = new THREE.MeshStandardMaterial({ color:'#ffd23a', emissive:'#ffb800', emissiveIntensity:1.2, transparent:true, opacity:0.75 });
+    let target: Point = { x:RUNWAY.x0 + 120, y:RUNWAY.y };
+    if(flight.mode === 'lesson' && flight.ring < LESSON_RINGS.length){
+      target = LESSON_RINGS[flight.ring];
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(RING_RADIUS, 4, 10, 40), material);
+      const from = flight.ring === 0 ? { x:RUNWAY.x1, y:RUNWAY.y } : LESSON_RINGS[flight.ring - 1];
+      ring.rotation.y = -Math.atan2(target.y - from.y, target.x - from.x) + Math.PI / 2;
+      ring.position.set(target.x, FLIGHT_ALTITUDE, target.y);
+      ring.name = 'flight:ring';
+      flight.marker = ring;
+    } else if(flight.mode === 'cargo' && flight.zone && !flight.drop){
+      target = flight.zone;
+      const mark = new THREE.Mesh(new THREE.RingGeometry(DROP_RADIUS - 10, DROP_RADIUS, 40).rotateX(-Math.PI / 2), material);
+      mark.position.set(target.x, 1, target.y);
+      mark.name = 'flight:drop-mark';
+      flight.marker = mark;
+    }
+    if(flight.marker) worldGroup.add(flight.marker);
+    setGlobalWaypoint(target);
+    rebuildWaypointBeacon();
+  }
+  // LEGAL: E in the plane: drop the crate over the mark, or land on the runway, or climb down on the ground.
+  function planeAction(): void {
+    if(!flight) return;
+    const top = currentSpeed(), speed = Math.hypot(player.vx, player.vy), here = { x:player.x, y:player.y };
+    if(!flight.airborne){ endFlight('parked'); return; }
+    if(flight.mode === 'cargo' && flight.zone && !flight.drop){
+      flight.drop = dropResult(here, flight.zone);
+      const crate = new THREE.Mesh(new THREE.BoxGeometry(14, 12, 14), new THREE.MeshStandardMaterial({ color:'#8a6a42', roughness:0.9 }));
+      crate.position.set(player.x, 6, player.y); crate.name = 'flight:crate';
+      worldGroup.add(crate);
+      setTimeout(function(){ worldGroup.remove(crate); crate.geometry.dispose(); }, 30000);
+      const missedBy = Math.round(Math.hypot(here.x - flight.zone.x, here.y - flight.zone.y) / UNITS_PER_METRE);
+      showMapToast(flight.drop === 'bullseye' ? 'Bullseye. Deke will be pleased. Now land it.' : flight.drop === 'hit' ? 'On the mark. Now land it back at Kettle Flats.' : `Missed by ${missedBy} m. Someone saw that. Land it anyway.`);
+      placeFlightMarker();
+      return;
+    }
+    const check = landingCheck(here, player.facing, speed, top);
+    if(check !== 'ok'){
+      showMapToast(check === 'not-runway' ? 'You can only land on the runway at Kettle Flats.' : check === 'not-aligned' ? 'Line up with the runway first.' : 'Too fast. Ease off and try again.');
+      return;
+    }
+    flight.airborne = false;
+    endFlight('landed');
+  }
+  function updateFlight(dt: number): void {
+    if(!flight) return;
+    const f = flight;
+    if(!state.inVehicle){ endFlight('parked'); return; }
+    const here = { x:player.x, y:player.y };
+    const speed = Math.hypot(player.vx, player.vy);
+    if(!f.airborne && canTakeOff(here, player.facing, speed, currentSpeed())){
+      f.airborne = true;
+      showMapToast('Wheels up.');
+    }
+    if(f.mode === 'lesson' && f.airborne && f.ring < LESSON_RINGS.length && ringPassed(here, LESSON_RINGS[f.ring])){
+      f.ring++;
+      placeFlightMarker();
+      if(f.ring === LESSON_RINGS.length) showMapToast("That's every ring. Bring it home and land on the runway.");
+    }
+    const elapsed = state.playSeconds - f.startedAt;
+    if(f.mode === 'lesson' && elapsed > f.timeLimit){ endFlight('timeout'); return; }
+    const prop = playerGroup.getObjectByName('propeller');
+    if(prop) prop.rotation.x += dt * (f.airborne ? 40 : 12 + speed * 0.06);
+    const clock = f.mode === 'lesson' ? ` · ${Math.max(0, Math.ceil(f.timeLimit - elapsed))} s left` : '';
+    const zone = f.zone;
+    const task = f.mode === 'lesson' ? (f.ring < LESSON_RINGS.length ? `Ring ${f.ring + 1}/${LESSON_RINGS.length}` : 'Land on the runway')
+      : f.mode === 'cargo' && zone ? (f.drop ? 'Land on the runway' : `Drop at ${zone.name} · ${Math.round(Math.hypot(here.x - zone.x, here.y - zone.y) / UNITS_PER_METRE)} m`)
+      : 'Charter';
+    const phase = f.airborne ? 'Flying' : speed > 5 ? 'Rolling' : 'On the ground';
+    flightHud().innerHTML = `<div class="race-line"><strong>${phase}</strong> · ${task}${clock}</div>`;
+  }
+  function endFlight(outcome: 'landed' | 'parked' | 'timeout'): void {
+    if(!flight) return;
+    const f = flight;
+    flight = null;
+    if(f.marker){ worldGroup.remove(f.marker); f.marker.traverse(disposeObj); }
+    byIdOrNull('flight-hud')?.remove();
+    setGlobalWaypoint(null); rebuildWaypointBeacon();
+    state.equippedCar = f.previousCar;
+    state.inVehicle = false;
+    player.x = PLANE_STAND.x + 70; player.y = PLANE_STAND.y; player.vx = 0; player.vy = 0;
+    cameraRig.snap();
+    const seconds = state.playSeconds - f.startedAt;
+    let title = 'Back on the ground', body = '<p class="flavor">You taxi the plane back to the hangar and climb down.</p>', gains = '';
+    if(f.mode === 'lesson'){
+      const passed = outcome === 'landed' && f.ring >= LESSON_RINGS.length;
+      if(passed){
+        const first = !hasPilotLicence();
+        state.worldMemory.pilotLicence = true;
+        const best = typeof state.worldMemory.flightLessonBest === 'number' ? state.worldMemory.flightLessonBest : 0;
+        if(!best || seconds < best) state.worldMemory.flightLessonBest = Math.round(seconds * 10) / 10;
+        if(first) state.respect += AIRFIELD_PRICES.licenceRespect;
+        title = first ? "You passed: pilot's licence" : 'Course flown';
+        body = `<p class="flavor">${first ? 'The instructor signs the logbook and hands you a licence with a terrible photo on it. You can charter the plane now, and Deke has work for a pilot.' : 'Clean and quick. The instructor pretends not to be impressed.'}</p>${briefRow('Time', `${seconds.toFixed(1)} s`)}`;
+        gains = first ? `respect +${AIRFIELD_PRICES.licenceRespect}` : '';
+      } else {
+        title = outcome === 'timeout' ? 'Out of time' : 'Lesson over';
+        body = `<p class="flavor">${outcome === 'timeout' ? 'The instructor takes the controls and flies you home in silence.' : 'You put it down before the course was done.'}</p>${briefRow('Rings', `${f.ring} of ${LESSON_RINGS.length}`)}`;
+      }
+    } else if(f.mode === 'cargo' && f.zone){
+      if(outcome === 'landed' && f.drop && f.drop !== 'miss'){
+        const pay = cargoPay(f.zone, f.drop);
+        state.cash += pay;
+        state.heat += AIRFIELD_PRICES.cargoHeat;
+        state.worldMemory.cargoRuns = (typeof state.worldMemory.cargoRuns === 'number' ? state.worldMemory.cargoRuns : 0) + 1;
+        state.worldMemory.lastDropZone = f.zone.id;
+        title = f.drop === 'bullseye' ? 'Bullseye delivery' : 'Delivered';
+        body = `<p class="flavor">Deke counts it out on the hangar floor. "${f.drop === 'bullseye' ? 'Right on the X. I could get used to you.' : 'Close enough. They found it.'}"</p>`;
+        gains = `+${formatMoney(pay)} · heat +${AIRFIELD_PRICES.cargoHeat}`;
+      } else if(f.drop === 'miss'){
+        state.heat += AIRFIELD_PRICES.missedDropHeat;
+        state.worldMemory.lastDropZone = f.zone.id;
+        title = 'Lost cargo';
+        body = "<p class=\"flavor\">The crate came down in somebody's field, in daylight. Deke doesn't pay for that, and people will talk.</p>";
+        gains = `heat +${AIRFIELD_PRICES.missedDropHeat}`;
+      } else {
+        title = 'No delivery';
+        body = "<p class=\"flavor\">The crate is still in the back. Deke unloads it himself and doesn't say anything, which is worse.</p>";
+      }
+    }
+    refreshPlayerModel(); updateParkedCarMesh(); updateParkedPlane(); renderAll(); scheduleSave();
+    showModal({ eyebrow:'Kettle Flats Airfield', title, body:`${body}${gains ? briefRow('You get', gains) : ''}`, buttons:[{ label:'Done' }] });
+  }
+  // LEGAL: The crop-duster waits on the apron, nose to the runway, whenever nobody is flying it.
+  let parkedPlane: ThreeNamespace.Object3D | null = null;
+  function updateParkedPlane(): void {
+    if(!worldGroup) return;
+    const plane = CHEAT_VEHICLES.find(c => c.id === AIRFIELD_PLANE_ID);
+    if(!parkedPlane && vehicleLibrary && plane){
+      parkedPlane = vehicleLibrary.create('cropduster', plane.color, plane.len * VEHICLE_SCALE, plane.wid * VEHICLE_SCALE);
+      parkedPlane.name = 'airfield:parked-plane';
+      parkedPlane.position.set(PLANE_STAND.x, 0, PLANE_STAND.y);
+      parkedPlane.rotation.y = -Math.PI / 2;
+      worldGroup.add(parkedPlane);
+    }
+    if(parkedPlane) parkedPlane.visible = !flight;
+  }
+  function openFlightSchool(): void {
+    const best = typeof state.worldMemory.flightLessonBest === 'number' ? state.worldMemory.flightLessonBest : 0;
+    const licensed = hasPilotLicence();
+    const pitch = licensed
+      ? 'Your licence is pinned to the corkboard next to everyone who crashed. You can fly the course again any time.'
+      : 'The instructor taps a chart of the coast. "Six rings: out over the meadows, up the coast, across the lake and back. Then you land it on the runway, lined up and slow. Do that and you\'re a pilot."';
+    showModal({ eyebrow:'Kettle Flats Flight School', title:licensed ? 'The Course' : 'Learn to Fly', body:`<p class="flavor">${pitch}</p>${briefRow('Lesson', formatMoney(AIRFIELD_PRICES.lessonFee))}${briefRow('Best time', best ? `${best.toFixed(1)} s` : 'none yet')}`, buttons:[
+      { label:`${licensed ? 'Fly the course' : 'Take the lesson'} (${formatMoney(AIRFIELD_PRICES.lessonFee)})`, onClick:function(){ startFlight('lesson'); } },
+      { label:'Not now', secondary:true },
+    ] });
+  }
+  function openCharterDesk(): void {
+    if(!hasPilotLicence()){ showRoomBrief('Charter Desk', 'Kettle Flats Airfield', 'Charters are for licensed pilots. The flight school is across the hangar.', ''); return; }
+    showModal({ eyebrow:'Kettle Flats Airfield', title:'Charter the Crop-Duster', body:`<p class="flavor">Fuelled and on the apron. Fly where you like; land it back here on the runway when you're done.</p>${briefRow('Charter', formatMoney(AIRFIELD_PRICES.charterFee))}`, buttons:[
+      { label:`Charter it (${formatMoney(AIRFIELD_PRICES.charterFee)})`, onClick:function(){ startFlight('charter'); } },
+      { label:'Not now', secondary:true },
+    ] });
+  }
+  function openCargoBoard(): void {
+    if(!hasPilotLicence()){ showRoomBrief("Deke's Board", 'Kettle Flats Airfield', 'A clipboard of pickups and drops, all in a scrawl nobody else can read. Deke says he only works with pilots.', ''); return; }
+    const runs = typeof state.worldMemory.cargoRuns === 'number' ? state.worldMemory.cargoRuns : 0;
+    const lowest = Math.min(...DROP_ZONES.map(z => cargoPay(z, 'hit')));
+    showModal({ eyebrow:"Deke's Cargo", title:'A Crate That Needs to Be Somewhere', body:`<p class="flavor">"No questions, no paperwork. Drop it on the mark, land, get paid. Miss and it's your problem."</p>${briefRow('Pays', `${formatMoney(lowest)} and up, more for a bullseye`)}${briefRow('Heat', `+${AIRFIELD_PRICES.cargoHeat} a run`)}${briefRow('Runs flown', String(runs))}`, buttons:[
+      { label:'Take the run', onClick:function(){ startFlight('cargo'); } },
+      { label:'Not now', secondary:true },
+    ] });
+  }
+
   // LEGAL: The experimental setting: the camera turns to follow Arjun (map/cameraRig), off by default.
   const CAMERA_FOLLOW_KEY = 'seat-camera-follow';
   let cameraFollows = (function(){ try{ return window.localStorage.getItem(CAMERA_FOLLOW_KEY) === '1'; }catch(e){ return false; } })();
@@ -7519,6 +7751,8 @@ import type * as ThreeNamespace from 'three';
       // LEGAL: The drunk cheat: your feet don't quite go where you point them.
       if(isDrunk() && (dx || dy)){ dx += Math.sin(state.playSeconds * 1.9) * 0.55; dy += Math.cos(state.playSeconds * 1.3) * 0.45; }
     }
+    // LEGAL: A plane in the air can't stop: with nothing pressed it flies on the way it's pointed.
+    if(flight?.airborne && !dx && !dy){ dx = Math.cos(player.facing); dy = Math.sin(player.facing); }
     // LEGAL: Target velocity from input, then ease the actual velocity toward it so
     // LEGAL: movement accelerates and coasts instead of snapping on/off. Cars are
     // LEGAL: heavier (slower to respond and to turn) than the player on foot.
@@ -7527,7 +7761,7 @@ import type * as ThreeNamespace from 'three';
     // LEGAL: Keys give a unit direction (diagonals normalised); a thumbstick pushed part-way
     // LEGAL: has magnitude under 1 and moves that much slower.
     if(dx||dy){ const len = Math.hypot(dx,dy); const scale = Math.min(1, len)/len; tvx=dx*scale*spd; tvy=dy*scale*spd; }
-    const respond = state.inVehicle ? 6 : 11;
+    const respond = inPlane() ? 2 : state.inVehicle ? 6 : 11;
     const ease = 1 - Math.exp(-respond*dt);
     player.vx += (tvx - player.vx)*ease;
     player.vy += (tvy - player.vy)*ease;
@@ -7539,7 +7773,7 @@ import type * as ThreeNamespace from 'three';
       let af = targetFacing - player.facing;
       while(af > Math.PI) af -= Math.PI*2;
       while(af < -Math.PI) af += Math.PI*2;
-      const maxTurn = (state.inVehicle ? 7 : 14) * dt;
+      const maxTurn = (inPlane() ? (flight?.airborne ? 1.6 : 2.4) : state.inVehicle ? 7 : 14) * dt;
       player.facing += Math.max(-maxTurn, Math.min(maxTurn, af));
       const stepX = player.vx*dt, stepY = player.vy*dt;
       if(state.currentInterior){
@@ -7606,6 +7840,7 @@ import type * as ThreeNamespace from 'three';
       updateCheatEffects(dt);
       updateSmokePlumes();
       updateRace(dt);
+      updateFlight(dt);
       updateMovingObstacles(dt);
       checkRunOver();
       updateKnockdown(dt);
@@ -7643,7 +7878,8 @@ import type * as ThreeNamespace from 'three';
       else label = (near.ref.type==='named' ? near.ref.name : state.procNpc.name);
       hintEl.textContent = state.currentInterior ? 'Press E to interact — ' + label : 'Press E to interact — ' + label + ' | ' + outdoorStatus;
     } else if(state.inVehicle){
-      hintEl.textContent = 'Press E to park | ' + outdoorStatus;
+      const planeHint = !flight ? '' : !flight.airborne ? 'Hold forward down the runway to take off, E to climb down' : flight.mode === 'cargo' && !flight.drop ? 'Press E over the mark to drop the crate' : 'Press E over the runway to land';
+      hintEl.textContent = (planeHint || 'Press E to park') + ' | ' + outdoorStatus;
     } else {
       hintEl.textContent = state.currentInterior ? ('Inside ' + state.currentInterior.name) : outdoorStatus;
     }
@@ -7750,6 +7986,12 @@ import type * as ThreeNamespace from 'three';
   });
 
   // LEGAL: ================= PERSISTENT SAVE =================
+  // LEGAL: A lent car or plane is never saved as yours: a save mid-race or mid-flight kept it for good.
+  function ownCar(): string | null {
+    if(flight) return flight.previousCar;
+    if(race?.loaner) return race.previousCar;
+    return state.equippedCar;
+  }
   function serializeState(){
     return {
       cash: state.cash, respect: state.respect, heat: state.heat,
@@ -7763,7 +8005,7 @@ import type * as ThreeNamespace from 'three';
       delhi: document.body.classList.contains('theme-delhi'),
       businesses: businesses.map(b=> ({ id:b.id, level:b.level, crew:b.crew, manager:b.manager, researched:b.researched, reinvestedIncome:b.reinvestedIncome })),
       bankAccounts: state.bankAccounts, selectedBank: state.selectedBank, nextHeistAt: state.nextHeistAt,
-      ownedCars: state.ownedCars, equippedCar: state.equippedCar, ownedProperties: state.ownedProperties, rentPots: state.rentPots, managedProperties: state.managedProperties,
+      ownedCars: state.ownedCars, equippedCar: ownCar(), ownedProperties: state.ownedProperties, rentPots: state.rentPots, managedProperties: state.managedProperties,
       propertyOwnedAt: state.propertyOwnedAt, brokenCars: state.brokenCars, carColors: state.carColors, carDecals: state.carDecals, carParkedAt: state.carParkedAt,
       localBusinesses: localBusinesses.map(b=> ({ id:b.id, extorted:b.extorted, extortTier:b.extortTier??0, resentment:b.resentment??0, nextRobAt:b.nextRobAt })),
       currentDistrict: state.currentDistrict, product: state.product, productLevel: state.productLevel,
@@ -7774,7 +8016,7 @@ import type * as ThreeNamespace from 'three';
       nextCampaignAt: state.nextCampaignAt, nextWarAt: state.nextWarAt,
       politicians: politicians.map(p=> ({ id:p.id, favor:p.favor, pocketed:p.pocketed })),
       gangRecruits: gangRecruits.map(g=> ({ id:g.id, inducted:g.inducted })),
-      inVehicle: state.inVehicle, waypoints: state.waypoints, parkedCar: state.parkedCar,
+      inVehicle: state.inVehicle && !flight && !race?.loaner, waypoints: state.waypoints, parkedCar: state.parkedCar,
       marketPrices: state.marketPrices, portfolio: state.portfolio, marketHistory: state.marketHistory,
       financeView: state.financeView, activeStock: state.activeStock,
       currentNews: state.currentNews, newsQueue: state.newsQueue, nextNewsAt: state.nextNewsAt,

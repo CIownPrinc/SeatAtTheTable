@@ -5,7 +5,8 @@ import { districts } from '../config/districts';
 import { mapAmenities } from './amenities';
 import { allocateLots, districtLotSlots, spreadSlots } from './lots';
 import { clearOfDiagonalRoads, districtIdAtPlayablePoint } from './mapModel';
-import { DISTRICT_OFFSETS, DISTRICT_W, OUTSKIRT_PLACE_LOTS, WORLD_H, roadNetwork, ventureMapLots, widenAuthoredX } from './world';
+import { specialPlaceFootprint } from './placeSpecials';
+import { DISTRICT_OFFSETS, DISTRICT_W, OUTSKIRT_PLACE_LOTS, QUAYSIDE_PLACE_LOTS, WORLD_H, roadNetwork, ventureMapLots, widenAuthoredX } from './world';
 
 // LEGAL: Where every service building actually ends up. Lives here rather than inline in
 // LEGAL: header.ts so the game and the layout tests allocate from one implementation — a
@@ -31,6 +32,7 @@ export function serviceLotObstacles(): Solid[] {
     // LEGAL: Hand-placed outskirt lots are real footprints too, so nothing gets allocated
     // LEGAL: on top of them.
     ...Object.values(OUTSKIRT_PLACE_LOTS).map(lot => ({ x: lot.x, y: lot.y, hw: 70, hd: 56 })),
+    ...Object.entries(QUAYSIDE_PLACE_LOTS).map(([id, lot]) => specialPlaceFootprint(id, lot.x, lot.y) ?? { x: lot.x, y: lot.y, hw: 70, hd: 56 }),
   ];
 }
 
@@ -41,7 +43,7 @@ export function allocateServiceLots() {
       // LEGAL: knows about district blocks, and an assignment would silently overwrite the
       // LEGAL: authored position (allocator lots win in applyMapWorldCoordinates).
       ...serviceBuildings
-        .filter(s => !OUTSKIRT_PLACE_LOTS[s.id])
+        .filter(s => !OUTSKIRT_PLACE_LOTS[s.id] && !QUAYSIDE_PLACE_LOTS[s.id])
         .map(s => ({ id: s.id, district: s.district, hw: SERVICE_HALF_W, hd: SERVICE_HALF_D })),
       ...localBusinesses.map(b => ({ id: b.id, district: b.district, hw: 36, hd: 32 })),
     ],

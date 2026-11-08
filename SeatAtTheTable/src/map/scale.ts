@@ -14,6 +14,10 @@ export const PERSON_SCALE = PERSON_HEIGHT / PERSON_MODEL_HEIGHT;
 // LEGAL: brings them to about 3 m. Applied where heights are set, so signs and roofs follow.
 export const BUILDING_HEIGHT_SCALE = 1.9;
 
+// LEGAL: The docks, the drive-in, the lodge and the motel (map/placeSpecials) were authored at the same
+// LEGAL: half size as the city's storeys, and grow by the same amount.
+export const PLACE_SCALE = BUILDING_HEIGHT_SCALE;
+
 export function storeys(authoredHeight: number): number {
   return authoredHeight * BUILDING_HEIGHT_SCALE;
 }

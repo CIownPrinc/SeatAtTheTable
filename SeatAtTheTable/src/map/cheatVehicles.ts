@@ -1,12 +1,17 @@
 import type { Car } from '../config/types';
 
-// LEGAL: Vehicles only cheat codes hand out. Kept out of the shop catalog (config/assets) so they
-// LEGAL: never appear for sale. Their models are in the Blender catalog (map/vehicleModels.ts).
+export const AIRFIELD_PLANE_ID = 'airfield-plane';
+
+// LEGAL: Vehicles the game hands out or lends: the cheat codes', the race's loaner and the airfield's
+// LEGAL: plane. Kept out of the shop catalog (config/assets) so they never appear for sale. Their models are in the Blender catalog (map/vehicleModels.ts).
 export const CHEAT_VEHICLES: Car[] = [
   { id:'cheat-dumptruck', name:'Garbage Truck', icon:'', cost:0, speedMult:0.85, heistBonus:0, respectPerSec:0, color:'#2f6b3a', len:40, wid:15 },
   { id:'cheat-helicopter', name:'Helicopter', icon:'', cost:0, speedMult:1.7, heistBonus:0, respectPerSec:0, color:'#2c3a4a', len:40, wid:40 },
   // LEGAL: Lent for a street race when you don't own a car; handed back at the finish.
   { id:'race-loaner', name:'Borrowed Chevalier', icon:'', cost:0, speedMult:1.25, heistBonus:0, respectPerSec:0, color:'#3e6b8a', len:29, wid:15 },
+  // LEGAL: The airfield's crop-duster, lent for a lesson, a charter or a cargo run (map/airfield). Its
+  // LEGAL: catalog size is before VEHICLE_SCALE: about 10 m long with a 15 m wingspan.
+  { id:AIRFIELD_PLANE_ID, name:'Kettle Flats Crop-Duster', icon:'', cost:0, speedMult:2.4, heistBonus:0, respectPerSec:0, color:'#d4a017', len:58, wid:86 },
 ];
 
 export function isFlyingVehicle(id: string | null): boolean {

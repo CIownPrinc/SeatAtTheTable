@@ -98,7 +98,9 @@ const SIZES: Partial<Record<RoomTheme, [number, number]>> = {
   workshop:[600, 340], chopshop:[600, 340], paintShop:[560, 320], warehouse:[680, 380], depot:[520, 300],
   civic:[640, 360], bank:[580, 330], bankPrestige:[620, 350], vaultBank:[580, 330], busStation:[640, 340],
   usedLot:[520, 300], luxuryShowroom:[640, 360], bikeShop:[540, 310], ruggedShowroom:[600, 340], trailheadShowroom:[520, 300], evShowroom:[620, 350],
-  casino:[900, 560], mall:[1000, 640], garageHome:[480, 280], lodge:[560, 320], hangar:[640, 360],
+  casino:[900, 560], mall:[1000, 640], garageHome:[480, 280], lodge:[400, 280], hangar:[640, 360],
+  // LEGAL: The motel's office, the drive-in's snack bar and the dockmaster's office, as big as they look.
+  motel:[280, 190], snackBar:[280, 190], dockOffice:[280, 190],
   tenement:[460, 270], shopUnits:[540, 300], lobby:[580, 330], homeFlat:[580, 330],
 };
 

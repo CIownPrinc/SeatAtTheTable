@@ -2,15 +2,15 @@ import type * as ThreeNamespace from 'three';
 import { loadPartModel, type PartModel } from './parts';
 
 // LEGAL: The Blender places (art/blender/places.py): the suburb's house, the countryside's buildings,
-// LEGAL: the building-site pieces, the mall, the one-of-a-kind places, and the railyard's office and
-// LEGAL: rolling stock. A model that fails to load is left out, and whatever draws it falls back to
+// LEGAL: the building-site pieces, the mall, the one-of-a-kind places, the airfield's hangar, and the railyard's
+// LEGAL: office and rolling stock. A model that fails to load is left out, and whatever draws it falls back to
 // LEGAL: its own shapes.
 export const PLACE_MODELS = [
   'house', 'farmhouse', 'barn', 'silo', 'shed', 'tank',
   'site-cabin', 'site-toilet', 'crane-mast', 'crane-jib', 'crane-head',
   'mall', 'mall-garage',
-  'airfield', 'docks', 'drive-in', 'lodge', 'motel',
-  'yard-office', 'freight-wagon', 'locomotive',
+  'docks', 'drive-in', 'lodge', 'motel',
+  'hangar', 'yard-office', 'freight-wagon', 'locomotive',
 ] as const;
 // LEGAL: Room furniture and the minigames' set pieces (art/blender/furniture.py).
 export const FURNITURE_MODELS = [

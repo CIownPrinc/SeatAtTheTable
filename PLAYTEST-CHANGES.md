@@ -5,6 +5,22 @@ The newest items are first.
 
 ## New on 2026-11-07
 
+- **The docks** are on the canal now, between Grand Avenue and Roosevelt Road, with the quay along the
+  water and a dockmaster's office. They used to sit 26 m inland.
+- **The motel, the lodge and the drive-in** are full size (the motel was 1.7 m tall). You can't walk
+  through the lodge or the motel's rooms any more, and you use each one from its front door. The
+  motel's office and the drive-in's snack bar are as big inside as they look outside.
+
+- **Kettle Flats Airfield** has moved south of Cermak Lane and is full size, with a runway, an apron
+  and a hangar. Inside the hangar:
+  - **Flight School** ($150): take off down the runway, fly six rings round the coast and the lake
+    against the clock, then land back on the runway. Pass and you get a pilot's licence.
+  - **Charter Desk** ($300, licence needed): the crop-duster is yours to fly anywhere until you land it.
+  - **Deke's Board** (licence needed): fly a crate out to a mark in the country, press E over it to
+    drop it, then land. A bullseye pays half again; a miss pays nothing and brings heat.
+  - Flying: hold forward down the runway to take off. In the air the plane keeps going the way it's
+    pointed. To land, line up with the runway, slow down and press E.
+
 - **The railyard** is now beside the freight line, south of the West Side, with its gate on the Ring
   Road next to Ridgewood Lodge. It is a real yard: a lead track off the line, three sidings, a
   switching engine and wagons at full size, a loading dock, containers, floodlights, a fence, and the

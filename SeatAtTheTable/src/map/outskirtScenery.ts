@@ -6,6 +6,8 @@ import { OUTSKIRT_PLACE_LOTS, OUTSKIRT_REGIONS, freightLinePath, type OutskirtRe
 import { mallKeepClear } from './mall';
 import { centralParkKeepClear } from './centralPark';
 import { HOUSE, suburbKeepClear } from './suburb';
+import { airfieldKeepClear } from './airfield';
+import { specialPlaceFootprint } from './placeSpecials';
 import { railyardKeepClear } from './railyard';
 import { RURAL_BUILDING_SCALE } from './scale';
 import { TRAIL_WIDTH, distanceToTrails } from './trails';
@@ -84,8 +86,9 @@ function samplesInRegion(region: OutskirtRegion, count: number, radius: number, 
   // LEGAL: The mall, Central Park, the suburb's lots and every countryside place (the lodge, the
   // LEGAL: casino, the motel...) are built on; nothing wild grows there.
   const keepClear = [
-    ...mallKeepClear(), ...centralParkKeepClear(), ...suburbKeepClear(), ...railyardKeepClear(),
-    ...Object.values(OUTSKIRT_PLACE_LOTS).map(lot => ({ x:lot.x, y:lot.y, hw:PLACE_CLEARANCE, hd:PLACE_CLEARANCE })),
+    ...mallKeepClear(), ...centralParkKeepClear(), ...suburbKeepClear(), ...railyardKeepClear(), ...airfieldKeepClear(),
+    ...Object.entries(OUTSKIRT_PLACE_LOTS).map(([id, lot]) => ({ x:lot.x, y:lot.y, hw:PLACE_CLEARANCE, hd:PLACE_CLEARANCE })),
+    ...Object.entries(OUTSKIRT_PLACE_LOTS).flatMap(([id, lot]) => { const f = specialPlaceFootprint(id, lot.x, lot.y); return f ? [{ ...f, hw:f.hw + 20, hd:f.hd + 20 }] : []; }),
   ];
   for(let attempt = 0; points.length < count && attempt < count * 80; attempt++){
     const point = { x:bounds.minX + random() * (bounds.maxX - bounds.minX), y:bounds.minY + random() * (bounds.maxY - bounds.minY) };

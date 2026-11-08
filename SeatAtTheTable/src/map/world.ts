@@ -1,6 +1,7 @@
 import type { MapZoneType, Point } from '../config/types';
 import { MALL_ENTRANCE } from './mall';
 import { RAILYARD_GATE } from './railyard';
+import { AIRFIELD_GATE } from './airfield';
 
 export interface VerticalRoad {
   x: number;
@@ -435,14 +436,23 @@ export const OUTSKIRT_PLACE_LOTS: Record<string, Point> = {
   casinoLakeridge: { x: widenAuthoredX(5500), y: 1560 },
   // LEGAL: The mall's front plaza, where Wabash Avenue's turning circle ends (map/mall).
   mallLakeridge: MALL_ENTRANCE,
-  airfieldKettle: { x: widenAuthoredX(-760), y: 760 },
-  lodgeRidgewood: { x: widenAuthoredX(3100), y: 1560 },
-  driveInBoundary: { x: widenAuthoredX(800), y: 1570 },
+  // LEGAL: South of Cermak Lane where the Ring Road bends, with room for a real strip (map/airfield).
+  airfieldKettle: AIRFIELD_GATE,
+  // LEGAL: At the cabin's porch steps; the cabin stands just north, clear of Central Park.
+  lodgeRidgewood: { x: widenAuthoredX(3100), y: 1635 },
+  // LEGAL: 40 east of where it was: at full size its lot reached over Meadow Lane.
+  driveInBoundary: { x: widenAuthoredX(800) + 40, y: 1570 },
   motelSunset: { x: widenAuthoredX(1100), y: -790 },
   fireRoadKestrel: { x: widenAuthoredX(3300), y: -830 },
   mudsterTrailhead: { x: widenAuthoredX(4186), y: -820 },
   // LEGAL: Beside the freight line south of the West Side, its gate on the Ring Road (map/railyard).
   railyard: RAILYARD_GATE,
+};
+
+// LEGAL: The docks, on the South Branch Canal's bank between Grand Avenue and Roosevelt Road, the
+// LEGAL: quay along the water. The allocator put them on any free lot in the West Side, 26 m inland.
+export const QUAYSIDE_PLACE_LOTS: Record<string, Point> = {
+  docksDockmaster: { x: 2657, y: 450 },
 };
 
 export const namedBuildingLots: Record<string, Point> = {
@@ -458,6 +468,7 @@ export const namedBuildingLots: Record<string, Point> = {
   cityhall: { x: lotX(5330), y: 450 },
   heistTarget: { x: lotX(4120), y: 750 },
   ...OUTSKIRT_PLACE_LOTS,
+  ...QUAYSIDE_PLACE_LOTS,
 };
 
 export const landmarks: Landmark[] = [

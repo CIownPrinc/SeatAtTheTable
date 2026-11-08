@@ -37,6 +37,9 @@ def lit(name="lit-glass", color="#ffcf70"):
 # 3.8 m wide with a 1.2 m front door). They're modelled at the old numbers and grown by this, which is
 # RURAL_BUILDING_SCALE in src/map/scale.ts. A fence or a mailbox stays its real size.
 RURAL = 2.2
+# The docks, the drive-in, the lodge and the motel were modelled with storeys about 1.5 m tall, like
+# the city's buildings were; this is BUILDING_HEIGHT_SCALE in src/map/scale.ts, which brought those to 3 m.
+PLACE_SCALE = 1.9
 
 
 def grow(scale):
@@ -437,50 +440,34 @@ def flat(name, w, d, x, z, y, mat):
     box(name, w, 0.1, d, x, y, z, mat)
 
 
-def airfield():
-    tarmac, paint, grey = m("tarmac", "#3a3c42", 0.95), m("paint", "#f0efe8", 0.6), m("hangar", "#8f949c", 0.5, 0.5)
-    flat("runway", 260, 34, 40, 26, 0.14, tarmac)
-    for x in range(-70, 160, 22):
-        flat("centre-line", 10, 1.6, x, 26, 0.2, paint)
-    for z in (11, 41):
-        flat("edge-line", 260, 0.8, 40, z, 0.2, paint)
-    for x in range(-80, 170, 20):
-        for z in (8.5, 43.5):
-            post("runway-light", 0.4, 0.8, x, 0.4, z, lit("runway-light", "#ffe0a0"), vertices=6)
-    flat("apron", 70, 40, -30, -10, 0.16, m("apron", "#4a4c52", 0.95))
-    # The hangar: a ribbed barrel roof on low walls, open at the front behind sliding doors.
-    log("hangar-roof", 20, 52, -30, 0, -18, grey, along="z", vertices=24)
-    for zz in range(-42, 7, 4):
-        bpy.ops.mesh.primitive_torus_add(major_radius=20.1, minor_radius=0.3, major_segments=24, minor_segments=4, location=(-30, -zz, 0), rotation=(math.pi / 2, 0, 0))
-        bpy.context.active_object.data.materials.append(m("hangar-rib", "#6d727a", 0.5, 0.5))
-    box("hangar-door", 30, 18, 0.6, -30, 9, 8.2, m("hangar-door", "#3a3d44", 0.6, 0.3))
-    for xx in (-44, -16):
-        box("door-panel", 8, 15, 0.6, xx, 7.5, 8.6, m("door-panel", "#6d727a", 0.5, 0.5))
-    # The windsock on its mast.
-    post("sock-mast", 0.6, 26, 30, 13, -18, m("mast", "#d8d8d8", 0.5), vertices=8)
-    sock = m("windsock", "#e8742a", 0.8)
-    for i in range(4):
-        bpy.ops.mesh.primitive_cone_add(radius1=2.6 - i * 0.35, radius2=2.25 - i * 0.35, depth=2.4, vertices=12, location=(31.6 + i * 2.4, 18, 25), rotation=(0, math.pi / 2, 0))
-        bpy.context.active_object.data.materials.append(sock if i % 2 == 0 else paint)
-    # The crop-duster, parked on the grass past the far end of the runway, clear of the yard's middle
-    # where you walk in: fuselage, cockpit, low wing, struts, tail, wheels and propeller. Built where it
-    # first stood and then moved, so the parts keep their places relative to each other.
-    before = set(bpy.context.scene.objects)
-    yellow = m("plane", "#d4a017", 0.5, 0.2)
-    bpy.ops.mesh.primitive_cone_add(radius1=2.6, radius2=1.0, depth=26, vertices=14, location=(10, 6, 5), rotation=(0, -math.pi / 2, 0))
-    bpy.context.active_object.data.materials.append(yellow)
-    box("cockpit", 5, 2.4, 3.6, 14, 7.4, -6, glass())
-    box("wing", 6, 0.8, 40, 13, 3.4, -6, yellow, bevel=0.3)
-    box("tailplane", 4, 0.6, 14, -2, 5.4, -6, yellow)
-    box("fin", 4, 6, 0.6, -2, 8, -6, m("fin", "#c0392b", 0.5))
-    log("nose", 2.2, 3, 24, 5, -6, m("cowl", "#3a3d44", 0.5, 0.5), along="x", vertices=14)
-    box("propeller", 0.6, 10, 1.2, 25.8, 5, -6, m("prop", "#2a2a2a", 0.5))
-    for zz in (-10, -2):
-        rod("strut", 0.25, (16, 0.8, -6 + (zz + 6) * 0.6), (14, 4, -6 + (zz + 6)), m("strut", "#3a3d44"))
-        log("wheel", 1.4, 0.8, 16, 1.4, -6 + (zz + 6) * 0.6, m("tyre", "#1a1a1a", 0.9), along="z", vertices=12)
-    for obj in set(bpy.context.scene.objects) - before:
-        obj.location.x += 110
-        obj.location.y -= 6
+# --- Kettle Flats Airfield's hangar (src/map/airfield.ts HANGAR: 22 x 14.3 x 7 m) -------------------
+# Only the hangar: the strip, apron, fuel tank and windsock are drawn by the game from the same data.
+
+def hangar():
+    w, d = 231, 150
+    wall_h, rise = 46, 28
+    steel, rib = m("hangar", "#8f949c", 0.5, 0.5), m("hangar-rib", "#6d727a", 0.5, 0.5)
+    box("walls", w, wall_h, d, 0, wall_h / 2, 0, steel)
+    # The ribbed barrel roof: a cylinder along the hangar's depth, flattened to a low arch.
+    roof = log("roof-hangar", w / 2 + 2, d + 4, 0, wall_h, 0, steel, along="z", vertices=40)
+    from mathutils import Matrix
+    roof.data.transform(Matrix.Diagonal((1, 1, rise / (w / 2 + 2), 1)))
+    for z in range(-int(d / 2), int(d / 2) + 1, 15):
+        r = log("roof-rib", w / 2 + 2.6, 1.2, 0, wall_h, z, rib, along="z", vertices=40)
+        r.data.transform(Matrix.Diagonal((1, 1, (rise + 0.6) / (w / 2 + 2.6), 1)))
+    for x in range(-int(w / 2), int(w / 2) + 1, 11):
+        box("wall-rib", 1, wall_h, d + 1.2, x, wall_h / 2, 0, rib)
+    # The big door on the front, open: a dark opening with the sliding leaves stacked to each side.
+    box("door-opening", 180, 40, 0.6, 0, 20, d / 2 + 0.3, m("hangar-dark", "#14161a", 0.95))
+    for side in (-1, 1):
+        box("door-leaf", 22, 42, 1.2, side * 101, 21, d / 2 + 1.2, m("door-leaf", "#6d727a", 0.5, 0.5))
+    box("door-track", w, 1.4, 2, 0, 42.4, d / 2 + 1.2, m("iron", "#2a2a2a", 0.5, 0.5))
+    box("apron-lip", 190, 0.6, 6, 0, 0.3, d / 2 + 3, m("concrete", "#9a9a96", 0.95))
+    # The side door to the office, onto the car park, with its lamp and a window.
+    box("side-door", 0.6, 22, 11, w / 2 + 0.3, 11, 30, m("door", "#2f4a6a", 0.7))
+    box("side-lamp", 1.6, 2, 3, w / 2 + 1, 26, 30, m("lamp", "#000000", 0.4, emission="#ffe2a0", strength=1.0))
+    window("office-window", 20, 12, w / 2, 26, -10, lit(), m("trim", "#e8e4d8", 0.6), facing="x", sill=True)
+    box("step", 8, 1.4, 16, w / 2 + 4, 0.7, 30, m("concrete", "#9a9a96", 0.95))
 
 
 def docks():
@@ -515,6 +502,12 @@ def docks():
         box("cable", 0.3, 20, 0.3, xx, 30, -20, m("cable", "#1a1a1a"))
     box("spreader", 22, 1.2, 8, 30, 20.6, -20, orange)
     box("load", 22, 9.6, 8.6, 30, 15, -20, m("container-1", "#2f6bb0"))
+    # The dockmaster's office by the quay, the room you walk into (src/map/interiorPlans.ts 'dockOffice').
+    walls, trim = m("office-wall", "#8a9aa4", 0.85), m("trim", "#e8e4d8", 0.6)
+    box("office", 44, 16, 30, 34, 8, 14, walls)
+    box("roof-office", 46, 1.4, 32, 34, 16.7, 14, m("roof", "#2f4a6a", 0.85))
+    box("office-door", 6, 11, 0.5, 20, 5.5, 29.3, m("door", "#2f4a6a", 0.7))
+    window("office-window", 12, 6, 40, 10, 29, lit(), trim, facing="z", sill=True)
 
 
 # --- The railyard (src/map/railyard.ts, src/map/rollingStock.ts) -----------------------------------
@@ -619,12 +612,13 @@ def drive_in():
     box("booth", 16, 12, 14, 0, 6, 28, m("booth", "#8a7a62", 0.9))
     box("roof-booth", 17, 1, 15, 0, 12.5, 28, m("roof", "#4a4038", 0.9))
     box("booth-window", 4, 3, 0.4, 0, 9, 20.8, m("projector", "#000000", 0.4, emission="#fff2c8", strength=1.0))
-    box("snack-bar", 18, 11, 14, -50, 5.5, 24, m("snack", "#c0392b", 0.8))
-    for i in range(5):
-        box("awning-stripe", 3.6, 0.6, 6, -57.2 + i * 3.6, 10.2, 34.0, m("stripe-red" if i % 2 else "stripe-white", "#c0392b" if i % 2 else "#f0efe8", 0.7), tilt=0.35)
-    box("roof-snack", 20, 1.2, 16, -50, 11.6, 24, m("snack-roof", "#f0efe8", 0.7))
-    box("hatch", 10, 4, 0.4, -50, 6.4, 31.2, lit("hatch", "#ffe0a0"))
-    box("counter", 12, 0.8, 2, -50, 4.2, 32, m("counter", "#e8e4d8", 0.6))
+    # The snack bar, big enough for the room you walk into (src/map/interiorPlans.ts 'snackBar').
+    box("snack-bar", 40, 11, 28, -42, 5.5, 24, m("snack", "#c0392b", 0.8))
+    for i in range(11):
+        box("awning-stripe", 3.6, 0.6, 6, -60 + i * 3.6, 10.2, 41.0, m("stripe-red" if i % 2 else "stripe-white", "#c0392b" if i % 2 else "#f0efe8", 0.7), tilt=0.35)
+    box("roof-snack", 42, 1.2, 30, -42, 11.6, 24, m("snack-roof", "#f0efe8", 0.7))
+    box("hatch", 18, 4, 0.4, -42, 6.4, 38.2, lit("hatch", "#ffe0a0"))
+    box("counter", 20, 0.8, 2, -42, 4.2, 39, m("counter", "#e8e4d8", 0.6))
 
 
 def lodge():
@@ -678,10 +672,13 @@ def motel():
     for x in range(int(-w / 2 + 2), int(w / 2 - 1), 11):
         box("column", 1, h, 1, x, h / 2, d / 2 + 4.4, trim)
     # The office at the west end, glazed, with its VACANCY panel.
-    box("office", 16, h, 12, -w / 2 - 8, h / 2, d / 2 - 10, walls)
-    box("roof-office", 18, 1.6, 14, -w / 2 - 8, h + 0.8, d / 2 - 10, roof)
-    box("office-glass", 12, 9, 0.5, -w / 2 - 8, 7, d / 2 - 3.8, lit("office-glass", "#fff0c8"))
-    box("vacancy", 10, 2, 0.4, -w / 2 - 8, 14, d / 2 - 3.6, m("vacancy", "#000000", 0.4, emission="#40ff80", strength=1.0))
+    # The office is big enough for the lobby you walk into (src/map/interiorPlans.ts 'motel').
+    ox, oz = -w / 2 - 20, d / 2 - 15
+    box("office", 44, h, 30, ox, h / 2, oz, walls)
+    box("roof-office", 46, 1.6, 32, ox, h + 0.8, oz, roof)
+    box("office-glass", 20, 9, 0.5, ox + 6, 7, oz + 15.3, lit("office-glass", "#fff0c8"))
+    box("office-door", 6, 11, 0.5, ox - 12, 5.5, oz + 15.3, m("room-door-0", "#2f6b8a", 0.6))
+    box("vacancy", 14, 2.4, 0.4, ox + 6, 14, oz + 15.5, m("vacancy", "#000000", 0.4, emission="#40ff80", strength=1.0))
     # The tall sign out front: a pole, an arrow-shaped neon board and a starburst on top.
     post("sign-pole", 1.2, 46, w / 2 + 12, 23, d / 2 + 8, m("pole", "#3a3d44", 0.6, 0.4), vertices=10)
     box("sign-board", 2, 14, 26, w / 2 + 12, 44, d / 2 + 8, m("neon", "#000000", 0.4, emission="#ff6a3a", strength=1.0))
@@ -695,7 +692,7 @@ MODELS = {
     "house": house, "farmhouse": farmhouse, "barn": barn, "silo": silo, "shed": shed, "tank": tank,
     "site-cabin": site_cabin, "site-toilet": site_toilet, "crane-mast": crane_mast, "crane-jib": crane_jib, "crane-head": crane_head,
     "mall": mall, "mall-garage": mall_garage,
-    "airfield": airfield, "docks": docks, "drive-in": drive_in, "lodge": lodge, "motel": motel,
+    "hangar": hangar, "docks": docks, "drive-in": drive_in, "lodge": lodge, "motel": motel,
     "yard-office": yard_office, "freight-wagon": freight_wagon, "locomotive": locomotive,
 }
 
@@ -709,8 +706,10 @@ for name, build in MODELS.items():
     build()
     if name in ("farmhouse", "barn", "silo", "shed", "tank"):
         grow(RURAL)
+    if name in ("docks", "drive-in", "lodge", "motel"):
+        grow(PLACE_SCALE)
     if out_dir:
         kit.export(os.path.join(out_dir, f"{name}.glb"))
     if preview_dir:
-        big = name in ("mall", "mall-garage", "airfield", "docks", "drive-in", "yard-office", "freight-wagon", "locomotive")
+        big = name in ("mall", "mall-garage", "hangar", "docks", "drive-in", "yard-office", "freight-wagon", "locomotive")
         kit.preview(os.path.join(preview_dir, f"place-{name}.png"), target=(0, 0, 12 if not big else 30), distance=110 if not big else 330, height=50 if not big else 160, angle=-60)

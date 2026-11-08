@@ -45,13 +45,21 @@ export const TRAIN_HALF_WIDTH = Math.max(FREIGHT_WAGON.width, LOCOMOTIVE.width) 
 // LEGAL: One car standing at its origin, its length along z and its front toward +z. The Blender model
 // LEGAL: (art/blender/places.py) is fitted to the size above, so the two can't drift apart; until it
 // LEGAL: loads, and in tests, it's drawn from boxes.
+// LEGAL: Each kind and colour is built and fitted once, then copied: fitting every car of the train and
+// LEGAL: the yard on its own added a quarter of a second to opening the map.
+const built = new Map<string, ThreeNamespace.Group>();
 export function buildCar(THREE: typeof ThreeNamespace, kind: CarKind, colour: string): ThreeNamespace.Group {
-  const group = new THREE.Group();
-  group.name = `rolling-stock:${kind}`;
   const model = placeModel(kind === 'locomotive' ? 'locomotive' : 'freight-wagon');
-  if(model) addFittedModel(THREE, group, model, carSize(kind), kind === 'wagon' ? { body:colour } : {});
-  else addCarShapes(THREE, group, kind, colour);
-  return group;
+  const key = `${kind}|${kind === 'wagon' ? colour : ''}|${model ? 'model' : 'shapes'}`;
+  let template = built.get(key);
+  if(!template){
+    template = new THREE.Group();
+    template.name = `rolling-stock:${kind}`;
+    if(model) addFittedModel(THREE, template, model, carSize(kind), kind === 'wagon' ? { body:colour } : {});
+    else addCarShapes(THREE, template, kind, colour);
+    built.set(key, template);
+  }
+  return template.clone();
 }
 
 function addFittedModel(THREE: typeof ThreeNamespace, group: ThreeNamespace.Group, model: PartModel, size: CarSize, recolour: Record<string, string>): void {

@@ -381,6 +381,8 @@ def build(cls, m):
         hub.select_set(True)
         bpy.context.view_layer.objects.active = hub
         bpy.ops.object.join()
+    elif cls == "cropduster":
+        cropduster(m)
     elif cls == "chopper":
         chopper(m)
     elif cls == "sportbike":
@@ -389,7 +391,36 @@ def build(cls, m):
         raise ValueError(cls)
 
 
-CLASSES = ["sedan", "beater", "wagon", "muscle", "suv", "armored", "pickup", "van", "ev", "ev-luxury", "ev-van", "supercar", "roadster", "police", "taxi", "truck", "tractor", "garbage", "helicopter", "chopper", "sportbike"]
+def cropduster(m):
+    """The airfield's crop-duster: a low-wing single seater with a radial cowling, a hopper ahead of
+    the cockpit and a spray bar under the wing. Nose toward +x; the propeller is one object named
+    "propeller", pivoting at its hub, so the game can spin it."""
+    white, red = m["white"], kit.material("tail-red", "#c43b2e", roughness=0.5)
+    kit.box("fuselage", (30, 6, 7), (2, 0, 9), m["paint"], bevel=1.2)
+    kit.box("tail-cone", (16, 3.6, 4.2), (-20, 0, 10), m["paint"], bevel=0.8)
+    kit.cylinder("cowling", 3.8, 8, (19, 0, 9), m["trim"], axis="X", vertices=18, bevel=0.4)
+    kit.box("hopper", (6, 5, 3), (10, 0, 13.6), white, bevel=0.6)
+    kit.box("canopy", (7, 4.4, 4), (3, 0, 14.4), m["glass"], bevel=0.8)
+    kit.box("wing", (8, 60, 1), (5, 0, 5.6), m["paint"], bevel=0.3)
+    for side in (-1, 1):
+        kit.box(f"wing-tip-{side}", (8.2, 1.2, 1.2), (5, side * 30, 5.6), red, bevel=0.2)
+    kit.cylinder("spray-bar", 0.35, 52, (0.6, 0, 4.6), m["chrome"], axis="Y", vertices=8)
+    kit.box("tailplane", (5, 18, 0.6), (-25, 0, 11), m["paint"], bevel=0.2)
+    kit.box("fin", (6, 0.6, 8), (-25.5, 0, 15.4), red, bevel=0.3)
+    for side in (-1, 1):
+        kit.box(f"gear-strut-{side}", (1, 4.6, 0.8), (8, side * 4.2, 3.6), m["trim"])
+        kit.cylinder(f"gear-wheel-{side}", 2.2, 1.6, (8, side * 6.8, 2.2), m["tyre"], axis="Y", vertices=16)
+    kit.cylinder("tail-wheel", 0.9, 0.8, (-26, 0, 0.9), m["tyre"], axis="Y", vertices=12)
+    hub = kit.cylinder("propeller", 1.2, 2.2, (24.2, 0, 9), m["chrome"], axis="X", vertices=12)
+    blade = kit.box("prop-blade", (0.6, 2.2, 17), (24.6, 0, 9), m["trim"], bevel=0.2)
+    bpy.ops.object.select_all(action="DESELECT")
+    blade.select_set(True)
+    hub.select_set(True)
+    bpy.context.view_layer.objects.active = hub
+    bpy.ops.object.join()
+
+
+CLASSES = ["sedan", "beater", "wagon", "muscle", "suv", "armored", "pickup", "van", "ev", "ev-luxury", "ev-van", "supercar", "roadster", "police", "taxi", "truck", "tractor", "garbage", "helicopter", "chopper", "sportbike", "cropduster"]
 
 out_dir, preview_dir = kit.args()
 only = os.environ.get("VEHICLE")

@@ -185,8 +185,8 @@ every test. Locally, `.tmp-assets/` (ignored Kenney zips) can be deleted by hand
 Every request the player made while playing, word for word in intent, so none get lost.
 Status: **DONE** shipped and verified · **PART** partly done (what's left is noted) · open.
 
-**Pick up here (2026-11-07):** the railyard is done (110). Next, in order: the rest of 110 (the
-countryside places at real size: motel, airfield, drive-in, docks, lodge), then parking lots and
+**Pick up here (2026-11-07):** the railyard and the countryside places (110) and the airfield (164)
+are done. Next, in order: then parking lots and
 pedestrian and traffic pathfinding (163), then the order below. The amenity crash (111) is parked
 by the player. Player's guidance from this session: work faster without dropping the checks (run
 slow e2e in the background, check in batches, shorter updates); cars only slightly smaller than
@@ -595,8 +595,15 @@ old one.
      tall; it's now a locomotive and four of the same wagons (map/rollingStock), and a level crossing
      stays shut until its last wagon has passed (it only covered the train's middle). Still to do under
      this rule: the other one-of-a-kind countryside places are built at the same old tiny scale. The
-     motel is 1.7 m tall, the airfield's hangar about 4 m across and the drive-in screen 4.4 m high,
-     and the docks and the lodge need the same check.
+     motel is 1.7 m tall and the drive-in screen 4.4 m high, and the docks and the lodge need the
+     same check. The airfield is DONE (164). The docks, drive-in, lodge and motel are DONE
+     (2026-11-07): grown 1.9x to real size like the city's storeys (`PLACE_SCALE`), solids and all;
+     the lodge and the motel's block of rooms are now solid (you walked through both); each place is
+     used from its door (an `entrance` put on its map position); the motel office, the snack bar and
+     a new dockmaster's office on the quay are as big as the rooms you walk into, and those rooms
+     shrank to match; the docks moved onto the South Branch Canal's bank, quay to the water (they
+     were 26 m inland); the drive-in moved 40 east off Meadow Lane and the lodge a little south off
+     Central Park. City lots and countryside scenery keep off each place's whole footprint.
 111. **PARKED** (player, 2026-10-22: "ignore amenity crash for now") Playing any amenity game crashes the game (user, 2026-10-20). Couldn't reproduce a
      crash, headless or in a real Chrome: both games play through cleanly and the map keeps running.
      What did happen: when a game ended its window vanished with no result (the line was too minor for
@@ -868,6 +875,17 @@ missing is the depth the brief asks for: most have two choices and one modal per
      a place to leave your own car), with the NPC and traffic items (64, 73-75) for the pathfinding:
      people walk to places along pavements and crossings, cars follow lanes, turn at junctions and
      park. Lane-aware traffic beyond that is in V2.
+164. **DONE** Give the airplane hangar something to do: "a flight simulator or a mission or something"
+     (user, 2026-11-07). Kettle Flats Airfield moved south of Cermak Lane, where it fits at real size:
+     a 93 m runway, an apron, a 22 by 14 m hangar, a fuel tank and a windsock (`map/airfield.ts`).
+     Inside the hangar: the Flight School (a $150 lesson: take off down the runway, fly six rings
+     over the meadows, the coast and the lake against the clock, land back on the runway, and you
+     get a pilot's licence); the Charter Desk ($300, fly anywhere and land back at the strip); and
+     Deke's Board (cargo runs: drop a crate on a mark out in the country, land, get paid, more for a
+     bullseye, with heat). The crop-duster is a new Blender model; it takes off only from the
+     runway, can't hover, and lands only lined up and slow on the runway. Tests in
+     `airfield.test.ts` and `e2e/airfield.e2e.ts`. Ideas for later: a night-flight or bad-weather
+     run, buying your own plane, and Deke's runs feeding the drug supply chain (130).
 51. **DONE** The cars are too small (user, 2026-10-20: "the cars are so tiny bro"). They were drawn at life
     size next to people drawn 1.2x life, under a high camera. Worse, traffic was a bug: merging each
     car into one mesh transformed its quantized Blender geometry in place, which clamped every car to

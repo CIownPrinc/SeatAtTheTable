@@ -3,7 +3,8 @@ import type { DiagonalRoad, HorizontalRoad, Landmark, VerticalRoad } from './wor
 import { createOutskirtSceneryLayout } from './outskirtScenery';
 import { buildCountryBuilding } from './countryBuildings';
 import { instancedTrees, treeShape, type TreePlacement } from './treeModels';
-import { OUTSKIRT_REGIONS } from './world';
+import { OUTSKIRT_REGIONS, QUAYSIDE_PLACE_LOTS } from './world';
+import { specialPlaceFootprint } from './placeSpecials';
 import type { PlaceArchetype } from './archetypes';
 import { ribbonGeometry } from './ribbon';
 import { TRAILS, TRAIL_WIDTH } from './trails';
@@ -382,6 +383,15 @@ function buildStreetTree(options: BaseSceneOptions, x: number, z: number, size: 
   worldGroup.add(group);
 }
 
+// LEGAL: The docks stand on the canal bank inside the city (world QUAYSIDE_PLACE_LOTS); a street tree
+// LEGAL: grew out of the wharf under the crane.
+function onQuaysidePlace(x: number, y: number): boolean {
+  return Object.entries(QUAYSIDE_PLACE_LOTS).some(function([id, lot]){
+    const f = specialPlaceFootprint(id, lot.x, lot.y);
+    return !!f && Math.abs(x - f.x) < f.hw + 12 && Math.abs(y - f.y) < f.hd + 12;
+  });
+}
+
 export function buildStreetTrees(options: TreeSceneOptions): void {
   ['devlin','westside','hub'].forEach(function(distId){
     const off = options.districtOffsets[distId];
@@ -393,7 +403,7 @@ export function buildStreetTrees(options: TreeSceneOptions): void {
         const treeX = x + (rand()-0.5)*18;
         const treeY = r.y + side*58 + (rand()-0.5)*14;
         // LEGAL: Beside its own street, but never in another one (the curved Canal Bend Road crosses the grid).
-        if(districtIdAtPlayablePoint({ x:treeX, y:treeY }, 8) === distId && !onAnyRoad({ x:treeX, y:treeY }, 8)){ buildStreetTree(options, treeX, treeY, (0.78 + rand()*0.45) * TREE_SCALE); options.treeSpots.push({ x:treeX, y:treeY }); }
+        if(districtIdAtPlayablePoint({ x:treeX, y:treeY }, 8) === distId && !onAnyRoad({ x:treeX, y:treeY }, 8) && !onQuaysidePlace(treeX, treeY)){ buildStreetTree(options, treeX, treeY, (0.78 + rand()*0.45) * TREE_SCALE); options.treeSpots.push({ x:treeX, y:treeY }); }
       }
     });
     options.roadNetwork.vertical.filter(v=>v.x>off && v.x<off+1500).forEach(function(v){
@@ -402,7 +412,7 @@ export function buildStreetTrees(options: TreeSceneOptions): void {
         const side = rand() > 0.5 ? -1 : 1;
         const treeX = v.x + side*50 + (rand()-0.5)*12;
         const treeY = y + (rand()-0.5)*18;
-        if(districtIdAtPlayablePoint({ x:treeX, y:treeY }, 8) === distId && !onAnyRoad({ x:treeX, y:treeY }, 8)){ buildStreetTree(options, treeX, treeY, (0.72 + rand()*0.38) * TREE_SCALE); options.treeSpots.push({ x:treeX, y:treeY }); }
+        if(districtIdAtPlayablePoint({ x:treeX, y:treeY }, 8) === distId && !onAnyRoad({ x:treeX, y:treeY }, 8) && !onQuaysidePlace(treeX, treeY)){ buildStreetTree(options, treeX, treeY, (0.72 + rand()*0.38) * TREE_SCALE); options.treeSpots.push({ x:treeX, y:treeY }); }
       }
     });
   });
